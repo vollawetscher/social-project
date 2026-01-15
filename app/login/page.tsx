@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +13,7 @@ import { toast } from 'sonner'
 import { Mail, Loader2, Lock } from 'lucide-react'
 
 export default function LoginPage() {
+  const { user, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,6 +21,12 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push('/dashboard')
+    }
+  }, [user, authLoading, router])
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,7 +87,7 @@ export default function LoginPage() {
         setLoading(false)
       } else {
         toast.success('Erfolgreich angemeldet')
-        window.location.href = '/dashboard'
+        router.push('/dashboard')
       }
     } catch (error) {
       toast.error('Ein unerwarteter Fehler ist aufgetreten')
@@ -116,7 +124,7 @@ export default function LoginPage() {
         setLoading(false)
       } else {
         toast.success('Account erstellt! Sie werden angemeldet...')
-        window.location.href = '/dashboard'
+        router.push('/dashboard')
       }
     } catch (error) {
       toast.error('Ein unerwarteter Fehler ist aufgetreten')
