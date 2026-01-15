@@ -5,7 +5,7 @@ A production-ready web application for social workers to record, transcribe, and
 ## Features
 
 ### Core Functionality
-- **Magic Link Authentication**: Passwordless email-based login via Supabase Auth
+- **Flexible Authentication**: Password-based login (for testing) and Magic Link (passwordless email) via Supabase Auth
 - **Audio Recording**: In-browser recording using MediaRecorder API (mobile + desktop)
 - **File Upload**: Support for MP3, WAV, M4A, MP4, WebM (max 100MB)
 - **Automatic Transcription**: Integration with Speechmatics API for accurate German transcription with speaker diarization
@@ -92,9 +92,18 @@ The database schema has already been applied via Supabase migrations. The follow
 
 Storage bucket `rohbericht-audio` is also configured automatically.
 
-3. **Create Initial Admin User**
+3. **Enable Password Authentication (for Testing)**
 
-After first login via Magic Link, update your user role in Supabase:
+For testing in environments where email delivery doesn't work (like StackBlitz), password authentication is already configured. If you need to enable it in Supabase:
+
+1. Go to your Supabase Dashboard
+2. Navigate to Authentication > Providers
+3. Ensure "Email" provider is enabled
+4. Disable "Confirm email" for testing (optional)
+
+4. **Create Initial Admin User**
+
+After first login (via password or Magic Link), update your user role in Supabase:
 
 ```sql
 -- Run this in Supabase SQL Editor
@@ -130,10 +139,24 @@ npm run start
 ## User Guide
 
 ### Login
+
+The application supports two authentication methods:
+
+#### Password Login (Recommended for Testing)
 1. Visit the application
-2. Enter your email address
-3. Check your email for the Magic Link
-4. Click the link to log in
+2. Select the "Passwort" tab
+3. Enter any email address (e.g., `test@example.com`)
+4. Enter a password (minimum 6 characters)
+5. Click "Registrieren" to create a new account, or "Anmelden" to log in
+
+#### Magic Link (Production)
+1. Visit the application
+2. Select the "Magic Link" tab
+3. Enter your email address
+4. Check your email for the Magic Link
+5. Click the link to log in
+
+**Note:** Magic Links may not work in development environments like StackBlitz. Use password authentication for testing.
 
 ### Create a New Session
 1. Click "Neue Sitzung" on the dashboard
@@ -235,10 +258,19 @@ The AI-generated report includes:
 - Supported formats: MP3, WAV, M4A, MP4, WebM
 - Check Supabase Storage bucket permissions
 
-### Magic Link Not Received
+### Authentication Issues
+
+#### Magic Link Not Received
 - Check spam folder
 - Verify email settings in Supabase Auth
 - Ensure `NEXT_PUBLIC_APP_URL` is correct
+- **For testing environments**: Use password authentication instead
+
+#### Password Login Not Working
+- Ensure "Email" provider is enabled in Supabase Dashboard (Authentication > Providers)
+- For testing: Disable "Confirm email" requirement in Supabase Auth settings
+- Password must be at least 6 characters
+- Use "Registrieren" button to create a new account first
 
 ## Data Retention
 
