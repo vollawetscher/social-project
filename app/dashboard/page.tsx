@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,6 +35,7 @@ import {
 } from '@/components/ui/alert-dialog'
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -45,8 +47,16 @@ export default function DashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    loadSessions()
-  }, [])
+    if (!authLoading && !user) {
+      router.push('/login')
+    }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
+    if (user) {
+      loadSessions()
+    }
+  }, [user])
 
   const loadSessions = async () => {
     try {
@@ -143,6 +153,18 @@ export default function DashboardPage() {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
   }
 
   return (
