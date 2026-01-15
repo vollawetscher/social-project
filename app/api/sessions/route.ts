@@ -1,28 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+const DEMO_USER_ID = '00000000-0000-0000-0000-000000000000'
+
 export async function GET() {
   try {
     const supabase = createClient()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError) {
-      console.error('Auth error:', authError)
-      return NextResponse.json({ error: 'Authentication failed', details: authError.message }, { status: 401 })
-    }
-
-    if (!user) {
-      console.error('No user found in session')
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
-
-    console.log('Fetching sessions for user:', user.id)
-
     const { data: sessions, error } = await supabase
       .from('sessions')
       .select('*')
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -41,20 +28,13 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const supabase = createClient()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
     const { context_note = '', internal_case_id = '' } = body
 
     const { data: session, error } = await supabase
       .from('sessions')
       .insert({
-        user_id: user.id,
+        user_id: DEMO_USER_ID,
         context_note,
         internal_case_id,
         status: 'created',

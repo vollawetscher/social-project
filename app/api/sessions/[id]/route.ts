@@ -8,12 +8,6 @@ export async function GET(
   try {
     const supabase = createClient()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { data: session, error } = await supabase
       .from('sessions')
       .select('*')
@@ -22,18 +16,6 @@ export async function GET(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 404 })
-    }
-
-    if (session.user_id !== user.id) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      if (!profile || profile.role !== 'admin') {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      }
     }
 
     return NextResponse.json(session)
@@ -48,24 +30,7 @@ export async function PATCH(
 ) {
   try {
     const supabase = createClient()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const body = await request.json()
-
-    const { data: existingSession } = await supabase
-      .from('sessions')
-      .select('user_id')
-      .eq('id', params.id)
-      .single()
-
-    if (!existingSession || existingSession.user_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
 
     const { data: session, error } = await supabase
       .from('sessions')
@@ -90,22 +55,6 @@ export async function DELETE(
 ) {
   try {
     const supabase = createClient()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: existingSession } = await supabase
-      .from('sessions')
-      .select('user_id')
-      .eq('id', params.id)
-      .single()
-
-    if (!existingSession || existingSession.user_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
 
     const { data: files } = await supabase
       .from('files')
