@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { createClient } from '@/lib/supabase/client'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [deleteSession, setDeleteSession] = useState<Session | null>(null)
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -60,18 +62,21 @@ export default function DashboardPage() {
 
   const loadSessions = async () => {
     try {
-      const response = await fetch('/api/sessions')
-      if (response.ok) {
-        const data = await response.json()
-        setSessions(data)
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Database error:', error)
+        toast.error(`Fehler beim Laden: ${error.message}`)
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('API Error:', response.status, errorData)
-        toast.error(`Fehler beim Laden: ${errorData.error || 'Unbekannter Fehler'}`)
+        setSessions(data || [])
       }
     } catch (error) {
-      console.error('Network Error:', error)
-      toast.error('Netzwerkfehler beim Laden der Sitzungen')
+      console.error('Failed to load sessions:', error)
+      toast.error('Fehler beim Laden der Sitzungen')
     } finally {
       setLoading(false)
     }
@@ -80,23 +85,26 @@ export default function DashboardPage() {
   const handleCreateSession = async () => {
     setCreating(true)
     try {
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data: newSession, error } = await supabase
+        .from('sessions')
+        .insert({
+          user_id: user!.id,
           context_note: contextNote,
           internal_case_id: caseId,
-        }),
-      })
+          status: 'created',
+        })
+        .select()
+        .single()
 
-      if (response.ok) {
-        const session = await response.json()
-        toast.success('Neue Sitzung erstellt')
-        router.push(`/sessions/${session.id}`)
+      if (error) {
+        console.error('Database error:', error)
+        toast.error(`Fehler: ${error.message}`)
       } else {
-        toast.error('Fehler beim Erstellen der Sitzung')
+        toast.success('Neue Sitzung erstellt')
+        router.push(`/sessions/${newSession.id}`)
       }
     } catch (error) {
+      console.error('Failed to create session:', error)
       toast.error('Fehler beim Erstellen der Sitzung')
     } finally {
       setCreating(false)
@@ -111,17 +119,20 @@ export default function DashboardPage() {
 
     setDeleting(true)
     try {
-      const response = await fetch(`/api/sessions/${deleteSession.id}`, {
-        method: 'DELETE',
-      })
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('id', deleteSession.id)
 
-      if (response.ok) {
+      if (error) {
+        console.error('Database error:', error)
+        toast.error(`Fehler: ${error.message}`)
+      } else {
         toast.success('Sitzung gelöscht')
         setSessions(sessions.filter((s) => s.id !== deleteSession.id))
-      } else {
-        toast.error('Fehler beim Löschen der Sitzung')
       }
     } catch (error) {
+      console.error('Failed to delete session:', error)
       toast.error('Fehler beim Löschen der Sitzung')
     } finally {
       setDeleting(false)
