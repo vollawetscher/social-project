@@ -55,10 +55,13 @@ export default function DashboardPage() {
         const data = await response.json()
         setSessions(data)
       } else {
-        toast.error('Fehler beim Laden der Sitzungen')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('API Error:', response.status, errorData)
+        toast.error(`Fehler beim Laden: ${errorData.error || 'Unbekannter Fehler'}`)
       }
     } catch (error) {
-      toast.error('Fehler beim Laden der Sitzungen')
+      console.error('Network Error:', error)
+      toast.error('Netzwerkfehler beim Laden der Sitzungen')
     } finally {
       setLoading(false)
     }

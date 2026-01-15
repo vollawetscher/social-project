@@ -7,9 +7,17 @@ export async function GET() {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (authError) {
+      console.error('Auth error:', authError)
+      return NextResponse.json({ error: 'Authentication failed', details: authError.message }, { status: 401 })
     }
+
+    if (!user) {
+      console.error('No user found in session')
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    console.log('Fetching sessions for user:', user.id)
 
     const { data: sessions, error } = await supabase
       .from('sessions')
@@ -18,12 +26,15 @@ export async function GET() {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('Database error:', error)
+      return NextResponse.json({ error: error.message, details: error }, { status: 500 })
     }
 
-    return NextResponse.json(sessions)
+    console.log('Found sessions:', sessions?.length || 0)
+    return NextResponse.json(sessions || [])
   } catch (error) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Unexpected error:', error)
+    return NextResponse.json({ error: 'Internal server error', details: String(error) }, { status: 500 })
   }
 }
 
