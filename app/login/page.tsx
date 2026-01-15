@@ -76,13 +76,13 @@ export default function LoginPage() {
 
       if (error) {
         toast.error('Anmeldung fehlgeschlagen: ' + error.message)
+        setLoading(false)
       } else {
         toast.success('Erfolgreich angemeldet')
-        router.push('/dashboard')
+        window.location.href = '/dashboard'
       }
     } catch (error) {
       toast.error('Ein unerwarteter Fehler ist aufgetreten')
-    } finally {
       setLoading(false)
     }
   }
@@ -113,13 +113,13 @@ export default function LoginPage() {
 
       if (error) {
         toast.error('Registrierung fehlgeschlagen: ' + error.message)
+        setLoading(false)
       } else {
         toast.success('Account erstellt! Sie werden angemeldet...')
-        router.push('/dashboard')
+        window.location.href = '/dashboard'
       }
     } catch (error) {
       toast.error('Ein unerwarteter Fehler ist aufgetreten')
-    } finally {
       setLoading(false)
     }
   }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import { createClient } from '@/lib/supabase/client'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -46,7 +45,6 @@ export default function DashboardPage() {
   const [deleteSession, setDeleteSession] = useState<Session | null>(null)
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -62,21 +60,18 @@ export default function DashboardPage() {
 
   const loadSessions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false })
+      const response = await fetch('/api/sessions')
 
-      if (error) {
-        console.error('Database error:', error)
-        toast.error(`Fehler beim Laden: ${error.message}`)
-      } else {
-        setSessions(data || [])
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to load sessions')
       }
-    } catch (error) {
+
+      const data = await response.json()
+      setSessions(data || [])
+    } catch (error: any) {
       console.error('Failed to load sessions:', error)
-      toast.error('Fehler beim Laden der Sitzungen')
+      toast.error(`Fehler beim Laden: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -85,27 +80,26 @@ export default function DashboardPage() {
   const handleCreateSession = async () => {
     setCreating(true)
     try {
-      const { data: newSession, error } = await supabase
-        .from('sessions')
-        .insert({
-          user_id: user!.id,
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           context_note: contextNote,
           internal_case_id: caseId,
-          status: 'created',
-        })
-        .select()
-        .single()
+        }),
+      })
 
-      if (error) {
-        console.error('Database error:', error)
-        toast.error(`Fehler: ${error.message}`)
-      } else {
-        toast.success('Neue Sitzung erstellt')
-        router.push(`/sessions/${newSession.id}`)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create session')
       }
-    } catch (error) {
+
+      const newSession = await response.json()
+      toast.success('Neue Sitzung erstellt')
+      router.push(`/sessions/${newSession.id}`)
+    } catch (error: any) {
       console.error('Failed to create session:', error)
-      toast.error('Fehler beim Erstellen der Sitzung')
+      toast.error(`Fehler: ${error.message}`)
     } finally {
       setCreating(false)
       setShowDialog(false)
@@ -119,21 +113,20 @@ export default function DashboardPage() {
 
     setDeleting(true)
     try {
-      const { error } = await supabase
-        .from('sessions')
-        .delete()
-        .eq('id', deleteSession.id)
+      const response = await fetch(`/api/sessions/${deleteSession.id}`, {
+        method: 'DELETE',
+      })
 
-      if (error) {
-        console.error('Database error:', error)
-        toast.error(`Fehler: ${error.message}`)
-      } else {
-        toast.success('Sitzung gelöscht')
-        setSessions(sessions.filter((s) => s.id !== deleteSession.id))
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete session')
       }
-    } catch (error) {
+
+      toast.success('Sitzung gelöscht')
+      setSessions(sessions.filter((s) => s.id !== deleteSession.id))
+    } catch (error: any) {
       console.error('Failed to delete session:', error)
-      toast.error('Fehler beim Löschen der Sitzung')
+      toast.error(`Fehler: ${error.message}`)
     } finally {
       setDeleting(false)
       setDeleteSession(null)

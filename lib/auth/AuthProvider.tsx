@@ -29,29 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
 
       if (session?.user) {
-        const { data: profileData } = await supabase
+        const { data: profileData, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .maybeSingle()
 
+        if (error) {
+          console.error('Error loading profile:', error)
+        }
+
         if (profileData) {
           setProfile(profileData)
-        } else {
-          const newProfile: Partial<Profile> = {
-            id: session.user.id,
-            email: session.user.email!,
-            role: 'user',
-          }
-          const { data: insertedProfile } = await supabase
-            .from('profiles')
-            .insert(newProfile)
-            .select()
-            .maybeSingle()
-
-          if (insertedProfile) {
-            setProfile(insertedProfile)
-          }
         }
       }
 
@@ -66,29 +55,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          const { data: profileData } = await supabase
+          const { data: profileData, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .maybeSingle()
 
+          if (error) {
+            console.error('Error loading profile:', error)
+          }
+
           if (profileData) {
             setProfile(profileData)
           } else {
-            const newProfile: Partial<Profile> = {
-              id: session.user.id,
-              email: session.user.email!,
-              role: 'user',
-            }
-            const { data: insertedProfile } = await supabase
-              .from('profiles')
-              .insert(newProfile)
-              .select()
-              .maybeSingle()
-
-            if (insertedProfile) {
-              setProfile(insertedProfile)
-            }
+            setProfile(null)
           }
         } else {
           setProfile(null)
