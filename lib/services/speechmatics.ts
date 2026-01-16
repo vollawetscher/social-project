@@ -19,6 +19,7 @@ export class SpeechmaticsService {
   }
 
   async transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<SpeechmaticsTranscript> {
+    console.log('[Speechmatics] Starting transcription, buffer size:', audioBuffer.length, 'mime:', mimeType)
     const formData = new FormData()
 
     const fileExtension = this.getFileExtensionFromMimeType(mimeType)
@@ -36,65 +37,85 @@ export class SpeechmaticsService {
 
     formData.append('config', JSON.stringify(config))
 
-    const response = await fetch(`${this.baseUrl}/jobs`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-      body: formData,
-    })
+    console.log('[Speechmatics] Sending request to:', `${this.baseUrl}/jobs`)
+    let response
+    try {
+      response = await fetch(`${this.baseUrl}/jobs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: formData,
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Speechmatics API error: ${response.status} - ${errorText}`)
+      console.log('[Speechmatics] Response status:', response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[Speechmatics] API error response:', errorText)
+        throw new Error(`Speechmatics API error: ${response.status} - ${errorText}`)
+      }
+
+      const result = await response.json()
+      const jobId = result.id
+      console.log('[Speechmatics] Job created with ID:', jobId)
+
+      const transcript = await this.pollJobStatus(jobId)
+      return transcript
+    } catch (error: any) {
+      console.error('[Speechmatics] Fetch failed:', error.message, error.cause)
+      throw new Error(`Failed to connect to Speechmatics API: ${error.message}`)
     }
-
-    const result = await response.json()
-    const jobId = result.id
-
-    const transcript = await this.pollJobStatus(jobId)
-
-    return transcript
   }
 
   private async pollJobStatus(jobId: string): Promise<SpeechmaticsTranscript> {
     const maxAttempts = 60
     const pollInterval = 10000
 
+    console.log('[Speechmatics] Starting to poll job status, jobId:', jobId)
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const statusResponse = await fetch(`${this.baseUrl}/jobs/${jobId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-      })
-
-      if (!statusResponse.ok) {
-        throw new Error(`Failed to get job status: ${statusResponse.status}`)
-      }
-
-      const status = await statusResponse.json()
-
-      if (status.job.status === 'done') {
-        const transcriptResponse = await fetch(`${this.baseUrl}/jobs/${jobId}/transcript`, {
+      try {
+        console.log(`[Speechmatics] Poll attempt ${attempt + 1}/${maxAttempts}`)
+        const statusResponse = await fetch(`${this.baseUrl}/jobs/${jobId}`, {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
           },
         })
 
-        if (!transcriptResponse.ok) {
-          throw new Error(`Failed to get transcript: ${transcriptResponse.status}`)
+        if (!statusResponse.ok) {
+          throw new Error(`Failed to get job status: ${statusResponse.status}`)
         }
 
-        const transcriptData = await transcriptResponse.json()
-        return this.parseTranscript(transcriptData)
-      }
+        const status = await statusResponse.json()
+        console.log('[Speechmatics] Job status:', status.job.status)
 
-      if (status.job.status === 'rejected' || status.job.status === 'failed') {
-        const errorDetails = status.job.errors?.map((e: any) => e.message || e).join(', ') || status.job.status
-        throw new Error(`Speechmatics job ${status.job.status}: ${errorDetails}`)
-      }
+        if (status.job.status === 'done') {
+          console.log('[Speechmatics] Job completed, fetching transcript')
+          const transcriptResponse = await fetch(`${this.baseUrl}/jobs/${jobId}/transcript`, {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+            },
+          })
 
-      await new Promise((resolve) => setTimeout(resolve, pollInterval))
+          if (!transcriptResponse.ok) {
+            throw new Error(`Failed to get transcript: ${transcriptResponse.status}`)
+          }
+
+          const transcriptData = await transcriptResponse.json()
+          console.log('[Speechmatics] Transcript retrieved successfully')
+          return this.parseTranscript(transcriptData)
+        }
+
+        if (status.job.status === 'rejected' || status.job.status === 'failed') {
+          const errorDetails = status.job.errors?.map((e: any) => e.message || e).join(', ') || status.job.status
+          throw new Error(`Speechmatics job ${status.job.status}: ${errorDetails}`)
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, pollInterval))
+      } catch (error: any) {
+        console.error('[Speechmatics] Poll error:', error.message)
+        throw error
+      }
     }
 
     throw new Error('Transcription job timeout')

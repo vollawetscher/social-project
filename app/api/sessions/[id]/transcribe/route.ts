@@ -44,26 +44,36 @@ export async function POST(
       return NextResponse.json({ error: 'No audio file found' }, { status: 400 })
     }
 
+    console.log('[Transcribe] Downloading audio file from storage:', files.storage_path)
     const { data: audioData, error: downloadError } = await supabase.storage
       .from('rohbericht-audio')
       .download(files.storage_path)
 
     if (downloadError || !audioData) {
+      console.error('[Transcribe] Download error:', downloadError)
       await supabase
         .from('sessions')
         .update({
           status: 'error',
-          last_error: 'Failed to download audio file'
+          last_error: 'Failed to download audio file: ' + (downloadError?.message || 'Unknown error')
         })
         .eq('id', params.id)
 
-      return NextResponse.json({ error: 'Failed to download audio file' }, { status: 500 })
+      return NextResponse.json({
+        error: 'Failed to download audio file',
+        details: downloadError?.message
+      }, { status: 500 })
     }
 
-    const audioBuffer = Buffer.from(await audioData.arrayBuffer())
+    console.log('[Transcribe] Audio file downloaded successfully, size:', audioData.size)
 
+    const audioBuffer = Buffer.from(await audioData.arrayBuffer())
+    console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)
+
+    console.log('[Transcribe] Calling Speechmatics API...')
     const speechmatics = createSpeechmaticsService()
     const transcript = await speechmatics.transcribeAudio(audioBuffer, files.mime_type)
+    console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 
     const piiService = createPIIRedactionService()
     const redactionResult = piiService.redact(transcript.segments)
