@@ -29,8 +29,6 @@ export class SpeechmaticsService {
       transcription_config: {
         language: 'de',
         operating_point: 'enhanced',
-        enable_partials: false,
-        max_delay: 3,
         diarization: 'speaker',
       },
     }
