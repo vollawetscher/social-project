@@ -134,7 +134,7 @@ export async function POST(
     console.log('[Transcribe] Step 4: Session status updated')
 
     console.log('[Transcribe] Step 5: Calling summarize endpoint...')
-    const baseUrl = new URL(request.url).origin
+    const baseUrl = new URL(request.url).origin.replace('https://localhost', 'http://localhost')
     console.log('[Transcribe] Step 5: Base URL:', baseUrl)
     const summarizeResponse = await fetch(
       `${baseUrl}/api/sessions/${params.id}/summarize`,
