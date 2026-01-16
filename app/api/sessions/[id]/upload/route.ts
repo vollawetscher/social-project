@@ -8,20 +8,14 @@ export async function POST(
   try {
     const supabase = createClient()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('user_id')
+      .select('id')
       .eq('id', params.id)
-      .single()
+      .maybeSingle()
 
-    if (sessionError || !session || session.user_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (sessionError || !session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
     const formData = await request.formData()
@@ -39,7 +33,7 @@ export async function POST(
 
     const fileExt = file.name.split('.').pop()
     const fileName = `${Date.now()}.${fileExt}`
-    const storagePath = `${user.id}/${params.id}/${fileName}`
+    const storagePath = `sessions/${params.id}/${fileName}`
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)

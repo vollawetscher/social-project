@@ -9,27 +9,21 @@ export async function GET(
   try {
     const supabase = createClient()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { data: session } = await supabase
       .from('sessions')
       .select('*')
       .eq('id', params.id)
-      .single()
+      .maybeSingle()
 
-    if (!session || session.user_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
     const { data: report } = await supabase
       .from('reports')
       .select('*')
       .eq('session_id', params.id)
-      .single()
+      .maybeSingle()
 
     if (!report) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 })
