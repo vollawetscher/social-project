@@ -115,13 +115,17 @@ export async function POST(
     if (!summarizeResponse.ok) {
       let errorMessage = 'Failed to generate report'
       try {
-        const errorData = await summarizeResponse.json()
-        errorMessage = errorData.error || errorMessage
-        console.error('Summarize endpoint error:', errorData)
+        const responseText = await summarizeResponse.text()
+        console.error('Summarize endpoint error (raw):', responseText)
+
+        try {
+          const errorData = JSON.parse(responseText)
+          errorMessage = errorData.error || errorMessage
+        } catch (parseError) {
+          errorMessage = responseText || errorMessage
+        }
       } catch (e) {
-        const errorText = await summarizeResponse.text()
-        console.error('Summarize endpoint error (text):', errorText)
-        errorMessage = errorText || errorMessage
+        console.error('Failed to read error response:', e)
       }
 
       await supabase
