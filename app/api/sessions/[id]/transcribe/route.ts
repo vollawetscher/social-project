@@ -113,11 +113,22 @@ export async function POST(
     )
 
     if (!summarizeResponse.ok) {
+      let errorMessage = 'Failed to generate report'
+      try {
+        const errorData = await summarizeResponse.json()
+        errorMessage = errorData.error || errorMessage
+        console.error('Summarize endpoint error:', errorData)
+      } catch (e) {
+        const errorText = await summarizeResponse.text()
+        console.error('Summarize endpoint error (text):', errorText)
+        errorMessage = errorText || errorMessage
+      }
+
       await supabase
         .from('sessions')
         .update({
           status: 'error',
-          last_error: 'Failed to generate report'
+          last_error: errorMessage
         })
         .eq('id', params.id)
     }

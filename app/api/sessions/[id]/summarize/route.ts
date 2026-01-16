@@ -76,17 +76,22 @@ export async function POST(
 
     return NextResponse.json({ success: true, rohbericht })
   } catch (error: any) {
+    console.error('Report generation error:', error)
     const supabase = createClient()
+
+    const errorMessage = error.message || 'Report generation failed'
+    const detailedError = error.stack ? `${errorMessage}\n${error.stack}` : errorMessage
+
     await supabase
       .from('sessions')
       .update({
         status: 'error',
-        last_error: error.message || 'Report generation failed'
+        last_error: errorMessage
       })
       .eq('id', params.id)
 
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errorMessage, details: error.stack },
       { status: 500 }
     )
   }

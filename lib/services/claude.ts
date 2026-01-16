@@ -26,33 +26,43 @@ export class ClaudeService {
   }
 
   async generateRohbericht(input: RohberichtInput): Promise<RohberichtJSON> {
-    const prompt = this.buildPrompt(input)
+    try {
+      const prompt = this.buildPrompt(input)
 
-    const message = await this.client.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4096,
-      temperature: 0.3,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    })
+      const message = await this.client.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 4096,
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      })
 
-    const responseText = message.content
-      .filter((block) => block.type === 'text')
-      .map((block) => (block as Anthropic.TextBlock).text)
-      .join('\n')
+      const responseText = message.content
+        .filter((block) => block.type === 'text')
+        .map((block) => (block as Anthropic.TextBlock).text)
+        .join('\n')
 
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error('Failed to extract JSON from Claude response')
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        console.error('Claude response without JSON:', responseText)
+        throw new Error('Failed to extract JSON from Claude response')
+      }
+
+      try {
+        const rohberichtData: RohberichtJSON = JSON.parse(jsonMatch[0])
+        return rohberichtData
+      } catch (parseError: any) {
+        console.error('JSON parse error:', parseError, 'JSON string:', jsonMatch[0])
+        throw new Error(`Failed to parse Claude response: ${parseError.message}`)
+      }
+    } catch (error: any) {
+      console.error('Claude API error:', error)
+      throw new Error(`Claude API error: ${error.message}`)
     }
-
-    const rohberichtData: RohberichtJSON = JSON.parse(jsonMatch[0])
-
-    return rohberichtData
   }
 
   private buildPrompt(input: RohberichtInput): string {
