@@ -107,8 +107,9 @@ export async function POST(
       .update({ status: 'summarizing' })
       .eq('id', params.id)
 
+    const baseUrl = new URL(request.url).origin
     const summarizeResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sessions/${params.id}/summarize`,
+      `${baseUrl}/api/sessions/${params.id}/summarize`,
       { method: 'POST' }
     )
 
