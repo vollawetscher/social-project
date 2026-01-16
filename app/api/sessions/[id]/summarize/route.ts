@@ -7,8 +7,10 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('[Summarize] Starting summarization for session:', params.id)
     const supabase = createClient()
 
+    console.log('[Summarize] Step 1: Fetching session data...')
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .select('*')
@@ -16,9 +18,12 @@ export async function POST(
       .maybeSingle()
 
     if (sessionError || !session) {
+      console.error('[Summarize] Step 1: Session not found:', sessionError)
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
+    console.log('[Summarize] Step 1: Session fetched successfully')
 
+    console.log('[Summarize] Step 2: Fetching transcript...')
     const { data: transcript, error: transcriptError } = await supabase
       .from('transcripts')
       .select('*')
@@ -26,6 +31,7 @@ export async function POST(
       .single()
 
     if (transcriptError || !transcript) {
+      console.error('[Summarize] Step 2: No transcript found:', transcriptError)
       await supabase
         .from('sessions')
         .update({
@@ -36,7 +42,9 @@ export async function POST(
 
       return NextResponse.json({ error: 'No transcript found' }, { status: 400 })
     }
+    console.log('[Summarize] Step 2: Transcript fetched successfully')
 
+    console.log('[Summarize] Step 3: Calling Claude API to generate report...')
     const claudeService = createClaudeService()
 
     const rohbericht = await claudeService.generateRohbericht({
@@ -49,7 +57,9 @@ export async function POST(
         duration_sec: session.duration_sec,
       },
     })
+    console.log('[Summarize] Step 3: Claude report generated successfully')
 
+    console.log('[Summarize] Step 4: Saving report to database...')
     const { error: reportError } = await supabase
       .from('reports')
       .insert({
@@ -58,6 +68,7 @@ export async function POST(
       })
 
     if (reportError) {
+      console.error('[Summarize] Step 4: Failed to save report:', reportError)
       await supabase
         .from('sessions')
         .update({
@@ -68,15 +79,21 @@ export async function POST(
 
       return NextResponse.json({ error: 'Failed to save report' }, { status: 500 })
     }
+    console.log('[Summarize] Step 4: Report saved successfully')
 
+    console.log('[Summarize] Step 5: Updating session status to done...')
     await supabase
       .from('sessions')
       .update({ status: 'done' })
       .eq('id', params.id)
+    console.log('[Summarize] Step 5: Session marked as done!')
 
     return NextResponse.json({ success: true, rohbericht })
   } catch (error: any) {
-    console.error('Report generation error:', error)
+    console.error('[Summarize] CRITICAL ERROR - Exception caught:', error)
+    console.error('[Summarize] Error message:', error.message)
+    console.error('[Summarize] Error stack:', error.stack)
+
     const supabase = createClient()
 
     const errorMessage = error.message || 'Report generation failed'

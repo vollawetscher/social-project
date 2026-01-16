@@ -75,9 +75,12 @@ export async function POST(
     const transcript = await speechmatics.transcribeAudio(audioBuffer, files.mime_type)
     console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 
+    console.log('[Transcribe] Step 1: Starting PII redaction...')
     const piiService = createPIIRedactionService()
     const redactionResult = piiService.redact(transcript.segments)
+    console.log('[Transcribe] Step 1: PII redaction completed, hits found:', redactionResult.piiHits.length)
 
+    console.log('[Transcribe] Step 2: Saving transcript to database...')
     const { error: transcriptError } = await supabase
       .from('transcripts')
       .insert({
@@ -90,6 +93,7 @@ export async function POST(
       })
 
     if (transcriptError) {
+      console.error('[Transcribe] Step 2: Failed to save transcript:', transcriptError)
       await supabase
         .from('sessions')
         .update({
@@ -100,34 +104,50 @@ export async function POST(
 
       return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 })
     }
+    console.log('[Transcribe] Step 2: Transcript saved successfully')
 
+    console.log('[Transcribe] Step 3: Saving PII hits (if any)...')
     if (redactionResult.piiHits.length > 0) {
       const piiHitsWithSession = redactionResult.piiHits.map((hit) => ({
         ...hit,
         session_id: params.id,
       }))
 
-      await supabase
+      const { error: piiError } = await supabase
         .from('pii_hits')
         .insert(piiHitsWithSession)
+
+      if (piiError) {
+        console.error('[Transcribe] Step 3: Failed to save PII hits:', piiError)
+      } else {
+        console.log('[Transcribe] Step 3: PII hits saved successfully')
+      }
+    } else {
+      console.log('[Transcribe] Step 3: No PII hits to save')
     }
 
+    console.log('[Transcribe] Step 4: Updating session status to summarizing...')
     await supabase
       .from('sessions')
       .update({ status: 'summarizing' })
       .eq('id', params.id)
+    console.log('[Transcribe] Step 4: Session status updated')
 
+    console.log('[Transcribe] Step 5: Calling summarize endpoint...')
     const baseUrl = new URL(request.url).origin
+    console.log('[Transcribe] Step 5: Base URL:', baseUrl)
     const summarizeResponse = await fetch(
       `${baseUrl}/api/sessions/${params.id}/summarize`,
       { method: 'POST' }
     )
+    console.log('[Transcribe] Step 5: Summarize endpoint called, status:', summarizeResponse.status)
 
     if (!summarizeResponse.ok) {
+      console.error('[Transcribe] Step 5: Summarize endpoint returned error status:', summarizeResponse.status)
       let errorMessage = 'Failed to generate report'
       try {
         const responseText = await summarizeResponse.text()
-        console.error('Summarize endpoint error (raw):', responseText)
+        console.error('[Transcribe] Step 5: Summarize endpoint error (raw):', responseText)
 
         try {
           const errorData = JSON.parse(responseText)
@@ -136,9 +156,10 @@ export async function POST(
           errorMessage = responseText || errorMessage
         }
       } catch (e) {
-        console.error('Failed to read error response:', e)
+        console.error('[Transcribe] Step 5: Failed to read error response:', e)
       }
 
+      console.error('[Transcribe] Step 5: Setting session to error state with message:', errorMessage)
       await supabase
         .from('sessions')
         .update({
@@ -146,10 +167,17 @@ export async function POST(
           last_error: errorMessage
         })
         .eq('id', params.id)
+    } else {
+      console.log('[Transcribe] Step 5: Summarize endpoint completed successfully!')
     }
 
+    console.log('[Transcribe] All steps completed successfully!')
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    console.error('[Transcribe] CRITICAL ERROR - Exception caught:', error)
+    console.error('[Transcribe] Error message:', error.message)
+    console.error('[Transcribe] Error stack:', error.stack)
+
     const supabase = createClient()
     await supabase
       .from('sessions')
