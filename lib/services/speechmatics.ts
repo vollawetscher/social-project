@@ -21,8 +21,9 @@ export class SpeechmaticsService {
   async transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<SpeechmaticsTranscript> {
     const formData = new FormData()
 
+    const fileExtension = this.getFileExtensionFromMimeType(mimeType)
     const audioBlob = new Blob([audioBuffer], { type: mimeType })
-    formData.append('data_file', audioBlob, 'audio.webm')
+    formData.append('data_file', audioBlob, `audio.${fileExtension}`)
 
     const config = {
       type: 'transcription',
@@ -89,13 +90,32 @@ export class SpeechmaticsService {
       }
 
       if (status.job.status === 'rejected' || status.job.status === 'failed') {
-        throw new Error(`Transcription job failed: ${status.job.status}`)
+        const errorDetails = status.job.errors?.map((e: any) => e.message || e).join(', ') || status.job.status
+        throw new Error(`Speechmatics job ${status.job.status}: ${errorDetails}`)
       }
 
       await new Promise((resolve) => setTimeout(resolve, pollInterval))
     }
 
     throw new Error('Transcription job timeout')
+  }
+
+  private getFileExtensionFromMimeType(mimeType: string): string {
+    const mimeMap: { [key: string]: string } = {
+      'audio/mpeg': 'mp3',
+      'audio/mp3': 'mp3',
+      'audio/wav': 'wav',
+      'audio/wave': 'wav',
+      'audio/x-wav': 'wav',
+      'audio/webm': 'webm',
+      'audio/ogg': 'ogg',
+      'audio/mp4': 'm4a',
+      'audio/x-m4a': 'm4a',
+      'audio/aac': 'aac',
+      'audio/flac': 'flac',
+    }
+
+    return mimeMap[mimeType.toLowerCase()] || 'wav'
   }
 
   private parseTranscript(data: any): SpeechmaticsTranscript {
