@@ -1,8 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000000'
-
 export async function GET() {
   try {
     const supabase = createClient()
@@ -34,7 +32,6 @@ export async function POST(request: Request) {
     const { data: session, error } = await supabase
       .from('sessions')
       .insert({
-        user_id: DEMO_USER_ID,
         context_note,
         internal_case_id,
         status: 'created',

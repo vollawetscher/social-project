@@ -19,7 +19,7 @@ export interface Profile {
 
 export interface Session {
   id: string
-  user_id: string
+  user_id: string | null
   created_at: string
   context_note: string
   internal_case_id: string
