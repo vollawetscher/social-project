@@ -3,6 +3,26 @@ import { NextResponse } from 'next/server'
 import { createSpeechmaticsService } from '@/lib/services/speechmatics'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 
+function getInternalBaseUrl(request: Request): string {
+  const isRailway = !!(
+    process.env.RAILWAY_ENVIRONMENT ||
+    process.env.RAILWAY_PUBLIC_DOMAIN ||
+    process.env.RAILWAY_STATIC_URL
+  )
+
+  if (isRailway) {
+    const port = process.env.PORT || '8080'
+    const baseUrl = `http://localhost:${port}`
+    console.log('[Internal URL] Railway detected, using internal URL:', baseUrl)
+    return baseUrl
+  }
+
+  const origin = new URL(request.url).origin
+  const baseUrl = origin.replace('https://localhost', 'http://localhost')
+  console.log('[Internal URL] Local/other environment, using:', baseUrl)
+  return baseUrl
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -134,8 +154,8 @@ export async function POST(
     console.log('[Transcribe] Step 4: Session status updated')
 
     console.log('[Transcribe] Step 5: Calling summarize endpoint...')
-    const baseUrl = new URL(request.url).origin.replace('https://localhost', 'http://localhost')
-    console.log('[Transcribe] Step 5: Base URL:', baseUrl)
+    const baseUrl = getInternalBaseUrl(request)
+    console.log('[Transcribe] Step 5: Using base URL:', baseUrl)
     const summarizeResponse = await fetch(
       `${baseUrl}/api/sessions/${params.id}/summarize`,
       { method: 'POST' }
