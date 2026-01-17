@@ -150,7 +150,7 @@ export class SpeechmaticsService {
     for (const result of results) {
       if (result.type === 'word') {
         const word = result.alternatives[0]
-        const speaker = result.attaches_to?.speaker || 'S1'
+        const speaker = word.speaker || 'S1'
         const startMs = Math.floor(result.start_time * 1000)
         const endMs = Math.floor(result.end_time * 1000)
 
@@ -182,6 +182,9 @@ export class SpeechmaticsService {
     }
 
     fullText = segments.map((s) => s.text).join(' ')
+
+    const uniqueSpeakers = new Set(segments.map(s => s.speaker))
+    console.log(`[Speechmatics] Parsed ${segments.length} segments with ${uniqueSpeakers.size} unique speakers: ${Array.from(uniqueSpeakers).join(', ')}`)
 
     return {
       segments,
