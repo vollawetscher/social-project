@@ -53,7 +53,18 @@ export class SpeechmaticsService {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('[Speechmatics] API error response:', errorText)
-        throw new Error(`Speechmatics API error: ${response.status} - ${errorText}`)
+
+        let errorMessage = `Speechmatics API error: ${response.status}`
+
+        if (errorText.toLowerCase().includes('audio') && errorText.toLowerCase().includes('duration')) {
+          errorMessage = 'Die Audiodatei ist ungültig oder zu kurz für die Transkription.'
+        } else if (errorText.toLowerCase().includes('format') || errorText.toLowerCase().includes('codec')) {
+          errorMessage = 'Das Audioformat wird nicht unterstützt oder die Datei ist beschädigt.'
+        } else {
+          errorMessage += ` - ${errorText}`
+        }
+
+        throw new Error(errorMessage)
       }
 
       const result = await response.json()

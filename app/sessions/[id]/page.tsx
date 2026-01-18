@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Session } from '@/lib/types/database'
 import { Loader2, ArrowLeft, FileText, Download } from 'lucide-react'
@@ -91,21 +92,74 @@ export default function SessionDetailPage() {
     }
   }
 
+  const handleUpdateSessionName = async (newName: string) => {
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ internal_case_id: newName }),
+      })
+
+      if (response.ok) {
+        const updatedSession = await response.json()
+        setSession(updatedSession)
+        toast.success('Sitzungsname aktualisiert')
+      } else {
+        toast.error('Fehler beim Aktualisieren des Namens')
+      }
+    } catch (error) {
+      toast.error('Fehler beim Aktualisieren des Namens')
+    }
+  }
+
   const handleUploadFile = async () => {
     if (selectedFile) {
       const audio = document.createElement('audio')
       audio.src = URL.createObjectURL(selectedFile)
 
+      let durationDetected = false
+      let audioLoadTimeout: NodeJS.Timeout
+
       audio.addEventListener('loadedmetadata', async () => {
+        durationDetected = true
+        clearTimeout(audioLoadTimeout)
+
         const duration = Math.floor(audio.duration)
         URL.revokeObjectURL(audio.src)
+
+        if (isNaN(duration) || duration < 1) {
+          toast.error('Die Audiodatei ist zu kurz oder ungültig. Mindestens 1 Sekunde erforderlich.')
+          return
+        }
+
+        if (duration > 7200) {
+          toast.error('Die Audiodatei ist zu lang. Maximum 2 Stunden.')
+          return
+        }
+
         await uploadAudio(selectedFile, duration)
       })
 
       audio.addEventListener('error', async () => {
+        durationDetected = true
+        clearTimeout(audioLoadTimeout)
         URL.revokeObjectURL(audio.src)
-        await uploadAudio(selectedFile, 0)
+
+        if (selectedFile.size < 1024) {
+          toast.error('Die Datei scheint leer oder beschädigt zu sein.')
+        } else {
+          toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
+          await uploadAudio(selectedFile, 0)
+        }
       })
+
+      audioLoadTimeout = setTimeout(async () => {
+        if (!durationDetected) {
+          URL.revokeObjectURL(audio.src)
+          toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
+          await uploadAudio(selectedFile, 0)
+        }
+      }, 5000)
     }
   }
 
@@ -173,9 +227,12 @@ export default function SessionDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-slate-900">
-              {session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}`}
-            </h1>
+            <EditableTitle
+              value={session.internal_case_id}
+              fallback={`Sitzung ${session.id.slice(0, 8)}`}
+              onSave={handleUpdateSessionName}
+              placeholder="Sitzungsname eingeben"
+            />
             {session.context_note && (
               <p className="text-slate-600 mt-1">{session.context_note}</p>
             )}

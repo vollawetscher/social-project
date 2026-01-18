@@ -26,6 +26,28 @@ export async function POST(
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
+    if (file.size < 1024) {
+      return NextResponse.json(
+        { error: 'Die Datei ist zu klein und scheint leer oder beschädigt zu sein.' },
+        { status: 400 }
+      )
+    }
+
+    if (duration < 0) {
+      return NextResponse.json(
+        { error: 'Ungültige Audiodauer' },
+        { status: 400 }
+      )
+    }
+
+    if (duration === 0) {
+      console.warn('[Upload] Audio uploaded with zero duration, may fail transcription:', {
+        sessionId: params.id,
+        fileName: file.name,
+        fileSize: file.size
+      })
+    }
+
     await supabase
       .from('sessions')
       .update({ status: 'uploading' })

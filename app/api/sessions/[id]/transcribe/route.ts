@@ -32,7 +32,7 @@ export async function POST(
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id')
+      .select('id, duration_sec')
       .eq('id', params.id)
       .maybeSingle()
 
@@ -86,6 +86,25 @@ export async function POST(
     }
 
     console.log('[Transcribe] Audio file downloaded successfully, size:', audioData.size)
+
+    if (audioData.size < 1024) {
+      console.error('[Transcribe] Audio file too small:', audioData.size)
+      await supabase
+        .from('sessions')
+        .update({
+          status: 'error',
+          last_error: 'Die Audiodatei ist zu klein oder leer. Bitte laden Sie eine gültige Audiodatei hoch.'
+        })
+        .eq('id', params.id)
+
+      return NextResponse.json({
+        error: 'Audio file too small or empty'
+      }, { status: 400 })
+    }
+
+    if (session.duration_sec === 0) {
+      console.warn('[Transcribe] Session has zero duration, proceeding with caution')
+    }
 
     const audioBuffer = Buffer.from(await audioData.arrayBuffer())
     console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)

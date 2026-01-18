@@ -21,6 +21,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number>(0)
   const pausedTimeRef = useRef<number>(0)
+  const totalPausedTimeRef = useRef<number>(0)
 
   useEffect(() => {
     return () => {
@@ -56,7 +57,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
         stream.getTracks().forEach((track) => track.stop())
 
-        const finalDuration = Math.floor((Date.now() - startTimeRef.current - pausedTimeRef.current) / 1000)
+        const finalDuration = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
         setDuration(finalDuration)
         onRecordingComplete(blob, finalDuration)
       }
@@ -66,9 +67,10 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       setIsRecording(true)
       startTimeRef.current = Date.now()
       pausedTimeRef.current = 0
+      totalPausedTimeRef.current = 0
 
       timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current - pausedTimeRef.current) / 1000)
+        const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
         setRecordingTime(elapsed)
       }, 100)
 
@@ -83,7 +85,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       if (isPaused) {
         mediaRecorderRef.current.resume()
         const pauseDuration = Date.now() - pausedTimeRef.current
-        pausedTimeRef.current = pauseDuration
+        totalPausedTimeRef.current += pauseDuration
         setIsPaused(false)
         toast.info('Aufnahme fortgesetzt')
       } else {
