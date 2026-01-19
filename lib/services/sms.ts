@@ -34,7 +34,7 @@ async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
     const url = 'https://gateway.seven.io/api/sms';
 
     const params = new URLSearchParams({
-      apikey: apiKey,
+      p: apiKey,
       to: to.replace('+', ''), // Remove + prefix for seven.io
       text: text,
       from: 'RohberichtAI', // Sender ID
