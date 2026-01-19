@@ -14,7 +14,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, Phone, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
-import { setPhoneSession } from '@/lib/auth/phone-session';
 
 type AuthMode = 'email' | 'phone';
 type PhoneStep = 'input' | 'verify';
@@ -129,9 +128,12 @@ export default function LoginPage() {
         throw new Error(data.error || 'Verification failed');
       }
 
-      if (data.success) {
-        setPhoneSession(data.user.id, data.user.phoneNumber);
-        window.location.href = '/dashboard';
+      if (data.success && data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+        router.push('/dashboard');
       }
     } catch (err: any) {
       setError(err.message || 'Verification failed');

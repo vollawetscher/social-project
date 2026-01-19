@@ -56,28 +56,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user profile
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('id', result.userId)
-      .single();
-
-    if (profileError || !profile) {
+    if (!result.session) {
       return NextResponse.json(
-        { error: 'Failed to retrieve user profile' },
+        { error: 'Failed to create session' },
         { status: 500 }
       );
     }
 
-    // Return success with user data
-    // The client will handle session creation
+    // Return success with session data
     return NextResponse.json({
       success: true,
+      session: result.session,
       user: {
-        id: profile.id,
-        phoneNumber: profile.phone_number,
-        displayName: profile.display_name || profile.phone_number,
+        id: result.userId,
+        phoneNumber: result.phoneNumber,
         authMethod: 'phone',
       },
     });

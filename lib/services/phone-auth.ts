@@ -29,6 +29,11 @@ interface OTPVerificationResult {
   error?: string;
   userId?: string;
   phoneNumber?: string;
+  session?: {
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+  };
 }
 
 /**
@@ -234,52 +239,149 @@ export async function verifyOTP(phoneNumber: string, otp: string): Promise<OTPVe
       .delete()
       .eq('phone_number', phoneNumber);
 
-    // Find or create user profile
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('phone_number', phoneNumber)
-      .maybeSingle();
+    // Create synthetic email for phone-based auth
+    const syntheticEmail = `${phoneNumber.replace(/\+/g, '')}@phone.local`;
+
+    // Check if user exists in auth.users by synthetic email
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const existingUser = existingUsers?.users.find(u => u.email === syntheticEmail);
 
     let userId: string;
+    let accessToken: string;
+    let refreshToken: string;
+    let expiresIn: number;
 
-    if (profile) {
-      // Existing user
-      userId = profile.id;
+    if (existingUser) {
+      // Existing user - generate magic link and extract session
+      userId = existingUser.id;
 
-      // Update phone_verified_at
-      await supabaseAdmin
-        .from('profiles')
-        .update({ phone_verified_at: new Date().toISOString() })
-        .eq('id', userId);
-    } else {
-      // New user - create profile
-      const { data: newProfile, error: createError } = await supabaseAdmin
-        .from('profiles')
-        .insert({
-          phone_number: phoneNumber,
-          phone_verified_at: new Date().toISOString(),
+      // Update phone number in user metadata
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        phone: phoneNumber,
+        user_metadata: {
           auth_method: 'phone',
-          display_name: phoneNumber,
-        })
-        .select('id')
-        .single();
+          phone_number: phoneNumber,
+        },
+      });
 
-      if (createError || !newProfile) {
-        console.error('Error creating profile:', createError);
+      // Generate magic link to create session
+      const { data: tokenData, error: tokenError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: syntheticEmail,
+      });
+
+      if (tokenError || !tokenData) {
+        console.error('Error generating token:', tokenError);
         return {
           success: false,
-          error: 'Failed to create user profile.',
+          error: 'Failed to generate session token.',
         };
       }
 
-      userId = newProfile.id;
+      // Extract the hashed token from the magic link
+      const url = new URL(tokenData.properties.action_link);
+      const tokenHash = url.searchParams.get('token_hash');
+      const type = url.searchParams.get('type');
+
+      if (!tokenHash) {
+        return {
+          success: false,
+          error: 'Failed to generate session.',
+        };
+      }
+
+      // Verify the token to create a session
+      const { data: verifyData, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: type === 'magiclink' ? 'magiclink' : 'email',
+      });
+
+      if (verifyError || !verifyData.session) {
+        console.error('Error verifying token:', verifyError);
+        return {
+          success: false,
+          error: 'Failed to create session.',
+        };
+      }
+
+      accessToken = verifyData.session.access_token;
+      refreshToken = verifyData.session.refresh_token;
+      expiresIn = verifyData.session.expires_in || 3600;
+    } else {
+      // New user - create auth user with synthetic email
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: syntheticEmail,
+        email_confirm: true,
+        phone: phoneNumber,
+        phone_confirm: true,
+        user_metadata: {
+          auth_method: 'phone',
+          phone_number: phoneNumber,
+        },
+      });
+
+      if (createError || !newUser.user) {
+        console.error('Error creating user:', createError);
+        return {
+          success: false,
+          error: 'Failed to create user account.',
+        };
+      }
+
+      userId = newUser.user.id;
+
+      // Generate magic link for new user
+      const { data: tokenData, error: tokenError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: syntheticEmail,
+      });
+
+      if (tokenError || !tokenData) {
+        console.error('Error generating token:', tokenError);
+        return {
+          success: false,
+          error: 'Failed to generate session token.',
+        };
+      }
+
+      const url = new URL(tokenData.properties.action_link);
+      const tokenHash = url.searchParams.get('token_hash');
+      const type = url.searchParams.get('type');
+
+      if (!tokenHash) {
+        return {
+          success: false,
+          error: 'Failed to generate session.',
+        };
+      }
+
+      const { data: verifyData, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: type === 'magiclink' ? 'magiclink' : 'email',
+      });
+
+      if (verifyError || !verifyData.session) {
+        console.error('Error verifying token:', verifyError);
+        return {
+          success: false,
+          error: 'Failed to create session.',
+        };
+      }
+
+      accessToken = verifyData.session.access_token;
+      refreshToken = verifyData.session.refresh_token;
+      expiresIn = verifyData.session.expires_in || 3600;
     }
 
     return {
       success: true,
       userId,
       phoneNumber,
+      session: {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_in: expiresIn,
+      },
     };
   } catch (error) {
     console.error('Error verifying OTP:', error);

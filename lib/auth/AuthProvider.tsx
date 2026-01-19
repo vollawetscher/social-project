@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/lib/types/database'
-import { getPhoneSession, clearPhoneSession } from './phone-session'
 
 interface AuthContextType {
   user: User | null
@@ -32,7 +31,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         setSession(session)
         setUser(session.user)
-        setAuthMethod('email')
 
         const { data: profileData, error } = await supabase
           .from('profiles')
@@ -46,24 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (profileData) {
           setProfile(profileData)
-        }
-      } else {
-        const phoneSession = getPhoneSession()
-
-        if (phoneSession) {
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', phoneSession.userId)
-            .maybeSingle()
-
-          if (error || !profileData) {
-            console.error('Error loading phone profile:', error)
-            clearPhoneSession()
-          } else {
-            setProfile(profileData)
-            setAuthMethod('phone')
-          }
+          setAuthMethod(profileData.auth_method as 'email' | 'phone')
         }
       }
 
@@ -90,11 +71,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (profileData) {
             setProfile(profileData)
+            setAuthMethod(profileData.auth_method as 'email' | 'phone')
           } else {
             setProfile(null)
+            setAuthMethod(null)
           }
         } else {
           setProfile(null)
+          setAuthMethod(null)
         }
 
         setLoading(false)
@@ -108,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    clearPhoneSession()
     setUser(null)
     setProfile(null)
     setSession(null)
