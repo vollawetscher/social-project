@@ -19,10 +19,15 @@ export class SpeechmaticsService {
   }
 
   async transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<SpeechmaticsTranscript> {
-    console.log('[Speechmatics] Starting transcription, buffer size:', audioBuffer.length, 'mime:', mimeType)
+    console.log('[Speechmatics] Starting transcription')
+    console.log('[Speechmatics] Audio buffer size:', audioBuffer.length, 'bytes')
+    console.log('[Speechmatics] MIME type:', mimeType)
+
     const formData = new FormData()
 
     const fileExtension = this.getFileExtensionFromMimeType(mimeType)
+    console.log('[Speechmatics] Using file extension:', fileExtension)
+
     const audioBlob = new Blob([audioBuffer], { type: mimeType })
     formData.append('data_file', audioBlob, `audio.${fileExtension}`)
 
@@ -53,10 +58,14 @@ export class SpeechmaticsService {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('[Speechmatics] API error response:', errorText)
+        console.error('[Speechmatics] Status code:', response.status)
+        console.error('[Speechmatics] File details - MIME:', mimeType, 'Extension:', fileExtension, 'Size:', audioBuffer.length)
 
         let errorMessage = `Speechmatics API error: ${response.status}`
 
-        if (errorText.toLowerCase().includes('audio') && errorText.toLowerCase().includes('duration')) {
+        if (errorText.toLowerCase().includes('invalid audio')) {
+          errorMessage = 'Die Audiodatei ist ungültig. Möglicherweise ist das Format nicht kompatibel oder die Aufnahme war zu kurz. Bitte versuchen Sie es erneut.'
+        } else if (errorText.toLowerCase().includes('audio') && errorText.toLowerCase().includes('duration')) {
           errorMessage = 'Die Audiodatei ist ungültig oder zu kurz für die Transkription.'
         } else if (errorText.toLowerCase().includes('format') || errorText.toLowerCase().includes('codec')) {
           errorMessage = 'Das Audioformat wird nicht unterstützt oder die Datei ist beschädigt.'
@@ -133,6 +142,8 @@ export class SpeechmaticsService {
   }
 
   private getFileExtensionFromMimeType(mimeType: string): string {
+    const baseMimeType = mimeType.split(';')[0].toLowerCase().trim()
+
     const mimeMap: { [key: string]: string } = {
       'audio/mpeg': 'mp3',
       'audio/mp3': 'mp3',
@@ -147,7 +158,13 @@ export class SpeechmaticsService {
       'audio/flac': 'flac',
     }
 
-    return mimeMap[mimeType.toLowerCase()] || 'wav'
+    const extension = mimeMap[baseMimeType]
+    if (!extension) {
+      console.warn('[Speechmatics] Unknown MIME type:', mimeType, '- defaulting to wav')
+      return 'wav'
+    }
+
+    return extension
   }
 
   private parseTranscript(data: any): SpeechmaticsTranscript {

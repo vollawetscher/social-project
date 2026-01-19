@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Mic, Square, Play, Pause, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { detectSupportedAudioFormat, isMobileSafari } from '@/lib/utils/audio-format-detector'
 
 interface AudioRecorderProps {
   onRecordingComplete: (blob: Blob, duration: number) => void
@@ -22,6 +23,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const startTimeRef = useRef<number>(0)
   const pausedTimeRef = useRef<number>(0)
   const totalPausedTimeRef = useRef<number>(0)
+  const recordedMimeTypeRef = useRef<string>('')
 
   useEffect(() => {
     return () => {
@@ -38,9 +40,23 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm',
-      })
+      const audioFormat = detectSupportedAudioFormat()
+      console.log('[AudioRecorder] Using audio format:', audioFormat)
+
+      if (isMobileSafari()) {
+        console.log('[AudioRecorder] Mobile Safari detected')
+      }
+
+      const options: MediaRecorderOptions = {}
+      if (audioFormat.mimeType) {
+        options.mimeType = audioFormat.mimeType
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, options)
+
+      const actualMimeType = mediaRecorder.mimeType || audioFormat.mimeType || 'audio/webm'
+      recordedMimeTypeRef.current = actualMimeType
+      console.log('[AudioRecorder] MediaRecorder created with mimeType:', actualMimeType)
 
       chunksRef.current = []
 
@@ -51,7 +67,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       }
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        const blob = new Blob(chunksRef.current, { type: recordedMimeTypeRef.current })
+        console.log('[AudioRecorder] Recording stopped, blob size:', blob.size, 'type:', blob.type)
         const url = URL.createObjectURL(blob)
         setAudioURL(url)
 

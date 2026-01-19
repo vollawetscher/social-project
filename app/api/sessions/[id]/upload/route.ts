@@ -26,11 +26,39 @@ export async function POST(
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
+    console.log('[Upload] Received file:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      duration: duration
+    })
+
     if (file.size < 1024) {
       return NextResponse.json(
         { error: 'Die Datei ist zu klein und scheint leer oder beschädigt zu sein.' },
         { status: 400 }
       )
+    }
+
+    const supportedMimeTypes = [
+      'audio/webm',
+      'audio/mp4',
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/wav',
+      'audio/wave',
+      'audio/x-wav',
+      'audio/ogg',
+      'audio/aac',
+      'audio/flac',
+      'audio/x-m4a'
+    ]
+
+    const isSupported = supportedMimeTypes.some(type => file.type.toLowerCase().includes(type.split(';')[0]))
+
+    if (!isSupported && file.type) {
+      console.warn('[Upload] Unsupported MIME type received:', file.type)
+      console.warn('[Upload] Proceeding anyway, but transcription may fail')
     }
 
     if (duration < 0) {
@@ -44,7 +72,8 @@ export async function POST(
       console.warn('[Upload] Audio uploaded with zero duration, may fail transcription:', {
         sessionId: params.id,
         fileName: file.name,
-        fileSize: file.size
+        fileSize: file.size,
+        mimeType: file.type
       })
     }
 
