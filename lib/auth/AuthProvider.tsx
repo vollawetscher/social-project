@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/lib/types/database'
+import { getPhoneSession, clearPhoneSession } from './phone-session'
 
 interface AuthContextType {
   user: User | null
@@ -11,6 +12,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   signOut: () => Promise<void>
+  authMethod: 'email' | 'phone' | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -19,16 +21,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
+  const [authMethod, setAuthMethod] = useState<'email' | 'phone' | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
     const loadUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user ?? null)
 
       if (session?.user) {
+        setSession(session)
+        setUser(session.user)
+        setAuthMethod('email')
+
         const { data: profileData, error } = await supabase
           .from('profiles')
           .select('*')
@@ -41,6 +46,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (profileData) {
           setProfile(profileData)
+        }
+      } else {
+        const phoneSession = getPhoneSession()
+
+        if (phoneSession) {
+          const { data: profileData, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', phoneSession.userId)
+            .maybeSingle()
+
+          if (error || !profileData) {
+            console.error('Error loading phone profile:', error)
+            clearPhoneSession()
+          } else {
+            setProfile(profileData)
+            setAuthMethod('phone')
+          }
         }
       }
 
@@ -85,13 +108,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    clearPhoneSession()
     setUser(null)
     setProfile(null)
     setSession(null)
+    setAuthMethod(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, signOut, authMethod }}>
       {children}
     </AuthContext.Provider>
   )

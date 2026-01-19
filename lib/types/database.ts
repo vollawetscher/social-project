@@ -12,8 +12,12 @@ export type PIIType = 'name' | 'phone' | 'email' | 'address' | 'date'
 
 export interface Profile {
   id: string
-  email: string
+  email?: string
+  phone_number?: string
+  phone_verified_at?: string
+  auth_method: 'email' | 'phone'
   role: UserRole
+  display_name?: string
   created_at: string
 }
 
