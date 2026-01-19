@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       user: {
         id: profile.id,
         phoneNumber: profile.phone_number,
-        displayName: profile.display_name,
+        displayName: profile.display_name || profile.phone_number,
         authMethod: 'phone',
       },
     });
