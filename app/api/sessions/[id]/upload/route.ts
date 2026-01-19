@@ -54,7 +54,26 @@ export async function POST(
       'audio/x-m4a'
     ]
 
-    const isSupported = supportedMimeTypes.some(type => file.type.toLowerCase().includes(type.split(';')[0]))
+    const normalizedFileType = file.type.toLowerCase().split(/[;:]/)[0].trim()
+    const isSupported = supportedMimeTypes.some(type =>
+      normalizedFileType === type || normalizedFileType.startsWith(type + '/')
+    )
+
+    console.log('[Upload] MIME type validation:', {
+      original: file.type,
+      normalized: normalizedFileType,
+      isSupported
+    })
+
+    if (normalizedFileType === 'audio/webm' && file.name && !file.name.endsWith('.webm')) {
+      console.error('[Upload] WebM MIME type detected on potentially incompatible device')
+      return NextResponse.json(
+        {
+          error: 'Das WebM-Audioformat wird auf Ihrem Gerät nicht unterstützt. Bitte verwenden Sie einen anderen Browser oder laden Sie die App neu.'
+        },
+        { status: 400 }
+      )
+    }
 
     if (!isSupported && file.type) {
       console.warn('[Upload] Unsupported MIME type received:', file.type)

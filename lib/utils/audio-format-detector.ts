@@ -21,6 +21,32 @@ export function detectSupportedAudioFormat(): AudioFormatInfo {
     }
   }
 
+  if (isMobileSafari()) {
+    console.log('[AudioFormat] Mobile Safari detected - forcing MP4 format to avoid broken WebM support')
+    const mp4Formats = [
+      { mimeType: 'audio/mp4', extension: 'mp4' },
+      { mimeType: 'audio/mp4;codecs=mp4a.40.2', extension: 'mp4' },
+    ]
+
+    for (const format of mp4Formats) {
+      if (MediaRecorder.isTypeSupported(format.mimeType)) {
+        console.log('[AudioFormat] Using iOS-compatible format:', format.mimeType)
+        return {
+          mimeType: format.mimeType,
+          extension: format.extension,
+          isSupported: true,
+        }
+      }
+    }
+
+    console.log('[AudioFormat] iOS fallback - using empty mimeType for browser default')
+    return {
+      mimeType: '',
+      extension: 'mp4',
+      isSupported: true,
+    }
+  }
+
   for (const format of AUDIO_FORMATS_PRIORITY) {
     if (MediaRecorder.isTypeSupported(format.mimeType)) {
       console.log('[AudioFormat] Selected supported format:', format.mimeType)

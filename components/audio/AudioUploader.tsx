@@ -28,9 +28,20 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
   const acceptedExtensions = ['.mp3', '.wav', '.m4a', '.mp4', '.webm']
 
   const validateFile = (file: File): boolean => {
-    if (!acceptedFormats.some((format) => file.type === format)) {
+    const baseMimeType = file.type.split(/[;:]/)[0].toLowerCase().trim()
+    const hasValidMime = acceptedFormats.some((format) =>
+      baseMimeType === format.toLowerCase() || file.type.toLowerCase().startsWith(format.toLowerCase())
+    )
+
+    if (!hasValidMime) {
       const extension = '.' + file.name.split('.').pop()?.toLowerCase()
       if (!acceptedExtensions.includes(extension)) {
+        console.error('[AudioUploader] Invalid file:', {
+          type: file.type,
+          baseMimeType,
+          extension,
+          name: file.name
+        })
         toast.error('Ungültiges Dateiformat. Erlaubt sind: MP3, WAV, M4A, MP4, WebM')
         return false
       }
@@ -41,6 +52,13 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
       toast.error('Datei ist zu groß. Maximale Größe: 100MB')
       return false
     }
+
+    console.log('[AudioUploader] File validated:', {
+      name: file.name,
+      type: file.type,
+      baseMimeType,
+      size: file.size
+    })
 
     return true
   }
