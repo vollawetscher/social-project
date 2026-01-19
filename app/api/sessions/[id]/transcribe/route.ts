@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { createSpeechmaticsService } from '@/lib/services/speechmatics'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
+import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
 
 function getInternalBaseUrl(request: Request): string {
   const isRailway = !!(
@@ -28,6 +29,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(params.id, user.id)
     const supabase = createClient()
 
     const { data: session, error: sessionError } = await supabase
@@ -216,6 +219,13 @@ export async function POST(
     console.error('[Transcribe] CRITICAL ERROR - Exception caught:', error)
     console.error('[Transcribe] Error message:', error.message)
     console.error('[Transcribe] Error stack:', error.stack)
+
+    if (error instanceof Error) {
+      const authError = handleAuthError(error)
+      if (authError.status === 401 || authError.status === 403 || authError.status === 404) {
+        return NextResponse.json({ error: authError.message }, { status: authError.status })
+      }
+    }
 
     const supabase = createClient()
     await supabase

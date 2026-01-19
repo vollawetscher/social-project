@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { createClaudeService } from '@/lib/services/claude'
+import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
 
 export async function POST(
   request: Request,
@@ -8,6 +9,8 @@ export async function POST(
 ) {
   try {
     console.log('[Summarize] Starting summarization for session:', params.id)
+    const user = await requireAuth()
+    await requireSessionOwnership(params.id, user.id)
     const supabase = createClient()
 
     console.log('[Summarize] Step 1: Fetching session data...')
@@ -93,6 +96,13 @@ export async function POST(
     console.error('[Summarize] CRITICAL ERROR - Exception caught:', error)
     console.error('[Summarize] Error message:', error.message)
     console.error('[Summarize] Error stack:', error.stack)
+
+    if (error instanceof Error) {
+      const authError = handleAuthError(error)
+      if (authError.status === 401 || authError.status === 403 || authError.status === 404) {
+        return NextResponse.json({ error: authError.message }, { status: authError.status })
+      }
+    }
 
     const supabase = createClient()
 

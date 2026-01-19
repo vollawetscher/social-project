@@ -1,11 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = await requireAuth()
+    await requireSessionOwnership(params.id, user.id)
     const supabase = createClient()
 
     const { data: session, error: sessionError } = await supabase
@@ -171,6 +174,10 @@ export async function POST(
       storage_path: storagePath,
     })
   } catch (error) {
+    if (error instanceof Error) {
+      const authError = handleAuthError(error)
+      return NextResponse.json({ error: authError.message }, { status: authError.status })
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
