@@ -15,6 +15,8 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Speechmatics-compatible formats only
+  // Supported: wav, mp3, aac, ogg, mpeg, amr, m4a, mp4, flac
   const acceptedFormats = [
     'audio/mpeg',
     'audio/mp3',
@@ -22,10 +24,13 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
     'audio/mp4',
     'audio/m4a',
     'audio/x-m4a',
-    'audio/webm',
+    'audio/ogg',
+    'audio/aac',
+    'audio/flac',
+    'audio/amr',
   ]
 
-  const acceptedExtensions = ['.mp3', '.wav', '.m4a', '.mp4', '.webm']
+  const acceptedExtensions = ['.mp3', '.wav', '.m4a', '.mp4', '.ogg', '.aac', '.flac', '.amr']
 
   const validateFile = (file: File): boolean => {
     const baseMimeType = file.type.split(/[;:]/)[0].toLowerCase().trim()
@@ -42,7 +47,7 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
           extension,
           name: file.name
         })
-        toast.error('Ungültiges Dateiformat. Erlaubt sind: MP3, WAV, M4A, MP4, WebM')
+        toast.error('Ungültiges Dateiformat. Erlaubt sind: MP3, WAV, M4A, MP4, OGG, AAC, FLAC')
         return false
       }
     }
@@ -145,7 +150,7 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
             </p>
 
             <p className="text-xs text-slate-500">
-              Unterstützte Formate: MP3, WAV, M4A, MP4, WebM (max. 100MB)
+              Unterstützte Formate: MP3, WAV, M4A, MP4, OGG, AAC, FLAC (max. 100MB)
             </p>
 
             <Button type="button" className="mt-4">

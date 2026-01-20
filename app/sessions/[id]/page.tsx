@@ -297,7 +297,7 @@ export default function SessionDetailPage() {
                 <CardHeader>
                   <CardTitle>Audiodatei hochladen</CardTitle>
                   <CardDescription>
-                    Laden Sie eine bestehende Audiodatei hoch (MP3, WAV, M4A, MP4, WebM)
+                    Laden Sie eine bestehende Audiodatei hoch (MP3, WAV, M4A, MP4, OGG, AAC, FLAC)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

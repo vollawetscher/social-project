@@ -4,12 +4,20 @@ export interface AudioFormatInfo {
   isSupported: boolean
 }
 
+// Speechmatics-compatible formats only
+// See: https://docs.speechmatics.com/introduction/supported-languages
+// Supported: wav, mp3, aac, ogg, mpeg, amr, m4a, mp4, flac
+// NOT supported: webm
 const AUDIO_FORMATS_PRIORITY = [
-  { mimeType: 'audio/webm;codecs=opus', extension: 'webm' },
-  { mimeType: 'audio/webm', extension: 'webm' },
   { mimeType: 'audio/mp4', extension: 'mp4' },
   { mimeType: 'audio/mpeg', extension: 'mp3' },
+  { mimeType: 'audio/mp3', extension: 'mp3' },
   { mimeType: 'audio/wav', extension: 'wav' },
+  { mimeType: 'audio/ogg', extension: 'ogg' },
+  { mimeType: 'audio/ogg;codecs=opus', extension: 'ogg' },
+  { mimeType: 'audio/aac', extension: 'aac' },
+  { mimeType: 'audio/flac', extension: 'flac' },
+  { mimeType: 'audio/x-m4a', extension: 'm4a' },
 ]
 
 export function detectSupportedAudioFormat(): AudioFormatInfo {
@@ -58,10 +66,11 @@ export function detectSupportedAudioFormat(): AudioFormatInfo {
     }
   }
 
-  console.warn('[AudioFormat] No preferred format supported, using browser default')
+  console.warn('[AudioFormat] No Speechmatics-compatible format supported by browser')
+  console.warn('[AudioFormat] Falling back to browser default - transcription may fail')
   return {
     mimeType: '',
-    extension: 'webm',
+    extension: 'mp4',
     isSupported: true,
   }
 }

@@ -43,8 +43,11 @@ export async function POST(
       )
     }
 
+    // Speechmatics-compatible formats only
+    // See: https://docs.speechmatics.com/introduction/supported-languages
+    // Supported: wav, mp3, aac, ogg, mpeg, amr, m4a, mp4, flac
+    // NOT supported: webm
     const supportedMimeTypes = [
-      'audio/webm',
       'audio/mp4',
       'audio/mpeg',
       'audio/mp3',
@@ -54,7 +57,8 @@ export async function POST(
       'audio/ogg',
       'audio/aac',
       'audio/flac',
-      'audio/x-m4a'
+      'audio/x-m4a',
+      'audio/amr'
     ]
 
     const normalizedFileType = file.type.toLowerCase().split(/[;:]/)[0].trim()
@@ -68,9 +72,25 @@ export async function POST(
       isSupported
     })
 
+    // Reject WebM explicitly as Speechmatics doesn't support it
+    if (normalizedFileType === 'audio/webm') {
+      console.error('[Upload] WebM format rejected - not supported by Speechmatics')
+      return NextResponse.json(
+        { 
+          error: 'WebM-Format wird nicht unterstützt. Bitte verwenden Sie MP3, MP4, WAV oder OGG. Laden Sie die Seite neu, um das richtige Format zu verwenden.' 
+        },
+        { status: 400 }
+      )
+    }
+
     if (!isSupported && file.type) {
       console.warn('[Upload] Unsupported MIME type received:', file.type)
-      console.warn('[Upload] Proceeding anyway, but transcription may fail')
+      return NextResponse.json(
+        { 
+          error: `Audioformat "${file.type}" wird nicht unterstützt. Unterstützte Formate: MP3, MP4, WAV, OGG, AAC, FLAC, M4A` 
+        },
+        { status: 400 }
+      )
     }
 
     if (duration < 0) {

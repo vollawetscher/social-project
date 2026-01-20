@@ -7,7 +7,7 @@ A production-ready web application for social workers to record, transcribe, and
 ### Core Functionality
 - **Flexible Authentication**: Password-based login (for testing) and Magic Link (passwordless email) via Supabase Auth
 - **Audio Recording**: In-browser recording using MediaRecorder API (mobile + desktop)
-- **File Upload**: Support for MP3, WAV, M4A, MP4, WebM (max 100MB)
+- **File Upload**: Support for MP3, WAV, M4A, MP4, OGG, AAC, FLAC (max 100MB) - all Speechmatics-compatible formats
 - **Automatic Transcription**: Integration with Speechmatics API for accurate German transcription with speaker diarization
 - **PII Protection**: Automatic detection and redaction of personal data (names, emails, phones, addresses, dates)
 - **AI Report Generation**: Structured "Rohbericht" (raw report) generation using Anthropic Claude
@@ -255,7 +255,8 @@ The AI-generated report includes:
 
 ### Upload Fails
 - File size must be under 100MB
-- Supported formats: MP3, WAV, M4A, MP4, WebM
+- Supported formats: MP3, WAV, M4A, MP4, OGG, AAC, FLAC (Speechmatics-compatible only)
+- WebM is NOT supported by Speechmatics transcription service
 - Check Supabase Storage bucket permissions
 
 ### Authentication Issues
