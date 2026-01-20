@@ -68,16 +68,6 @@ export async function POST(
       isSupported
     })
 
-    if (normalizedFileType === 'audio/webm' && file.name && !file.name.endsWith('.webm')) {
-      console.error('[Upload] WebM MIME type detected on potentially incompatible device')
-      return NextResponse.json(
-        {
-          error: 'Das WebM-Audioformat wird auf Ihrem Gerät nicht unterstützt. Bitte verwenden Sie einen anderen Browser oder laden Sie die App neu.'
-        },
-        { status: 400 }
-      )
-    }
-
     if (!isSupported && file.type) {
       console.warn('[Upload] Unsupported MIME type received:', file.type)
       console.warn('[Upload] Proceeding anyway, but transcription may fail')
