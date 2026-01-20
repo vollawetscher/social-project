@@ -3,26 +3,7 @@ import { NextResponse } from 'next/server'
 import { createSpeechmaticsService } from '@/lib/services/speechmatics'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
-
-function getInternalBaseUrl(request: Request): string {
-  const isRailway = !!(
-    process.env.RAILWAY_ENVIRONMENT ||
-    process.env.RAILWAY_PUBLIC_DOMAIN ||
-    process.env.RAILWAY_STATIC_URL
-  )
-
-  if (isRailway) {
-    const port = process.env.PORT || '8080'
-    const baseUrl = `http://localhost:${port}`
-    console.log('[Internal URL] Railway detected, using internal URL:', baseUrl)
-    return baseUrl
-  }
-
-  const origin = new URL(request.url).origin
-  const baseUrl = origin.replace('https://localhost', 'http://localhost')
-  console.log('[Internal URL] Local/other environment, using:', baseUrl)
-  return baseUrl
-}
+import { generateReport } from '@/lib/services/report-generator'
 
 export async function POST(
   request: Request,
@@ -175,42 +156,19 @@ export async function POST(
       .eq('id', params.id)
     console.log('[Transcribe] Step 4: Session status updated')
 
-    console.log('[Transcribe] Step 5: Calling summarize endpoint...')
-    const baseUrl = getInternalBaseUrl(request)
-    console.log('[Transcribe] Step 5: Using base URL:', baseUrl)
-    const summarizeResponse = await fetch(
-      `${baseUrl}/api/sessions/${params.id}/summarize`,
-      { method: 'POST' }
-    )
-    console.log('[Transcribe] Step 5: Summarize endpoint called, status:', summarizeResponse.status)
-
-    if (!summarizeResponse.ok) {
-      console.error('[Transcribe] Step 5: Summarize endpoint returned error status:', summarizeResponse.status)
-      let errorMessage = 'Failed to generate report'
-      try {
-        const responseText = await summarizeResponse.text()
-        console.error('[Transcribe] Step 5: Summarize endpoint error (raw):', responseText)
-
-        try {
-          const errorData = JSON.parse(responseText)
-          errorMessage = errorData.error || errorMessage
-        } catch (parseError) {
-          errorMessage = responseText || errorMessage
-        }
-      } catch (e) {
-        console.error('[Transcribe] Step 5: Failed to read error response:', e)
-      }
-
-      console.error('[Transcribe] Step 5: Setting session to error state with message:', errorMessage)
+    console.log('[Transcribe] Step 5: Generating report...')
+    try {
+      await generateReport(params.id, supabase)
+      console.log('[Transcribe] Step 5: Report generated successfully!')
+    } catch (error: any) {
+      console.error('[Transcribe] Step 5: Report generation failed:', error.message)
       await supabase
         .from('sessions')
         .update({
           status: 'error',
-          last_error: errorMessage
+          last_error: error.message
         })
         .eq('id', params.id)
-    } else {
-      console.log('[Transcribe] Step 5: Summarize endpoint completed successfully!')
     }
 
     console.log('[Transcribe] All steps completed successfully!')
