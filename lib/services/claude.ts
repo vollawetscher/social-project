@@ -1,11 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { RohberichtJSON, TranscriptSegment } from '@/lib/types/database'
+import { GespraechsberichtJSON, TranscriptSegment } from '@/lib/types/database'
 
 export interface ClaudeConfig {
   apiKey: string
 }
 
-export interface RohberichtInput {
+export interface GespraechsberichtInput {
   redactedSegments: TranscriptSegment[]
   redactedText: string
   sessionMetadata: {
@@ -25,7 +25,7 @@ export class ClaudeService {
     })
   }
 
-  async generateRohbericht(input: RohberichtInput): Promise<RohberichtJSON> {
+  async generateGespraechsbericht(input: GespraechsberichtInput): Promise<GespraechsberichtJSON> {
     try {
       const prompt = this.buildPrompt(input)
 
@@ -53,8 +53,8 @@ export class ClaudeService {
       }
 
       try {
-        const rohberichtData: RohberichtJSON = JSON.parse(jsonMatch[0])
-        return rohberichtData
+        const gespraechsberichtData: GespraechsberichtJSON = JSON.parse(jsonMatch[0])
+        return gespraechsberichtData
       } catch (parseError: any) {
         console.error('JSON parse error:', parseError, 'JSON string:', jsonMatch[0])
         throw new Error(`Failed to parse Claude response: ${parseError.message}`)
@@ -65,7 +65,7 @@ export class ClaudeService {
     }
   }
 
-  private buildPrompt(input: RohberichtInput): string {
+  private buildPrompt(input: GespraechsberichtInput): string {
     const { redactedSegments, redactedText, sessionMetadata } = input
 
     const formattedTranscript = redactedSegments
@@ -77,10 +77,10 @@ export class ClaudeService {
 
     const duration = this.formatDuration(sessionMetadata.duration_sec)
 
-    return `Du bist ein spezialisiertes KI-System zur Erstellung von strukturierten Gesprächsberichten (Rohberichte) für die Soziale Arbeit.
+    return `Du bist ein spezialisiertes KI-System zur Erstellung von strukturierten Gesprächsberichten für die Soziale Arbeit.
 
 # Aufgabe
-Erstelle einen strukturierten "Rohbericht" basierend auf dem folgenden transkribierten Gespräch. Der Bericht dient zur Dokumentation in der Sozialen Arbeit.
+Erstelle einen strukturierten "Gesprächsbericht" basierend auf dem folgenden transkribierten Gespräch. Der Bericht dient zur Dokumentation in der Sozialen Arbeit.
 
 # Metadaten
 - Datum: ${new Date(sessionMetadata.created_at).toLocaleDateString('de-DE')}
@@ -105,7 +105,7 @@ Antworte NUR mit einem validen JSON-Objekt in folgendem Format:
 {
   "session_id": "${sessionMetadata.internal_case_id || 'unbekannt'}",
   "summary_short": "2-3 Sätze Zusammenfassung des Gesprächs",
-  "rohbericht": {
+  "gespraechsbericht": {
     "metadaten": {
       "datum": "TT.MM.JJJJ",
       "dauer": "MM:SS",

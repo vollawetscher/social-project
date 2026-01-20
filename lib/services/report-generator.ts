@@ -30,7 +30,7 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
 
   console.log('[ReportGenerator] Calling Claude API...')
   const claudeService = createClaudeService()
-  const rohbericht = await claudeService.generateRohbericht({
+  const gespraechsbericht = await claudeService.generateGespraechsbericht({
     redactedSegments: transcript.redacted_json,
     redactedText: transcript.redacted_text,
     sessionMetadata: {
@@ -46,7 +46,7 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     .from('reports')
     .insert({
       session_id: sessionId,
-      claude_json: rohbericht,
+      claude_json: gespraechsbericht,
     })
 
   if (reportError) {
@@ -61,5 +61,5 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     .eq('id', sessionId)
 
   console.log('[ReportGenerator] Complete!')
-  return rohbericht
+  return gespraechsbericht
 }

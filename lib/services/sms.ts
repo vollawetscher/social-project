@@ -37,7 +37,7 @@ async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
       p: apiKey,
       to: to.replace('+', ''), // Remove + prefix for seven.io
       text: text,
-      from: 'RohberichtAI', // Sender ID
+      from: 'GespraechsAI', // Sender ID
     });
 
     const response = await fetch(`${url}?${params.toString()}`, {
@@ -91,7 +91,7 @@ export function generateOTP(): string {
  * Sends an OTP code via SMS
  */
 export async function sendOTPSMS(phoneNumber: string, otp: string): Promise<SendSMSResponse> {
-  const message = `Ihr RohberichtAI Verifizierungscode ist: ${otp}\n\nDieser Code ist 5 Minuten gültig.\n\nYour RohberichtAI verification code is: ${otp}\n\nThis code is valid for 5 minutes.`;
+  const message = `Ihr Gesprächsbericht Verifizierungscode ist: ${otp}\n\nDieser Code ist 5 Minuten gültig.\n\nYour Gesprächsbericht verification code is: ${otp}\n\nThis code is valid for 5 minutes.`;
 
   return sendSMS({
     to: phoneNumber,

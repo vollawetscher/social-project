@@ -71,7 +71,7 @@ export interface PIIHit {
   created_at: string
 }
 
-export interface RohberichtMetadata {
+export interface GespraechsberichtMetadata {
   datum: string
   dauer: string
   setting: string
@@ -84,8 +84,8 @@ export interface KernaussageZitat {
   speaker: string
 }
 
-export interface RohberichtData {
-  metadaten: RohberichtMetadata
+export interface GespraechsberichtData {
+  metadaten: GespraechsberichtMetadata
   gespraechsverlauf_kurz: string[]
   kernaussagen_zitate: KernaussageZitat[]
   beobachtungen: string[]
@@ -102,16 +102,16 @@ export interface QualityNotes {
   pii_redaction_applied: boolean
 }
 
-export interface RohberichtJSON {
+export interface GespraechsberichtJSON {
   session_id: string
   summary_short: string
-  rohbericht: RohberichtData
+  gespraechsbericht: GespraechsberichtData
   quality_notes: QualityNotes
 }
 
 export interface Report {
   id: string
   session_id: string
-  claude_json: RohberichtJSON
+  claude_json: GespraechsberichtJSON
   created_at: string
 }

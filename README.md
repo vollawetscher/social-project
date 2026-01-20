@@ -1,4 +1,4 @@
-# Rohbericht MVP
+# Gesprächsbericht
 
 A production-ready web application for social workers to record, transcribe, and generate structured reports from client conversations using AI.
 

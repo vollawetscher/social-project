@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { RohberichtViewer } from '@/components/report/RohberichtViewer'
+import { GespraechsberichtViewer } from '@/components/report/GespraechsberichtViewer'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Session, Report } from '@/lib/types/database'
@@ -62,7 +62,7 @@ export default function ReportPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `rohbericht-${session?.internal_case_id || sessionId}.pdf`
+      a.download = `gespraechsbericht-${session?.internal_case_id || sessionId}.pdf`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -99,7 +99,7 @@ export default function ReportPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Rohbericht</h1>
+              <h1 className="text-3xl font-bold text-slate-900">Gesprächsbericht</h1>
               <p className="text-slate-600 mt-1">
                 {session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}`}
               </p>
@@ -121,7 +121,7 @@ export default function ReportPage() {
           </Button>
         </div>
 
-        <RohberichtViewer rohbericht={report.claude_json} />
+        <GespraechsberichtViewer gespraechsbericht={report.claude_json} />
 
         <div className="flex justify-center gap-4">
           <Button

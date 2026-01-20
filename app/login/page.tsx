@@ -194,7 +194,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            RohberichtAI
+            Gesprächsbericht
           </CardTitle>
           <CardDescription className="text-center">
             Sign in to your account

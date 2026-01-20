@@ -35,7 +35,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <FileText className="w-6 h-6 text-slate-700" />
-            <h1 className="text-xl font-semibold text-slate-900">Rohbericht MVP</h1>
+            <h1 className="text-xl font-semibold text-slate-900">Gesprächsbericht</h1>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut}>

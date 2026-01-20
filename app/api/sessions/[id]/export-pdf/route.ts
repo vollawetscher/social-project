@@ -33,7 +33,7 @@ export async function GET(
     }
 
     const pdf = new jsPDF()
-    const rohbericht = report.claude_json
+    const gespraechsbericht = report.claude_json
 
     const pageWidth = pdf.internal.pageSize.getWidth()
     const margin = 20
@@ -78,7 +78,7 @@ export async function GET(
 
     pdf.setFontSize(20)
     pdf.setFont('helvetica', 'bold')
-    pdf.text('Rohbericht', margin, yPosition)
+    pdf.text('Gesprächsbericht', margin, yPosition)
     yPosition += 15
 
     pdf.setFontSize(12)
@@ -86,33 +86,33 @@ export async function GET(
     pdf.text(session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}`, margin, yPosition)
     yPosition += 10
 
-    addSection('Zusammenfassung', rohbericht.summary_short)
+    addSection('Zusammenfassung', gespraechsbericht.summary_short)
 
     addSection('Metadaten', [
-      `Datum: ${rohbericht.rohbericht.metadaten.datum}`,
-      `Dauer: ${rohbericht.rohbericht.metadaten.dauer}`,
-      `Setting: ${rohbericht.rohbericht.metadaten.setting}`,
-      `Beteiligte: ${rohbericht.rohbericht.metadaten.beteiligte_rollen.join(', ')}`,
+      `Datum: ${gespraechsbericht.gespraechsbericht.metadaten.datum}`,
+      `Dauer: ${gespraechsbericht.gespraechsbericht.metadaten.dauer}`,
+      `Setting: ${gespraechsbericht.gespraechsbericht.metadaten.setting}`,
+      `Beteiligte: ${gespraechsbericht.gespraechsbericht.metadaten.beteiligte_rollen.join(', ')}`,
     ])
 
-    addSection('Gesprächsverlauf', rohbericht.rohbericht.gespraechsverlauf_kurz)
+    addSection('Gesprächsverlauf', gespraechsbericht.gespraechsbericht.gespraechsverlauf_kurz)
 
     yPosition += 5
     checkPageBreak(lineHeight * 3)
     addText('Kernaussagen & Zitate', 14, true)
     yPosition += 3
-    rohbericht.rohbericht.kernaussagen_zitate.forEach((zitat: any) => {
+    gespraechsbericht.gespraechsbericht.kernaussagen_zitate.forEach((zitat: any) => {
       checkPageBreak(lineHeight * 2)
       addText(`[${zitat.timecode}] ${zitat.speaker}: "${zitat.quote}"`, 10)
       yPosition += 2
     })
 
-    addSection('Beobachtungen', rohbericht.rohbericht.beobachtungen)
-    addSection('Themen', rohbericht.rohbericht.themen)
-    addSection('Ressourcen & Schutzfaktoren', rohbericht.rohbericht.ressourcen_und_schutzfaktoren)
-    addSection('Belastungen & Risikoindikatoren', rohbericht.rohbericht.belastungen_und_risikoindikatoren)
-    addSection('Offene Punkte', rohbericht.rohbericht.offene_punkte)
-    addSection('Nächste Schritte (Vorschlag)', rohbericht.rohbericht.naechste_schritte_vorschlag)
+    addSection('Beobachtungen', gespraechsbericht.gespraechsbericht.beobachtungen)
+    addSection('Themen', gespraechsbericht.gespraechsbericht.themen)
+    addSection('Ressourcen & Schutzfaktoren', gespraechsbericht.gespraechsbericht.ressourcen_und_schutzfaktoren)
+    addSection('Belastungen & Risikoindikatoren', gespraechsbericht.gespraechsbericht.belastungen_und_risikoindikatoren)
+    addSection('Offene Punkte', gespraechsbericht.gespraechsbericht.offene_punkte)
+    addSection('Nächste Schritte (Vorschlag)', gespraechsbericht.gespraechsbericht.naechste_schritte_vorschlag)
 
     yPosition += 10
     checkPageBreak(lineHeight * 5)
@@ -122,9 +122,9 @@ export async function GET(
     yPosition += 5
     pdf.text(`Erstellt: ${new Date(report.created_at).toLocaleString('de-DE')}`, margin, yPosition)
     yPosition += 5
-    pdf.text(`Audioqualität: ${rohbericht.quality_notes.audio_quality}`, margin, yPosition)
+    pdf.text(`Audioqualität: ${gespraechsbericht.quality_notes.audio_quality}`, margin, yPosition)
     yPosition += 5
-    pdf.text(`Transkript-Konfidenz: ${rohbericht.quality_notes.transcript_confidence}`, margin, yPosition)
+    pdf.text(`Transkript-Konfidenz: ${gespraechsbericht.quality_notes.transcript_confidence}`, margin, yPosition)
     yPosition += 5
     pdf.text('PII-Redaktion angewendet', margin, yPosition)
 
@@ -133,7 +133,7 @@ export async function GET(
     return new NextResponse(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="rohbericht-${session.internal_case_id || params.id}.pdf"`,
+        'Content-Disposition': `attachment; filename="gespraechsbericht-${session.internal_case_id || params.id}.pdf"`,
       },
     })
   } catch (error: any) {

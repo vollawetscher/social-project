@@ -1,6 +1,6 @@
 'use client'
 
-import { RohberichtJSON } from '@/lib/types/database'
+import { GespraechsberichtJSON } from '@/lib/types/database'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,11 +9,11 @@ import { Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-interface RohberichtViewerProps {
-  rohbericht: RohberichtJSON
+interface GespraechsberichtViewerProps {
+  gespraechsbericht: GespraechsberichtJSON
 }
 
-export function RohberichtViewer({ rohbericht }: RohberichtViewerProps) {
+export function GespraechsberichtViewer({ gespraechsbericht }: GespraechsberichtViewerProps) {
   const [copiedSections, setCopiedSections] = useState<Set<string>>(new Set())
 
   const copyToClipboard = async (text: string, sectionName: string) => {
@@ -47,7 +47,7 @@ export function RohberichtViewer({ rohbericht }: RohberichtViewerProps) {
     </Button>
   )
 
-  const { rohbericht: report, summary_short, quality_notes } = rohbericht
+  const { gespraechsbericht: report, summary_short, quality_notes } = gespraechsbericht
 
   return (
     <div className="space-y-6">
