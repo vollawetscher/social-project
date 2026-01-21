@@ -15,8 +15,18 @@ export class PIIRedactionService {
   private dateCounter = 0
 
   private namePatterns = [
+    // Standard two-word capitalized pattern (filtered by isLikelyName)
     /\b[A-ZÄÖÜ][a-zäöüß]+\s+[A-ZÄÖÜ][a-zäöüß]+\b/g,
-    /\b(?:Herr|Frau|Dr\.|Prof\.)\s+[A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?\b/g,
+    // Title + name patterns (high confidence)
+    /\b(?:Herr|Frau|Dr\.|Prof\.|Doktor)\s+[A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?\b/g,
+  ]
+
+  // Context patterns that indicate a name follows (high confidence)
+  private nameContextPatterns = [
+    // "Ich bin [Name]", "Das ist [Name]", "Ich heiße [Name]"
+    /\b(?:ich bin|das ist|ich heiße|ich heisse|mein name ist|name ist)\s+([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\b/gi,
+    // "von [Name]", "für [Name]", "mit [Name]" (when followed by capitalized words)
+    /\b(?:von|für|mit|bei)\s+(?:Herr|Frau|Dr\.|Prof\.)?\s*([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)?)\b/gi,
   ]
 
   private phonePattern = /\b(?:\+49|0)[\s\-]?\d{2,5}[\s\-]?\d{3,}[\s\-]?\d{3,}\b/g
@@ -170,9 +180,42 @@ export class PIIRedactionService {
     piiHits: Omit<PIIHit, 'id' | 'session_id' | 'created_at'>[]
   ): string {
     let result = text
+    const redactedNames = new Set<string>()
+
+    // First pass: High-confidence context-based name detection
+    for (const pattern of this.nameContextPatterns) {
+      result = result.replace(pattern, (match, capturedName) => {
+        // capturedName is the name captured in the group
+        if (capturedName && !redactedNames.has(capturedName)) {
+          this.nameCounter++
+          const placeholder = `[NAME_${this.nameCounter}]`
+          piiHits.push({
+            type: 'name',
+            placeholder,
+            original_hash: this.hashValue(capturedName),
+            start_ms: startMs,
+            end_ms: endMs,
+          })
+          redactedNames.add(capturedName)
+          // Replace just the name part, keep the context words
+          return match.replace(capturedName, placeholder)
+        }
+        return match
+      })
+    }
+
+    // Second pass: General name patterns (with isLikelyName filter)
     for (const pattern of this.namePatterns) {
       result = result.replace(pattern, (match) => {
-        if (this.isLikelyName(match)) {
+        // Skip if already redacted
+        if (redactedNames.has(match)) {
+          return match
+        }
+
+        // Check if it contains a title (high confidence)
+        const hasTitle = /(?:Herr|Frau|Dr\.|Prof\.|Doktor)/i.test(match)
+        
+        if (hasTitle || this.isLikelyName(match)) {
           this.nameCounter++
           const placeholder = `[NAME_${this.nameCounter}]`
           piiHits.push({
@@ -182,6 +225,7 @@ export class PIIRedactionService {
             start_ms: startMs,
             end_ms: endMs,
           })
+          redactedNames.add(match)
           return placeholder
         }
         return match
@@ -191,14 +235,67 @@ export class PIIRedactionService {
   }
 
   private isLikelyName(text: string): boolean {
-    const commonWords = [
-      'Die', 'Der', 'Das', 'Ein', 'Eine', 'Und', 'Oder', 'Aber',
-      'Auch', 'Nur', 'Noch', 'Schon', 'Sehr', 'Mehr', 'Weniger',
-    ]
+    // Comprehensive German stopword list - common words that shouldn't be redacted
+    const commonWords = new Set([
+      // Articles
+      'Die', 'Der', 'Das', 'Ein', 'Eine', 'Einer', 'Einem', 'Einen', 'Des', 'Dem', 'Den',
+      // Conjunctions
+      'Und', 'Oder', 'Aber', 'Denn', 'Sondern', 'Weil', 'Dass', 'Obwohl', 'Wenn', 'Als',
+      // Adverbs
+      'Auch', 'Nur', 'Noch', 'Schon', 'Sehr', 'Mehr', 'Weniger', 'Immer', 'Nie', 'Oft',
+      'Manchmal', 'Heute', 'Gestern', 'Morgen', 'Hier', 'Dort', 'Jetzt', 'Dann', 'Damals',
+      'Vielleicht', 'Bestimmt', 'Sicher', 'Wahrscheinlich', 'Wirklich', 'Eigentlich',
+      // Common nouns (often falsely detected as names)
+      'Mensch', 'Menschen', 'Person', 'Personen', 'Mann', 'Frau', 'Kind', 'Kinder',
+      'Leute', 'Familie', 'Eltern', 'Mutter', 'Vater', 'Schwester', 'Bruder',
+      'Freund', 'Freunde', 'Freundin', 'Kollege', 'Kollegin', 'Chef', 'Chefin',
+      'Arbeit', 'Beruf', 'Job', 'Stelle', 'Unternehmen', 'Firma', 'Büro',
+      'Leben', 'Zeit', 'Jahr', 'Jahre', 'Monat', 'Monate', 'Woche', 'Wochen', 'Tag', 'Tage',
+      'Welt', 'Land', 'Stadt', 'Haus', 'Wohnung', 'Zimmer',
+      'Problem', 'Probleme', 'Lösung', 'Lösungen', 'Frage', 'Fragen', 'Antwort', 'Antworten',
+      'Aufgabe', 'Aufgaben', 'Ziel', 'Ziele', 'Plan', 'Pläne',
+      'Stärke', 'Stärken', 'Schwäche', 'Schwächen', 'Fähigkeit', 'Fähigkeiten',
+      'Erfahrung', 'Erfahrungen', 'Wissen', 'Können', 'Kompetenz', 'Kompetenzen',
+      'Interesse', 'Interessen', 'Hobby', 'Hobbys',
+      'Gefühl', 'Gefühle', 'Emotion', 'Emotionen', 'Angst', 'Freude', 'Trauer',
+      'Geld', 'Euro', 'Dollar', 'Kosten', 'Preis', 'Gehalt',
+      'Recht', 'Rechte', 'Gesetz', 'Gesetze', 'Regel', 'Regeln',
+      'Schule', 'Uni', 'Universität', 'Ausbildung', 'Studium',
+      'Gesundheit', 'Krankheit', 'Arzt', 'Ärztin', 'Krankenhaus',
+      'Hilfe', 'Unterstützung', 'Beratung', 'Therapie',
+      // Possessive/demonstrative pronouns
+      'Meine', 'Mein', 'Deine', 'Dein', 'Seine', 'Sein', 'Ihre', 'Ihr', 'Unsere', 'Unser',
+      'Diese', 'Dieser', 'Dieses', 'Jene', 'Jener', 'Jenes', 'Welche', 'Welcher', 'Welches',
+      // Common adjectives (capitalized in titles/headings)
+      'Neue', 'Neuer', 'Neues', 'Alte', 'Alter', 'Altes', 'Große', 'Großer', 'Großes',
+      'Kleine', 'Kleiner', 'Kleines', 'Gute', 'Guter', 'Gutes', 'Schlechte', 'Schlechter',
+      'Wichtige', 'Wichtiger', 'Wichtiges', 'Richtige', 'Richtiger', 'Richtiges',
+      // Verbs (nominalized - common in German)
+      'Arbeiten', 'Leben', 'Lernen', 'Denken', 'Fühlen', 'Sprechen', 'Hören', 'Sehen',
+      'Gehen', 'Kommen', 'Machen', 'Tun', 'Sein', 'Haben', 'Werden', 'Können', 'Müssen',
+      // Common sentence starters
+      'Danke', 'Bitte', 'Natürlich', 'Klar', 'Okay', 'Genau', 'Richtig',
+      // Social work specific terms
+      'Betreuung', 'Sozialarbeiter', 'Sozialarbeiterin', 'Betreuer', 'Betreuerin',
+      'Klient', 'Klientin', 'Klienten', 'Jugendamt', 'Jobcenter',
+      'Termin', 'Termine', 'Gespräch', 'Gespräche', 'Sitzung', 'Sitzungen',
+    ])
 
     const words = text.split(/\s+/)
+    
+    // Check if any word is in the common words set
     for (const word of words) {
-      if (commonWords.includes(word)) {
+      if (commonWords.has(word)) {
+        return false
+      }
+    }
+
+    // Additional heuristic: if the text contains only single capitalized words
+    // without typical name structure, it's likely not a name
+    if (words.length === 2) {
+      // Check for possessive pronoun + noun pattern (e.g., "Ihre Aufgaben")
+      const possessivePronouns = ['Meine', 'Deine', 'Seine', 'Ihre', 'Unsere', 'Eure']
+      if (possessivePronouns.includes(words[0])) {
         return false
       }
     }
