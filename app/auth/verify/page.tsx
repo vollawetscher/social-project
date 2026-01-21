@@ -24,12 +24,27 @@ export default function AuthVerifyPage() {
 
       // If there's a code, exchange it for session
       if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           setError(error.message);
           setTimeout(() => router.push('/login?error=auth_failed'), 2000);
           return;
         }
+
+        // Wait for session to be established
+        if (data.session) {
+          // Give browser time to set cookies
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      // Verify session exists before redirecting
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError('Failed to establish session');
+        setTimeout(() => router.push('/login'), 2000);
+        return;
       }
 
       // Check if this is an invite
