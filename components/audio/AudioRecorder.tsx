@@ -63,23 +63,49 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunksRef.current.push(e.data)
+          console.log('[AudioRecorder] Data chunk received:', e.data.size, 'bytes, total chunks:', chunksRef.current.length)
         }
       }
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
+        // Wait for any pending dataavailable events to fire
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
         const blob = new Blob(chunksRef.current, { type: recordedMimeTypeRef.current })
-        console.log('[AudioRecorder] Recording stopped, blob size:', blob.size, 'type:', blob.type)
+        const finalDuration = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
+        
+        console.log('[AudioRecorder] Recording stopped:', {
+          blobSize: blob.size,
+          blobType: blob.type,
+          chunks: chunksRef.current.length,
+          timerDuration: finalDuration
+        })
+        
+        // Validate recording completeness
+        const minExpectedSize = finalDuration * 8000 // ~8KB per second minimum
+        if (blob.size < minExpectedSize && finalDuration > 0) {
+          console.error('[AudioRecorder] Recording appears incomplete!', {
+            timerDuration: finalDuration,
+            blobSize: blob.size,
+            minExpectedSize,
+            chunks: chunksRef.current.length
+          })
+          toast.error(`Warnung: Aufnahme könnte unvollständig sein (${finalDuration}s aufgezeichnet)`)
+        }
+        
         const url = URL.createObjectURL(blob)
         setAudioURL(url)
 
         stream.getTracks().forEach((track) => track.stop())
 
-        const finalDuration = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
         setDuration(finalDuration)
         onRecordingComplete(blob, finalDuration)
       }
 
-      mediaRecorder.start()
+      // Start recording with timeslice to capture data every 1 second
+      // This prevents data loss on mobile devices by flushing buffer frequently
+      mediaRecorder.start(1000)
+      console.log('[AudioRecorder] Recording started with 1-second timeslice')
       mediaRecorderRef.current = mediaRecorder
       setIsRecording(true)
       startTimeRef.current = Date.now()
@@ -100,12 +126,21 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const pauseRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       if (isPaused) {
+        // Resuming
         mediaRecorderRef.current.resume()
         const pauseDuration = Date.now() - pausedTimeRef.current
         totalPausedTimeRef.current += pauseDuration
         setIsPaused(false)
         toast.info('Aufnahme fortgesetzt')
       } else {
+        // Pausing - request data before pausing to ensure nothing is lost
+        if (mediaRecorderRef.current.state === 'recording') {
+          try {
+            mediaRecorderRef.current.requestData()
+          } catch (error) {
+            console.warn('[AudioRecorder] requestData() on pause failed:', error)
+          }
+        }
         mediaRecorderRef.current.pause()
         pausedTimeRef.current = Date.now()
         setIsPaused(true)
@@ -119,7 +154,26 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       if (timerRef.current) {
         clearInterval(timerRef.current)
       }
-      mediaRecorderRef.current.stop()
+      
+      // Force final buffer flush before stopping
+      // This ensures the last chunk of data is captured
+      console.log('[AudioRecorder] Requesting final data flush before stop')
+      if (mediaRecorderRef.current.state === 'recording') {
+        try {
+          mediaRecorderRef.current.requestData()
+        } catch (error) {
+          console.warn('[AudioRecorder] requestData() not supported or failed:', error)
+        }
+      }
+      
+      // Wait briefly to allow requestData to complete, then stop
+      setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          console.log('[AudioRecorder] Stopping MediaRecorder')
+          mediaRecorderRef.current.stop()
+        }
+      }, 100)
+      
       setIsRecording(false)
       setIsPaused(false)
       toast.success('Aufnahme beendet')
