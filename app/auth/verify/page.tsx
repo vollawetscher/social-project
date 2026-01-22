@@ -13,32 +13,47 @@ export default function AuthVerifyPage() {
     const handleAuth = async () => {
       const supabase = createClient();
       
-      // Get hash params (where Supabase puts tokens)
+      // Get hash params (where Supabase puts tokens in invite emails)
       const hash = window.location.hash.substring(1);
       const hashParams = new URLSearchParams(hash);
       
-      // Get query params (where code might be)
+      // Get query params (for code flow)
       const queryParams = new URLSearchParams(window.location.search);
       const code = queryParams.get('code');
+      
+      // Get auth data from hash
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
 
-      // If there's a code, exchange it for session
-      if (code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      // Handle token flow (invite emails)
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        
         if (error) {
           setError(error.message);
           setTimeout(() => router.push('/login?error=auth_failed'), 2000);
           return;
         }
-
-        // Wait for session to be established
-        if (data.session) {
-          // Give browser time to set cookies
-          await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      // Handle code flow (alternative auth)
+      else if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          setError(error.message);
+          setTimeout(() => router.push('/login?error=auth_failed'), 2000);
+          return;
         }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // Verify session exists before redirecting
+      // Verify session exists
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
