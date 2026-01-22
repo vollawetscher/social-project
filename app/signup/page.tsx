@@ -49,9 +49,14 @@ export default function SignupPage() {
       return;
     }
 
+    if (password.length < 6) {
+      setEmailError('Password must be at least 6 characters');
+      return;
+    }
+
     setEmailLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -60,7 +65,22 @@ export default function SignupPage() {
       });
 
       if (error) throw error;
-      setEmailSuccess('Check your email to confirm your account.');
+
+      // Check if email confirmation is required
+      if (data?.user && !data.user.confirmed_at && data.user.identities && data.user.identities.length === 0) {
+        // User already exists but hasn't confirmed email
+        setEmailError('This email is already registered. Please check your inbox for the confirmation email, or try logging in.');
+        return;
+      }
+
+      if (data?.user && data.user.confirmed_at) {
+        // Auto-confirmed (email confirmation disabled in Supabase)
+        setEmailSuccess('Account created! Redirecting to dashboard...');
+        setTimeout(() => router.push('/dashboard'), 2000);
+      } else {
+        // Email confirmation required
+        setEmailSuccess('Account created! Check your email for a confirmation link to complete signup.');
+      }
     } catch (err: any) {
       setEmailError(err?.message || 'Failed to sign up');
     } finally {
