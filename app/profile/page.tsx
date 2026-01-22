@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, refreshProfile } = useAuth();
   const supabase = createClient();
 
   const [displayName, setDisplayName] = useState('');
@@ -46,10 +46,18 @@ export default function ProfilePage() {
         .update({ display_name: displayName || null })
         .eq('id', user.id);
       if (upError) throw upError;
-      setSuccess('Profile updated.');
+      
+      // Refresh profile data in context
+      await refreshProfile();
+      
+      setSuccess('Profile updated! Redirecting...');
+      
+      // Navigate back to dashboard after short delay
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
     } catch (err: any) {
       setError(err?.message || 'Failed to update profile');
-    } finally {
       setSaving(false);
     }
   };

@@ -11,6 +11,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   signOut: () => Promise<void>
+  refreshProfile: () => Promise<void>
   authMethod: 'email' | 'phone' | null
 }
 
@@ -98,8 +99,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthMethod(null)
   }
 
+  const refreshProfile = async () => {
+    if (!user) return
+    
+    const { data: profileData, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (error) {
+      console.error('Error refreshing profile:', error)
+      return
+    }
+
+    if (profileData) {
+      setProfile(profileData)
+      setAuthMethod(profileData.auth_method as 'email' | 'phone')
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, signOut, authMethod }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, signOut, refreshProfile, authMethod }}>
       {children}
     </AuthContext.Provider>
   )

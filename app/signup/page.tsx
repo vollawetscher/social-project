@@ -66,20 +66,24 @@ export default function SignupPage() {
 
       if (error) throw error;
 
-      // Check if email confirmation is required
-      if (data?.user && !data.user.confirmed_at && data.user.identities && data.user.identities.length === 0) {
-        // User already exists but hasn't confirmed email
+      // Check if user already exists (will have identities but no session)
+      if (data?.user && data.user.identities && data.user.identities.length === 0) {
+        // Email already registered - Supabase returns user but no identities
         setEmailError('This email is already registered. Please check your inbox for the confirmation email, or try logging in.');
         return;
       }
 
-      if (data?.user && data.user.confirmed_at) {
-        // Auto-confirmed (email confirmation disabled in Supabase)
+      // Check if user is auto-confirmed (email confirmation disabled)
+      if (data?.session) {
+        // User has immediate session = auto-confirmed
         setEmailSuccess('Account created! Redirecting to dashboard...');
         setTimeout(() => router.push('/dashboard'), 2000);
+      } else if (data?.user) {
+        // User created but no session = email confirmation required
+        setEmailSuccess('Account created! Check your email for a confirmation link. Note: Email delivery may take a few minutes due to rate limits.');
       } else {
-        // Email confirmation required
-        setEmailSuccess('Account created! Check your email for a confirmation link to complete signup.');
+        // Unexpected response
+        setEmailError('Unexpected response. Please try logging in.');
       }
     } catch (err: any) {
       setEmailError(err?.message || 'Failed to sign up');
