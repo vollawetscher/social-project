@@ -107,6 +107,12 @@ export default function LoginPage() {
               Sign In
             </Button>
           </form>
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{' '}
+            <a href="/signup" className="text-primary underline-offset-2 hover:underline">
+              Sign up
+            </a>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -38,6 +38,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <h1 className="text-xl font-semibold text-slate-900">Gesprächsbericht</h1>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={() => router.push('/profile')}>
+              Profile
+            </Button>
             <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut}>
               {isLoggingOut ? 'Logging out…' : 'Logout'}
             </Button>
