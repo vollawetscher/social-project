@@ -39,8 +39,8 @@ export function TranscriptViewer({ segments, showRaw = false }: TranscriptViewer
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Transkript</span>
-          {showRaw && (
-            <Badge variant="destructive">Rohversion (PII sichtbar)</Badge>
+          {!showRaw && (
+            <Badge variant="secondary">PII-redaktiert (Beta)</Badge>
           )}
         </CardTitle>
       </CardHeader>

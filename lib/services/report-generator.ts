@@ -28,11 +28,11 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     throw new Error('No transcript found')
   }
 
-  console.log('[ReportGenerator] Calling Claude API...')
+  console.log('[ReportGenerator] Calling Claude API with RAW transcript (unredacted)...')
   const claudeService = createClaudeService()
   const gespraechsbericht = await claudeService.generateGespraechsbericht({
-    redactedSegments: transcript.redacted_json,
-    redactedText: transcript.redacted_text,
+    redactedSegments: transcript.raw_json, // Changed: Use raw instead of redacted
+    redactedText: transcript.raw_text, // Changed: Use raw instead of redacted
     sessionMetadata: {
       created_at: session.created_at,
       context_note: session.context_note,

@@ -20,7 +20,7 @@ export default function TranscriptPage() {
   const [session, setSession] = useState<Session | null>(null)
   const [transcript, setTranscript] = useState<Transcript | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showRaw, setShowRaw] = useState(false)
+  const [showRaw, setShowRaw] = useState(true) // Changed: Now shows raw by default
 
   useEffect(() => {
     loadData()
@@ -51,8 +51,6 @@ export default function TranscriptPage() {
       setLoading(false)
     }
   }
-
-  const canViewRaw = profile?.role === 'admin'
 
   if (loading || !session || !transcript) {
     return (
@@ -86,33 +84,32 @@ export default function TranscriptPage() {
             </div>
           </div>
 
-          {canViewRaw && (
-            <Button
-              variant={showRaw ? 'destructive' : 'outline'}
-              onClick={() => setShowRaw(!showRaw)}
-            >
-              {showRaw ? (
-                <>
-                  <EyeOff className="mr-2 h-4 w-4" />
-                  Redaktierte Version
-                </>
-              ) : (
-                <>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Rohversion anzeigen
-                </>
-              )}
-            </Button>
-          )}
+          <Button
+            variant={showRaw ? 'outline' : 'secondary'}
+            onClick={() => setShowRaw(!showRaw)}
+          >
+            {showRaw ? (
+              <>
+                <EyeOff className="mr-2 h-4 w-4" />
+                PII-redaktierte Version
+              </>
+            ) : (
+              <>
+                <Eye className="mr-2 h-4 w-4" />
+                Vollständige Version
+              </>
+            )}
+          </Button>
         </div>
 
-        {showRaw && (
-          <Card className="border-red-200 bg-red-50">
+        {!showRaw && (
+          <Card className="border-amber-200 bg-amber-50">
             <CardContent className="pt-6">
-              <p className="text-sm text-red-800">
-                <strong>Warnung:</strong> Sie sehen die Rohversion des Transkripts mit
-                möglicherweise sensiblen personenbezogenen Daten. Behandeln Sie diese
-                Informationen vertraulich und gemäß DSGVO-Richtlinien.
+              <p className="text-sm text-amber-800">
+                <strong>Hinweis:</strong> Sie sehen eine PII-redaktierte Version mit automatischen 
+                Platzhaltern ([NAME_X], etc.). Diese Funktion befindet sich in der Entwicklung und 
+                kann falsch-positive Treffer enthalten. Verwenden Sie die vollständige Version für 
+                genaue Informationen.
               </p>
             </CardContent>
           </Card>

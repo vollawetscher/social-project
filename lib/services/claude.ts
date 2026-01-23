@@ -88,11 +88,10 @@ Erstelle einen strukturierten "Gesprächsbericht" basierend auf dem folgenden tr
 - Setting/Kontext: ${sessionMetadata.context_note || 'Nicht angegeben'}
 - Interne Fallnummer: ${sessionMetadata.internal_case_id || 'Nicht angegeben'}
 
-# Transkript (PII-redaktiert)
+# Transkript
 ${formattedTranscript}
 
 # Wichtige Hinweise
-- Alle personenbezogenen Daten wurden bereits entfernt und durch Platzhalter ersetzt ([NAME_X], [ADDRESS_X], etc.)
 - KEINE Diagnosen stellen
 - KEINE rechtlichen Schlussfolgerungen ziehen
 - Risikoindikatoren als Beobachtungen formulieren: "Hinweise auf...", "wirkt...", "es wird berichtet..."
@@ -158,7 +157,7 @@ Antworte NUR mit einem validen JSON-Objekt in folgendem Format:
   "quality_notes": {
     "audio_quality": "gut/mittel/schlecht",
     "transcript_confidence": "hoch/mittel/niedrig",
-    "pii_redaction_applied": true
+    "pii_redaction_applied": false
   }
 }
 
