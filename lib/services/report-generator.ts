@@ -48,7 +48,7 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
   }
 
   transcriptsData.forEach((t: any) => {
-    const purpose = t.files?.file_purpose || 'meeting'
+    const purpose: FilePurpose = t.files?.file_purpose || 'meeting'
     transcriptsByPurpose[purpose].push(t)
   })
 

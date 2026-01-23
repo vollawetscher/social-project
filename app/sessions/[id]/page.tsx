@@ -157,7 +157,7 @@ export default function SessionDetailPage() {
           toast.error('Die Datei scheint leer oder beschädigt zu sein.')
         } else {
           toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
-          await uploadAudio(selectedFile, 0)
+          await uploadAudio(selectedFile, 0, selectedFilePurpose)
         }
       })
 
@@ -165,7 +165,7 @@ export default function SessionDetailPage() {
         if (!durationDetected) {
           URL.revokeObjectURL(audio.src)
           toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
-          await uploadAudio(selectedFile, 0)
+          await uploadAudio(selectedFile, 0, selectedFilePurpose)
         }
       }, 5000)
     }
