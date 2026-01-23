@@ -11,8 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
-import { Session } from '@/lib/types/database'
-import { Loader2, ArrowLeft, FileText, Download } from 'lucide-react'
+import { Session, FilePurpose, File as FileType } from '@/lib/types/database'
+import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle } from 'lucide-react'
 
 export default function SessionDetailPage() {
   const params = useParams()
@@ -20,11 +20,14 @@ export default function SessionDetailPage() {
   const sessionId = params.id as string
 
   const [session, setSession] = useState<Session | null>(null)
+  const [files, setFiles] = useState<FileType[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [recordedDuration, setRecordedDuration] = useState(0)
+  const [recordedPurpose, setRecordedPurpose] = useState<FilePurpose>('meeting')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFilePurpose, setSelectedFilePurpose] = useState<FilePurpose>('meeting')
 
   useEffect(() => {
     loadSession()
@@ -37,7 +40,9 @@ export default function SessionDetailPage() {
       const response = await fetch(`/api/sessions/${sessionId}`)
       if (response.ok) {
         const data = await response.json()
-        setSession(data)
+        const { files: sessionFiles, ...sessionData } = data
+        setSession(sessionData)
+        setFiles(sessionFiles || [])
       } else {
         toast.error('Fehler beim Laden der Sitzung')
         router.push('/dashboard')
@@ -49,22 +54,25 @@ export default function SessionDetailPage() {
     }
   }
 
-  const handleRecordingComplete = (blob: Blob, duration: number) => {
+  const handleRecordingComplete = (blob: Blob, duration: number, purpose: FilePurpose) => {
     setRecordedBlob(blob)
     setRecordedDuration(duration)
+    setRecordedPurpose(purpose)
   }
 
-  const handleFileSelected = (file: File) => {
+  const handleFileSelected = (file: File, purpose: FilePurpose) => {
     setSelectedFile(file)
+    setSelectedFilePurpose(purpose)
   }
 
-  const uploadAudio = async (file: File | Blob, duration: number) => {
+  const uploadAudio = async (file: File | Blob, duration: number, purpose: FilePurpose) => {
     setUploading(true)
 
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('duration', duration.toString())
+      formData.append('purpose', purpose)
 
       const response = await fetch(`/api/sessions/${sessionId}/upload`, {
         method: 'POST',
@@ -88,7 +96,7 @@ export default function SessionDetailPage() {
 
   const handleUploadRecording = async () => {
     if (recordedBlob) {
-      await uploadAudio(recordedBlob, recordedDuration)
+      await uploadAudio(recordedBlob, recordedDuration, recordedPurpose)
     }
   }
 
@@ -137,7 +145,7 @@ export default function SessionDetailPage() {
           return
         }
 
-        await uploadAudio(selectedFile, duration)
+        await uploadAudio(selectedFile, duration, selectedFilePurpose)
       })
 
       audio.addEventListener('error', async () => {
@@ -205,6 +213,34 @@ export default function SessionDetailPage() {
     return <Badge variant={config.variant}>{config.text}</Badge>
   }
 
+  const getPurposeLabel = (purpose: FilePurpose) => {
+    const labels = {
+      context: '🎯 Kontext',
+      meeting: '💬 Besprechung',
+      dictation: '📝 Diktat',
+      instruction: '📋 Anweisungen',
+      addition: '➕ Ergänzung',
+    }
+    return labels[purpose] || purpose
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+  }
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString)
+    return date.toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   if (loading || !session) {
     return (
       <DashboardLayout>
@@ -250,7 +286,45 @@ export default function SessionDetailPage() {
           </Card>
         )}
 
-        {session.status === 'created' && session.duration_sec === 0 && (
+        {files.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Aufnahmen ({files.length})</CardTitle>
+              <CardDescription>
+                Hochgeladene Audiodateien für diese Sitzung
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {files.map((file, index) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <FileAudio className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-slate-900">
+                          {getPurposeLabel(file.file_purpose)}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          #{index + 1}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <span>{formatFileSize(file.size_bytes)}</span>
+                        <span>•</span>
+                        <span>{formatDate(file.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {session.status === 'created' && (
           <Tabs defaultValue="record" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="record">Aufnehmen</TabsTrigger>

@@ -9,6 +9,8 @@ export type Json =
 export type SessionStatus = 'created' | 'uploading' | 'transcribing' | 'summarizing' | 'done' | 'error'
 export type UserRole = 'user' | 'admin'
 export type PIIType = 'name' | 'phone' | 'email' | 'address' | 'date'
+export type FilePurpose = 'context' | 'meeting' | 'dictation' | 'instruction' | 'addition'
+export type CaseStatus = 'active' | 'closed' | 'archived'
 
 export interface Profile {
   id: string
@@ -21,9 +23,21 @@ export interface Profile {
   created_at: string
 }
 
+export interface Case {
+  id: string
+  user_id: string
+  title: string
+  client_identifier: string
+  description: string
+  status: CaseStatus
+  created_at: string
+  updated_at: string
+}
+
 export interface Session {
   id: string
   user_id: string | null
+  case_id: string | null
   created_at: string
   context_note: string
   internal_case_id: string
@@ -38,6 +52,7 @@ export interface File {
   storage_path: string
   mime_type: string
   size_bytes: number
+  file_purpose: FilePurpose
   created_at: string
 }
 
@@ -52,6 +67,7 @@ export interface TranscriptSegment {
 export interface Transcript {
   id: string
   session_id: string
+  file_id: string | null
   raw_json: TranscriptSegment[]
   redacted_json: TranscriptSegment[]
   raw_text: string

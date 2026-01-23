@@ -6,9 +6,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Mic, Square, Play, Pause, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { detectSupportedAudioFormat, isMobileSafari } from '@/lib/utils/audio-format-detector'
+import { FilePurpose } from '@/lib/types/database'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface AudioRecorderProps {
-  onRecordingComplete: (blob: Blob, duration: number) => void
+  onRecordingComplete: (blob: Blob, duration: number, purpose: FilePurpose) => void
 }
 
 export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
@@ -17,6 +25,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const [audioURL, setAudioURL] = useState<string | null>(null)
   const [duration, setDuration] = useState(0)
   const [recordingTime, setRecordingTime] = useState(0)
+  const [recordingPurpose, setRecordingPurpose] = useState<FilePurpose>('meeting')
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -99,7 +108,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         stream.getTracks().forEach((track) => track.stop())
 
         setDuration(finalDuration)
-        onRecordingComplete(blob, finalDuration)
+        onRecordingComplete(blob, finalDuration, recordingPurpose)
       }
 
       // Start recording with timeslice to capture data every 1 second
@@ -196,12 +205,40 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  const recordingTypeLabels = {
+    context: '🎯 Kontext',
+    meeting: '💬 Besprechung',
+    dictation: '📝 Diktat',
+    instruction: '📋 Anweisungen',
+    addition: '➕ Ergänzung',
+  }
+
   return (
     <Card>
       <CardContent className="pt-6">
         <div className="flex flex-col items-center space-y-4">
           {!audioURL ? (
             <>
+              {!isRecording && (
+                <div className="w-full max-w-xs">
+                  <label className="text-sm font-medium text-slate-700 mb-2 block">
+                    Was nehmen Sie auf?
+                  </label>
+                  <Select value={recordingPurpose} onValueChange={(value) => setRecordingPurpose(value as FilePurpose)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="context">{recordingTypeLabels.context}</SelectItem>
+                      <SelectItem value="meeting">{recordingTypeLabels.meeting}</SelectItem>
+                      <SelectItem value="dictation">{recordingTypeLabels.dictation}</SelectItem>
+                      <SelectItem value="instruction">{recordingTypeLabels.instruction}</SelectItem>
+                      <SelectItem value="addition">{recordingTypeLabels.addition}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="flex items-center justify-center">
                 <div
                   className={`w-24 h-24 rounded-full flex items-center justify-center ${
@@ -219,9 +256,14 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
               </div>
 
               {isRecording && (
-                <div className="text-2xl font-mono font-bold text-slate-900">
-                  {formatTime(recordingTime)}
-                </div>
+                <>
+                  <div className="text-sm font-medium text-slate-600">
+                    {recordingTypeLabels[recordingPurpose]}
+                  </div>
+                  <div className="text-2xl font-mono font-bold text-slate-900">
+                    {formatTime(recordingTime)}
+                  </div>
+                </>
               )}
 
               <div className="flex gap-2">

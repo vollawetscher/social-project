@@ -5,14 +5,23 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Upload, FileAudio, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { FilePurpose } from '@/lib/types/database'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface AudioUploaderProps {
-  onFileSelected: (file: File) => void
+  onFileSelected: (file: File, purpose: FilePurpose) => void
 }
 
 export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [filePurpose, setFilePurpose] = useState<FilePurpose>('meeting')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Speechmatics-compatible formats only
@@ -71,7 +80,7 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
   const handleFileSelect = (file: File) => {
     if (validateFile(file)) {
       setSelectedFile(file)
-      onFileSelected(file)
+      onFileSelected(file, filePurpose)
       toast.success('Datei ausgewählt: ' + file.name)
     }
   }
@@ -116,9 +125,35 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
   }
 
+  const recordingTypeLabels = {
+    context: '🎯 Kontext',
+    meeting: '💬 Besprechung',
+    dictation: '📝 Diktat',
+    instruction: '📋 Anweisungen',
+    addition: '➕ Ergänzung',
+  }
+
   return (
     <Card>
       <CardContent className="pt-6">
+        <div className="mb-4">
+          <label className="text-sm font-medium text-slate-700 mb-2 block">
+            Was laden Sie hoch?
+          </label>
+          <Select value={filePurpose} onValueChange={(value) => setFilePurpose(value as FilePurpose)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="context">{recordingTypeLabels.context}</SelectItem>
+              <SelectItem value="meeting">{recordingTypeLabels.meeting}</SelectItem>
+              <SelectItem value="dictation">{recordingTypeLabels.dictation}</SelectItem>
+              <SelectItem value="instruction">{recordingTypeLabels.instruction}</SelectItem>
+              <SelectItem value="addition">{recordingTypeLabels.addition}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {!selectedFile ? (
           <div
             onDragOver={handleDragOver}

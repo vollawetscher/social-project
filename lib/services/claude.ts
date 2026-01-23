@@ -1,13 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { GespraechsberichtJSON, TranscriptSegment } from '@/lib/types/database'
+import { GespraechsberichtJSON, TranscriptSegment, FilePurpose, Transcript } from '@/lib/types/database'
 
 export interface ClaudeConfig {
   apiKey: string
 }
 
 export interface GespraechsberichtInput {
-  redactedSegments: TranscriptSegment[]
-  redactedText: string
+  transcriptsByPurpose: Record<FilePurpose, Transcript[]>
   sessionMetadata: {
     created_at: string
     context_note: string
@@ -66,38 +65,104 @@ export class ClaudeService {
   }
 
   private buildPrompt(input: GespraechsberichtInput): string {
-    const { redactedSegments, redactedText, sessionMetadata } = input
+    const { transcriptsByPurpose, sessionMetadata } = input
 
-    const formattedTranscript = redactedSegments
+    const duration = this.formatDuration(sessionMetadata.duration_sec)
+
+    // Build sections for each recording type
+    let promptSections = `Du bist ein spezialisiertes KI-System zur Erstellung von strukturierten Gesprächsberichten für professionelle Dokumentation.
+
+# Aufgabe
+Erstelle einen strukturierten "Gesprächsbericht" basierend auf den folgenden Aufnahmen. Der Bericht dient zur professionellen Dokumentation.
+
+# Metadaten
+- Datum: ${new Date(sessionMetadata.created_at).toLocaleDateString('de-DE')}
+- Dauer: ${duration}
+- Kontext: ${sessionMetadata.context_note || 'Nicht angegeben'}
+- Interne Fallnummer: ${sessionMetadata.internal_case_id || 'Nicht angegeben'}
+
+`
+
+    // Add context recordings (preparation/background)
+    if (transcriptsByPurpose.context.length > 0) {
+      promptSections += `# Kontext-Aufnahmen (Vorbereitung)\n`
+      promptSections += `Diese Aufnahmen enthalten Hintergrundinformationen und Vorbereitung. Nutze sie als Kontext für die Analyse des Hauptgesprächs.\n\n`
+      transcriptsByPurpose.context.forEach((t, idx) => {
+        const formatted = this.formatTranscript(t.raw_json)
+        promptSections += `## Kontext ${idx + 1}\n${formatted}\n\n`
+      })
+    }
+
+    // Add main meeting recordings
+    if (transcriptsByPurpose.meeting.length > 0) {
+      promptSections += `# Haupt-Gespräch(e)\n`
+      promptSections += `Dies ist/sind das/die Hauptgespräch(e), worauf der Bericht fokussieren soll.\n\n`
+      transcriptsByPurpose.meeting.forEach((t, idx) => {
+        const formatted = this.formatTranscript(t.raw_json)
+        promptSections += `## Gespräch ${idx + 1}\n${formatted}\n\n`
+      })
+    } else {
+      throw new Error('No main meeting recording found')
+    }
+
+    // Add dictation recordings (professional notes)
+    if (transcriptsByPurpose.dictation.length > 0) {
+      promptSections += `# Professionelle Nachnotizen (Diktat)\n`
+      promptSections += `Diese Aufnahmen enthalten professionelle Beobachtungen und Einschätzungen nach dem Gespräch. Integriere diese Perspektiven in den Bericht.\n\n`
+      transcriptsByPurpose.dictation.forEach((t, idx) => {
+        const formatted = this.formatTranscript(t.raw_json)
+        promptSections += `## Diktat ${idx + 1}\n${formatted}\n\n`
+      })
+    }
+
+    // Add instruction recordings
+    if (transcriptsByPurpose.instruction.length > 0) {
+      promptSections += `# Anweisungen/Aufgaben\n`
+      promptSections += `Diese Aufnahmen enthalten spezifische Anweisungen oder Aufgaben. Füge diese in den Abschnitt "Nächste Schritte" ein.\n\n`
+      transcriptsByPurpose.instruction.forEach((t, idx) => {
+        const formatted = this.formatTranscript(t.raw_json)
+        promptSections += `## Anweisungen ${idx + 1}\n${formatted}\n\n`
+      })
+    }
+
+    // Add addition recordings (supplements)
+    if (transcriptsByPurpose.addition.length > 0) {
+      promptSections += `# Ergänzungen\n`
+      promptSections += `Diese Aufnahmen enthalten zusätzliche Informationen, die später hinzugefügt wurden. Integriere sie an geeigneten Stellen.\n\n`
+      transcriptsByPurpose.addition.forEach((t, idx) => {
+        const formatted = this.formatTranscript(t.raw_json)
+        promptSections += `## Ergänzung ${idx + 1}\n${formatted}\n\n`
+      })
+    }
+
+    promptSections += `
+# Wichtige Hinweise
+- Der Fokus liegt auf dem/den Hauptgespräch(en)
+- Nutze Kontext-Aufnahmen als Hintergrundinformation
+- Integriere professionelle Nachnotizen (Diktate) in deine Analyse
+- Füge Anweisungen bei den "Nächsten Schritten" hinzu
+- KEINE Diagnosen stellen
+- KEINE rechtlichen Schlussfolgerungen ziehen
+- Risikoindikatoren als Beobachtungen formulieren: "Hinweise auf...", "wirkt...", "es wird berichtet..."
+- Präzise, sachlich und knapp schreiben
+`
+
+    promptSections += this.getOutputFormatSection(sessionMetadata)
+
+    return promptSections
+  }
+
+  private formatTranscript(segments: TranscriptSegment[]): string {
+    return segments
       .map((seg) => {
         const timeCode = this.formatTimecode(seg.start_ms)
         return `[${timeCode}] ${seg.speaker}: ${seg.text}`
       })
       .join('\n')
+  }
 
-    const duration = this.formatDuration(sessionMetadata.duration_sec)
-
-    return `Du bist ein spezialisiertes KI-System zur Erstellung von strukturierten Gesprächsberichten für die Soziale Arbeit.
-
-# Aufgabe
-Erstelle einen strukturierten "Gesprächsbericht" basierend auf dem folgenden transkribierten Gespräch. Der Bericht dient zur Dokumentation in der Sozialen Arbeit.
-
-# Metadaten
-- Datum: ${new Date(sessionMetadata.created_at).toLocaleDateString('de-DE')}
-- Dauer: ${duration}
-- Setting/Kontext: ${sessionMetadata.context_note || 'Nicht angegeben'}
-- Interne Fallnummer: ${sessionMetadata.internal_case_id || 'Nicht angegeben'}
-
-# Transkript
-${formattedTranscript}
-
-# Wichtige Hinweise
-- KEINE Diagnosen stellen
-- KEINE rechtlichen Schlussfolgerungen ziehen
-- Risikoindikatoren als Beobachtungen formulieren: "Hinweise auf...", "wirkt...", "es wird berichtet..."
-- Deutsch verwenden
-- Präzise, sachlich und knapp schreiben
-
+  private getOutputFormatSection(sessionMetadata: any): string {
+    return `
 # Ausgabeformat
 Antworte NUR mit einem validen JSON-Objekt in folgendem Format:
 

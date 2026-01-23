@@ -1,5 +1,6 @@
 import { createClaudeService } from '@/lib/services/claude'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { FilePurpose, Transcript } from '@/lib/types/database'
 
 export async function generateReport(sessionId: string, supabase: SupabaseClient) {
   console.log('[ReportGenerator] Starting for session:', sessionId)
@@ -16,23 +17,53 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     throw new Error('Session not found')
   }
 
-  console.log('[ReportGenerator] Fetching transcript...')
-  const { data: transcript, error: transcriptError } = await supabase
+  console.log('[ReportGenerator] Fetching all transcripts with file information...')
+  const { data: transcriptsData, error: transcriptError } = await supabase
     .from('transcripts')
-    .select('*')
+    .select(`
+      *,
+      files:file_id (
+        id,
+        file_purpose,
+        created_at
+      )
+    `)
     .eq('session_id', sessionId)
-    .single()
+    .order('created_at', { ascending: true })
 
-  if (transcriptError || !transcript) {
-    console.error('[ReportGenerator] No transcript found:', transcriptError)
-    throw new Error('No transcript found')
+  if (transcriptError || !transcriptsData || transcriptsData.length === 0) {
+    console.error('[ReportGenerator] No transcripts found:', transcriptError)
+    throw new Error('No transcripts found')
   }
 
-  console.log('[ReportGenerator] Calling Claude API with RAW transcript (unredacted)...')
+  console.log(`[ReportGenerator] Found ${transcriptsData.length} transcript(s)`)
+
+  // Structure transcripts by purpose
+  const transcriptsByPurpose: Record<FilePurpose, Transcript[]> = {
+    context: [],
+    meeting: [],
+    dictation: [],
+    instruction: [],
+    addition: []
+  }
+
+  transcriptsData.forEach((t: any) => {
+    const purpose = t.files?.file_purpose || 'meeting'
+    transcriptsByPurpose[purpose].push(t)
+  })
+
+  console.log('[ReportGenerator] Transcripts by purpose:', {
+    context: transcriptsByPurpose.context.length,
+    meeting: transcriptsByPurpose.meeting.length,
+    dictation: transcriptsByPurpose.dictation.length,
+    instruction: transcriptsByPurpose.instruction.length,
+    addition: transcriptsByPurpose.addition.length
+  })
+
+  console.log('[ReportGenerator] Calling Claude API with structured transcripts...')
   const claudeService = createClaudeService()
   const gespraechsbericht = await claudeService.generateGespraechsbericht({
-    redactedSegments: transcript.raw_json, // Changed: Use raw instead of redacted
-    redactedText: transcript.raw_text, // Changed: Use raw instead of redacted
+    transcriptsByPurpose,
     sessionMetadata: {
       created_at: session.created_at,
       context_note: session.context_note,
