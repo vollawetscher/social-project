@@ -62,7 +62,9 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
 
   console.log('[ReportGenerator] Calling Claude API with structured transcripts...')
   const claudeService = createClaudeService()
-  const gespraechsbericht = await claudeService.generateGespraechsbericht({
+  
+  // Generate generic report with automatic topic detection
+  const report = await claudeService.generateReport({
     transcriptsByPurpose,
     sessionMetadata: {
       created_at: session.created_at,
@@ -71,6 +73,8 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
       duration_sec: session.duration_sec,
     },
   })
+
+  console.log('[ReportGenerator] Report generated for domain:', report.detected_domain)
 
   console.log('[ReportGenerator] Deleting existing reports (if any)...')
   await supabase
@@ -83,7 +87,7 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     .from('reports')
     .insert({
       session_id: sessionId,
-      claude_json: gespraechsbericht,
+      claude_json: report,
     })
 
   if (reportError) {
@@ -98,5 +102,5 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     .eq('id', sessionId)
 
   console.log('[ReportGenerator] Complete!')
-  return gespraechsbericht
+  return report
 }
