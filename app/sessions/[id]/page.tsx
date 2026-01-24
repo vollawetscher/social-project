@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { AudioUploader } from '@/components/audio/AudioUploader'
+import { BugReporter } from '@/components/error/BugReporter'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -336,8 +337,8 @@ export default function SessionDetailPage() {
   // Build breadcrumb items
   const breadcrumbItems = session.case_id
     ? [
-        { label: 'Fälle', href: '/dashboard' },
-        { label: 'Fall', href: `/cases/${session.case_id}` },
+        { label: 'Projekte', href: '/dashboard' },
+        { label: 'Projekt', href: `/cases/${session.case_id}` },
         { label: session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}` },
       ]
     : [
@@ -369,7 +370,15 @@ export default function SessionDetailPage() {
               <p className="text-slate-600 mt-1">{session.context_note}</p>
             )}
           </div>
-          {getStatusBadge(session.status)}
+          <div className="flex items-center gap-2">
+            {getStatusBadge(session.status)}
+            <BugReporter
+              caseId={session.case_id}
+              sessionId={session.id}
+              variant="ghost"
+              size="sm"
+            />
+          </div>
         </div>
 
         {session.last_error && (

@@ -4,10 +4,12 @@ import { createSpeechmaticsService } from '@/lib/services/speechmatics'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
 import { generateReport } from '@/lib/services/report-generator'
+import { createErrorLogger } from '@/lib/services/error-logger'
 
 // Background job processor - runs independently of HTTP request
 async function processTranscriptionJob(sessionId: string) {
   const supabase = createClient()
+  const errorLogger = createErrorLogger(supabase)
   
   try {
     // Get all files for this session
@@ -184,6 +186,30 @@ async function processTranscriptionJob(sessionId: string) {
     console.error('[Transcribe] Error stack:', error.stack)
 
     const supabase = createClient()
+    
+    // Get case_id for error logging
+    const { data: session } = await supabase
+      .from('sessions')
+      .select('case_id, user_id')
+      .eq('id', sessionId)
+      .single()
+
+    // Log error to database for AI analysis
+    await errorLogger.log({
+      errorType: 'server_error',
+      severity: 'critical',
+      message: error.message || 'Transcription failed',
+      error,
+      sessionId,
+      caseId: session?.case_id,
+      userId: session?.user_id,
+      endpoint: '/api/sessions/[id]/transcribe',
+      metadata: {
+        step: 'transcription_job',
+        sessionId,
+      },
+    })
+
     await supabase
       .from('sessions')
       .update({
@@ -202,10 +228,11 @@ export async function POST(
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
     const supabase = createClient()
+    const errorLogger = createErrorLogger(supabase)
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id, duration_sec')
+      .select('id, duration_sec, case_id')
       .eq('id', params.id)
       .maybeSingle()
 
@@ -236,6 +263,24 @@ export async function POST(
     )
   } catch (error: any) {
     console.error('[Transcribe] Failed to start job:', error)
+
+    const supabase = createClient()
+    const errorLogger = createErrorLogger(supabase)
+
+    // Get session context for error logging
+    const { data: session } = await supabase
+      .from('sessions')
+      .select('case_id, user_id')
+      .eq('id', params.id)
+      .maybeSingle()
+
+    // Log error for debugging
+    await errorLogger.logFromRequest(error, request, {
+      sessionId: params.id,
+      caseId: session?.case_id,
+      userId: session?.user_id,
+      errorCode: '500',
+    })
 
     if (error instanceof Error) {
       const authError = handleAuthError(error)

@@ -371,7 +371,7 @@ Erstelle einen strukturierten "Gesprächsbericht" basierend auf den folgenden Au
 - Datum: ${new Date(sessionMetadata.created_at).toLocaleDateString('de-DE')}
 - Dauer: ${duration}
 - Kontext: ${sessionMetadata.context_note || 'Nicht angegeben'}
-- Interne Fallnummer: ${sessionMetadata.internal_case_id || 'Nicht angegeben'}
+- Interne Projektnummer: ${sessionMetadata.internal_case_id || 'Nicht angegeben'}
 
 `
 

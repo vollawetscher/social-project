@@ -54,11 +54,11 @@ export default function CaseDetailPage() {
         const data = await response.json()
         setCaseData(data)
       } else {
-        toast.error('Fehler beim Laden des Falls')
+        toast.error('Fehler beim Laden des Projekts')
         router.push('/dashboard')
       }
     } catch (error) {
-      toast.error('Fehler beim Laden des Falls')
+      toast.error('Fehler beim Laden des Projekts')
     } finally {
       setLoading(false)
     }
@@ -191,8 +191,8 @@ export default function CaseDetailPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         <Breadcrumbs
           items={[
-            { label: 'Fälle', href: '/dashboard' },
-            { label: caseData.title || 'Unbenannter Fall' },
+            { label: 'Projekte', href: '/dashboard' },
+            { label: caseData.title || 'Unbenanntes Projekt' },
           ]}
         />
         
@@ -208,9 +208,9 @@ export default function CaseDetailPage() {
           <div className="flex-1">
             <EditableTitle
               value={caseData.title}
-              fallback="Unbenannter Fall"
+              fallback="Unbenanntes Projekt"
               onSave={handleUpdateTitle}
-              placeholder="Fallname eingeben"
+              placeholder="Projektname eingeben"
             />
             {caseData.description && (
               <p className="text-slate-600 mt-1">{caseData.description}</p>
@@ -249,14 +249,14 @@ export default function CaseDetailPage() {
               Sitzungen ({caseData.sessions.length})
             </CardTitle>
             <CardDescription>
-              Alle Sitzungen für diesen Fall
+              Alle Sitzungen für dieses Projekt
             </CardDescription>
           </CardHeader>
           <CardContent>
             {caseData.sessions.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
                 <p>Noch keine Sitzungen</p>
-                <p className="text-sm mt-1">Erstellen Sie Ihre erste Sitzung für diesen Fall</p>
+                <p className="text-sm mt-1">Erstellen Sie Ihre erste Sitzung für dieses Projekt</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -305,9 +305,9 @@ export default function CaseDetailPage() {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Fall bearbeiten</DialogTitle>
+            <DialogTitle>Projekt bearbeiten</DialogTitle>
             <DialogDescription>
-              Aktualisieren Sie die Falldetails
+              Aktualisieren Sie die Projektdetails
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -337,7 +337,7 @@ export default function CaseDetailPage() {
               <Label htmlFor="edit-description">Beschreibung (optional)</Label>
               <Textarea
                 id="edit-description"
-                placeholder="Zusätzliche Informationen zum Fall..."
+                placeholder="Zusätzliche Informationen zum Projekt..."
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 rows={4}

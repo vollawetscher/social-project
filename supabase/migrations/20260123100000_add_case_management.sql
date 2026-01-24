@@ -1,8 +1,9 @@
 /*
-  # Add Case Management Feature
+  # Add Case Management Feature (Projects)
   
   1. New Table
     - `cases` table for tracking clients/patients across multiple sessions
+    - Note: "cases" is database name, but displayed as "Projekte" in German UI
     
   2. Changes
     - Add `case_id` to sessions table (nullable for backward compatibility)
@@ -87,5 +88,5 @@ CREATE TRIGGER update_cases_updated_at_trigger
   EXECUTE FUNCTION update_cases_updated_at();
 
 -- Add comment
-COMMENT ON TABLE cases IS 'Tracks clients/patients across multiple sessions for case continuity';
-COMMENT ON COLUMN sessions.case_id IS 'Links session to a case. Nullable for backward compatibility with standalone sessions.';
+COMMENT ON TABLE cases IS 'Tracks clients/patients across multiple sessions for project/case continuity. Displayed as "Projekte" in German UI.';
+COMMENT ON COLUMN sessions.case_id IS 'Links session to a project/case. Nullable for backward compatibility with standalone sessions.';
