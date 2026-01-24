@@ -168,26 +168,41 @@ export async function POST(
 
     console.log('[Transcribe] All files processed successfully')
 
-    console.log('[Transcribe] Step 4: Updating session status to summarizing...')
-    await supabase
-      .from('sessions')
-      .update({ status: 'summarizing' })
-      .eq('id', params.id)
-    console.log('[Transcribe] Step 4: Session status updated')
+    // Check if any of the transcribed files were "meeting" type
+    const hasMeetingRecording = files.some(f => f.file_purpose === 'meeting')
 
-    console.log('[Transcribe] Step 5: Generating report...')
-    try {
-      await generateReport(params.id, supabase)
-      console.log('[Transcribe] Step 5: Report generated successfully!')
-    } catch (error: any) {
-      console.error('[Transcribe] Step 5: Report generation failed:', error.message)
+    if (hasMeetingRecording) {
+      console.log('[Transcribe] Meeting recording found - generating report...')
+      
+      console.log('[Transcribe] Step 4: Updating session status to summarizing...')
       await supabase
         .from('sessions')
-        .update({
-          status: 'error',
-          last_error: error.message
-        })
+        .update({ status: 'summarizing' })
         .eq('id', params.id)
+      console.log('[Transcribe] Step 4: Session status updated')
+
+      console.log('[Transcribe] Step 5: Generating report...')
+      try {
+        await generateReport(params.id, supabase)
+        console.log('[Transcribe] Step 5: Report generated successfully!')
+      } catch (error: any) {
+        console.error('[Transcribe] Step 5: Report generation failed:', error.message)
+        await supabase
+          .from('sessions')
+          .update({
+            status: 'error',
+            last_error: error.message
+          })
+          .eq('id', params.id)
+      }
+    } else {
+      console.log('[Transcribe] No meeting recording found - skipping report generation')
+      console.log('[Transcribe] Updating session status to done (transcription only)...')
+      await supabase
+        .from('sessions')
+        .update({ status: 'done' })
+        .eq('id', params.id)
+      console.log('[Transcribe] Session marked as done')
     }
 
     console.log('[Transcribe] All steps completed successfully!')
