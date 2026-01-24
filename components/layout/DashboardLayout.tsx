@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText } from 'lucide-react'
+import { FileText, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { ChangelogDialog } from '@/components/changelog/ChangelogDialog'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -14,6 +15,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter()
   const { signOut } = useAuth()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [showChangelog, setShowChangelog] = useState(false)
 
   const handleLogout = async () => {
     try {
@@ -38,6 +40,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <h1 className="text-xl font-semibold text-slate-900">Gesprächsbericht</h1>
           </div>
           <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setShowChangelog(true)}
+              className="gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              What's New
+            </Button>
             <Button variant="ghost" onClick={() => router.push('/profile')}>
               Profile
             </Button>
@@ -51,6 +62,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>
+
+      <ChangelogDialog open={showChangelog} onOpenChange={setShowChangelog} />
     </div>
   )
 }
