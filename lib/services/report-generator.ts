@@ -72,7 +72,13 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     },
   })
 
-  console.log('[ReportGenerator] Saving report...')
+  console.log('[ReportGenerator] Deleting existing reports (if any)...')
+  await supabase
+    .from('reports')
+    .delete()
+    .eq('session_id', sessionId)
+
+  console.log('[ReportGenerator] Saving new report...')
   const { error: reportError } = await supabase
     .from('reports')
     .insert({

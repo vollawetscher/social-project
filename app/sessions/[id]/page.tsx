@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { AudioUploader } from '@/components/audio/AudioUploader'
 import { Button } from '@/components/ui/button'
@@ -11,8 +12,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
-import { Session, FilePurpose, File as FileType } from '@/lib/types/database'
-import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle } from 'lucide-react'
+import { Session, FilePurpose, File as FileType, TranscriptSegment } from '@/lib/types/database'
+import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function SessionDetailPage() {
   const params = useParams()
@@ -28,6 +46,13 @@ export default function SessionDetailPage() {
   const [recordedPurpose, setRecordedPurpose] = useState<FilePurpose>('meeting')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedFilePurpose, setSelectedFilePurpose] = useState<FilePurpose>('meeting')
+  const [viewingTranscript, setViewingTranscript] = useState<{
+    file: FileType
+    segments: TranscriptSegment[]
+    loading: boolean
+  } | null>(null)
+  const [deletingFile, setDeletingFile] = useState<FileType | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadSession()
@@ -199,6 +224,60 @@ export default function SessionDetailPage() {
     }
   }
 
+  const handleViewTranscript = async (file: FileType) => {
+    setViewingTranscript({ file, segments: [], loading: true })
+    
+    try {
+      const response = await fetch(`/api/files/${file.id}/transcript`)
+      if (response.ok) {
+        const data = await response.json()
+        setViewingTranscript({
+          file,
+          segments: data.transcript.segments,
+          loading: false,
+        })
+      } else {
+        toast.error('Fehler beim Laden des Transkripts')
+        setViewingTranscript(null)
+      }
+    } catch (error) {
+      toast.error('Fehler beim Laden des Transkripts')
+      setViewingTranscript(null)
+    }
+  }
+
+  const handleDeleteFile = async () => {
+    if (!deletingFile) return
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/files/${deletingFile.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Aufnahme gelöscht')
+        setFiles(files.filter((f) => f.id !== deletingFile.id))
+        await loadSession() // Reload to update session status if needed
+      } else {
+        const error = await response.json()
+        toast.error('Fehler beim Löschen: ' + (error.error || 'Unbekannter Fehler'))
+      }
+    } catch (error) {
+      toast.error('Fehler beim Löschen')
+    } finally {
+      setDeleting(false)
+      setDeletingFile(null)
+    }
+  }
+
+  const formatTimecode = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string }> = {
       created: { variant: 'secondary', text: 'Bereit' },
@@ -251,14 +330,28 @@ export default function SessionDetailPage() {
     )
   }
 
+  // Build breadcrumb items
+  const breadcrumbItems = session.case_id
+    ? [
+        { label: 'Fälle', href: '/dashboard' },
+        { label: 'Fall', href: `/cases/${session.case_id}` },
+        { label: session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}` },
+      ]
+    : [
+        { label: 'Sitzungen', href: '/dashboard' },
+        { label: session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}` },
+      ]
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-6">
+        <Breadcrumbs items={breadcrumbItems} />
+        
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => session.case_id ? router.push(`/cases/${session.case_id}`) : router.push('/dashboard')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -316,6 +409,23 @@ export default function SessionDetailPage() {
                         <span>•</span>
                         <span>{formatDate(file.created_at)}</span>
                       </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewTranscript(file)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Transkript
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeletingFile(file)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -431,7 +541,7 @@ export default function SessionDetailPage() {
           </Card>
         )}
 
-        {session.status === 'done' && (
+        {session.status === 'done' && files.some(f => f.file_purpose === 'meeting') && (
           <Card>
             <CardContent className="flex flex-col items-center py-12">
               <FileText className="h-12 w-12 text-green-600 mb-4" />
@@ -441,18 +551,115 @@ export default function SessionDetailPage() {
               <p className="text-slate-600 text-center mb-6">
                 Transkript und Bericht sind fertig und können angezeigt werden.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 justify-center">
                 <Button onClick={() => router.push(`/sessions/${sessionId}/transcript`)}>
                   Transkript ansehen
                 </Button>
                 <Button onClick={() => router.push(`/sessions/${sessionId}/report`)}>
                   Bericht ansehen
                 </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={triggerSummarization}
+                >
+                  Bericht neu generieren
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {session.status === 'done' && files.length > 0 && !files.some(f => f.file_purpose === 'meeting') && (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="flex flex-col items-center py-12">
+              <FileText className="h-12 w-12 text-amber-600 mb-4" />
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                Nur Kontext-/Zusatzaufnahmen
+              </h3>
+              <p className="text-slate-600 text-center mb-6">
+                Diese Sitzung enthält keine Besprechungsaufnahme. Fügen Sie eine hinzu oder
+                generieren Sie manuell einen Bericht aus den vorhandenen Aufnahmen.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={triggerSummarization}>
+                  Bericht trotzdem generieren
+                </Button>
               </div>
             </CardContent>
           </Card>
         )}
       </div>
+
+      {/* View Transcript Dialog */}
+      <Dialog open={!!viewingTranscript} onOpenChange={() => setViewingTranscript(null)}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {viewingTranscript && getPurposeLabel(viewingTranscript.file.file_purpose)}
+            </DialogTitle>
+            <DialogDescription>
+              {viewingTranscript && formatDate(viewingTranscript.file.created_at)}
+            </DialogDescription>
+          </DialogHeader>
+          {viewingTranscript?.loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {viewingTranscript?.segments.map((segment, index) => (
+                <div key={index} className="flex gap-3">
+                  <div className="text-xs text-slate-500 font-mono whitespace-nowrap">
+                    {formatTimecode(segment.start_ms)}
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-xs font-semibold text-slate-700">
+                      {segment.speaker}:
+                    </span>{' '}
+                    <span className="text-sm text-slate-900">{segment.text}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete File Confirmation Dialog */}
+      <AlertDialog open={!!deletingFile} onOpenChange={() => setDeletingFile(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aufnahme löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Aktion kann nicht rückgängig gemacht werden. Die Aufnahme, das
+              zugehörige Transkript und alle PII-Daten werden dauerhaft gelöscht.
+              {deletingFile?.file_purpose === 'meeting' && (
+                <span className="block mt-2 text-amber-600 font-medium">
+                  ⚠️ Warnung: Dies ist eine Besprechungsaufnahme. Der Bericht könnte
+                  dadurch unvollständig werden.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteFile}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Wird gelöscht...
+                </>
+              ) : (
+                'Löschen'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }

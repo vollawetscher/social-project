@@ -3,13 +3,32 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
-import { Case, Session } from '@/lib/types/database'
-import { Loader2, ArrowLeft, Plus, FolderOpen, Calendar, Clock } from 'lucide-react'
+import { Case, Session, CaseStatus } from '@/lib/types/database'
+import { Loader2, ArrowLeft, Plus, FolderOpen, Calendar, Clock, Settings } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export default function CaseDetailPage() {
   const params = useParams()
@@ -18,6 +37,11 @@ export default function CaseDetailPage() {
 
   const [caseData, setCaseData] = useState<(Case & { sessions: Session[] }) | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editDescription, setEditDescription] = useState('')
+  const [editClientId, setEditClientId] = useState('')
+  const [editStatus, setEditStatus] = useState<CaseStatus>('active')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     loadCase()
@@ -37,6 +61,42 @@ export default function CaseDetailPage() {
       toast.error('Fehler beim Laden des Falls')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOpenEditDialog = () => {
+    if (!caseData) return
+    setEditDescription(caseData.description)
+    setEditClientId(caseData.client_identifier)
+    setEditStatus(caseData.status)
+    setShowEditDialog(true)
+  }
+
+  const handleSaveDetails = async () => {
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/cases/${caseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: editDescription,
+          client_identifier: editClientId,
+          status: editStatus,
+        }),
+      })
+
+      if (response.ok) {
+        const updated = await response.json()
+        setCaseData((prev) => prev ? { ...prev, ...updated } : null)
+        setShowEditDialog(false)
+        toast.success('Änderungen gespeichert')
+      } else {
+        toast.error('Fehler beim Speichern')
+      }
+    } catch (error) {
+      toast.error('Fehler beim Speichern')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -129,6 +189,13 @@ export default function CaseDetailPage() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6">
+        <Breadcrumbs
+          items={[
+            { label: 'Fälle', href: '/dashboard' },
+            { label: caseData.title || 'Unbenannter Fall' },
+          ]}
+        />
+        
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button
@@ -155,6 +222,13 @@ export default function CaseDetailPage() {
             )}
           </div>
           <Badge>{caseData.status === 'active' ? 'Aktiv' : caseData.status === 'closed' ? 'Geschlossen' : 'Archiviert'}</Badge>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleOpenEditDialog}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Actions */}
@@ -226,6 +300,70 @@ export default function CaseDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Case Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fall bearbeiten</DialogTitle>
+            <DialogDescription>
+              Aktualisieren Sie die Falldetails
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select value={editStatus} onValueChange={(value) => setEditStatus(value as CaseStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Aktiv</SelectItem>
+                  <SelectItem value="closed">Geschlossen</SelectItem>
+                  <SelectItem value="archived">Archiviert</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-client-id">Klient-ID (optional)</Label>
+              <Input
+                id="edit-client-id"
+                placeholder="z.B. K-2024-001"
+                value={editClientId}
+                onChange={(e) => setEditClientId(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Beschreibung (optional)</Label>
+              <Textarea
+                id="edit-description"
+                placeholder="Zusätzliche Informationen zum Fall..."
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditDialog(false)}
+            >
+              Abbrechen
+            </Button>
+            <Button onClick={handleSaveDetails} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Wird gespeichert...
+                </>
+              ) : (
+                'Speichern'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }

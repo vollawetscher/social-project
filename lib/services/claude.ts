@@ -102,7 +102,13 @@ Erstelle einen strukturierten "Gesprächsbericht" basierend auf den folgenden Au
         promptSections += `## Gespräch ${idx + 1}\n${formatted}\n\n`
       })
     } else {
-      throw new Error('No main meeting recording found')
+      // No meeting recordings - use available recordings as main content
+      const totalRecordings = Object.values(transcriptsByPurpose).flat().length
+      if (totalRecordings === 0) {
+        throw new Error('No recordings found for report generation')
+      }
+      promptSections += `# Hinweis\n`
+      promptSections += `Diese Sitzung enthält keine Hauptbesprechungsaufnahme. Der Bericht basiert auf den verfügbaren Aufnahmen (Kontext, Diktat, Anweisungen oder Ergänzungen).\n\n`
     }
 
     // Add dictation recordings (professional notes)
