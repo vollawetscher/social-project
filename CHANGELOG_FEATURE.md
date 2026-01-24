@@ -86,7 +86,7 @@ To add new changelog entries, edit `/lib/constants/changelog.ts`:
 ## Current Changelog Content
 
 The changelog currently documents:
-- **v1.4.0**: Case Management & Recording Types
+- **v1.4.0**: Project Management (renamed from Cases), Bug Reporter, Recording Types
 - **v1.3.0**: Phone Authentication & Security improvements
 - **v1.2.0**: MVP Public Access
 - **v1.1.0**: Core features (Audio, Transcription, PII Redaction, Reports)

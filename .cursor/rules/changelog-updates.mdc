@@ -1,0 +1,89 @@
+---
+description: Remember to update the changelog when adding user-facing features
+alwaysApply: true
+---
+
+# Changelog Update Rule
+
+When adding **user-facing features, improvements, or fixes**, update the changelog.
+
+## When to Update Changelog
+
+✅ **Update for:**
+- New features users can see/use
+- UI/UX improvements
+- Bug fixes that affect user experience
+- Security improvements
+- Performance improvements users will notice
+
+❌ **Skip for:**
+- Internal refactoring (no user impact)
+- Code cleanup
+- Test additions
+- Documentation updates
+- Build configuration changes
+
+## How to Update
+
+Edit `/lib/constants/changelog.ts`:
+
+```typescript
+export const changelog: ChangelogVersion[] = [
+  {
+    version: '1.5.0',  // Increment appropriately
+    date: 'January 25, 2026',  // Today's date
+    entries: [
+      {
+        version: '1.5.0',
+        date: 'January 25, 2026',
+        category: 'feature',  // or 'improvement', 'fix', 'security'
+        title: 'Short, Clear Feature Name',
+        description: 'User-friendly description of what this does and why it matters to users.',
+      },
+    ],
+  },
+  // ... existing versions
+];
+```
+
+## Categories
+
+| Category | Use For |
+|----------|---------|
+| `feature` | New capabilities/features |
+| `improvement` | Enhancements to existing features |
+| `fix` | Bug fixes |
+| `security` | Security updates |
+
+## Writing Good Entries
+
+✅ **Good:**
+- Title: "Bug Reporter"
+- Description: "Report issues directly from the app. We'll automatically capture context to help fix problems faster."
+
+❌ **Bad:**
+- Title: "Error Logging System"
+- Description: "Added ErrorLogger service with API endpoints for error capture and AI analysis."
+
+**Key:** Write for end users, not developers. Focus on benefits, not implementation.
+
+## Version Numbering
+
+- **1.X.0**: New features
+- **1.x.Y**: Improvements or fixes
+- Group related changes under the same version
+
+## Example Commit Pattern
+
+When committing feature changes:
+```bash
+git commit -m "feat: add feature name
+- Implement feature
+- Update changelog with user-facing description"
+```
+
+## Current Changelog Location
+
+- File: `/lib/constants/changelog.ts`
+- UI Component: `/components/changelog/ChangelogDialog.tsx`
+- Access: "What's New" button in dashboard header and profile page

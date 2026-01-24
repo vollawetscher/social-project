@@ -21,8 +21,15 @@ export const changelog: ChangelogVersion[] = [
         version: '1.4.0',
         date: 'January 24, 2026',
         category: 'feature',
-        title: 'Case Management',
-        description: 'Organize your recordings by case or client. Track multiple sessions for the same case, manage case status, and keep all related conversations together.',
+        title: 'Project Management (formerly Cases)',
+        description: 'Organize your recordings by project or client. Track multiple sessions for the same project, manage project status, and keep all related conversations together. Note: Previously called "Cases" - now renamed to "Projects" for better clarity.',
+      },
+      {
+        version: '1.4.0',
+        date: 'January 24, 2026',
+        category: 'feature',
+        title: 'Bug Reporter',
+        description: 'Report issues or problems directly from within the app. The system automatically captures context to help us diagnose and fix issues faster. Look for the "Problem melden" button on session pages.',
       },
       {
         version: '1.4.0',
