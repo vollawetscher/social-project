@@ -34,7 +34,7 @@ export class SpeechmaticsService {
     const config = {
       type: 'transcription',
       transcription_config: {
-        language: 'de',
+        language: 'auto',
         operating_point: 'enhanced',
         diarization: 'speaker',
         enable_entities: true,
@@ -224,11 +224,13 @@ export class SpeechmaticsService {
     fullText = segments.map((s) => s.text).join(' ')
 
     const uniqueSpeakers = new Set(segments.map(s => s.speaker))
+    const detectedLanguage = data.metadata?.language || 'en'
     console.log(`[Speechmatics] Parsed ${segments.length} segments with ${uniqueSpeakers.size} unique speakers: ${Array.from(uniqueSpeakers).join(', ')}`)
+    console.log(`[Speechmatics] Detected language: ${detectedLanguage}`)
 
     return {
       segments,
-      language: data.metadata?.language || 'de',
+      language: detectedLanguage,
       fullText,
     }
   }

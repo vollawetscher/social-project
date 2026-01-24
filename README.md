@@ -1,306 +1,201 @@
-# Gesprächsbericht
+# Generic Meeting & Conversation Transcription System
 
-A production-ready web application for social workers to record, transcribe, and generate structured reports from client conversations using AI.
+Multi-domain, multi-language transcription and report generation system with automatic domain detection and AI-powered structured reporting.
 
-## Features
+## Core Capabilities
 
-### Core Functionality
-- **Flexible Authentication**: Password-based login (for testing) and Magic Link (passwordless email) via Supabase Auth
-- **Audio Recording**: In-browser recording using MediaRecorder API (mobile + desktop)
-- **File Upload**: Support for MP3, WAV, M4A, MP4, OGG, AAC, FLAC (max 100MB) - all Speechmatics-compatible formats
-- **Automatic Transcription**: Integration with Speechmatics API for accurate German transcription with speaker diarization
-- **PII Protection**: Automatic detection and redaction of personal data (names, emails, phones, addresses, dates)
-- **AI Report Generation**: Structured "Rohbericht" (raw report) generation using Anthropic Claude
-- **PDF Export**: Download professional PDF reports
-- **Role-Based Access**: Admin users can view raw transcripts, regular users see redacted versions only
+### Multi-Domain Support
+- **Automatic Domain Detection**: Social work, healthcare, business, education, legal, customer service, or general
+- **Adaptive Reporting**: Report structure and terminology adapt to detected domain
+- **Multi-Language**: Automatic language detection (30+ languages via Speechmatics)
+- **Consistent Output**: Reports generated in the same language as the audio
 
-### Security & Compliance
-- GDPR-compliant data handling
-- Application-level PII redaction before AI processing
-- Encrypted storage via Supabase
-- Secure file storage in Supabase Storage buckets
-- Row Level Security (RLS) on all database tables
-- 90-day data retention policy (configurable)
+### Audio Processing
+- **Recording Methods**: In-browser recording + file upload (MP3, WAV, M4A, MP4, OGG, AAC, FLAC)
+- **Multi-File Sessions**: Context recordings, meeting recordings, dictations, instructions, additions
+- **Case Management**: Organize recordings into cases with metadata
+- **Speaker Diarization**: Automatic speaker identification (S1, S2, etc.)
+- **Automatic Punctuation**: Full punctuation in transcripts
+
+### AI Features
+- **Transcription**: Speechmatics API with automatic language detection
+- **Report Generation**: Claude AI with domain-aware prompting
+- **PII Detection**: Regex-based detection (currently displays unredacted for accuracy)
+- **Structured Output**: Consistent JSON format with metadata, quotes, observations, next steps
+
+### Security
+- **Authentication**: Phone OTP + Email (Magic Link & Password)
+- **Row Level Security**: PostgreSQL RLS on all tables
+- **GDPR Ready**: Data retention policies, audit trails
+- **Role-Based Access**: User vs Admin permissions
 
 ## Tech Stack
 
-- **Frontend**: Next.js 13 (App Router), React, TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL via Supabase
-- **Storage**: Supabase Storage (S3-compatible)
-- **Authentication**: Supabase Auth (Magic Links)
-- **Transcription**: Speechmatics API
-- **AI**: Anthropic Claude (Sonnet 3.5)
-- **PDF Generation**: jsPDF
+- **Frontend**: Next.js 14 App Router, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Next.js API Routes (serverless)
+- **Database**: PostgreSQL + Supabase (RLS, Storage, Auth)
+- **Transcription**: Speechmatics API v2 (auto language detection, diarization, punctuation)
+- **AI**: Anthropic Claude Sonnet 4.5 (domain detection, report generation)
+- **PDF**: jsPDF
 
-## Prerequisites
+## Architecture
 
-Before you begin, ensure you have:
-- Node.js 18+ installed
-- A Supabase account and project
-- A Speechmatics API key
-- An Anthropic API key
-
-## Environment Variables
-
-Create or update your `.env` file with the following variables:
-
-```bash
-# Supabase Configuration (auto-configured)
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# External API Keys (REQUIRED)
-SPEECHMATICS_API_KEY=your_speechmatics_api_key_here
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-
-# App Configuration
-NEXT_PUBLIC_APP_URL=http://localhost:3000  # Change in production
+### Processing Pipeline
+```
+1. Audio Upload → Supabase Storage
+2. Transcription → Speechmatics (language auto-detected, speakers identified)
+3. Database → Store transcript with detected language
+4. Domain Detection → Claude analyzes transcript for domain/topic
+5. Report Generation → Claude generates structured report in detected language
+6. PDF Export → Download formatted report
 ```
 
-### Getting API Keys
+### Key Design Decisions
+- **Stateless Transcription**: No participant names in transcripts (Sie/ich addressing)
+- **Language Flow**: Speechmatics detects → Claude uses same language for report
+- **Domain Agnostic**: System adapts prompts and structure based on detected domain
+- **Multi-File Sessions**: Support context + meeting + dictation recordings per session
+- **Unredacted Display**: PII detection runs but displays raw transcripts (low re-identification risk)
 
-#### Speechmatics
-1. Sign up at [https://www.speechmatics.com/](https://www.speechmatics.com/)
-2. Navigate to your account settings
-3. Generate an API key
-4. Copy the key to `SPEECHMATICS_API_KEY` in `.env`
+## Quick Start
 
-#### Anthropic Claude
-1. Sign up at [https://console.anthropic.com/](https://console.anthropic.com/)
-2. Navigate to API Keys section
-3. Create a new API key
-4. Copy the key to `ANTHROPIC_API_KEY` in `.env`
+### Prerequisites
+- Node.js 18+
+- Supabase project (database + storage + auth)
+- Speechmatics API key
+- Anthropic API key
 
-## Installation
+### Environment Variables
+```bash
+# Supabase (from your Supabase project settings)
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 
-1. **Install Dependencies**
+# API Keys
+SPEECHMATICS_API_KEY=xxx  # speechmatics.com
+ANTHROPIC_API_KEY=sk-ant-xxx  # console.anthropic.com
+
+# App URL
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Installation
 
 ```bash
 npm install
+npm run dev  # Starts on http://localhost:3000
 ```
 
-2. **Database Setup**
+### Database Schema
 
-The database schema has already been applied via Supabase migrations. The following tables are created:
-- `profiles` - User profiles extending Supabase Auth
-- `sessions` - Recording sessions with metadata
-- `files` - Audio file metadata
-- `transcripts` - Transcription results (raw + redacted)
-- `pii_hits` - PII redaction audit trail
-- `reports` - AI-generated Rohberichte
+Migrations in `supabase/migrations/` create:
 
-Storage bucket `rohbericht-audio` is also configured automatically.
+**Core Tables:**
+- `profiles` - User accounts (phone/email auth, role)
+- `cases` - Case management (client identifiers, status)
+- `sessions` - Recording sessions (context notes, status tracking)
+- `files` - Audio files (mime type, purpose: context/meeting/dictation/instruction/addition)
+- `transcripts` - Speechmatics output (raw/redacted segments, detected language)
+- `reports` - Claude-generated reports (detected domain + language, structured JSON)
+- `pii_hits` - PII detection audit trail
 
-3. **Enable Password Authentication (for Testing)**
+**Storage:**
+- `rohbericht-audio` bucket for audio files
 
-For testing in environments where email delivery doesn't work (like StackBlitz), password authentication is already configured. If you need to enable it in Supabase:
+### First Login
 
-1. Go to your Supabase Dashboard
-2. Navigate to Authentication > Providers
-3. Ensure "Email" provider is enabled
-4. Disable "Confirm email" for testing (optional)
-
-4. **Create Initial Admin User**
-
-After first login (via password or Magic Link), update your user role in Supabase:
-
+Create admin user after signup:
 ```sql
--- Run this in Supabase SQL Editor
-UPDATE profiles
-SET role = 'admin'
-WHERE email = 'your-email@example.com';
+UPDATE profiles SET role = 'admin' WHERE email = 'your@email.com';
 ```
 
-## Development
+## Usage Flow
 
-Run the development server:
+1. **Create Case** (optional) - Organize multiple sessions under a case
+2. **Create Session** - Add context notes, internal reference
+3. **Upload Audio** - Record or upload files (specify purpose: context/meeting/dictation)
+4. **Automatic Processing**:
+   - Transcription with language detection
+   - Speaker diarization
+   - Domain detection
+   - Report generation in detected language
+5. **Review** - View transcript, report, export PDF
 
-```bash
-npm run dev
+## Report Structure
+
+Generated reports include:
+- **Metadata**: Date, duration, participants, detected domain/language
+- **Summary**: 2-3 sentence overview
+- **Key Quotes**: Timestamped important statements with speaker
+- **Observations**: Factual observations from conversation
+- **Topics**: Main themes discussed
+- **Positive Aspects**: Strengths, resources (domain-dependent)
+- **Concerns/Challenges**: Issues, risks (domain-dependent)
+- **Open Questions**: Unresolved items
+- **Next Steps**: Suggested actions
+
+Structure adapts based on detected domain (e.g., social work includes resources/risks, business includes action items/decisions).
+
+## Key Configuration
+
+### Speechmatics Config
+```typescript
+{
+  language: 'auto',              // Automatic language detection
+  operating_point: 'enhanced',   // Best accuracy
+  diarization: 'speaker',        // Speaker identification
+  enable_entities: true          // Punctuation marks
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+### Supported Languages (Auto-Detected)
+English, German, Spanish, French, Italian, Portuguese, Dutch, Swedish, Norwegian, Danish, Finnish, Polish, Czech, Russian, Ukrainian, Mandarin, Cantonese, Japanese, Korean, Arabic, Turkish, Hindi, and more (30+ total)
 
-## Production Build
+### Supported Domains (Auto-Detected)
+- `social_work` - Client support, case management
+- `healthcare` - Patient care, medical consultations
+- `business` - Meetings, sales, project discussions
+- `education` - Teaching, tutoring, assessments
+- `legal` - Legal consultations, advice
+- `customer_service` - Support calls, inquiries
+- `general` - Other conversations
 
-Build the application for production:
+## Common Issues
+
+**Transcription fails:**
+- Check Speechmatics API key and credits
+- Audio format must be: MP3, WAV, M4A, MP4, OGG, AAC, or FLAC (max 100MB)
+- WebM NOT supported by Speechmatics
+
+**Diarization not working:**
+- Works best with raw, unedited recordings
+- Fails on heavily produced audio (podcasts, YouTube videos with music/ads)
+- Professional audio mixing removes acoustic cues needed for speaker separation
+
+**Wrong language detected:**
+- First few seconds matter most for detection
+- Mixed-language audio may be detected as primary language
+- Very short audio (<10 sec) may misdetect
+
+**Report generation fails:**
+- Check Anthropic API key and credits
+- Ensure transcript exists and has content
+
+## Production Deployment
 
 ```bash
 npm run build
+npm start
 ```
 
-Start the production server:
+Set environment variables on your hosting platform (Vercel, Railway, etc.).
 
-```bash
-npm run start
-```
+## Notes for AI Context
 
-## User Guide
-
-### Login
-
-The application supports two authentication methods:
-
-#### Password Login (Recommended for Testing)
-1. Visit the application
-2. Select the "Passwort" tab
-3. Enter any email address (e.g., `test@example.com`)
-4. Enter a password (minimum 6 characters)
-5. Click "Registrieren" to create a new account, or "Anmelden" to log in
-
-#### Magic Link (Production)
-1. Visit the application
-2. Select the "Magic Link" tab
-3. Enter your email address
-4. Check your email for the Magic Link
-5. Click the link to log in
-
-**Note:** Magic Links may not work in development environments like StackBlitz. Use password authentication for testing.
-
-### Create a New Session
-1. Click "Neue Sitzung" on the dashboard
-2. (Optional) Enter case ID and context notes
-3. Click "Erstellen"
-
-### Record or Upload Audio
-- **Recording**: Use the "Aufnehmen" tab to record directly in your browser
-- **Upload**: Use the "Hochladen" tab to upload an existing audio file
-
-### Processing Pipeline
-1. **Upload**: Audio is stored securely in Supabase Storage
-2. **Transcription**: Sent to Speechmatics for transcription with speaker diarization
-3. **PII Redaction**: Personal data is automatically detected and redacted
-4. **Report Generation**: Claude AI creates a structured Rohbericht in German
-5. **Done**: View transcript and report, export as PDF
-
-### View Results
-- **Transcript**: View timestamped conversation with speaker labels
-- **Report**: Structured sections including summary, observations, resources, risks, next steps
-- **PDF Export**: Download professional PDF for documentation
-
-### Admin Features
-- Admins can toggle between raw and redacted transcripts
-- Access to PII mapping table (via database)
-- View all users' sessions
-
-## Database Schema
-
-### Profiles
-- Links to Supabase Auth users
-- Stores user role (user/admin)
-
-### Sessions
-- Metadata: date, context, case ID
-- Status tracking: created → uploading → transcribing → summarizing → done
-- Error logging
-
-### Files
-- Audio file metadata
-- Storage path references
-
-### Transcripts
-- Raw JSON (speaker segments with timestamps)
-- Redacted JSON (PII replaced)
-- Full text versions
-- Language detection
-
-### PII Hits
-- Type: name, phone, email, address, date
-- Placeholder mapping
-- Hashed original values
-- Timestamp in audio
-
-### Reports
-- Full Rohbericht JSON structure
-- Generated by Claude AI
-- Creation timestamp
-
-## Rohbericht Structure
-
-The AI-generated report includes:
-
-- **Metadaten**: Date, duration, setting, participants
-- **Gesprächsverlauf**: Chronological conversation flow
-- **Kernaussagen**: Key quotes with timestamps
-- **Beobachtungen**: Factual observations
-- **Themen**: Main topics discussed
-- **Ressourcen**: Strengths and protective factors
-- **Belastungen**: Risk indicators (phrased as observations, non-diagnostic)
-- **Offene Punkte**: Open questions
-- **Nächste Schritte**: Suggested next steps
-
-## Security Best Practices
-
-1. **Never commit API keys** to version control
-2. **Use environment variables** for all sensitive configuration
-3. **Enable MFA** on Supabase and API provider accounts
-4. **Regularly rotate API keys**
-5. **Monitor API usage** for unusual activity
-6. **Back up database** regularly
-7. **Review RLS policies** before modifying database structure
-8. **Keep dependencies updated** (`npm audit`)
-
-## Troubleshooting
-
-### Transcription Fails
-- Check `SPEECHMATICS_API_KEY` is correct
-- Verify audio file format is supported
-- Check Speechmatics account quota/credits
-
-### Report Generation Fails
-- Check `ANTHROPIC_API_KEY` is correct
-- Verify Claude API quota/credits
-- Check transcript was created successfully
-
-### Upload Fails
-- File size must be under 100MB
-- Supported formats: MP3, WAV, M4A, MP4, OGG, AAC, FLAC (Speechmatics-compatible only)
-- WebM is NOT supported by Speechmatics transcription service
-- Check Supabase Storage bucket permissions
-
-### Authentication Issues
-
-#### Magic Link Not Received
-- Check spam folder
-- Verify email settings in Supabase Auth
-- Ensure `NEXT_PUBLIC_APP_URL` is correct
-- **For testing environments**: Use password authentication instead
-
-#### Password Login Not Working
-- Ensure "Email" provider is enabled in Supabase Dashboard (Authentication > Providers)
-- For testing: Disable "Confirm email" requirement in Supabase Auth settings
-- Password must be at least 6 characters
-- Use "Registrieren" button to create a new account first
-
-## Data Retention
-
-Default retention period: 90 days (configurable)
-
-To delete old sessions:
-```sql
--- Run periodically via cron or manually
-DELETE FROM sessions
-WHERE created_at < NOW() - INTERVAL '90 days';
-```
-
-This will cascade delete all related records (files, transcripts, reports) due to foreign key constraints.
-
-## Support
-
-For issues or questions:
-1. Check the troubleshooting section above
-2. Review database logs in Supabase
-3. Check browser console for frontend errors
-4. Review API response errors in Network tab
-
-## License
-
-MIT
-
-## Acknowledgments
-
-- Supabase for database and authentication
-- Speechmatics for transcription services
-- Anthropic for Claude AI
-- Next.js team for the excellent framework
+**This is a generic, multi-domain transcription system, NOT limited to German social work:**
+- Language: Auto-detected (30+ languages)
+- Domain: Auto-detected (social_work, healthcare, business, education, legal, customer_service, general)
+- Report output: Same language as detected audio
+- Diarization: Speaker identification (works on raw recordings, not edited content)
+- Multi-file sessions: context + meeting + dictation + instruction + addition recordings
+- PII: Currently displays unredacted (practical re-identification risk is low for meeting transcripts)

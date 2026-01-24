@@ -20,6 +20,7 @@ export interface ReportInput {
     internal_case_id: string
     duration_sec: number
   }
+  detectedLanguage?: string  // Language detected by Speechmatics
 }
 
 // Legacy interface for backward compatibility
@@ -109,8 +110,16 @@ Respond ONLY with a JSON object in this format:
    * Generate a generic report with automatic domain detection
    */
   async generateReport(input: ReportInput): Promise<GenericReportJSON> {
+    // Use Speechmatics-detected language if provided, otherwise detect from transcript
+    const language = input.detectedLanguage || 'en'
+    console.log('[ClaudeService] Using language:', language, input.detectedLanguage ? '(from Speechmatics)' : '(default)')
+    
+    // Detect domain only (language already known)
     const detection = await this.detectDomain(input)
-    const prompt = this.buildGenericPrompt(input, detection)
+    const prompt = this.buildGenericPrompt(input, { 
+      domain: detection.domain, 
+      language: language 
+    })
 
     const message = await this.client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
@@ -134,7 +143,7 @@ Respond ONLY with a JSON object in this format:
       const reportData: GenericReportJSON = JSON.parse(jsonMatch[0])
       // Add detection metadata if not already present
       reportData.detected_domain = reportData.detected_domain || detection.domain
-      reportData.detected_language = reportData.detected_language || detection.language
+      reportData.detected_language = reportData.detected_language || language
       return reportData
     } catch (parseError: any) {
       console.error('JSON parse error:', parseError, 'JSON string:', jsonMatch[0])
