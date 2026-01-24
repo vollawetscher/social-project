@@ -36,6 +36,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const healthCheckRef = useRef<NodeJS.Timeout | null>(null)
   const lastChunkCountRef = useRef<number>(0)
   const lastHealthCheckRef = useRef<number>(0)
+  const isPageVisibleRef = useRef<boolean>(true)
 
   useEffect(() => {
     return () => {
@@ -50,6 +51,43 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       }
     }
   }, [audioURL])
+
+  // Power-saving: Pause UI timer when screen is off, but keep health monitoring active
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isVisible = document.visibilityState === 'visible'
+      isPageVisibleRef.current = isVisible
+      
+      if (isRecording) {
+        if (!isVisible) {
+          // Screen off - pause UI timer to save battery
+          if (timerRef.current) {
+            clearInterval(timerRef.current)
+            timerRef.current = null
+          }
+          console.log('[AudioRecorder] Screen off - paused UI timer (health monitoring still active)')
+        } else {
+          // Screen on - resume UI timer
+          if (!timerRef.current) {
+            timerRef.current = setInterval(() => {
+              const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
+              setRecordingTime(elapsed)
+            }, 100)
+            // Update immediately
+            const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
+            setRecordingTime(elapsed)
+          }
+          console.log('[AudioRecorder] Screen on - resumed UI timer')
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isRecording])
 
   // Play alert sound for critical recording errors
   const playErrorAlert = () => {
@@ -105,11 +143,13 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   }
 
   // Monitor recording health - check if data is being captured
+  // CRITICAL: This runs even when screen is off to detect failures
   const startHealthMonitoring = () => {
     lastChunkCountRef.current = 0
     lastHealthCheckRef.current = Date.now()
     
     // Check every 5 seconds if we're still receiving data
+    // This continues running even when page is hidden (screen off) to alert on failures
     healthCheckRef.current = setInterval(() => {
       const currentChunkCount = chunksRef.current.length
       const timeSinceLastCheck = Date.now() - lastHealthCheckRef.current
@@ -117,7 +157,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       // If we're recording and haven't received any chunks in 5+ seconds, alert
       if (currentChunkCount === lastChunkCountRef.current && timeSinceLastCheck > 5000 && !isPaused) {
         console.error('[AudioRecorder] HEALTH CHECK FAILED - No data received in 5 seconds!')
-        playErrorAlert()
+        playErrorAlert() // Audio alert works even with screen off
         toast.error('⚠️ WARNUNG: Aufnahme empfängt keine Daten! Bitte Aufnahme beenden und neu starten.', {
           duration: 10000,
         })
@@ -239,12 +279,18 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       pausedTimeRef.current = 0
       totalPausedTimeRef.current = 0
 
-      timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
-        setRecordingTime(elapsed)
-      }, 100)
+      // Only start UI timer if page is visible (power saving)
+      if (document.visibilityState === 'visible') {
+        timerRef.current = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
+          setRecordingTime(elapsed)
+        }, 100)
+      } else {
+        console.log('[AudioRecorder] Screen off - UI timer not started (will start when screen on)')
+      }
 
       // Start health monitoring to detect recording failures
+      // CRITICAL: This runs even with screen off
       startHealthMonitoring()
 
       toast.success('Aufnahme gestartet')
@@ -261,6 +307,15 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         const pauseDuration = Date.now() - pausedTimeRef.current
         totalPausedTimeRef.current += pauseDuration
         setIsPaused(false)
+        
+        // Restart UI timer if page is visible
+        if (document.visibilityState === 'visible' && !timerRef.current) {
+          timerRef.current = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
+            setRecordingTime(elapsed)
+          }, 100)
+        }
+        
         toast.info('Aufnahme fortgesetzt')
       } else {
         // Pausing - request data before pausing to ensure nothing is lost
