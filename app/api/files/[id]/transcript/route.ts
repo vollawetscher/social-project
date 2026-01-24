@@ -39,18 +39,40 @@ export async function GET(
     }
 
     // Get transcript for this file
-    const { data: transcript, error: transcriptError } = await supabase
+    // First try by file_id (new system), then fall back to session_id (legacy)
+    let transcript = null
+    let transcriptError = null
+
+    // Try file_id first (requires migration to be applied)
+    const { data: transcriptByFile, error: fileIdError } = await supabase
       .from('transcripts')
       .select('*')
       .eq('file_id', params.id)
       .maybeSingle()
+
+    if (!fileIdError && transcriptByFile) {
+      transcript = transcriptByFile
+    } else {
+      // Fall back to session-based lookup (for legacy data or if migration not applied yet)
+      const { data: transcriptBySession, error: sessionError } = await supabase
+        .from('transcripts')
+        .select('*')
+        .eq('session_id', session.id)
+        .maybeSingle()
+
+      if (sessionError) {
+        transcriptError = sessionError
+      } else {
+        transcript = transcriptBySession
+      }
+    }
 
     if (transcriptError) {
       return NextResponse.json({ error: transcriptError.message }, { status: 500 })
     }
 
     if (!transcript) {
-      return NextResponse.json({ error: 'Transcript not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Transcript not found for this recording' }, { status: 404 })
     }
 
     // Check if user is admin to determine raw vs redacted

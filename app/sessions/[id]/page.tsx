@@ -237,10 +237,13 @@ export default function SessionDetailPage() {
           loading: false,
         })
       } else {
-        toast.error('Fehler beim Laden des Transkripts')
+        const errorData = await response.json()
+        console.error('Transcript error:', errorData)
+        toast.error(errorData.error || 'Fehler beim Laden des Transkripts')
         setViewingTranscript(null)
       }
     } catch (error) {
+      console.error('Transcript fetch error:', error)
       toast.error('Fehler beim Laden des Transkripts')
       setViewingTranscript(null)
     }
