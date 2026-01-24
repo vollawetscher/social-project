@@ -93,9 +93,9 @@ Focus on:
     const aiAnalysis = this.parseAIResponse(aiResponse)
 
     // Get affected sessions
-    const affectedSessions = [
-      ...new Set(errors.map((e) => e.session_id).filter(Boolean)),
-    ] as string[]
+    const affectedSessions = Array.from(
+      new Set(errors.map((e) => e.session_id).filter(Boolean))
+    ) as string[]
 
     // Get time range
     const timestamps = errors.map((e) => new Date(e.created_at).getTime())
@@ -281,19 +281,20 @@ Provide 2-3 paragraphs analyzing:
     // Format summary
     let summary = ''
     Object.entries(grouped).forEach(([message, instances]) => {
+      const errorInstances = instances as any[]
       summary += `\nError: "${message}"\n`
-      summary += `  Occurrences: ${instances.length}\n`
-      summary += `  Severity: ${instances[0].severity}\n`
-      summary += `  Type: ${instances[0].error_type}\n`
-      summary += `  Endpoints: ${[...new Set(instances.map((i) => i.endpoint).filter(Boolean))].join(', ')}\n`
+      summary += `  Occurrences: ${errorInstances.length}\n`
+      summary += `  Severity: ${errorInstances[0].severity}\n`
+      summary += `  Type: ${errorInstances[0].error_type}\n`
+      summary += `  Endpoints: ${Array.from(new Set(errorInstances.map((i: any) => i.endpoint).filter(Boolean))).join(', ')}\n`
 
-      if (instances[0].stack_trace) {
-        const stackLines = instances[0].stack_trace.split('\n').slice(0, 3)
+      if (errorInstances[0].stack_trace) {
+        const stackLines = errorInstances[0].stack_trace.split('\n').slice(0, 3)
         summary += `  Stack: ${stackLines.join(' ')}\n`
       }
 
-      if (instances[0].metadata) {
-        summary += `  Context: ${JSON.stringify(instances[0].metadata)}\n`
+      if (errorInstances[0].metadata) {
+        summary += `  Context: ${JSON.stringify(errorInstances[0].metadata)}\n`
       }
     })
 
