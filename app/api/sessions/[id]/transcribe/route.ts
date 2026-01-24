@@ -5,35 +5,16 @@ import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
 import { generateReport } from '@/lib/services/report-generator'
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// Background job processor - runs independently of HTTP request
+async function processTranscriptionJob(sessionId: string) {
+  const supabase = createClient()
+  
   try {
-    const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
-
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('id, duration_sec')
-      .eq('id', params.id)
-      .maybeSingle()
-
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
-    }
-
-    await supabase
-      .from('sessions')
-      .update({ status: 'transcribing' })
-      .eq('id', params.id)
-
     // Get all files for this session
     const { data: files } = await supabase
       .from('files')
       .select('id, storage_path, mime_type, file_purpose')
-      .eq('session_id', params.id)
+      .eq('session_id', sessionId)
       .order('created_at', { ascending: true })
 
     if (!files || files.length === 0) {
@@ -43,9 +24,8 @@ export async function POST(
           status: 'error',
           last_error: 'No audio files found'
         })
-        .eq('id', params.id)
-
-      return NextResponse.json({ error: 'No audio files found' }, { status: 400 })
+        .eq('id', sessionId)
+      return
     }
 
     console.log(`[Transcribe] Found ${files.length} file(s) to transcribe`)
@@ -80,12 +60,8 @@ export async function POST(
             status: 'error',
             last_error: 'Failed to download audio file: ' + (downloadError?.message || 'Unknown error')
           })
-          .eq('id', params.id)
-
-        return NextResponse.json({
-          error: 'Failed to download audio file',
-          details: downloadError?.message
-        }, { status: 500 })
+          .eq('id', sessionId)
+        return
       }
 
       console.log('[Transcribe] Audio file downloaded successfully, size:', audioData.size)
@@ -98,11 +74,8 @@ export async function POST(
             status: 'error',
             last_error: 'Die Audiodatei ist zu klein oder leer. Bitte laden Sie eine gültige Audiodatei hoch.'
           })
-          .eq('id', params.id)
-
-        return NextResponse.json({
-          error: 'Audio file too small or empty'
-        }, { status: 400 })
+          .eq('id', sessionId)
+        return
       }
 
       const audioBuffer = Buffer.from(await audioData.arrayBuffer())
@@ -122,7 +95,7 @@ export async function POST(
       const { error: transcriptError } = await supabase
         .from('transcripts')
         .insert({
-          session_id: params.id,
+          session_id: sessionId,
           file_id: file.id,
           raw_json: transcript.segments,
           redacted_json: redactionResult.redactedSegments,
@@ -139,9 +112,8 @@ export async function POST(
             status: 'error',
             last_error: 'Failed to save transcript'
           })
-          .eq('id', params.id)
-
-        return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 })
+          .eq('id', sessionId)
+        return
       }
       console.log(`[Transcribe] Step 2 (File ${i + 1}): Transcript saved successfully`)
 
@@ -149,7 +121,7 @@ export async function POST(
       if (redactionResult.piiHits.length > 0) {
         const piiHitsWithSession = redactionResult.piiHits.map((hit) => ({
           ...hit,
-          session_id: params.id,
+          session_id: sessionId,
         }))
 
         const { error: piiError } = await supabase
@@ -178,12 +150,12 @@ export async function POST(
       await supabase
         .from('sessions')
         .update({ status: 'summarizing' })
-        .eq('id', params.id)
+        .eq('id', sessionId)
       console.log('[Transcribe] Step 4: Session status updated')
 
       console.log('[Transcribe] Step 5: Generating report...')
       try {
-        await generateReport(params.id, supabase)
+        await generateReport(sessionId, supabase)
         console.log('[Transcribe] Step 5: Report generated successfully!')
       } catch (error: any) {
         console.error('[Transcribe] Step 5: Report generation failed:', error.message)
@@ -193,7 +165,7 @@ export async function POST(
             status: 'error',
             last_error: error.message
           })
-          .eq('id', params.id)
+          .eq('id', sessionId)
       }
     } else {
       console.log('[Transcribe] No meeting recording found - skipping report generation')
@@ -201,23 +173,15 @@ export async function POST(
       await supabase
         .from('sessions')
         .update({ status: 'done' })
-        .eq('id', params.id)
+        .eq('id', sessionId)
       console.log('[Transcribe] Session marked as done')
     }
 
     console.log('[Transcribe] All steps completed successfully!')
-    return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('[Transcribe] CRITICAL ERROR - Exception caught:', error)
     console.error('[Transcribe] Error message:', error.message)
     console.error('[Transcribe] Error stack:', error.stack)
-
-    if (error instanceof Error) {
-      const authError = handleAuthError(error)
-      if (authError.status === 401 || authError.status === 403 || authError.status === 404) {
-        return NextResponse.json({ error: authError.message }, { status: authError.status })
-      }
-    }
 
     const supabase = createClient()
     await supabase
@@ -226,10 +190,62 @@ export async function POST(
         status: 'error',
         last_error: error.message || 'Transcription failed'
       })
+      .eq('id', sessionId)
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await requireAuth()
+    await requireSessionOwnership(params.id, user.id)
+    const supabase = createClient()
+
+    const { data: session, error: sessionError } = await supabase
+      .from('sessions')
+      .select('id, duration_sec')
+      .eq('id', params.id)
+      .maybeSingle()
+
+    if (sessionError || !session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    // Set status to transcribing
+    await supabase
+      .from('sessions')
+      .update({ status: 'transcribing' })
       .eq('id', params.id)
 
+    // Start background job (fire and forget)
+    console.log('[Transcribe] Starting background job for session:', params.id)
+    processTranscriptionJob(params.id).catch(err => {
+      console.error('[Transcribe] Background job failed:', err)
+    })
+
+    // Return immediately with 202 Accepted
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { 
+        success: true, 
+        message: 'Transcription job started',
+        status: 'transcribing'
+      },
+      { status: 202 }
+    )
+  } catch (error: any) {
+    console.error('[Transcribe] Failed to start job:', error)
+
+    if (error instanceof Error) {
+      const authError = handleAuthError(error)
+      if (authError.status === 401 || authError.status === 403 || authError.status === 404) {
+        return NextResponse.json({ error: authError.message }, { status: authError.status })
+      }
+    }
+
+    return NextResponse.json(
+      { error: error.message || 'Failed to start transcription' },
       { status: 500 }
     )
   }

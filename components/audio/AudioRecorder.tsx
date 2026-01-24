@@ -33,11 +33,17 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const pausedTimeRef = useRef<number>(0)
   const totalPausedTimeRef = useRef<number>(0)
   const recordedMimeTypeRef = useRef<string>('')
+  const healthCheckRef = useRef<NodeJS.Timeout | null>(null)
+  const lastChunkCountRef = useRef<number>(0)
+  const lastHealthCheckRef = useRef<number>(0)
 
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
+      }
+      if (healthCheckRef.current) {
+        clearInterval(healthCheckRef.current)
       }
       if (audioURL) {
         URL.revokeObjectURL(audioURL)
@@ -45,9 +51,107 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     }
   }, [audioURL])
 
+  // Play alert sound for critical recording errors
+  const playErrorAlert = () => {
+    try {
+      // Create a simple beep sound using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      
+      // Triple beep pattern for error
+      oscillator.frequency.value = 800
+      oscillator.type = 'sine'
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
+      
+      oscillator.start(audioContext.currentTime)
+      oscillator.stop(audioContext.currentTime + 0.15)
+      
+      // Second beep
+      setTimeout(() => {
+        const osc2 = audioContext.createOscillator()
+        const gain2 = audioContext.createGain()
+        osc2.connect(gain2)
+        gain2.connect(audioContext.destination)
+        osc2.frequency.value = 800
+        osc2.type = 'sine'
+        gain2.gain.setValueAtTime(0.3, audioContext.currentTime)
+        gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
+        osc2.start()
+        osc2.stop(audioContext.currentTime + 0.15)
+      }, 200)
+      
+      // Third beep
+      setTimeout(() => {
+        const osc3 = audioContext.createOscillator()
+        const gain3 = audioContext.createGain()
+        osc3.connect(gain3)
+        gain3.connect(audioContext.destination)
+        osc3.frequency.value = 800
+        osc3.type = 'sine'
+        gain3.gain.setValueAtTime(0.3, audioContext.currentTime)
+        gain3.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15)
+        osc3.start()
+        osc3.stop(audioContext.currentTime + 0.15)
+      }, 400)
+    } catch (error) {
+      console.error('[AudioRecorder] Failed to play alert sound:', error)
+    }
+  }
+
+  // Monitor recording health - check if data is being captured
+  const startHealthMonitoring = () => {
+    lastChunkCountRef.current = 0
+    lastHealthCheckRef.current = Date.now()
+    
+    // Check every 5 seconds if we're still receiving data
+    healthCheckRef.current = setInterval(() => {
+      const currentChunkCount = chunksRef.current.length
+      const timeSinceLastCheck = Date.now() - lastHealthCheckRef.current
+      
+      // If we're recording and haven't received any chunks in 5+ seconds, alert
+      if (currentChunkCount === lastChunkCountRef.current && timeSinceLastCheck > 5000 && !isPaused) {
+        console.error('[AudioRecorder] HEALTH CHECK FAILED - No data received in 5 seconds!')
+        playErrorAlert()
+        toast.error('⚠️ WARNUNG: Aufnahme empfängt keine Daten! Bitte Aufnahme beenden und neu starten.', {
+          duration: 10000,
+        })
+      }
+      
+      lastChunkCountRef.current = currentChunkCount
+      lastHealthCheckRef.current = Date.now()
+    }, 5000)
+  }
+
+  const stopHealthMonitoring = () => {
+    if (healthCheckRef.current) {
+      clearInterval(healthCheckRef.current)
+      healthCheckRef.current = null
+    }
+  }
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      
+      // Monitor for stream ending unexpectedly
+      stream.getAudioTracks().forEach(track => {
+        track.onended = () => {
+          console.error('[AudioRecorder] Audio track ended unexpectedly!')
+          if (isRecording) {
+            playErrorAlert()
+            toast.error('⚠️ KRITISCH: Mikrofon-Zugriff wurde beendet! Aufnahme könnte unvollständig sein.', {
+              duration: 15000,
+            })
+            stopHealthMonitoring()
+          }
+        }
+      })
 
       const audioFormat = detectSupportedAudioFormat()
       console.log('[AudioRecorder] Using audio format:', audioFormat)
@@ -76,7 +180,18 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         }
       }
 
+      // Add error handler
+      mediaRecorder.onerror = (event: any) => {
+        console.error('[AudioRecorder] MediaRecorder error:', event.error)
+        playErrorAlert()
+        toast.error('⚠️ KRITISCHER FEHLER bei der Aufnahme! Bitte sofort beenden und neu starten.', {
+          duration: 15000,
+        })
+        stopHealthMonitoring()
+      }
+
       mediaRecorder.onstop = async () => {
+        stopHealthMonitoring()
         // Wait for any pending dataavailable events to fire
         await new Promise(resolve => setTimeout(resolve, 200))
         
@@ -99,7 +214,10 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             minExpectedSize,
             chunks: chunksRef.current.length
           })
-          toast.error(`Warnung: Aufnahme könnte unvollständig sein (${finalDuration}s aufgezeichnet)`)
+          playErrorAlert()
+          toast.error(`⚠️ Warnung: Aufnahme könnte unvollständig sein (${finalDuration}s aufgezeichnet, aber nur ${Math.round(blob.size / 1024)}KB Daten)`, {
+            duration: 10000,
+          })
         }
         
         const url = URL.createObjectURL(blob)
@@ -125,6 +243,9 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
         setRecordingTime(elapsed)
       }, 100)
+
+      // Start health monitoring to detect recording failures
+      startHealthMonitoring()
 
       toast.success('Aufnahme gestartet')
     } catch (error) {
@@ -164,6 +285,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         clearInterval(timerRef.current)
       }
       
+      stopHealthMonitoring()
+      
       // Force final buffer flush before stopping
       // This ensures the last chunk of data is captured
       console.log('[AudioRecorder] Requesting final data flush before stop')
@@ -190,6 +313,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   }
 
   const discardRecording = () => {
+    stopHealthMonitoring()
     if (audioURL) {
       URL.revokeObjectURL(audioURL)
     }
