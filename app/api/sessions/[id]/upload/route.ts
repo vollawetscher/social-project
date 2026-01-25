@@ -24,16 +24,24 @@ export async function POST(
     const formData = await request.formData()
     const file = formData.get('file') as File
     const duration = parseInt(formData.get('duration') as string || '0', 10)
+    const filePurpose = (formData.get('purpose') as string || 'meeting') as 'context' | 'meeting' | 'dictation' | 'instruction' | 'addition'
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    // Validate file purpose
+    const validPurposes = ['context', 'meeting', 'dictation', 'instruction', 'addition']
+    if (!validPurposes.includes(filePurpose)) {
+      return NextResponse.json({ error: 'Invalid file purpose' }, { status: 400 })
     }
 
     console.log('[Upload] Received file:', {
       name: file.name,
       type: file.type,
       size: file.size,
-      duration: duration
+      duration: duration,
+      purpose: filePurpose
     })
 
     if (file.size < 1024) {
@@ -150,6 +158,7 @@ export async function POST(
         storage_path: storagePath,
         mime_type: file.type,
         size_bytes: file.size,
+        file_purpose: filePurpose,
       })
 
     if (fileRecordError) {

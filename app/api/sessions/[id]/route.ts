@@ -21,7 +21,17 @@ export async function GET(
       return NextResponse.json({ error: error.message }, { status: 404 })
     }
 
-    return NextResponse.json(session)
+    // Also fetch files for this session
+    const { data: files } = await supabase
+      .from('files')
+      .select('*')
+      .eq('session_id', params.id)
+      .order('created_at', { ascending: true })
+
+    return NextResponse.json({
+      ...session,
+      files: files || []
+    })
   } catch (error) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)

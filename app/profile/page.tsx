@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
+import { ChangelogDialog } from '@/components/changelog/ChangelogDialog';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showChangelog, setShowChangelog] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -72,11 +74,24 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle>Your profile</CardTitle>
-            <CardDescription>Manage your account details.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Your profile</CardTitle>
+                <CardDescription>Manage your account details.</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowChangelog(true)}
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                What's New
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSave} className="space-y-6">
@@ -123,6 +138,8 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      <ChangelogDialog open={showChangelog} onOpenChange={setShowChangelog} />
     </div>
   );
 }

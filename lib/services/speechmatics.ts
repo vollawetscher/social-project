@@ -34,9 +34,10 @@ export class SpeechmaticsService {
     const config = {
       type: 'transcription',
       transcription_config: {
-        language: 'de',
+        language: 'auto',
         operating_point: 'enhanced',
         diarization: 'speaker',
+        enable_entities: true,
       },
     }
 
@@ -196,10 +197,21 @@ export class SpeechmaticsService {
           }
           currentSpeaker = speaker
         } else {
+          // Add space before word
           currentSegment.text += ' ' + word.content
           currentSegment.end_ms = endMs
           if (word.confidence && currentSegment.confidence) {
             currentSegment.confidence = (currentSegment.confidence + word.confidence) / 2
+          }
+        }
+      } else if (result.type === 'punctuation') {
+        // Add punctuation directly to the current segment without space
+        const punctuation = result.alternatives[0]
+        if (currentSegment) {
+          currentSegment.text += punctuation.content
+          // Update end time if punctuation has timing
+          if (result.end_time) {
+            currentSegment.end_ms = Math.floor(result.end_time * 1000)
           }
         }
       }
@@ -212,11 +224,13 @@ export class SpeechmaticsService {
     fullText = segments.map((s) => s.text).join(' ')
 
     const uniqueSpeakers = new Set(segments.map(s => s.speaker))
+    const detectedLanguage = data.metadata?.language || 'en'
     console.log(`[Speechmatics] Parsed ${segments.length} segments with ${uniqueSpeakers.size} unique speakers: ${Array.from(uniqueSpeakers).join(', ')}`)
+    console.log(`[Speechmatics] Detected language: ${detectedLanguage}`)
 
     return {
       segments,
-      language: data.metadata?.language || 'de',
+      language: detectedLanguage,
       fullText,
     }
   }

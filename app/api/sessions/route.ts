@@ -34,12 +34,13 @@ export async function POST(request: Request) {
     const user = await requireAuth()
     const supabase = createClient()
     const body = await request.json()
-    const { context_note = '', internal_case_id = '' } = body
+    const { context_note = '', internal_case_id = '', case_id = null } = body
 
     const { data: session, error } = await supabase
       .from('sessions')
       .insert({
         user_id: user.id,
+        case_id,
         context_note,
         internal_case_id,
         status: 'created',

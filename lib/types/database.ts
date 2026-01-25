@@ -9,6 +9,8 @@ export type Json =
 export type SessionStatus = 'created' | 'uploading' | 'transcribing' | 'summarizing' | 'done' | 'error'
 export type UserRole = 'user' | 'admin'
 export type PIIType = 'name' | 'phone' | 'email' | 'address' | 'date'
+export type FilePurpose = 'context' | 'meeting' | 'dictation' | 'instruction' | 'addition'
+export type CaseStatus = 'active' | 'closed' | 'archived'
 
 export interface Profile {
   id: string
@@ -21,9 +23,21 @@ export interface Profile {
   created_at: string
 }
 
+export interface Case {
+  id: string
+  user_id: string
+  title: string
+  client_identifier: string
+  description: string
+  status: CaseStatus
+  created_at: string
+  updated_at: string
+}
+
 export interface Session {
   id: string
   user_id: string | null
+  case_id: string | null
   created_at: string
   context_note: string
   internal_case_id: string
@@ -38,6 +52,7 @@ export interface File {
   storage_path: string
   mime_type: string
   size_bytes: number
+  file_purpose: FilePurpose
   created_at: string
 }
 
@@ -52,6 +67,7 @@ export interface TranscriptSegment {
 export interface Transcript {
   id: string
   session_id: string
+  file_id: string | null
   raw_json: TranscriptSegment[]
   redacted_json: TranscriptSegment[]
   raw_text: string
@@ -71,6 +87,55 @@ export interface PIIHit {
   created_at: string
 }
 
+// Generic types for flexible reports
+export type ReportDomain = 'social_work' | 'healthcare' | 'business' | 'education' | 'legal' | 'customer_service' | 'general'
+
+export interface ReportMetadata {
+  date: string
+  duration: string
+  setting: string
+  participants: string[]
+  topic?: string
+  detected_domain?: ReportDomain
+}
+
+export interface KeyQuote {
+  quote: string
+  timecode: string
+  speaker: string
+  context?: string
+}
+
+export interface GenericReportData {
+  metadata: ReportMetadata
+  summary_points: string[]
+  key_quotes: KeyQuote[]
+  observations: string[]
+  topics: string[]
+  positive_aspects: string[]
+  concerns_or_challenges: string[]
+  open_questions: string[]
+  suggested_next_steps: string[]
+  // Domain-specific fields (optional)
+  domain_specific?: Record<string, any>
+}
+
+export interface QualityNotes {
+  audio_quality: string
+  transcript_confidence: string
+  pii_redaction_applied: boolean
+}
+
+export interface GenericReportJSON {
+  session_id: string
+  summary_short: string
+  detected_domain: ReportDomain
+  detected_language: string
+  report: GenericReportData
+  quality_notes: QualityNotes
+}
+
+// Legacy types for backward compatibility
 export interface GespraechsberichtMetadata {
   datum: string
   dauer: string
@@ -96,12 +161,6 @@ export interface GespraechsberichtData {
   naechste_schritte_vorschlag: string[]
 }
 
-export interface QualityNotes {
-  audio_quality: string
-  transcript_confidence: string
-  pii_redaction_applied: boolean
-}
-
 export interface GespraechsberichtJSON {
   session_id: string
   summary_short: string
@@ -112,6 +171,6 @@ export interface GespraechsberichtJSON {
 export interface Report {
   id: string
   session_id: string
-  claude_json: GespraechsberichtJSON
+  claude_json: GespraechsberichtJSON | GenericReportJSON
   created_at: string
 }
