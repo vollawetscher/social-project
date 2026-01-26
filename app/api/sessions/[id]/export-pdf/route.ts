@@ -33,7 +33,11 @@ export async function GET(
     }
 
     const pdf = new jsPDF()
-    const gespraechsbericht = report.claude_json
+    const reportData = report.claude_json
+    
+    // Detect report format: generic or legacy
+    const isGenericReport = 'report' in reportData && 'detected_domain' in reportData
+    const isLegacyReport = 'gespraechsbericht' in reportData
 
     const pageWidth = pdf.internal.pageSize.getWidth()
     const margin = 20
@@ -86,47 +90,129 @@ export async function GET(
     pdf.text(session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}`, margin, yPosition)
     yPosition += 10
 
-    addSection('Zusammenfassung', gespraechsbericht.summary_short)
+    if (isGenericReport) {
+      // Generic Report Format
+      const data = reportData.report
 
-    addSection('Metadaten', [
-      `Datum: ${gespraechsbericht.gespraechsbericht.metadaten.datum}`,
-      `Dauer: ${gespraechsbericht.gespraechsbericht.metadaten.dauer}`,
-      `Setting: ${gespraechsbericht.gespraechsbericht.metadaten.setting}`,
-      `Beteiligte: ${gespraechsbericht.gespraechsbericht.metadaten.beteiligte_rollen.join(', ')}`,
-    ])
+      addSection('Summary', reportData.summary_short)
 
-    addSection('Gesprächsverlauf', gespraechsbericht.gespraechsbericht.gespraechsverlauf_kurz)
+      addSection('Metadata', [
+        `Date: ${data.metadata.date}`,
+        `Duration: ${data.metadata.duration}`,
+        `Setting: ${data.metadata.setting}`,
+        `Participants: ${data.metadata.participants.join(', ')}`,
+        ...(data.metadata.topic ? [`Topic: ${data.metadata.topic}`] : [])
+      ])
 
-    yPosition += 5
-    checkPageBreak(lineHeight * 3)
-    addText('Kernaussagen & Zitate', 14, true)
-    yPosition += 3
-    gespraechsbericht.gespraechsbericht.kernaussagen_zitate.forEach((zitat: any) => {
-      checkPageBreak(lineHeight * 2)
-      addText(`[${zitat.timecode}] ${zitat.speaker}: "${zitat.quote}"`, 10)
-      yPosition += 2
-    })
+      addSection('Key Points', data.summary_points)
 
-    addSection('Beobachtungen', gespraechsbericht.gespraechsbericht.beobachtungen)
-    addSection('Themen', gespraechsbericht.gespraechsbericht.themen)
-    addSection('Ressourcen & Schutzfaktoren', gespraechsbericht.gespraechsbericht.ressourcen_und_schutzfaktoren)
-    addSection('Belastungen & Risikoindikatoren', gespraechsbericht.gespraechsbericht.belastungen_und_risikoindikatoren)
-    addSection('Offene Punkte', gespraechsbericht.gespraechsbericht.offene_punkte)
-    addSection('Nächste Schritte (Vorschlag)', gespraechsbericht.gespraechsbericht.naechste_schritte_vorschlag)
+      if (data.key_quotes && data.key_quotes.length > 0) {
+        yPosition += 5
+        checkPageBreak(lineHeight * 3)
+        addText('Key Quotes', 14, true)
+        yPosition += 3
+        data.key_quotes.forEach((quote: any) => {
+          checkPageBreak(lineHeight * 2)
+          addText(`[${quote.timecode}] ${quote.speaker}: "${quote.quote}"`, 10)
+          if (quote.context) {
+            addText(`Context: ${quote.context}`, 9)
+          }
+          yPosition += 2
+        })
+      }
 
-    yPosition += 10
-    checkPageBreak(lineHeight * 5)
-    pdf.setFontSize(8)
-    pdf.setFont('helvetica', 'italic')
-    pdf.text('---', margin, yPosition)
-    yPosition += 5
-    pdf.text(`Erstellt: ${new Date(report.created_at).toLocaleString('de-DE')}`, margin, yPosition)
-    yPosition += 5
-    pdf.text(`Audioqualität: ${gespraechsbericht.quality_notes.audio_quality}`, margin, yPosition)
-    yPosition += 5
-    pdf.text(`Transkript-Konfidenz: ${gespraechsbericht.quality_notes.transcript_confidence}`, margin, yPosition)
-    yPosition += 5
-    pdf.text('PII-Redaktion angewendet', margin, yPosition)
+      if (data.observations && data.observations.length > 0) {
+        addSection('Observations', data.observations)
+      }
+
+      if (data.topics && data.topics.length > 0) {
+        addSection('Topics', data.topics)
+      }
+
+      if (data.positive_aspects && data.positive_aspects.length > 0) {
+        addSection('Positive Aspects', data.positive_aspects)
+      }
+
+      if (data.concerns_or_challenges && data.concerns_or_challenges.length > 0) {
+        addSection('Concerns & Challenges', data.concerns_or_challenges)
+      }
+
+      if (data.open_questions && data.open_questions.length > 0) {
+        addSection('Open Questions', data.open_questions)
+      }
+
+      if (data.suggested_next_steps && data.suggested_next_steps.length > 0) {
+        addSection('Suggested Next Steps', data.suggested_next_steps)
+      }
+
+      // Quality notes
+      yPosition += 10
+      checkPageBreak(lineHeight * 5)
+      pdf.setFontSize(8)
+      pdf.setFont('helvetica', 'italic')
+      pdf.text('---', margin, yPosition)
+      yPosition += 5
+      pdf.text(`Created: ${new Date(report.created_at).toLocaleString('de-DE')}`, margin, yPosition)
+      yPosition += 5
+      pdf.text(`Domain: ${reportData.detected_domain}`, margin, yPosition)
+      yPosition += 5
+      pdf.text(`Language: ${reportData.detected_language}`, margin, yPosition)
+      yPosition += 5
+      pdf.text(`Audio Quality: ${reportData.quality_notes.audio_quality}`, margin, yPosition)
+      yPosition += 5
+      pdf.text(`Transcript Confidence: ${reportData.quality_notes.transcript_confidence}`, margin, yPosition)
+      yPosition += 5
+      pdf.text('PII Redaction Applied', margin, yPosition)
+
+    } else if (isLegacyReport) {
+      // Legacy Social Work Report Format
+      const gespraechsbericht = reportData
+
+      addSection('Zusammenfassung', gespraechsbericht.summary_short)
+
+      addSection('Metadaten', [
+        `Datum: ${gespraechsbericht.gespraechsbericht.metadaten.datum}`,
+        `Dauer: ${gespraechsbericht.gespraechsbericht.metadaten.dauer}`,
+        `Setting: ${gespraechsbericht.gespraechsbericht.metadaten.setting}`,
+        `Beteiligte: ${gespraechsbericht.gespraechsbericht.metadaten.beteiligte_rollen.join(', ')}`,
+      ])
+
+      addSection('Gesprächsverlauf', gespraechsbericht.gespraechsbericht.gespraechsverlauf_kurz)
+
+      yPosition += 5
+      checkPageBreak(lineHeight * 3)
+      addText('Kernaussagen & Zitate', 14, true)
+      yPosition += 3
+      gespraechsbericht.gespraechsbericht.kernaussagen_zitate.forEach((zitat: any) => {
+        checkPageBreak(lineHeight * 2)
+        addText(`[${zitat.timecode}] ${zitat.speaker}: "${zitat.quote}"`, 10)
+        yPosition += 2
+      })
+
+      addSection('Beobachtungen', gespraechsbericht.gespraechsbericht.beobachtungen)
+      addSection('Themen', gespraechsbericht.gespraechsbericht.themen)
+      addSection('Ressourcen & Schutzfaktoren', gespraechsbericht.gespraechsbericht.ressourcen_und_schutzfaktoren)
+      addSection('Belastungen & Risikoindikatoren', gespraechsbericht.gespraechsbericht.belastungen_und_risikoindikatoren)
+      addSection('Offene Punkte', gespraechsbericht.gespraechsbericht.offene_punkte)
+      addSection('Nächste Schritte (Vorschlag)', gespraechsbericht.gespraechsbericht.naechste_schritte_vorschlag)
+
+      yPosition += 10
+      checkPageBreak(lineHeight * 5)
+      pdf.setFontSize(8)
+      pdf.setFont('helvetica', 'italic')
+      pdf.text('---', margin, yPosition)
+      yPosition += 5
+      pdf.text(`Erstellt: ${new Date(report.created_at).toLocaleString('de-DE')}`, margin, yPosition)
+      yPosition += 5
+      pdf.text(`Audioqualität: ${gespraechsbericht.quality_notes.audio_quality}`, margin, yPosition)
+      yPosition += 5
+      pdf.text(`Transkript-Konfidenz: ${gespraechsbericht.quality_notes.transcript_confidence}`, margin, yPosition)
+      yPosition += 5
+      pdf.text('PII-Redaktion angewendet', margin, yPosition)
+    } else {
+      // Fallback if format is unknown
+      return NextResponse.json({ error: 'Unsupported report format' }, { status: 400 })
+    }
 
     const pdfBuffer = Buffer.from(pdf.output('arraybuffer'))
 
