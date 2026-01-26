@@ -165,9 +165,9 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
     general: 'Allgemein',
   }
 
-  const domainLabels = detected_language === 'de' ? domainLabelsDE : domainLabelsEN
-
   const { report: reportData, summary_short, quality_notes, detected_domain, detected_subdomain, domain_description, detected_language } = report
+
+  const domainLabels = detected_language === 'de' ? domainLabelsDE : domainLabelsEN
 
   return (
     <div className="space-y-6">
