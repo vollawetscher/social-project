@@ -36,9 +36,15 @@ export class ClaudeService {
   }
 
   /**
-   * Detect the domain/topic of the conversation
+   * Detect the domain/topic of the conversation (with optional subdomain)
    */
-  async detectDomain(input: ReportInput): Promise<{ domain: ReportDomain; confidence: number; language: string }> {
+  async detectDomain(input: ReportInput): Promise<{ 
+    domain: ReportDomain; 
+    subdomain?: string;
+    domain_description?: string;
+    confidence: number; 
+    language: string 
+  }> {
     const { transcriptsByPurpose } = input
     
     // Get a sample of the transcript content
@@ -49,19 +55,22 @@ export class ClaudeService {
       .join('\n\n')
       .substring(0, 3000) // Limit to first 3000 chars for quick detection
 
-    const prompt = `Analyze the following conversation transcript and determine:
-1. The primary domain/topic
-2. Your confidence level (0-100)
-3. The primary language
+    const prompt = `Analyze the following conversation transcript and classify it:
 
-Possible domains:
+PRIMARY DOMAIN (choose ONE from this list):
 - social_work: Social work, case management, client support, welfare services
-- healthcare: Medical consultations, patient care, health assessments
-- business: Business meetings, sales calls, project discussions
-- education: Teaching, tutoring, educational assessments
-- legal: Legal consultations, court proceedings, legal advice
-- customer_service: Customer support, service inquiries, complaints
-- general: General conversations that don't fit specific domains
+- healthcare: Medical consultations, patient care, health assessments (physical health)
+- mental_health: Therapy, counseling, psychology, psychiatric care
+- business: General business, management, strategy, operations
+- finance: Banking, insurance, investments, accounting, financial planning
+- human_resources: HR, recruiting, personnel management, employee relations
+- public_services: Government, administration, public sector, civic services
+- legal: Law, contracts, legal advice, court proceedings
+- education: Teaching, training, academic, tutoring
+- technology: IT support, software, engineering, technical assistance
+- customer_service: Customer support, service inquiries, complaints, helpdesk
+- creative: Media, marketing, design, journalism, research, communications
+- general: Other or mixed domains that don't fit above categories
 
 Transcript sample:
 ${sampleText}
@@ -69,6 +78,8 @@ ${sampleText}
 Respond ONLY with a JSON object in this format:
 {
   "domain": "one of the domain values above",
+  "subdomain": "specific area (free text, e.g., 'HR Recruiting', 'Trauma Therapy', 'Sales Call')",
+  "domain_description": "one sentence natural description",
   "confidence": 85,
   "language": "en or de or other language code",
   "reasoning": "brief explanation"
@@ -97,6 +108,8 @@ Respond ONLY with a JSON object in this format:
       console.log('[ClaudeService] Domain detection:', detection)
       return {
         domain: detection.domain as ReportDomain,
+        subdomain: detection.subdomain,
+        domain_description: detection.domain_description,
         confidence: detection.confidence,
         language: detection.language,
       }
@@ -143,6 +156,8 @@ Respond ONLY with a JSON object in this format:
       const reportData: GenericReportJSON = JSON.parse(jsonMatch[0])
       // Add detection metadata if not already present
       reportData.detected_domain = reportData.detected_domain || detection.domain
+      reportData.detected_subdomain = reportData.detected_subdomain || detection.subdomain
+      reportData.domain_description = reportData.domain_description || detection.domain_description
       reportData.detected_language = reportData.detected_language || language
       return reportData
     } catch (parseError: any) {
@@ -334,10 +349,16 @@ Create a structured report based on the following recordings. The report is for 
     const contexts: Record<ReportDomain, string> = {
       social_work: 'Sozialarbeit - Fokus auf Klient*innen, Ressourcen, Belastungen und nächste Schritte',
       healthcare: 'Gesundheitswesen - Fokus auf Patientenversorgung, Symptome, Behandlung und Follow-up',
+      mental_health: 'Psychische Gesundheit - Fokus auf therapeutische Prozesse, emotionales Wohlbefinden und mentale Unterstützung',
       business: 'Business - Fokus auf Entscheidungen, Aktionspunkte und Geschäftsergebnisse',
-      education: 'Bildung - Fokus auf Lernfortschritt, Herausforderungen und pädagogische Strategien',
+      finance: 'Finanzwesen - Fokus auf finanzielle Beratung, Transaktionen, Risiken und Compliance',
+      human_resources: 'Personalwesen - Fokus auf Mitarbeiter*innen, Recruiting, Entwicklung und Personalmanagement',
+      public_services: 'Öffentlicher Dienst - Fokus auf Bürgerservice, Verwaltungsprozesse und öffentliche Anliegen',
       legal: 'Rechtswesen - Fokus auf rechtliche Punkte, Vereinbarungen und nächste rechtliche Schritte',
+      education: 'Bildung - Fokus auf Lernfortschritt, Herausforderungen und pädagogische Strategien',
+      technology: 'Technologie - Fokus auf technische Probleme, Lösungen und IT-Support',
       customer_service: 'Kundenservice - Fokus auf Kundenanliegen, Lösungen und Zufriedenheit',
+      creative: 'Kreativ/Medien - Fokus auf Konzepte, Strategien, Produktion und kreative Prozesse',
       general: 'Allgemein - Umfassende, flexible Dokumentation',
     }
     return contexts[domain] || contexts.general
@@ -347,10 +368,16 @@ Create a structured report based on the following recordings. The report is for 
     const contexts: Record<ReportDomain, string> = {
       social_work: 'Social Work - Focus on clients, resources, challenges, and next steps',
       healthcare: 'Healthcare - Focus on patient care, symptoms, treatment, and follow-up',
+      mental_health: 'Mental Health - Focus on therapeutic processes, emotional wellbeing, and mental support',
       business: 'Business - Focus on decisions, action items, and business outcomes',
-      education: 'Education - Focus on learning progress, challenges, and pedagogical strategies',
+      finance: 'Finance - Focus on financial advice, transactions, risks, and compliance',
+      human_resources: 'Human Resources - Focus on employees, recruiting, development, and personnel management',
+      public_services: 'Public Services - Focus on citizen services, administrative processes, and public concerns',
       legal: 'Legal - Focus on legal points, agreements, and next legal steps',
+      education: 'Education - Focus on learning progress, challenges, and pedagogical strategies',
+      technology: 'Technology - Focus on technical issues, solutions, and IT support',
       customer_service: 'Customer Service - Focus on customer concerns, solutions, and satisfaction',
+      creative: 'Creative/Media - Focus on concepts, strategies, production, and creative processes',
       general: 'General - Comprehensive, flexible documentation',
     }
     return contexts[domain] || contexts.general
@@ -468,6 +495,8 @@ Antworte NUR mit einem validen JSON-Objekt in folgendem Format:
   "session_id": "${sessionMetadata.internal_case_id || 'unbekannt'}",
   "summary_short": "2-3 Sätze Zusammenfassung",
   "detected_domain": "${domain}",
+  "detected_subdomain": "Spezifischer Bereich (z.B. 'HR Recruiting', 'Trauma-Therapie', 'Verkaufsgespräch')",
+  "domain_description": "Ein-Satz-Beschreibung des Gesprächsthemas",
   "detected_language": "de",
   "report": {
     "metadata": {
@@ -539,6 +568,8 @@ Respond ONLY with a valid JSON object in the following format:
   "session_id": "${sessionMetadata.internal_case_id || 'unknown'}",
   "summary_short": "2-3 sentence summary",
   "detected_domain": "${domain}",
+  "detected_subdomain": "Specific area (e.g., 'HR Recruiting', 'Trauma Therapy', 'Sales Call')",
+  "domain_description": "One-sentence description of the conversation topic",
   "detected_language": "en",
   "report": {
     "metadata": {

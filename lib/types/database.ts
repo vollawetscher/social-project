@@ -88,7 +88,21 @@ export interface PIIHit {
 }
 
 // Generic types for flexible reports
-export type ReportDomain = 'social_work' | 'healthcare' | 'business' | 'education' | 'legal' | 'customer_service' | 'general'
+// Broad categories for consistency, with optional subdomain for specificity
+export type ReportDomain = 
+  | 'social_work'           // Social work, case management
+  | 'healthcare'            // Medical, nursing, patient care (physical health)
+  | 'mental_health'         // Therapy, counseling, psychology
+  | 'business'              // General business, management, strategy
+  | 'finance'               // Banking, insurance, investments, accounting
+  | 'human_resources'       // HR, recruiting, personnel management
+  | 'public_services'       // Government, administration, public sector
+  | 'legal'                 // Law, contracts, legal advice
+  | 'education'             // Teaching, training, academic
+  | 'technology'            // IT support, software, engineering
+  | 'customer_service'      // Customer support, service inquiries
+  | 'creative'              // Media, marketing, design, research
+  | 'general'               // Other or mixed domains
 
 export interface ReportMetadata {
   date: string
@@ -130,6 +144,8 @@ export interface GenericReportJSON {
   session_id: string
   summary_short: string
   detected_domain: ReportDomain
+  detected_subdomain?: string        // Free-form specific subdomain (e.g., "HR Recruiting", "Trauma Therapy")
+  domain_description?: string        // Natural language description of the domain/topic
   detected_language: string
   report: GenericReportData
   quality_notes: QualityNotes

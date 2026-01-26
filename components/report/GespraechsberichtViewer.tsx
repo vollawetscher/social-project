@@ -18,15 +18,95 @@ function isGenericReport(report: any): report is GenericReportJSON {
   return 'detected_domain' in report && 'report' in report
 }
 
+// Translations for report sections
+const translations: Record<string, Record<string, string>> = {
+  de: {
+    'Detected Domain': 'Erkannte Domäne',
+    'Language': 'Sprache',
+    'Summary': 'Zusammenfassung',
+    'Metadata': 'Metadaten',
+    'Date': 'Datum',
+    'Duration': 'Dauer',
+    'Setting': 'Setting',
+    'Participants': 'Beteiligte',
+    'Topic': 'Thema',
+    'Key Points': 'Kernpunkte',
+    'Main takeaways from the conversation': 'Hauptpunkte des Gesprächs',
+    'Key Quotes': 'Kernaussagen & Zitate',
+    'Important statements with timestamps': 'Wichtige Aussagen mit Zeitstempel',
+    'Observations': 'Beobachtungen',
+    'Factual observations': 'Sachliche Feststellungen',
+    'Topics': 'Themen',
+    'Main topics discussed': 'Hauptthemen des Gesprächs',
+    'Positive Aspects': 'Positive Aspekte',
+    'Strengths and supporting factors': 'Stärken und unterstützende Faktoren',
+    'Concerns & Challenges': 'Belastungen & Herausforderungen',
+    'Observed challenges and concerns': 'Beobachtete Herausforderungen und Bedenken',
+    'Open Questions': 'Offene Fragen',
+    'Items requiring clarification': 'Klärungsbedarf',
+    'Suggested Next Steps': 'Nächste Schritte (Vorschlag)',
+    'Recommended actions and follow-ups': 'Empfohlene Maßnahmen und Folgeaktionen',
+    'Quality Notes': 'Qualitätshinweise',
+    'Audio Quality': 'Audioqualität',
+    'Transcript Confidence': 'Transkript-Konfidenz',
+    'PII Redaction': 'PII-Redaktion',
+    'Applied': 'Angewendet',
+    'Not applied': 'Nicht angewendet',
+    'Context': 'Kontext',
+    'copied': 'kopiert',
+    'Failed to copy': 'Fehler beim Kopieren'
+  },
+  en: {
+    'Detected Domain': 'Detected Domain',
+    'Language': 'Language',
+    'Summary': 'Summary',
+    'Metadata': 'Metadata',
+    'Date': 'Date',
+    'Duration': 'Duration',
+    'Setting': 'Setting',
+    'Participants': 'Participants',
+    'Topic': 'Topic',
+    'Key Points': 'Key Points',
+    'Main takeaways from the conversation': 'Main takeaways from the conversation',
+    'Key Quotes': 'Key Quotes',
+    'Important statements with timestamps': 'Important statements with timestamps',
+    'Observations': 'Observations',
+    'Factual observations': 'Factual observations',
+    'Topics': 'Topics',
+    'Main topics discussed': 'Main topics discussed',
+    'Positive Aspects': 'Positive Aspects',
+    'Strengths and supporting factors': 'Strengths and supporting factors',
+    'Concerns & Challenges': 'Concerns & Challenges',
+    'Observed challenges and concerns': 'Observed challenges and concerns',
+    'Open Questions': 'Open Questions',
+    'Items requiring clarification': 'Items requiring clarification',
+    'Suggested Next Steps': 'Suggested Next Steps',
+    'Recommended actions and follow-ups': 'Recommended actions and follow-ups',
+    'Quality Notes': 'Quality Notes',
+    'Audio Quality': 'Audio Quality',
+    'Transcript Confidence': 'Transcript Confidence',
+    'PII Redaction': 'PII Redaction',
+    'Applied': 'Applied',
+    'Not applied': 'Not applied',
+    'Context': 'Context',
+    'copied': 'copied',
+    'Failed to copy': 'Failed to copy'
+  }
+}
+
 // Generic Report Viewer Component
 function GenericReportViewer({ report }: { report: GenericReportJSON }) {
   const [copiedSections, setCopiedSections] = useState<Set<string>>(new Set())
+  
+  // Get translations for detected language (fallback to English)
+  const lang = report.detected_language || 'en'
+  const t = (key: string) => translations[lang]?.[key] || translations['en'][key] || key
 
   const copyToClipboard = async (text: string, sectionName: string) => {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedSections(new Set(copiedSections).add(sectionName))
-      toast.success(`${sectionName} copied`)
+      toast.success(`${sectionName} ${t('copied')}`)
       setTimeout(() => {
         setCopiedSections((prev) => {
           const next = new Set(prev)
@@ -35,7 +115,7 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         })
       }, 2000)
     } catch (error) {
-      toast.error('Failed to copy')
+      toast.error(t('Failed to copy'))
     }
   }
 
@@ -53,17 +133,41 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
     </Button>
   )
 
-  const domainLabels: Record<string, string> = {
+  const domainLabelsEN: Record<string, string> = {
     social_work: 'Social Work',
     healthcare: 'Healthcare',
+    mental_health: 'Mental Health',
     business: 'Business',
-    education: 'Education',
+    finance: 'Finance',
+    human_resources: 'Human Resources',
+    public_services: 'Public Services',
     legal: 'Legal',
+    education: 'Education',
+    technology: 'Technology',
     customer_service: 'Customer Service',
+    creative: 'Creative/Media',
     general: 'General',
   }
 
-  const { report: reportData, summary_short, quality_notes, detected_domain, detected_language } = report
+  const domainLabelsDE: Record<string, string> = {
+    social_work: 'Sozialarbeit',
+    healthcare: 'Gesundheitswesen',
+    mental_health: 'Psychische Gesundheit',
+    business: 'Business',
+    finance: 'Finanzwesen',
+    human_resources: 'Personalwesen',
+    public_services: 'Öffentlicher Dienst',
+    legal: 'Rechtswesen',
+    education: 'Bildung',
+    technology: 'Technologie',
+    customer_service: 'Kundenservice',
+    creative: 'Kreativ/Medien',
+    general: 'Allgemein',
+  }
+
+  const domainLabels = detected_language === 'de' ? domainLabelsDE : domainLabelsEN
+
+  const { report: reportData, summary_short, quality_notes, detected_domain, detected_subdomain, domain_description, detected_language } = report
 
   return (
     <div className="space-y-6">
@@ -72,11 +176,15 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         <CardContent className="pt-6">
           <div className="flex items-center gap-3">
             <Globe className="h-5 w-5 text-blue-600" />
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-medium text-blue-900">
-                Detected Domain: {domainLabels[detected_domain] || detected_domain}
+                {t('Detected Domain')}: {domainLabels[detected_domain] || detected_domain}
+                {detected_subdomain && <span className="text-blue-700"> • {detected_subdomain}</span>}
               </p>
-              <p className="text-xs text-blue-700">Language: {detected_language.toUpperCase()}</p>
+              {domain_description && (
+                <p className="text-xs text-blue-700 mt-1 italic">{domain_description}</p>
+              )}
+              <p className="text-xs text-blue-700 mt-1">{t('Language')}: {detected_language.toUpperCase()}</p>
             </div>
           </div>
         </CardContent>
@@ -85,7 +193,7 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
       {/* Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Summary</CardTitle>
+          <CardTitle>{t('Summary')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-start justify-between gap-4">
@@ -98,23 +206,23 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
       {/* Metadata */}
       <Card>
         <CardHeader>
-          <CardTitle>Metadata</CardTitle>
+          <CardTitle>{t('Metadata')}</CardTitle>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-600">Date</p>
+            <p className="text-sm font-medium text-slate-600">{t('Date')}</p>
             <p className="text-slate-900">{reportData.metadata.date}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">Duration</p>
+            <p className="text-sm font-medium text-slate-600">{t('Duration')}</p>
             <p className="text-slate-900">{reportData.metadata.duration}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">Setting</p>
+            <p className="text-sm font-medium text-slate-600">{t('Setting')}</p>
             <p className="text-slate-900">{reportData.metadata.setting}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-600">Participants</p>
+            <p className="text-sm font-medium text-slate-600">{t('Participants')}</p>
             <div className="flex flex-wrap gap-1 mt-1">
               {reportData.metadata.participants.map((participant, idx) => (
                 <Badge key={idx} variant="secondary">
@@ -125,7 +233,7 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
           </div>
           {reportData.metadata.topic && (
             <div className="md:col-span-2">
-              <p className="text-sm font-medium text-slate-600">Topic</p>
+              <p className="text-sm font-medium text-slate-600">{t('Topic')}</p>
               <p className="text-slate-900">{reportData.metadata.topic}</p>
             </div>
           )}
@@ -136,12 +244,12 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
-            <CardTitle>Key Points</CardTitle>
-            <CardDescription>Main takeaways from the conversation</CardDescription>
+            <CardTitle>{t('Key Points')}</CardTitle>
+            <CardDescription>{t('Main takeaways from the conversation')}</CardDescription>
           </div>
           <CopyButton
             text={reportData.summary_points.map((p, i) => `${i + 1}. ${p}`).join('\n')}
-            section="Key Points"
+            section={t('Key Points')}
           />
         </CardHeader>
         <CardContent>
@@ -158,12 +266,12 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle>Key Quotes</CardTitle>
-              <CardDescription>Important statements with timestamps</CardDescription>
+              <CardTitle>{t('Key Quotes')}</CardTitle>
+              <CardDescription>{t('Important statements with timestamps')}</CardDescription>
             </div>
             <CopyButton
               text={reportData.key_quotes.map((q) => `[${q.timecode}] ${q.speaker}: "${q.quote}"`).join('\n\n')}
-              section="Key Quotes"
+              section={t('Key Quotes')}
             />
           </CardHeader>
           <CardContent>
@@ -176,7 +284,7 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
                   </div>
                   <p className="text-slate-700 italic">"{quote.quote}"</p>
                   {quote.context && (
-                    <p className="text-sm text-slate-500 mt-2">Context: {quote.context}</p>
+                    <p className="text-sm text-slate-500 mt-2">{t('Context')}: {quote.context}</p>
                   )}
                 </div>
               ))}
@@ -190,12 +298,12 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle>Observations</CardTitle>
-              <CardDescription>Factual observations</CardDescription>
+              <CardTitle>{t('Observations')}</CardTitle>
+              <CardDescription>{t('Factual observations')}</CardDescription>
             </div>
             <CopyButton
               text={reportData.observations.map((o, i) => `${i + 1}. ${o}`).join('\n')}
-              section="Observations"
+              section={t('Observations')}
             />
           </CardHeader>
           <CardContent>
@@ -213,12 +321,12 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle>Topics</CardTitle>
-              <CardDescription>Main topics discussed</CardDescription>
+              <CardTitle>{t('Topics')}</CardTitle>
+              <CardDescription>{t('Main topics discussed')}</CardDescription>
             </div>
             <CopyButton
               text={reportData.topics.join(', ')}
-              section="Topics"
+              section={t('Topics')}
             />
           </CardHeader>
           <CardContent>
@@ -238,12 +346,12 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         <Card className="border-green-200 bg-green-50">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle className="text-green-900">Positive Aspects</CardTitle>
-              <CardDescription>Strengths and supporting factors</CardDescription>
+              <CardTitle className="text-green-900">{t('Positive Aspects')}</CardTitle>
+              <CardDescription>{t('Strengths and supporting factors')}</CardDescription>
             </div>
             <CopyButton
               text={reportData.positive_aspects.map((p, i) => `${i + 1}. ${p}`).join('\n')}
-              section="Positive Aspects"
+              section={t('Positive Aspects')}
             />
           </CardHeader>
           <CardContent>
@@ -261,12 +369,12 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         <Card className="border-orange-200 bg-orange-50">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle className="text-orange-900">Concerns & Challenges</CardTitle>
-              <CardDescription>Observed challenges and concerns</CardDescription>
+              <CardTitle className="text-orange-900">{t('Concerns & Challenges')}</CardTitle>
+              <CardDescription>{t('Observed challenges and concerns')}</CardDescription>
             </div>
             <CopyButton
               text={reportData.concerns_or_challenges.map((c, i) => `${i + 1}. ${c}`).join('\n')}
-              section="Concerns"
+              section={t('Concerns & Challenges')}
             />
           </CardHeader>
           <CardContent>
@@ -284,12 +392,12 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle>Open Questions</CardTitle>
-              <CardDescription>Items requiring clarification</CardDescription>
+              <CardTitle>{t('Open Questions')}</CardTitle>
+              <CardDescription>{t('Items requiring clarification')}</CardDescription>
             </div>
             <CopyButton
               text={reportData.open_questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
-              section="Open Questions"
+              section={t('Open Questions')}
             />
           </CardHeader>
           <CardContent>
@@ -307,12 +415,12 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-              <CardTitle>Suggested Next Steps</CardTitle>
-              <CardDescription>Recommended actions and follow-ups</CardDescription>
+              <CardTitle>{t('Suggested Next Steps')}</CardTitle>
+              <CardDescription>{t('Recommended actions and follow-ups')}</CardDescription>
             </div>
             <CopyButton
               text={reportData.suggested_next_steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-              section="Next Steps"
+              section={t('Suggested Next Steps')}
             />
           </CardHeader>
           <CardContent>
@@ -328,21 +436,21 @@ function GenericReportViewer({ report }: { report: GenericReportJSON }) {
       {/* Quality Notes */}
       <Card className="border-slate-200 bg-slate-50">
         <CardHeader>
-          <CardTitle className="text-sm">Quality Notes</CardTitle>
+          <CardTitle className="text-sm">{t('Quality Notes')}</CardTitle>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-4 text-sm">
           <div>
-            <p className="font-medium text-slate-600">Audio Quality</p>
+            <p className="font-medium text-slate-600">{t('Audio Quality')}</p>
             <p className="text-slate-900">{quality_notes.audio_quality}</p>
           </div>
           <div>
-            <p className="font-medium text-slate-600">Transcript Confidence</p>
+            <p className="font-medium text-slate-600">{t('Transcript Confidence')}</p>
             <p className="text-slate-900">{quality_notes.transcript_confidence}</p>
           </div>
           <div>
-            <p className="font-medium text-slate-600">PII Redaction</p>
+            <p className="font-medium text-slate-600">{t('PII Redaction')}</p>
             <p className="text-slate-900">
-              {quality_notes.pii_redaction_applied ? 'Applied' : 'Not applied'}
+              {quality_notes.pii_redaction_applied ? t('Applied') : t('Not applied')}
             </p>
           </div>
         </CardContent>

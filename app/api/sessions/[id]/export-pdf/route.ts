@@ -147,7 +147,7 @@ export async function GET(
 
       // Quality notes
       yPosition += 10
-      checkPageBreak(lineHeight * 5)
+      checkPageBreak(lineHeight * 7)
       pdf.setFontSize(8)
       pdf.setFont('helvetica', 'italic')
       pdf.text('---', margin, yPosition)
@@ -156,6 +156,17 @@ export async function GET(
       yPosition += 5
       pdf.text(`Domain: ${reportData.detected_domain}`, margin, yPosition)
       yPosition += 5
+      if (reportData.detected_subdomain) {
+        pdf.text(`Subdomain: ${reportData.detected_subdomain}`, margin, yPosition)
+        yPosition += 5
+      }
+      if (reportData.domain_description) {
+        const descLines = pdf.splitTextToSize(`Topic: ${reportData.domain_description}`, pageWidth - 2 * margin)
+        descLines.forEach((line: string) => {
+          pdf.text(line, margin, yPosition)
+          yPosition += 5
+        })
+      }
       pdf.text(`Language: ${reportData.detected_language}`, margin, yPosition)
       yPosition += 5
       pdf.text(`Audio Quality: ${reportData.quality_notes.audio_quality}`, margin, yPosition)
