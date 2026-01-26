@@ -81,23 +81,40 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
 
   console.log('[ReportGenerator] Report generated for domain:', report.detected_domain, 'in language:', report.detected_language)
 
-  console.log('[ReportGenerator] Deleting existing reports (if any)...')
-  await supabase
+  console.log('[ReportGenerator] Fetching existing report ID (if any)...')
+  const { data: existingReport } = await supabase
     .from('reports')
-    .delete()
+    .select('id')
     .eq('session_id', sessionId)
+    .maybeSingle()
 
-  console.log('[ReportGenerator] Saving new report...')
-  const { error: reportError } = await supabase
-    .from('reports')
-    .insert({
-      session_id: sessionId,
-      claude_json: report,
-    })
+  if (existingReport) {
+    console.log('[ReportGenerator] Updating existing report...')
+    const { error: updateError } = await supabase
+      .from('reports')
+      .update({
+        claude_json: report,
+        created_at: new Date().toISOString(),
+      })
+      .eq('id', existingReport.id)
 
-  if (reportError) {
-    console.error('[ReportGenerator] Failed to save report:', reportError)
-    throw new Error('Failed to save report')
+    if (updateError) {
+      console.error('[ReportGenerator] Failed to update report:', updateError)
+      throw new Error('Failed to update report')
+    }
+  } else {
+    console.log('[ReportGenerator] Creating new report...')
+    const { error: insertError } = await supabase
+      .from('reports')
+      .insert({
+        session_id: sessionId,
+        claude_json: report,
+      })
+
+    if (insertError) {
+      console.error('[ReportGenerator] Failed to insert report:', insertError)
+      throw new Error('Failed to insert report')
+    }
   }
 
   console.log('[ReportGenerator] Updating session status...')
