@@ -23,10 +23,11 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   React.useEffect(() => {
-    if (!authLoading && user) {
+    // Only redirect if we're sure user is authenticated (don't wait for authLoading)
+    if (user) {
       router.push('/dashboard');
     }
-  }, [user, authLoading, router]);
+  }, [user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +49,8 @@ export default function LoginPage() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // Show login form immediately, don't wait for auth check
+  // If user is already logged in, the useEffect above will redirect
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">

@@ -27,29 +27,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const loadUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
 
-      if (session?.user) {
-        setSession(session)
-        setUser(session.user)
+        if (session?.user) {
+          setSession(session)
+          setUser(session.user)
 
-        const { data: profileData, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle()
+          // Load profile in parallel (don't block on it)
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle()
+            .then(({ data: profileData, error }) => {
+              if (error) {
+                console.error('Error loading profile:', error)
+                return
+              }
 
-        if (error) {
-          console.error('Error loading profile:', error)
+              if (profileData) {
+                setProfile(profileData)
+                setAuthMethod(profileData.auth_method as 'email' | 'phone')
+              }
+            })
         }
-
-        if (profileData) {
-          setProfile(profileData)
-          setAuthMethod(profileData.auth_method as 'email' | 'phone')
-        }
+      } catch (error) {
+        console.error('Error loading session:', error)
+      } finally {
+        // Set loading to false immediately after session check
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
     loadUser()
