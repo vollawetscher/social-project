@@ -83,7 +83,7 @@ export async function GET(
 
     pdf.setFontSize(12)
     pdf.setFont('helvetica', 'normal')
-    pdf.text(session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}`, margin, yPosition)
+    pdf.text(session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}`, margin, yPosition)
     yPosition += 10
 
     addSection('Zusammenfassung', gespraechsbericht.summary_short)

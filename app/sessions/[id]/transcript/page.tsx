@@ -79,7 +79,7 @@ export default function TranscriptPage() {
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Transkript</h1>
               <p className="text-slate-600 mt-1">
-                {session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}`}
+                {session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}`}
               </p>
             </div>
           </div>
@@ -122,7 +122,7 @@ export default function TranscriptPage() {
             variant="outline"
             onClick={() => router.push(`/sessions/${sessionId}`)}
           >
-            Zurück zur Sitzung
+            Zurück zum Gespräch
           </Button>
           <Button onClick={() => router.push(`/sessions/${sessionId}/report`)}>
             Zum Bericht

@@ -130,7 +130,7 @@ export default function DashboardPage() {
       }
 
       const newSession = await response.json()
-      toast.success('Neue Sitzung erstellt')
+      toast.success('Neues Gespräch erstellt')
       router.push(`/sessions/${newSession.id}`)
     } catch (error: any) {
       console.error('Failed to create session:', error)
@@ -156,7 +156,7 @@ export default function DashboardPage() {
         throw new Error(errorData.error || 'Failed to delete session')
       }
 
-      toast.success('Sitzung gelöscht')
+      toast.success('Gespräch gelöscht')
       setSessions(sessions.filter((s) => s.id !== deleteSession.id))
     } catch (error: any) {
       console.error('Failed to delete session:', error)
@@ -213,7 +213,7 @@ export default function DashboardPage() {
           <Tabs defaultValue="cases" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="cases">Projekte ({cases.length})</TabsTrigger>
-              <TabsTrigger value="sessions">Einzelne Sitzungen ({sessions.length})</TabsTrigger>
+              <TabsTrigger value="sessions">Einzelne Gespräche ({sessions.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="cases" className="space-y-4">
@@ -232,7 +232,7 @@ export default function DashboardPage() {
                       Keine Projekte vorhanden
                     </h3>
                     <p className="text-slate-600 text-center mb-6">
-                      Erstellen Sie Ihr erstes Projekt, um Sitzungen zu verwalten
+                      Erstellen Sie Ihr erstes Projekt, um Gespräche zu verwalten
                     </p>
                     <Button onClick={() => setShowCaseDialog(true)}>
                       <Plus className="mr-2 h-4 w-4" />
@@ -252,7 +252,7 @@ export default function DashboardPage() {
                               {caseItem.title}
                             </CardTitle>
                             <CardDescription className="mt-1">
-                              {caseItem.session_count} {caseItem.session_count === 1 ? 'Sitzung' : 'Sitzungen'}
+                              {caseItem.session_count} {caseItem.session_count === 1 ? 'Gespräch' : 'Gespräche'}
                             </CardDescription>
                           </div>
                           <Badge>{caseItem.status === 'active' ? 'Aktiv' : caseItem.status === 'closed' ? 'Geschlossen' : 'Archiviert'}</Badge>
@@ -284,7 +284,7 @@ export default function DashboardPage() {
               <div className="flex justify-end">
                 <Button onClick={() => setShowSessionDialog(true)} size="lg">
                   <Plus className="mr-2 h-4 w-4" />
-                  Neue Sitzung
+                  Neues Gespräch
                 </Button>
               </div>
 
@@ -293,14 +293,14 @@ export default function DashboardPage() {
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <FileAudio className="h-12 w-12 text-slate-300 mb-4" />
                     <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                      Keine einzelnen Sitzungen
+                      Keine einzelnen Gespräche
                     </h3>
                     <p className="text-slate-600 text-center mb-6">
-                      Einzelne Sitzungen sind nicht mit einem Projekt verknüpft
+                      Einzelne Gespräche sind nicht mit einem Projekt verknüpft
                     </p>
                     <Button onClick={() => setShowSessionDialog(true)}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Einzelne Sitzung erstellen
+                      Einzelnes Gespräch erstellen
                     </Button>
                   </CardContent>
                 </Card>
@@ -312,7 +312,7 @@ export default function DashboardPage() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">
-                              {session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}`}
+                              {session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}`}
                             </CardTitle>
                             <CardDescription className="mt-1">
                               {formatDistanceToNow(new Date(session.created_at), {
@@ -367,7 +367,7 @@ export default function DashboardPage() {
           <DialogHeader>
             <DialogTitle>Neues Projekt erstellen</DialogTitle>
             <DialogDescription>
-              Erstellen Sie ein neues Projekt, um mehrere Sitzungen zu verwalten
+              Erstellen Sie ein neues Projekt, um mehrere Gespräche zu verwalten
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -420,9 +420,9 @@ export default function DashboardPage() {
       <Dialog open={showSessionDialog} onOpenChange={setShowSessionDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Neue Sitzung erstellen</DialogTitle>
+            <DialogTitle>Neues Gespräch erstellen</DialogTitle>
             <DialogDescription>
-              Einzelne Sitzung ohne Projektverknüpfung
+              Einzelnes Gespräch ohne Projektverknüpfung
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -464,7 +464,7 @@ export default function DashboardPage() {
       <AlertDialog open={!!deleteSession} onOpenChange={() => setDeleteSession(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sitzung löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Gespräch löschen?</AlertDialogTitle>
             <AlertDialogDescription>
               Diese Aktion kann nicht rückgängig gemacht werden. Alle zugehörigen Dateien,
               Transkripte und Berichte werden dauerhaft gelöscht.

@@ -182,7 +182,7 @@ export function BugReporter({
                 <AlertDescription className="text-xs text-muted-foreground">
                   <strong>Debug-Kontext wird automatisch hinzugefügt:</strong>
                   {caseId && <div>Projekt-ID: {caseId.substring(0, 8)}...</div>}
-                  {sessionId && <div>Sitzungs-ID: {sessionId.substring(0, 8)}...</div>}
+                  {sessionId && <div>Gesprächs-ID: {sessionId.substring(0, 8)}...</div>}
                   {fileId && <div>Datei-ID: {fileId.substring(0, 8)}...</div>}
                 </AlertDescription>
               </Alert>

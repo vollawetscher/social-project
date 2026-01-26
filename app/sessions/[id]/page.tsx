@@ -70,11 +70,11 @@ export default function SessionDetailPage() {
         setSession(sessionData)
         setFiles(sessionFiles || [])
       } else {
-        toast.error('Fehler beim Laden der Sitzung')
+        toast.error('Fehler beim Laden des Gesprächs')
         router.push('/dashboard')
       }
     } catch (error) {
-      toast.error('Fehler beim Laden der Sitzung')
+      toast.error('Fehler beim Laden des Gesprächs')
     } finally {
       setLoading(false)
     }
@@ -137,7 +137,7 @@ export default function SessionDetailPage() {
       if (response.ok) {
         const updatedSession = await response.json()
         setSession(updatedSession)
-        toast.success('Sitzungsname aktualisiert')
+        toast.success('Gesprächsname aktualisiert')
       } else {
         toast.error('Fehler beim Aktualisieren des Namens')
       }
@@ -339,11 +339,11 @@ export default function SessionDetailPage() {
     ? [
         { label: 'Projekte', href: '/dashboard' },
         { label: 'Projekt', href: `/cases/${session.case_id}` },
-        { label: session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}` },
+        { label: session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}` },
       ]
     : [
-        { label: 'Sitzungen', href: '/dashboard' },
-        { label: session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}` },
+        { label: 'Gespräche', href: '/dashboard' },
+        { label: session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}` },
       ]
 
   return (
@@ -362,9 +362,9 @@ export default function SessionDetailPage() {
           <div className="flex-1">
             <EditableTitle
               value={session.internal_case_id}
-              fallback={`Sitzung ${session.id.slice(0, 8)}`}
+              fallback={`Gespräch ${session.id.slice(0, 8)}`}
               onSave={handleUpdateSessionName}
-              placeholder="Sitzungsname eingeben"
+              placeholder="Gesprächsname eingeben"
             />
             {session.context_note && (
               <p className="text-slate-600 mt-1">{session.context_note}</p>
@@ -396,7 +396,7 @@ export default function SessionDetailPage() {
             <CardHeader>
               <CardTitle>Aufnahmen ({files.length})</CardTitle>
               <CardDescription>
-                Hochgeladene Audiodateien für diese Sitzung
+                Hochgeladene Audiodateien für dieses Gespräch
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -589,7 +589,7 @@ export default function SessionDetailPage() {
                 Nur Kontext-/Zusatzaufnahmen
               </h3>
               <p className="text-slate-600 text-center mb-6">
-                Diese Sitzung enthält keine Besprechungsaufnahme. Fügen Sie eine hinzu oder
+                Dieses Gespräch enthält keine Besprechungsaufnahme. Fügen Sie eine hinzu oder
                 generieren Sie manuell einen Bericht aus den vorhandenen Aufnahmen.
               </p>
               <div className="flex gap-2">
