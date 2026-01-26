@@ -132,10 +132,10 @@ export default function CaseDetailPage() {
         const session = await response.json()
         router.push(`/sessions/${session.id}`)
       } else {
-        toast.error('Fehler beim Erstellen der Sitzung')
+        toast.error('Fehler beim Erstellen des Gesprächs')
       }
     } catch (error) {
-      toast.error('Fehler beim Erstellen der Sitzung')
+      toast.error('Fehler beim Erstellen des Gesprächs')
     }
   }
 
@@ -236,7 +236,7 @@ export default function CaseDetailPage() {
           <CardContent className="pt-6">
             <Button onClick={handleCreateSession} className="w-full" size="lg">
               <Plus className="mr-2 h-4 w-4" />
-              Neue Sitzung erstellen
+              Neues Gespräch erstellen
             </Button>
           </CardContent>
         </Card>
@@ -246,17 +246,17 @@ export default function CaseDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FolderOpen className="h-5 w-5" />
-              Sitzungen ({caseData.sessions.length})
+              Gespräche ({caseData.sessions.length})
             </CardTitle>
             <CardDescription>
-              Alle Sitzungen für dieses Projekt
+              Alle Gespräche für dieses Projekt
             </CardDescription>
           </CardHeader>
           <CardContent>
             {caseData.sessions.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
-                <p>Noch keine Sitzungen</p>
-                <p className="text-sm mt-1">Erstellen Sie Ihre erste Sitzung für dieses Projekt</p>
+                <p>Noch keine Gespräche</p>
+                <p className="text-sm mt-1">Erstellen Sie Ihr erstes Gespräch für dieses Projekt</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -270,7 +270,7 @@ export default function CaseDetailPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-medium text-slate-900 truncate">
-                            {session.internal_case_id || `Sitzung ${session.id.slice(0, 8)}`}
+                            {session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}`}
                           </h3>
                           {getStatusBadge(session.status)}
                         </div>

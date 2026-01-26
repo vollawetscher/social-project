@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
 import { generateReport } from '@/lib/services/report-generator'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 
 // Background job processor - runs independently of HTTP request
 async function processReportGenerationJob(sessionId: string) {
-  const supabase = createClient()
+  // Use service role client to bypass RLS in background job
+  const supabase = createServiceRoleClient()
   
   try {
     console.log('[Summarize] Starting report generation for session:', sessionId)
@@ -24,7 +25,8 @@ async function processReportGenerationJob(sessionId: string) {
     console.error('[Summarize] Error message:', error.message)
     console.error('[Summarize] Error stack:', error.stack)
 
-    const supabase = createClient()
+    // Use service role client to update error status
+    const supabase = createServiceRoleClient()
     const errorMessage = error.message || 'Report generation failed'
 
     await supabase

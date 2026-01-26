@@ -81,24 +81,24 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
 
   console.log('[ReportGenerator] Report generated for domain:', report.detected_domain, 'in language:', report.detected_language)
 
-  console.log('[ReportGenerator] Deleting existing reports (if any)...')
-  await supabase
+  console.log('[ReportGenerator] Upserting report (create or update)...')
+  const { error: upsertError } = await supabase
     .from('reports')
-    .delete()
-    .eq('session_id', sessionId)
-
-  console.log('[ReportGenerator] Saving new report...')
-  const { error: reportError } = await supabase
-    .from('reports')
-    .insert({
+    .upsert({
       session_id: sessionId,
       claude_json: report,
+      created_at: new Date().toISOString(),
+    }, {
+      onConflict: 'session_id',
+      ignoreDuplicates: false
     })
 
-  if (reportError) {
-    console.error('[ReportGenerator] Failed to save report:', reportError)
-    throw new Error('Failed to save report')
+  if (upsertError) {
+    console.error('[ReportGenerator] Failed to upsert report:', upsertError)
+    throw new Error('Failed to upsert report: ' + upsertError.message)
   }
+
+  console.log('[ReportGenerator] Report upserted successfully!')
 
   console.log('[ReportGenerator] Updating session status...')
   await supabase
