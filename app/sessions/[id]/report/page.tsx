@@ -34,7 +34,7 @@ export default function ReportPage() {
     } else {
       setIsRegenerating(false)
     }
-  }, [session?.status, sessionId])
+  }, [session?.status])
 
   const loadData = async () => {
     try {
@@ -43,9 +43,11 @@ export default function ReportPage() {
         fetch(`/api/sessions/${sessionId}/report`),
       ])
 
+      let currentSession = session
       if (sessionRes.ok) {
         const sessionData = await sessionRes.json()
         setSession(sessionData)
+        currentSession = sessionData
       }
 
       if (reportRes.ok) {
@@ -54,13 +56,13 @@ export default function ReportPage() {
       } else {
         // Only show error if session is not in summarizing state
         // (meaning report should exist but doesn't)
-        const currentSession = session || (sessionRes.ok ? await sessionRes.json() : null)
         if (currentSession?.status !== 'summarizing') {
           toast.error('Bericht nicht gefunden')
           router.push(`/sessions/${sessionId}`)
         }
       }
     } catch (error) {
+      console.error('Error loading report data:', error)
       toast.error('Fehler beim Laden der Daten')
     } finally {
       setLoading(false)
