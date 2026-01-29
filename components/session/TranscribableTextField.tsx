@@ -81,31 +81,44 @@ export function TranscribableTextField({
 
   const transcribeAudio = async (audioBlob: Blob) => {
     setTranscribing(true)
+    console.log('[Transcribe] Starting, blob size:', audioBlob.size)
+    
     try {
       const formData = new FormData()
       formData.append('file', audioBlob, 'recording.webm')
       formData.append('purpose', 'context') // Use 'context' as placeholder
 
+      console.log('[Transcribe] Sending to API...')
       const response = await fetch(`/api/sessions/${sessionId}/transcribe`, {
         method: 'POST',
         body: formData,
       })
 
       if (!response.ok) {
-        throw new Error('Transcription failed')
+        const error = await response.json()
+        console.error('[Transcribe] API Error:', error)
+        throw new Error('Transcription failed: ' + (error.error || response.statusText))
       }
 
       const data = await response.json()
+      console.log('[Transcribe] Response:', data)
+      
       const transcriptText = data.transcript?.results?.map((r: any) => r.alternatives[0].content).join(' ') || ''
+      console.log('[Transcribe] Extracted text length:', transcriptText.length)
+      
+      if (!transcriptText) {
+        toast.error('Keine Sprache erkannt - versuche es nochmal')
+        return
+      }
       
       // Append to existing text
       const newText = text ? `${text}\n\n${transcriptText}` : transcriptText
       setText(newText)
       setHasChanges(true)
-      toast.success('Transkription hinzugefügt')
-    } catch (error) {
+      toast.success(`✅ Transkription hinzugefügt (${transcriptText.length} Zeichen)`)
+    } catch (error: any) {
       console.error('Transcription error:', error)
-      toast.error('Fehler bei der Transkription')
+      toast.error(error.message || 'Fehler bei der Transkription')
     } finally {
       setTranscribing(false)
     }
@@ -118,12 +131,15 @@ export function TranscribableTextField({
 
   const handleSave = async () => {
     setSaving(true)
+    console.log('[TranscribableField] Saving:', fieldName, 'Length:', text.length)
+    
     try {
       await onSave(text)
       setHasChanges(false)
-      toast.success('Gespeichert')
-    } catch (error) {
-      toast.error('Fehler beim Speichern')
+      toast.success('✅ Gespeichert!')
+    } catch (error: any) {
+      console.error('[TranscribableField] Save error:', error)
+      toast.error('❌ Fehler beim Speichern: ' + (error.message || 'Unbekannt'))
     } finally {
       setSaving(false)
     }

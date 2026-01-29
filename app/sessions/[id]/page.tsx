@@ -185,14 +185,15 @@ export default function SessionDetailPage() {
 
       if (response.ok) {
         const data = await response.json()
-        toast.success('Context erfolgreich analysiert')
-        loadSession() // Refresh to get structured_context
-        setShowStructuredContext(true)
+        toast.success('Context erfolgreich analysiert! ✨')
+        await loadSession() // Wait for refresh
+        setShowStructuredContext(true) // Auto-show result
       } else {
         const error = await response.json()
         toast.error(error.error || 'Fehler bei der Analyse')
       }
     } catch (error) {
+      console.error('Analyze context error:', error)
       toast.error('Fehler bei der Context-Analyse')
     } finally {
       setAnalyzingContext(false)
@@ -200,6 +201,8 @@ export default function SessionDetailPage() {
   }
 
   const handleSaveField = async (fieldName: string, value: string) => {
+    console.log('[SaveField]', fieldName, 'Length:', value.length)
+    
     const response = await fetch(`/api/sessions/${sessionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -207,11 +210,17 @@ export default function SessionDetailPage() {
     })
 
     if (!response.ok) {
+      const error = await response.json()
+      console.error('[SaveField] Error:', error)
       throw new Error('Failed to save')
     }
 
     const updatedSession = await response.json()
+    console.log('[SaveField] Success:', updatedSession)
     setSession(updatedSession)
+    
+    // Force reload to ensure consistency
+    await loadSession()
   }
 
   const handleUploadFile = async () => {
@@ -512,7 +521,7 @@ export default function SessionDetailPage() {
           analyzing={analyzingContext}
         />
 
-        {(session as any).structured_context && showStructuredContext && (
+        {(session as any).structured_context && (
           <Card className="border-purple-200 bg-purple-50">
             <CardHeader>
               <div className="flex items-center gap-2">
