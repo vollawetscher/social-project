@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Session, FilePurpose, File as FileType, TranscriptSegment } from '@/lib/types/database'
-import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2 } from 'lucide-react'
+import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export default function SessionDetailPage() {
   const params = useParams()
@@ -54,6 +61,8 @@ export default function SessionDetailPage() {
   } | null>(null)
   const [deletingFile, setDeletingFile] = useState<FileType | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [analyzingContext, setAnalyzingContext] = useState(false)
+  const [showStructuredContext, setShowStructuredContext] = useState(false)
 
   useEffect(() => {
     loadSession()
@@ -143,6 +152,49 @@ export default function SessionDetailPage() {
       }
     } catch (error) {
       toast.error('Fehler beim Aktualisieren des Namens')
+    }
+  }
+
+  const handleUpdateReportLanguage = async (language: string) => {
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferred_report_language: language === 'auto' ? null : language }),
+      })
+
+      if (response.ok) {
+        const updatedSession = await response.json()
+        setSession(updatedSession)
+        toast.success('Report-Sprache aktualisiert')
+      } else {
+        toast.error('Fehler beim Aktualisieren der Sprache')
+      }
+    } catch (error) {
+      toast.error('Fehler beim Aktualisieren der Sprache')
+    }
+  }
+
+  const handleAnalyzeContext = async () => {
+    setAnalyzingContext(true)
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/analyze-context`, {
+        method: 'POST',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success('Context erfolgreich analysiert')
+        loadSession() // Refresh to get structured_context
+        setShowStructuredContext(true)
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Fehler bei der Analyse')
+      }
+    } catch (error) {
+      toast.error('Fehler bei der Context-Analyse')
+    } finally {
+      setAnalyzingContext(false)
     }
   }
 
@@ -387,6 +439,151 @@ export default function SessionDetailPage() {
               <p className="text-sm text-red-800">
                 <strong>Fehler:</strong> {session.last_error}
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Languages className="h-5 w-5 text-slate-600" />
+              <CardTitle>Report-Sprache</CardTitle>
+            </div>
+            <CardDescription>
+              Wähle die Sprache für den generierten Bericht. "Automatisch" nutzt die erkannte Audiosprache.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select
+              value={session.preferred_report_language || 'auto'}
+              onValueChange={handleUpdateReportLanguage}
+            >
+              <SelectTrigger className="w-full sm:w-[280px]">
+                <SelectValue placeholder="Sprache auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">
+                  <div className="flex items-center gap-2">
+                    <span>🤖</span>
+                    <span>Automatisch (empfohlen)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="de">
+                  <div className="flex items-center gap-2">
+                    <span>🇩🇪</span>
+                    <span>Deutsch</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="en">
+                  <div className="flex items-center gap-2">
+                    <span>🇬🇧</span>
+                    <span>English</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        {session.context_note && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-purple-600" />
+                  <CardTitle>Context Wizard</CardTitle>
+                </div>
+                <Button
+                  onClick={handleAnalyzeContext}
+                  disabled={analyzingContext}
+                  size="sm"
+                  variant={(session as any).structured_context ? "outline" : "default"}
+                >
+                  {analyzingContext && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {(session as any).structured_context ? '✨ Neu analysieren' : '🪄 Context strukturieren'}
+                </Button>
+              </div>
+              <CardDescription>
+                KI analysiert deinen Context und extrahiert Teilnehmer, Agenda, etc.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(session as any).structured_context ? (
+                <div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowStructuredContext(!showStructuredContext)}
+                    className="mb-2"
+                  >
+                    {showStructuredContext ? '▼ Strukturiert ausblenden' : '▶ Strukturiert anzeigen'}
+                  </Button>
+                  
+                  {showStructuredContext && (
+                    <div className="border rounded-lg p-4 bg-slate-50 space-y-3">
+                      {(session as any).structured_context.meeting_type && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 uppercase">Meeting-Typ</p>
+                          <p className="text-sm">{(session as any).structured_context.meeting_type}</p>
+                        </div>
+                      )}
+                      
+                      {(session as any).structured_context.participants && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 uppercase">
+                            Teilnehmer ({(session as any).structured_context.participants.length})
+                          </p>
+                          <div className="max-h-40 overflow-y-auto mt-1 space-y-1">
+                            {(session as any).structured_context.participants.slice(0, 10).map((p: any, i: number) => (
+                              <p key={i} className="text-xs text-slate-700">
+                                <span className="font-medium">{p.name}</span>
+                                {p.role && <span className="text-slate-500"> • {p.role}</span>}
+                                {p.party && <span className="text-slate-500"> ({p.party})</span>}
+                              </p>
+                            ))}
+                            {(session as any).structured_context.participants.length > 10 && (
+                              <p className="text-xs text-slate-500 italic">
+                                ... und {(session as any).structured_context.participants.length - 10} weitere
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(session as any).structured_context.agenda && (
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 uppercase">
+                            Tagesordnung ({(session as any).structured_context.agenda.length})
+                          </p>
+                          <div className="mt-1 space-y-1">
+                            {(session as any).structured_context.agenda.map((item: any, i: number) => (
+                              <p key={i} className="text-xs text-slate-700">
+                                {item.number && <span className="font-medium">{item.number}. </span>}
+                                {item.title}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {((session as any).structured_context.date || (session as any).structured_context.location) && (
+                        <div className="flex gap-4 text-xs text-slate-600">
+                          {(session as any).structured_context.date && (
+                            <span>📅 {(session as any).structured_context.date}</span>
+                          )}
+                          {(session as any).structured_context.location && (
+                            <span>📍 {(session as any).structured_context.location}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  Context-Notiz vorhanden. Klicke "Context strukturieren" um automatisch Teilnehmer, Agenda und mehr zu extrahieren.
+                </p>
+              )}
             </CardContent>
           </Card>
         )}

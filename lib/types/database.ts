@@ -44,6 +44,15 @@ export interface Session {
   status: SessionStatus
   duration_sec: number
   last_error: string
+  preferred_report_language?: 'de' | 'en' | null  // User override for report language (null = auto-detect)
+  structured_context?: {
+    meeting_type?: string
+    participants?: Array<{ name: string; role?: string; party?: string }>
+    agenda?: Array<{ number?: string; title: string; description?: string }>
+    date?: string
+    location?: string
+    notes?: string
+  }
 }
 
 export interface File {

@@ -19,6 +19,14 @@ export interface ReportInput {
     context_note: string
     internal_case_id: string
     duration_sec: number
+    structured_context?: {
+      meeting_type?: string
+      participants?: Array<{ name: string; role?: string; party?: string }>
+      agenda?: Array<{ number?: string; title: string; description?: string }>
+      date?: string
+      location?: string
+      notes?: string
+    }
   }
   detectedLanguage?: string  // Language detected by Speechmatics
 }
@@ -33,6 +41,113 @@ export class ClaudeService {
     this.client = new Anthropic({
       apiKey: config.apiKey,
     })
+  }
+
+  /**
+   * Analyze and structure context note (participants, agenda, meeting type, etc.)
+   */
+  async analyzeContext(contextNote: string, language: string = 'de'): Promise<{
+    meeting_type?: string
+    participants?: Array<{ name: string; role?: string; party?: string }>
+    agenda?: Array<{ number?: string; title: string; description?: string }>
+    date?: string
+    location?: string
+    notes?: string
+  }> {
+    if (!contextNote || contextNote.trim().length === 0) {
+      return {}
+    }
+
+    const isGerman = language === 'de'
+    
+    const prompt = isGerman ? `Analysiere den folgenden Kontext-Text und extrahiere strukturierte Informationen:
+
+Kontext:
+${contextNote}
+
+Extrahiere folgende Informationen (falls vorhanden):
+- Meeting-Typ (z.B. "Stadtratssitzung", "Team-Meeting", "Therapiesitzung")
+- Teilnehmer mit Name und Rolle/Partei/Position
+- Tagesordnung/Agenda-Punkte
+- Datum
+- Ort/Location
+- Sonstige Notizen
+
+Antworte NUR mit einem JSON-Objekt in diesem Format:
+{
+  "meeting_type": "Typ des Meetings",
+  "participants": [
+    {"name": "Vollständiger Name", "role": "Rolle", "party": "Partei (optional)"}
+  ],
+  "agenda": [
+    {"number": "1", "title": "Agenda-Punkt Titel", "description": "Optional"}
+  ],
+  "date": "YYYY-MM-DD oder Freitext",
+  "location": "Ort",
+  "notes": "Zusätzliche wichtige Informationen"
+}
+
+Falls eine Information nicht vorhanden ist, lasse das Feld weg.` 
+    : `Analyze the following context text and extract structured information:
+
+Context:
+${contextNote}
+
+Extract the following information (if available):
+- Meeting type (e.g. "City Council Meeting", "Team Meeting", "Therapy Session")
+- Participants with name and role/party/position
+- Agenda items
+- Date
+- Location
+- Other notes
+
+Respond ONLY with a JSON object in this format:
+{
+  "meeting_type": "Type of meeting",
+  "participants": [
+    {"name": "Full Name", "role": "Role", "party": "Party (optional)"}
+  ],
+  "agenda": [
+    {"number": "1", "title": "Agenda item title", "description": "Optional"}
+  ],
+  "date": "YYYY-MM-DD or free text",
+  "location": "Location",
+  "notes": "Additional important information"
+}
+
+If information is not available, omit the field.`
+
+    try {
+      const message = await this.client.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 2048,
+        temperature: 0.1,
+        messages: [{ role: 'user', content: prompt }],
+      })
+
+      const responseText = message.content
+        .filter((block) => block.type === 'text')
+        .map((block) => ('text' in block ? block.text : ''))
+        .join('\n')
+
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        console.warn('Failed to parse context, returning empty')
+        return {}
+      }
+
+      const structured = JSON.parse(jsonMatch[0])
+      console.log('[ClaudeService] Context analysis:', {
+        meeting_type: structured.meeting_type,
+        participants_count: structured.participants?.length || 0,
+        agenda_items: structured.agenda?.length || 0
+      })
+      
+      return structured
+    } catch (error) {
+      console.error('Context analysis error:', error)
+      return {}
+    }
   }
 
   /**
@@ -222,6 +337,63 @@ Respond ONLY with a JSON object in this format:
     let promptSections = isGerman 
       ? this.buildGermanPromptHeader(sessionMetadata, duration, detection.domain)
       : this.buildEnglishPromptHeader(sessionMetadata, duration, detection.domain)
+
+    // Add structured context if available
+    if (sessionMetadata.structured_context) {
+      const ctx = sessionMetadata.structured_context
+      const sectionTitle = isGerman ? '# Strukturierter Context' : '# Structured Context'
+      const sectionDesc = isGerman
+        ? 'Vorab extrahierte Informationen über das Meeting/Gespräch:'
+        : 'Pre-extracted information about the meeting/conversation:'
+      
+      promptSections += `\n${sectionTitle}\n${sectionDesc}\n\n`
+      
+      if (ctx.meeting_type) {
+        promptSections += isGerman 
+          ? `**Meeting-Typ:** ${ctx.meeting_type}\n`
+          : `**Meeting Type:** ${ctx.meeting_type}\n`
+      }
+      
+      if (ctx.date) {
+        promptSections += isGerman 
+          ? `**Datum:** ${ctx.date}\n`
+          : `**Date:** ${ctx.date}\n`
+      }
+      
+      if (ctx.location) {
+        promptSections += isGerman 
+          ? `**Ort:** ${ctx.location}\n`
+          : `**Location:** ${ctx.location}\n`
+      }
+      
+      if (ctx.participants && ctx.participants.length > 0) {
+        const label = isGerman ? '**Teilnehmer:**' : '**Participants:**'
+        promptSections += `\n${label}\n`
+        ctx.participants.forEach(p => {
+          let line = `- ${p.name}`
+          if (p.role) line += ` (${p.role})`
+          if (p.party) line += ` [${p.party}]`
+          promptSections += line + '\n'
+        })
+      }
+      
+      if (ctx.agenda && ctx.agenda.length > 0) {
+        const label = isGerman ? '**Tagesordnung:**' : '**Agenda:**'
+        promptSections += `\n${label}\n`
+        ctx.agenda.forEach(item => {
+          let line = item.number ? `${item.number}. ${item.title}` : `- ${item.title}`
+          if (item.description) line += ` (${item.description})`
+          promptSections += line + '\n'
+        })
+      }
+      
+      if (ctx.notes) {
+        const label = isGerman ? '**Zusätzliche Notizen:**' : '**Additional Notes:**'
+        promptSections += `\n${label}\n${ctx.notes}\n`
+      }
+      
+      promptSections += '\n'
+    }
 
     // Add context recordings
     if (transcriptsByPurpose.context.length > 0) {

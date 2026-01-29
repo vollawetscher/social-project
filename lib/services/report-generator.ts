@@ -63,9 +63,16 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
   console.log('[ReportGenerator] Calling Claude API with structured transcripts...')
   const claudeService = createClaudeService()
   
-  // Get language from first transcript (detected by Speechmatics)
+  // Determine language: preferred (user override) or detected (Speechmatics auto)
   const detectedLanguage = transcriptsData[0]?.language || 'en'
-  console.log('[ReportGenerator] Using language detected by Speechmatics:', detectedLanguage)
+  const preferredLanguage = (session as any).preferred_report_language
+  const finalLanguage = preferredLanguage || detectedLanguage
+  
+  console.log('[ReportGenerator] Language determination:', {
+    detectedBySpeechmatics: detectedLanguage,
+    userPreferred: preferredLanguage || 'none (auto)',
+    finalLanguage
+  })
   
   // Generate generic report with automatic topic detection
   const report = await claudeService.generateReport({
@@ -75,8 +82,9 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
       context_note: session.context_note,
       internal_case_id: session.internal_case_id,
       duration_sec: session.duration_sec,
+      structured_context: (session as any).structured_context || undefined,
     },
-    detectedLanguage, // Pass Speechmatics language to Claude
+    detectedLanguage: finalLanguage, // Pass final language to Claude
   })
 
   console.log('[ReportGenerator] Report generated for domain:', report.detected_domain, 'in language:', report.detected_language)
