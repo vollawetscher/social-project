@@ -489,6 +489,10 @@ Erstelle einen strukturierten "Gesprächsbericht" basierend auf den folgenden Au
   private getGermanOutputFormatSection(sessionMetadata: any, domain: ReportDomain): string {
     return `
 # Ausgabeformat
+
+**WICHTIG: Schreibe den gesamten Report-Inhalt auf DEUTSCH.**
+Alle Felder (summary_short, summary_points, observations, etc.) müssen auf Deutsch verfasst sein.
+
 Antworte NUR mit einem validen JSON-Objekt in folgendem Format:
 
 {
@@ -562,6 +566,10 @@ Gib NUR das JSON-Objekt zurück, ohne zusätzlichen Text.`
   private getEnglishOutputFormatSection(sessionMetadata: any, domain: ReportDomain): string {
     return `
 # Output Format
+
+**IMPORTANT: Write all report content in ENGLISH.**
+All fields (summary_short, summary_points, observations, etc.) must be written in English.
+
 Respond ONLY with a valid JSON object in the following format:
 
 {
