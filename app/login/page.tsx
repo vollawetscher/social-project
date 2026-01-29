@@ -42,7 +42,11 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      router.push('/dashboard');
+      // Invalidate Next.js router cache before redirect
+      router.refresh();
+      
+      // Force full page reload to ensure fresh auth state
+      window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
       setLoading(false);
