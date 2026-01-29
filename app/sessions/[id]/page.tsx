@@ -7,7 +7,7 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { AudioUploader } from '@/components/audio/AudioUploader'
 import { BugReporter } from '@/components/error/BugReporter'
-import { TranscribableTextField } from '@/components/session/TranscribableTextField'
+import { CompactTranscribableField } from '@/components/session/CompactTranscribableField'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -507,14 +507,15 @@ export default function SessionDetailPage() {
           </CardContent>
         </Card>
 
-        <TranscribableTextField
+        <CompactTranscribableField
           title="Context"
-          description="Teilnehmer, Agenda, Hintergründe - per Diktat oder Text. Der Wizard strukturiert es automatisch."
-          icon={<MessageSquare className="h-5 w-5 text-blue-600" />}
+          description="Teilnehmer, Agenda, Hintergründe - per Live-Diktat oder Text"
+          icon={<MessageSquare className="h-5 w-5" />}
           value={(session as any).context_text || ''}
           placeholder="Teilnehmer:\n- Max Mustermann (CEO)\n- Anna Schmidt (CFO)\n\nAgenda:\n1. Q4 Review\n2. Budget Planning"
           sessionId={sessionId}
           fieldName="context_text"
+          color="blue"
           onSave={(value) => handleSaveField('context_text', value)}
           onAnalyze={handleAnalyzeContext}
           showAnalyzeButton={true}
@@ -589,25 +590,27 @@ export default function SessionDetailPage() {
           </Card>
         )}
 
-        <TranscribableTextField
+        <CompactTranscribableField
           title="Private Notizen"
-          description="Persönliche Beobachtungen die NICHT im Report erscheinen - nur für dich."
-          icon={<Lock className="h-5 w-5 text-amber-600" />}
+          description="Persönliche Beobachtungen die NICHT im Report erscheinen"
+          icon={<Lock className="h-5 w-5" />}
           value={(session as any).private_comments || ''}
           placeholder="Private Gedanken:\n- Patient wirkte angespannt\n- Nächste Sitzung anders strukturieren"
           sessionId={sessionId}
           fieldName="private_comments"
+          color="amber"
           onSave={(value) => handleSaveField('private_comments', value)}
         />
 
-        <TranscribableTextField
-          title="Anweisungen für Report"
-          description="Spezielle Anweisungen wie der Report strukturiert werden soll."
-          icon={<ListTodo className="h-5 w-5 text-green-600" />}
+        <CompactTranscribableField
+          title="Anweisungen"
+          description="Spezielle Anweisungen wie der Report strukturiert werden soll"
+          icon={<ListTodo className="h-5 w-5" />}
           value={(session as any).instructions || ''}
           placeholder="Anweisungen:\n- Fokus auf Budget-Diskussion\n- Erwähne Zeitplan-Bedenken\n- Ton: formal und sachlich"
           sessionId={sessionId}
           fieldName="instructions"
+          color="green"
           onSave={(value) => handleSaveField('instructions', value)}
         />
 
