@@ -39,7 +39,10 @@ export interface Session {
   user_id: string | null
   case_id: string | null
   created_at: string
-  context_note: string
+  context_note: string  // Deprecated - use context_text instead
+  context_text?: string  // New: transcribable/editable context
+  private_comments?: string  // Private notes (not in report)
+  instructions?: string  // Instructions for report generation
   internal_case_id: string
   status: SessionStatus
   duration_sec: number

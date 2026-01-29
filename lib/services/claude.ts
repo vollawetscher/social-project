@@ -27,6 +27,7 @@ export interface ReportInput {
       location?: string
       notes?: string
     }
+    instructions?: string  // User-provided instructions for report generation
   }
   detectedLanguage?: string  // Language detected by Speechmatics
 }
@@ -393,6 +394,16 @@ Respond ONLY with a JSON object in this format:
       }
       
       promptSections += '\n'
+    }
+
+    // Add user instructions if provided
+    if (sessionMetadata.instructions && sessionMetadata.instructions.trim().length > 0) {
+      const sectionTitle = isGerman ? '# Spezielle Anweisungen für diesen Report' : '# Special Instructions for this Report'
+      const sectionDesc = isGerman
+        ? 'Der Benutzer hat folgende spezielle Anweisungen gegeben. Befolge diese Anweisungen:'
+        : 'The user has provided the following special instructions. Follow these instructions:'
+      
+      promptSections += `\n${sectionTitle}\n${sectionDesc}\n\n${sessionMetadata.instructions}\n\n`
     }
 
     // Add context recordings

@@ -16,10 +16,10 @@ export async function POST(
     await requireSessionOwnership(params.id, user.id)
     const supabase = createClient()
 
-    // Get session with context_note
+    // Get session with context (prefer context_text, fallback to context_note)
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('context_note, preferred_report_language')
+      .select('context_text, context_note, preferred_report_language')
       .eq('id', params.id)
       .single()
 
@@ -27,15 +27,17 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    if (!session.context_note || session.context_note.trim().length === 0) {
-      return NextResponse.json({ error: 'No context note to analyze' }, { status: 400 })
+    const contextToAnalyze = (session as any).context_text || session.context_note || ''
+    
+    if (!contextToAnalyze || contextToAnalyze.trim().length === 0) {
+      return NextResponse.json({ error: 'No context to analyze' }, { status: 400 })
     }
 
     // Analyze context with Claude
     const claudeService = createClaudeService()
-    const language = session.preferred_report_language || 'de'
+    const language = (session as any).preferred_report_language || 'de'
     const structuredContext = await claudeService.analyzeContext(
-      session.context_note,
+      contextToAnalyze,
       language
     )
 

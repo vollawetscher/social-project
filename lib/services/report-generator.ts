@@ -79,10 +79,11 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     transcriptsByPurpose,
     sessionMetadata: {
       created_at: session.created_at,
-      context_note: session.context_note,
+      context_note: (session as any).context_text || session.context_note,  // Prefer new field
       internal_case_id: session.internal_case_id,
       duration_sec: session.duration_sec,
       structured_context: (session as any).structured_context || undefined,
+      instructions: (session as any).instructions || undefined,  // Add user instructions
     },
     detectedLanguage: finalLanguage, // Pass final language to Claude
   })

@@ -7,6 +7,7 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { AudioUploader } from '@/components/audio/AudioUploader'
 import { BugReporter } from '@/components/error/BugReporter'
+import { TranscribableTextField } from '@/components/session/TranscribableTextField'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -14,7 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Session, FilePurpose, File as FileType, TranscriptSegment } from '@/lib/types/database'
-import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles } from 'lucide-react'
+import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles, MessageSquare, Lock, ListTodo } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -196,6 +197,21 @@ export default function SessionDetailPage() {
     } finally {
       setAnalyzingContext(false)
     }
+  }
+
+  const handleSaveField = async (fieldName: string, value: string) => {
+    const response = await fetch(`/api/sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [fieldName]: value }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to save')
+    }
+
+    const updatedSession = await response.json()
+    setSession(updatedSession)
   }
 
   const handleUploadFile = async () => {
@@ -482,108 +498,109 @@ export default function SessionDetailPage() {
           </CardContent>
         </Card>
 
-        {session.context_note && (
-          <Card>
+        <TranscribableTextField
+          title="Context"
+          description="Teilnehmer, Agenda, Hintergründe - per Diktat oder Text. Der Wizard strukturiert es automatisch."
+          icon={<MessageSquare className="h-5 w-5 text-blue-600" />}
+          value={(session as any).context_text || ''}
+          placeholder="Teilnehmer:\n- Max Mustermann (CEO)\n- Anna Schmidt (CFO)\n\nAgenda:\n1. Q4 Review\n2. Budget Planning"
+          sessionId={sessionId}
+          fieldName="context_text"
+          onSave={(value) => handleSaveField('context_text', value)}
+          onAnalyze={handleAnalyzeContext}
+          showAnalyzeButton={true}
+          analyzing={analyzingContext}
+        />
+
+        {(session as any).structured_context && showStructuredContext && (
+          <Card className="border-purple-200 bg-purple-50">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-600" />
-                  <CardTitle>Context Wizard</CardTitle>
-                </div>
-                <Button
-                  onClick={handleAnalyzeContext}
-                  disabled={analyzingContext}
-                  size="sm"
-                  variant={(session as any).structured_context ? "outline" : "default"}
-                >
-                  {analyzingContext && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {(session as any).structured_context ? '✨ Neu analysieren' : '🪄 Context strukturieren'}
-                </Button>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-purple-900">Strukturierter Context</CardTitle>
               </div>
-              <CardDescription>
-                KI analysiert deinen Context und extrahiert Teilnehmer, Agenda, etc.
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {(session as any).structured_context ? (
+            <CardContent className="space-y-3">
+              {(session as any).structured_context.meeting_type && (
                 <div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowStructuredContext(!showStructuredContext)}
-                    className="mb-2"
-                  >
-                    {showStructuredContext ? '▼ Strukturiert ausblenden' : '▶ Strukturiert anzeigen'}
-                  </Button>
-                  
-                  {showStructuredContext && (
-                    <div className="border rounded-lg p-4 bg-slate-50 space-y-3">
-                      {(session as any).structured_context.meeting_type && (
-                        <div>
-                          <p className="text-xs font-semibold text-slate-500 uppercase">Meeting-Typ</p>
-                          <p className="text-sm">{(session as any).structured_context.meeting_type}</p>
-                        </div>
-                      )}
-                      
-                      {(session as any).structured_context.participants && (
-                        <div>
-                          <p className="text-xs font-semibold text-slate-500 uppercase">
-                            Teilnehmer ({(session as any).structured_context.participants.length})
-                          </p>
-                          <div className="max-h-40 overflow-y-auto mt-1 space-y-1">
-                            {(session as any).structured_context.participants.slice(0, 10).map((p: any, i: number) => (
-                              <p key={i} className="text-xs text-slate-700">
-                                <span className="font-medium">{p.name}</span>
-                                {p.role && <span className="text-slate-500"> • {p.role}</span>}
-                                {p.party && <span className="text-slate-500"> ({p.party})</span>}
-                              </p>
-                            ))}
-                            {(session as any).structured_context.participants.length > 10 && (
-                              <p className="text-xs text-slate-500 italic">
-                                ... und {(session as any).structured_context.participants.length - 10} weitere
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {(session as any).structured_context.agenda && (
-                        <div>
-                          <p className="text-xs font-semibold text-slate-500 uppercase">
-                            Tagesordnung ({(session as any).structured_context.agenda.length})
-                          </p>
-                          <div className="mt-1 space-y-1">
-                            {(session as any).structured_context.agenda.map((item: any, i: number) => (
-                              <p key={i} className="text-xs text-slate-700">
-                                {item.number && <span className="font-medium">{item.number}. </span>}
-                                {item.title}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {((session as any).structured_context.date || (session as any).structured_context.location) && (
-                        <div className="flex gap-4 text-xs text-slate-600">
-                          {(session as any).structured_context.date && (
-                            <span>📅 {(session as any).structured_context.date}</span>
-                          )}
-                          {(session as any).structured_context.location && (
-                            <span>📍 {(session as any).structured_context.location}</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                  <p className="text-xs font-semibold text-purple-600 uppercase">Meeting-Typ</p>
+                  <p className="text-sm text-purple-900">{(session as any).structured_context.meeting_type}</p>
+                </div>
+              )}
+              
+              {(session as any).structured_context.participants && (
+                <div>
+                  <p className="text-xs font-semibold text-purple-600 uppercase">
+                    Teilnehmer ({(session as any).structured_context.participants.length})
+                  </p>
+                  <div className="max-h-40 overflow-y-auto mt-1 space-y-1">
+                    {(session as any).structured_context.participants.slice(0, 10).map((p: any, i: number) => (
+                      <p key={i} className="text-xs text-purple-800">
+                        <span className="font-medium">{p.name}</span>
+                        {p.role && <span className="text-purple-600"> • {p.role}</span>}
+                        {p.party && <span className="text-purple-600"> ({p.party})</span>}
+                      </p>
+                    ))}
+                    {(session as any).structured_context.participants.length > 10 && (
+                      <p className="text-xs text-purple-600 italic">
+                        ... und {(session as any).structured_context.participants.length - 10} weitere
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {(session as any).structured_context.agenda && (
+                <div>
+                  <p className="text-xs font-semibold text-purple-600 uppercase">
+                    Tagesordnung ({(session as any).structured_context.agenda.length})
+                  </p>
+                  <div className="mt-1 space-y-1">
+                    {(session as any).structured_context.agenda.map((item: any, i: number) => (
+                      <p key={i} className="text-xs text-purple-800">
+                        {item.number && <span className="font-medium">{item.number}. </span>}
+                        {item.title}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {((session as any).structured_context.date || (session as any).structured_context.location) && (
+                <div className="flex gap-4 text-xs text-purple-700">
+                  {(session as any).structured_context.date && (
+                    <span>📅 {(session as any).structured_context.date}</span>
+                  )}
+                  {(session as any).structured_context.location && (
+                    <span>📍 {(session as any).structured_context.location}</span>
                   )}
                 </div>
-              ) : (
-                <p className="text-sm text-slate-600">
-                  Context-Notiz vorhanden. Klicke "Context strukturieren" um automatisch Teilnehmer, Agenda und mehr zu extrahieren.
-                </p>
               )}
             </CardContent>
           </Card>
         )}
+
+        <TranscribableTextField
+          title="Private Notizen"
+          description="Persönliche Beobachtungen die NICHT im Report erscheinen - nur für dich."
+          icon={<Lock className="h-5 w-5 text-amber-600" />}
+          value={(session as any).private_comments || ''}
+          placeholder="Private Gedanken:\n- Patient wirkte angespannt\n- Nächste Sitzung anders strukturieren"
+          sessionId={sessionId}
+          fieldName="private_comments"
+          onSave={(value) => handleSaveField('private_comments', value)}
+        />
+
+        <TranscribableTextField
+          title="Anweisungen für Report"
+          description="Spezielle Anweisungen wie der Report strukturiert werden soll."
+          icon={<ListTodo className="h-5 w-5 text-green-600" />}
+          value={(session as any).instructions || ''}
+          placeholder="Anweisungen:\n- Fokus auf Budget-Diskussion\n- Erwähne Zeitplan-Bedenken\n- Ton: formal und sachlich"
+          sessionId={sessionId}
+          fieldName="instructions"
+          onSave={(value) => handleSaveField('instructions', value)}
+        />
 
         {files.length > 0 && (
           <Card>
