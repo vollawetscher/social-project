@@ -418,9 +418,6 @@ export default function SessionDetailPage() {
               onSave={handleUpdateSessionName}
               placeholder="Gesprächsname eingeben"
             />
-            {session.context_note && (
-              <p className="text-slate-600 mt-1">{session.context_note}</p>
-            )}
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge(session.status)}

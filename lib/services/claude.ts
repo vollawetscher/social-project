@@ -482,11 +482,15 @@ Respond ONLY with a JSON object in this format:
     
     return `Du bist ein spezialisiertes KI-System zur Erstellung von strukturierten Berichten für professionelle Dokumentation.
 
+🇩🇪 KRITISCH: SCHREIBE DEN GESAMTEN REPORT AUF DEUTSCH! 🇩🇪
+Alle Inhalte (summary_short, summary_points, observations, key_quotes, etc.) MÜSSEN auf Deutsch verfasst sein.
+Dies ist eine deutsche Konversation - der Report MUSS vollständig auf Deutsch sein!
+
 # Erkannter Bereich
 ${domainContext}
 
 # Aufgabe
-Erstelle einen strukturierten Bericht basierend auf den folgenden Aufnahmen. Der Bericht dient zur professionellen Dokumentation.
+Erstelle einen strukturierten Bericht AUF DEUTSCH basierend auf den folgenden Aufnahmen. Der Bericht dient zur professionellen Dokumentation und MUSS vollständig auf Deutsch verfasst sein.
 
 # Metadaten
 - Datum: ${new Date(metadata.created_at).toLocaleDateString('de-DE')}
@@ -662,8 +666,15 @@ Erstelle einen strukturierten "Gesprächsbericht" basierend auf den folgenden Au
     return `
 # Ausgabeformat
 
-**WICHTIG: Schreibe den gesamten Report-Inhalt auf DEUTSCH.**
-Alle Felder (summary_short, summary_points, observations, etc.) müssen auf Deutsch verfasst sein.
+🇩🇪🇩🇪🇩🇪 NOCHMALS: GESAMTER REPORT AUF DEUTSCH! 🇩🇪🇩🇪🇩🇪
+**KRITISCH: Schreibe JEDEN einzelnen Textinhalt des Reports auf DEUTSCH.**
+- summary_short → Deutsch
+- summary_points → Deutsch  
+- observations → Deutsch
+- key_quotes context → Deutsch
+- concerns_or_challenges → Deutsch
+- suggested_next_steps → Deutsch
+ALLES MUSS DEUTSCH SEIN!
 
 Antworte NUR mit einem validen JSON-Objekt in folgendem Format:
 
@@ -739,8 +750,15 @@ Gib NUR das JSON-Objekt zurück, ohne zusätzlichen Text.`
     return `
 # Output Format
 
-**IMPORTANT: Write all report content in ENGLISH.**
-All fields (summary_short, summary_points, observations, etc.) must be written in English.
+🇬🇧🇬🇧🇬🇧 AGAIN: ENTIRE REPORT IN ENGLISH! 🇬🇧🇬🇧🇬🇧
+**CRITICAL: Write EVERY single text content of the report in ENGLISH.**
+- summary_short → English
+- summary_points → English
+- observations → English
+- key_quotes context → English
+- concerns_or_challenges → English
+- suggested_next_steps → English
+EVERYTHING MUST BE IN ENGLISH!
 
 Respond ONLY with a valid JSON object in the following format:
 
