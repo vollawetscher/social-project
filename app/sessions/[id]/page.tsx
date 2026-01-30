@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Session, FilePurpose, File as FileType, TranscriptSegment } from '@/lib/types/database'
-import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles, MessageSquare, Lock, ListTodo } from 'lucide-react'
+import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles, MessageSquare, Lock, ListTodo, ChevronDown } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -40,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 export default function SessionDetailPage() {
   const params = useParams()
@@ -465,47 +466,63 @@ export default function SessionDetailPage() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Languages className="h-5 w-5 text-slate-600" />
-              <CardTitle>Report-Sprache</CardTitle>
-            </div>
-            <CardDescription>
-              Wähle die Sprache für den generierten Bericht. "Automatisch" nutzt die erkannte Audiosprache.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={session.preferred_report_language || 'auto'}
-              onValueChange={handleUpdateReportLanguage}
-            >
-              <SelectTrigger className="w-full sm:w-[280px]">
-                <SelectValue placeholder="Sprache auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">
-                  <div className="flex items-center gap-2">
-                    <span>🤖</span>
-                    <span>Automatisch (empfohlen)</span>
+        <Collapsible defaultOpen={false}>
+          <div className="border rounded-lg border-purple-200 bg-white">
+            <CollapsibleTrigger className="w-full p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Languages className="h-5 w-5 text-purple-600" />
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">Report-Sprache</span>
+                      <Badge variant="outline" className="bg-purple-100 text-purple-700">
+                        {session.preferred_report_language === 'de' ? '🇩🇪 Deutsch' : 
+                         session.preferred_report_language === 'en' ? '🇬🇧 English' : 
+                         '🤖 Automatisch'}
+                      </Badge>
+                    </div>
                   </div>
-                </SelectItem>
-                <SelectItem value="de">
-                  <div className="flex items-center gap-2">
-                    <span>🇩🇪</span>
-                    <span>Deutsch</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="en">
-                  <div className="flex items-center gap-2">
-                    <span>🇬🇧</span>
-                    <span>English</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+                </div>
+                <ChevronDown className="h-4 w-4 text-slate-400 transition-transform" />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-4 pt-0 space-y-3">
+                <p className="text-xs text-slate-600">
+                  Wähle die Sprache für den generierten Bericht. "Automatisch" nutzt die erkannte Audiosprache.
+                </p>
+                <Select
+                  value={session.preferred_report_language || 'auto'}
+                  onValueChange={handleUpdateReportLanguage}
+                >
+                  <SelectTrigger className="w-full sm:w-[280px]">
+                    <SelectValue placeholder="Sprache auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">
+                      <div className="flex items-center gap-2">
+                        <span>🤖</span>
+                        <span>Automatisch (empfohlen)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="de">
+                      <div className="flex items-center gap-2">
+                        <span>🇩🇪</span>
+                        <span>Deutsch</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="en">
+                      <div className="flex items-center gap-2">
+                        <span>🇬🇧</span>
+                        <span>English</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
 
         <CompactTranscribableField
           title="Context"

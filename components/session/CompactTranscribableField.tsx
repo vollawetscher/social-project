@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, Plus, X } from 'lucide-react'
+import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, Plus, X, Lock, Unlock } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
 
@@ -44,10 +44,13 @@ export function CompactTranscribableField({
   const [saving, setSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [isOpen, setIsOpen] = useState(!!value) // Auto-open if has content
+  const [isLocked, setIsLocked] = useState(false) // Lock feature
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const recognitionRef = useRef<any>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const cursorPositionRef = useRef<number>(0)
 
   // Sync with parent value changes
   useEffect(() => {
@@ -76,7 +79,18 @@ export function CompactTranscribableField({
           }
         }
         
-        setLiveTranscript(final + interim)
+        const fullTranscript = final + interim
+        setLiveTranscript(fullTranscript)
+        
+        // Insert at cursor position in real-time
+        if (textareaRef.current && fullTranscript) {
+          const start = cursorPositionRef.current
+          const before = text.substring(0, start)
+          const after = text.substring(start)
+          const newText = before + fullTranscript + after
+          setText(newText)
+          setHasChanges(true)
+        }
       }
 
       recognition.onerror = (event: any) => {
@@ -112,6 +126,16 @@ export function CompactTranscribableField({
   const hasContent = text.length > 0
 
   const startRecording = async () => {
+    if (isLocked) {
+      toast.error('Feld ist gesperrt - entsperre zuerst')
+      return
+    }
+
+    // Save cursor position before recording
+    if (textareaRef.current) {
+      cursorPositionRef.current = textareaRef.current.selectionStart || text.length
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mediaRecorder = new MediaRecorder(stream)
@@ -137,18 +161,12 @@ export function CompactTranscribableField({
         }
         
         stream.getTracks().forEach((track) => track.stop())
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
         
-        // Use live transcript immediately
+        // Text was already inserted during recognition
         if (liveTranscript.trim()) {
-          const newText = text ? `${text}\n\n${liveTranscript.trim()}` : liveTranscript.trim()
-          setText(newText)
-          setHasChanges(true)
-          toast.success(`✅ Live-Transkription übernommen (${liveTranscript.length} Zeichen)`)
+          toast.success(`✅ Diktat eingefügt (${liveTranscript.length} Zeichen)`)
+          setLiveTranscript('')
         }
-        
-        // Then refine with Speechmatics in background (optional)
-        await transcribeAudioWithSpeechmatics(audioBlob)
       }
 
       mediaRecorder.start()
@@ -174,8 +192,13 @@ export function CompactTranscribableField({
   }
 
   const handleTextChange = (newText: string) => {
+    if (isLocked) return
     setText(newText)
     setHasChanges(newText !== value)
+  }
+
+  const handleCursorChange = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    cursorPositionRef.current = e.currentTarget.selectionStart || 0
   }
 
   const handleSave = async () => {
@@ -193,9 +216,22 @@ export function CompactTranscribableField({
   }
 
   const handleClear = () => {
+    if (isLocked) {
+      toast.error('Feld ist gesperrt')
+      return
+    }
     setText('')
     setHasChanges(true)
     toast.success('Gelöscht')
+  }
+
+  const toggleLock = () => {
+    if (!isLocked && hasChanges) {
+      toast.error('Speichere zuerst!')
+      return
+    }
+    setIsLocked(!isLocked)
+    toast.success(isLocked ? '🔓 Entsperrt' : '🔒 Gesperrt')
   }
 
   return (
@@ -242,16 +278,31 @@ export function CompactTranscribableField({
                   Stop
                 </Button>
               ) : (
-                <Button onClick={startRecording} variant="outline" size="sm" disabled={transcribing}>
+                <Button 
+                  onClick={startRecording} 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={transcribing || isLocked}
+                >
                   <Mic className="mr-2 h-4 w-4" />
                   Diktieren
                 </Button>
               )}
 
               {hasContent && (
-                <Button onClick={handleClear} variant="ghost" size="sm">
-                  <X className="h-4 w-4" />
-                </Button>
+                <>
+                  <Button 
+                    onClick={toggleLock} 
+                    variant="ghost" 
+                    size="sm"
+                    className={isLocked ? 'text-red-600' : 'text-green-600'}
+                  >
+                    {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                  </Button>
+                  <Button onClick={handleClear} variant="ghost" size="sm" disabled={isLocked}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </>
               )}
 
               {showAnalyzeButton && onAnalyze && text && (
@@ -286,11 +337,15 @@ export function CompactTranscribableField({
             )}
 
             <Textarea
+              ref={textareaRef}
               value={text}
               onChange={(e) => handleTextChange(e.target.value)}
+              onSelect={handleCursorChange}
+              onClick={handleCursorChange}
+              onKeyUp={handleCursorChange}
               placeholder={placeholder}
-              className="min-h-[100px] font-mono text-sm"
-              disabled={recording}
+              className={`min-h-[100px] font-mono text-sm ${isLocked ? 'bg-slate-100 cursor-not-allowed' : ''}`}
+              disabled={recording || isLocked}
             />
 
             {hasChanges && (
