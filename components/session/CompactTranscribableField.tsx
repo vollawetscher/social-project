@@ -20,7 +20,7 @@ interface CompactTranscribableFieldProps {
   color: 'blue' | 'amber' | 'green'
   onSave: (value: string) => Promise<void>
   onLockToggle: (locked: boolean) => Promise<void>
-  onAnalyze?: (currentText, setImprovedText: (text: string) => void) => Promise<void>
+  onAnalyze?: (currentText: string, setImprovedText: (text: string) => void) => Promise<void>
   showAnalyzeButton?: boolean
   analyzing?: boolean
 }
