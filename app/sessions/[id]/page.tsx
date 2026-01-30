@@ -501,6 +501,90 @@ export default function SessionDetailPage() {
           </div>
         </Collapsible>
 
+        {/* Kontext Section - Before Recordings */}
+        <CompactTranscribableField
+          title="Kontext"
+          description="Teilnehmer, Agenda, Hintergründe - per Live-Diktat oder Text"
+          icon={<MessageSquare className="h-5 w-5" />}
+          value={(session as any).context_text || ''}
+          placeholder="Teilnehmer:\n- Max Mustermann (CEO)\n- Anna Schmidt (CFO)\n\nAgenda:\n1. Q4 Review\n2. Budget Planning"
+          sessionId={sessionId}
+          fieldName="context_text"
+          color="blue"
+          onSave={(value) => handleSaveField('context_text', value)}
+          onAnalyze={handleAnalyzeContext}
+          showAnalyzeButton={true}
+          analyzing={analyzingContext}
+        />
+
+        {(session as any).structured_context && (
+          <Card className="border-purple-200 bg-purple-50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-purple-900">Strukturierter Kontext</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(session as any).structured_context.meeting_type && (
+                <div>
+                  <p className="text-xs font-semibold text-purple-600 uppercase">Meeting-Typ</p>
+                  <p className="text-sm text-purple-900">{(session as any).structured_context.meeting_type}</p>
+                </div>
+              )}
+              
+              {(session as any).structured_context.participants && (
+                <div>
+                  <p className="text-xs font-semibold text-purple-600 uppercase">
+                    Teilnehmer ({(session as any).structured_context.participants.length})
+                  </p>
+                  <div className="max-h-40 overflow-y-auto mt-1 space-y-1">
+                    {(session as any).structured_context.participants.slice(0, 10).map((p: any, i: number) => (
+                      <p key={i} className="text-xs text-purple-800">
+                        <span className="font-medium">{p.name}</span>
+                        {p.role && <span className="text-purple-600"> • {p.role}</span>}
+                        {p.party && <span className="text-purple-600"> ({p.party})</span>}
+                      </p>
+                    ))}
+                    {(session as any).structured_context.participants.length > 10 && (
+                      <p className="text-xs text-purple-600 italic">
+                        ... und {(session as any).structured_context.participants.length - 10} weitere
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {(session as any).structured_context.agenda && (
+                <div>
+                  <p className="text-xs font-semibold text-purple-600 uppercase">
+                    Tagesordnung ({(session as any).structured_context.agenda.length})
+                  </p>
+                  <div className="mt-1 space-y-1">
+                    {(session as any).structured_context.agenda.map((item: any, i: number) => (
+                      <p key={i} className="text-xs text-purple-800">
+                        {item.number && <span className="font-medium">{item.number}. </span>}
+                        {item.title}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {((session as any).structured_context.date || (session as any).structured_context.location) && (
+                <div className="flex gap-4 text-xs text-purple-700">
+                  {(session as any).structured_context.date && (
+                    <span>📅 {(session as any).structured_context.date}</span>
+                  )}
+                  {(session as any).structured_context.location && (
+                    <span>📍 {(session as any).structured_context.location}</span>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Aufnahmen Section - Compact */}
         <Collapsible defaultOpen={files.length > 0}>
           <div className="border rounded-lg border-slate-200 bg-white">
@@ -623,89 +707,6 @@ export default function SessionDetailPage() {
         )}
 
         <CompactTranscribableField
-          title="Context"
-          description="Teilnehmer, Agenda, Hintergründe - per Live-Diktat oder Text"
-          icon={<MessageSquare className="h-5 w-5" />}
-          value={(session as any).context_text || ''}
-          placeholder="Teilnehmer:\n- Max Mustermann (CEO)\n- Anna Schmidt (CFO)\n\nAgenda:\n1. Q4 Review\n2. Budget Planning"
-          sessionId={sessionId}
-          fieldName="context_text"
-          color="blue"
-          onSave={(value) => handleSaveField('context_text', value)}
-          onAnalyze={handleAnalyzeContext}
-          showAnalyzeButton={true}
-          analyzing={analyzingContext}
-        />
-
-        {(session as any).structured_context && (
-          <Card className="border-purple-200 bg-purple-50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-purple-600" />
-                <CardTitle className="text-purple-900">Strukturierter Context</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {(session as any).structured_context.meeting_type && (
-                <div>
-                  <p className="text-xs font-semibold text-purple-600 uppercase">Meeting-Typ</p>
-                  <p className="text-sm text-purple-900">{(session as any).structured_context.meeting_type}</p>
-                </div>
-              )}
-              
-              {(session as any).structured_context.participants && (
-                <div>
-                  <p className="text-xs font-semibold text-purple-600 uppercase">
-                    Teilnehmer ({(session as any).structured_context.participants.length})
-                  </p>
-                  <div className="max-h-40 overflow-y-auto mt-1 space-y-1">
-                    {(session as any).structured_context.participants.slice(0, 10).map((p: any, i: number) => (
-                      <p key={i} className="text-xs text-purple-800">
-                        <span className="font-medium">{p.name}</span>
-                        {p.role && <span className="text-purple-600"> • {p.role}</span>}
-                        {p.party && <span className="text-purple-600"> ({p.party})</span>}
-                      </p>
-                    ))}
-                    {(session as any).structured_context.participants.length > 10 && (
-                      <p className="text-xs text-purple-600 italic">
-                        ... und {(session as any).structured_context.participants.length - 10} weitere
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {(session as any).structured_context.agenda && (
-                <div>
-                  <p className="text-xs font-semibold text-purple-600 uppercase">
-                    Tagesordnung ({(session as any).structured_context.agenda.length})
-                  </p>
-                  <div className="mt-1 space-y-1">
-                    {(session as any).structured_context.agenda.map((item: any, i: number) => (
-                      <p key={i} className="text-xs text-purple-800">
-                        {item.number && <span className="font-medium">{item.number}. </span>}
-                        {item.title}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {((session as any).structured_context.date || (session as any).structured_context.location) && (
-                <div className="flex gap-4 text-xs text-purple-700">
-                  {(session as any).structured_context.date && (
-                    <span>📅 {(session as any).structured_context.date}</span>
-                  )}
-                  {(session as any).structured_context.location && (
-                    <span>📍 {(session as any).structured_context.location}</span>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <CompactTranscribableField
           title="Private Notizen"
           description="Persönliche Beobachtungen die NICHT im Report erscheinen"
           icon={<Lock className="h-5 w-5" />}
@@ -715,6 +716,9 @@ export default function SessionDetailPage() {
           fieldName="private_comments"
           color="amber"
           onSave={(value) => handleSaveField('private_comments', value)}
+          onAnalyze={handleAnalyzeContext}
+          showAnalyzeButton={true}
+          analyzing={analyzingContext}
         />
 
         <CompactTranscribableField
@@ -727,6 +731,9 @@ export default function SessionDetailPage() {
           fieldName="instructions"
           color="green"
           onSave={(value) => handleSaveField('instructions', value)}
+          onAnalyze={handleAnalyzeContext}
+          showAnalyzeButton={true}
+          analyzing={analyzingContext}
         />
 
         {session.status === 'transcribing' && (

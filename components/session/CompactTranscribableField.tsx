@@ -310,14 +310,14 @@ export function CompactTranscribableField({
                   onClick={onAnalyze}
                   disabled={analyzing || hasChanges}
                   size="sm"
+                  variant="ghost"
                   className="ml-auto"
                 >
                   {analyzing ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-2 h-4 w-4" />
+                    <Sparkles className="h-4 w-4" />
                   )}
-                  Strukturieren
                 </Button>
               )}
             </div>
