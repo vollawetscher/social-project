@@ -264,6 +264,24 @@ export default function SessionDetailPage() {
     await loadSession()
   }
 
+  const handleLockToggle = async (fieldName: string, locked: boolean) => {
+    const lockFieldName = `${fieldName}_locked`
+    const response = await fetch(`/api/sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [lockFieldName]: locked }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      console.error('[LockToggle] Error:', error)
+      throw new Error('Failed to update lock status')
+    }
+
+    const updatedSession = await response.json()
+    setSession(updatedSession)
+  }
+
   const triggerTranscription = async () => {
     try {
       const response = await fetch(`/api/sessions/${sessionId}/transcribe`, {
@@ -519,11 +537,13 @@ export default function SessionDetailPage() {
           description="Teilnehmer, Agenda, Hintergründe - per Live-Diktat oder Text"
           icon={<MessageSquare className="h-5 w-5" />}
           value={(session as any).context_text || ''}
+          locked={(session as any).context_text_locked || false}
           placeholder="Teilnehmer:\n- Max Mustermann (CEO)\n- Anna Schmidt (CFO)\n\nAgenda:\n1. Q4 Review\n2. Budget Planning"
           sessionId={sessionId}
           fieldName="context_text"
           color="blue"
           onSave={(value) => handleSaveField('context_text', value)}
+          onLockToggle={(locked) => handleLockToggle('context_text', locked)}
           onAnalyze={(currentText, setImprovedText) => 
             handleImproveField('context_text', currentText, setImprovedText)
           }
@@ -657,11 +677,13 @@ export default function SessionDetailPage() {
           description="Persönliche Beobachtungen die NICHT im Report erscheinen"
           icon={<Lock className="h-5 w-5" />}
           value={(session as any).private_comments || ''}
+          locked={(session as any).private_comments_locked || false}
           placeholder="Private Gedanken:\n- Patient wirkte angespannt\n- Nächste Sitzung anders strukturieren"
           sessionId={sessionId}
           fieldName="private_comments"
           color="amber"
           onSave={(value) => handleSaveField('private_comments', value)}
+          onLockToggle={(locked) => handleLockToggle('private_comments', locked)}
           onAnalyze={(currentText, setImprovedText) => 
             handleImproveField('private_comments', currentText, setImprovedText)
           }
@@ -674,17 +696,55 @@ export default function SessionDetailPage() {
           description="Spezielle Anweisungen wie der Report strukturiert werden soll"
           icon={<ListTodo className="h-5 w-5" />}
           value={(session as any).instructions || ''}
+          locked={(session as any).instructions_locked || false}
           placeholder="Anweisungen:\n- Fokus auf Budget-Diskussion\n- Erwähne Zeitplan-Bedenken\n- Ton: formal und sachlich"
           sessionId={sessionId}
           fieldName="instructions"
           color="green"
           onSave={(value) => handleSaveField('instructions', value)}
+          onLockToggle={(locked) => handleLockToggle('instructions', locked)}
           onAnalyze={(currentText, setImprovedText) => 
             handleImproveField('instructions', currentText, setImprovedText)
           }
           showAnalyzeButton={true}
           analyzing={analyzingInstructions}
         />
+
+        {/* Regenerate Report Button - only show if status is done or summarizing */}
+        {(session.status === 'done' || session.status === 'summarizing') && files.length > 0 && (
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="font-semibold text-sm text-green-900">Bericht neu generieren</p>
+                  <p className="text-xs text-green-700">
+                    {session.status === 'summarizing' ? 'Wird gerade erstellt...' : 'Erstelle einen neuen Bericht mit aktualisierten Einstellungen'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={triggerSummarization}
+                disabled={session.status === 'summarizing'}
+                variant="outline"
+                size="sm"
+                className="bg-white hover:bg-green-100"
+              >
+                {session.status === 'summarizing' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Läuft...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Neu generieren
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {session.status === 'transcribing' && (
           <Card className="border-blue-200 bg-blue-50">

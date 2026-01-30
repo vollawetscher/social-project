@@ -13,12 +13,14 @@ interface CompactTranscribableFieldProps {
   description: string
   icon: React.ReactNode
   value: string
+  locked: boolean
   placeholder: string
   sessionId: string
   fieldName: 'context_text' | 'private_comments' | 'instructions'
   color: 'blue' | 'amber' | 'green'
   onSave: (value: string) => Promise<void>
-  onAnalyze?: (currentText: string, setImprovedText: (text: string) => void) => Promise<void>
+  onLockToggle: (locked: boolean) => Promise<void>
+  onAnalyze?: (currentText, setImprovedText: (text: string) => void) => Promise<void>
   showAnalyzeButton?: boolean
   analyzing?: boolean
 }
@@ -28,11 +30,13 @@ export function CompactTranscribableField({
   description,
   icon,
   value,
+  locked,
   placeholder,
   sessionId,
   fieldName,
   color,
   onSave,
+  onLockToggle,
   onAnalyze,
   showAnalyzeButton = false,
   analyzing = false,
@@ -44,7 +48,7 @@ export function CompactTranscribableField({
   const [saving, setSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [isOpen, setIsOpen] = useState(!!value) // Auto-open if has content
-  const [isLocked, setIsLocked] = useState(false) // Lock feature
+  const [isLocked, setIsLocked] = useState(locked) // Lock feature
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -56,6 +60,11 @@ export function CompactTranscribableField({
   useEffect(() => {
     setText(value)
   }, [value])
+
+  // Sync with parent lock status changes
+  useEffect(() => {
+    setIsLocked(locked)
+  }, [locked])
 
   // Initialize Web Speech API for real-time transcription
   useEffect(() => {
@@ -225,13 +234,21 @@ export function CompactTranscribableField({
     toast.success('Gelöscht')
   }
 
-  const toggleLock = () => {
+  const toggleLock = async () => {
     if (!isLocked && hasChanges) {
       toast.error('Speichere zuerst!')
       return
     }
-    setIsLocked(!isLocked)
-    toast.success(isLocked ? '🔓 Entsperrt' : '🔒 Gesperrt')
+    
+    const newLockState = !isLocked
+    try {
+      await onLockToggle(newLockState)
+      setIsLocked(newLockState)
+      toast.success(newLockState ? '🔒 Gesperrt' : '🔓 Entsperrt')
+    } catch (error) {
+      console.error('[Lock] Error:', error)
+      toast.error('Fehler beim Ändern des Sperrstatus')
+    }
   }
 
   return (

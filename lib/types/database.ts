@@ -41,8 +41,11 @@ export interface Session {
   created_at: string
   context_note: string  // Deprecated - use context_text instead
   context_text?: string  // New: transcribable/editable context
+  context_text_locked?: boolean  // Lock status for context_text
   private_comments?: string  // Private notes (not in report)
+  private_comments_locked?: boolean  // Lock status for private_comments
   instructions?: string  // Instructions for report generation
+  instructions_locked?: boolean  // Lock status for instructions
   internal_case_id: string
   status: SessionStatus
   duration_sec: number

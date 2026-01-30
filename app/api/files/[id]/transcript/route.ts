@@ -75,15 +75,8 @@ export async function GET(
       return NextResponse.json({ error: 'Transcript not found for this recording' }, { status: 404 })
     }
 
-    // Check if user is admin to determine raw vs redacted
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    const isAdmin = profile?.role === 'admin'
-
+    // Always return unredacted transcript with speakers for UI display
+    // PII redaction only applies to reports, not UI viewing
     return NextResponse.json({
       file: {
         id: file.id,
@@ -97,12 +90,11 @@ export async function GET(
       },
       transcript: {
         id: transcript.id,
-        segments: isAdmin ? transcript.raw_json : transcript.redacted_json,
-        text: isAdmin ? transcript.raw_text : transcript.redacted_text,
+        segments: transcript.raw_json, // Always use raw (unredacted) for UI
+        text: transcript.raw_text, // Always use raw (unredacted) for UI
         language: transcript.language,
         created_at: transcript.created_at,
       },
-      is_admin: isAdmin,
     })
   } catch (error) {
     if (error instanceof Error) {
