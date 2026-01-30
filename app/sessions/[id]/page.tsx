@@ -51,11 +51,6 @@ export default function SessionDetailPage() {
   const [files, setFiles] = useState<FileType[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
-  const [recordedDuration, setRecordedDuration] = useState(0)
-  const [recordedPurpose, setRecordedPurpose] = useState<FilePurpose>('meeting')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [selectedFilePurpose, setSelectedFilePurpose] = useState<FilePurpose>('meeting')
   const [viewingTranscript, setViewingTranscript] = useState<{
     file: FileType
     segments: TranscriptSegment[]
@@ -91,15 +86,54 @@ export default function SessionDetailPage() {
     }
   }
 
-  const handleRecordingComplete = (blob: Blob, duration: number, purpose: FilePurpose) => {
-    setRecordedBlob(blob)
-    setRecordedDuration(duration)
-    setRecordedPurpose(purpose)
-  }
+  const handleFileSelected = async (file: File, purpose: FilePurpose) => {
+    // Detect audio duration before upload
+    const audio = document.createElement('audio')
+    audio.src = URL.createObjectURL(file)
 
-  const handleFileSelected = (file: File, purpose: FilePurpose) => {
-    setSelectedFile(file)
-    setSelectedFilePurpose(purpose)
+    let durationDetected = false
+    let audioLoadTimeout: NodeJS.Timeout
+
+    audio.addEventListener('loadedmetadata', async () => {
+      durationDetected = true
+      clearTimeout(audioLoadTimeout)
+
+      const duration = Math.floor(audio.duration)
+      URL.revokeObjectURL(audio.src)
+
+      if (isNaN(duration) || duration < 1) {
+        toast.error('Die Audiodatei ist zu kurz oder ungültig. Mindestens 1 Sekunde erforderlich.')
+        return
+      }
+
+      if (duration > 7200) {
+        toast.error('Die Audiodatei ist zu lang. Maximum 2 Stunden.')
+        return
+      }
+
+      await uploadAudio(file, duration, purpose)
+    })
+
+    audio.addEventListener('error', async () => {
+      durationDetected = true
+      clearTimeout(audioLoadTimeout)
+      URL.revokeObjectURL(audio.src)
+
+      if (file.size < 1024) {
+        toast.error('Die Datei scheint leer oder beschädigt zu sein.')
+      } else {
+        toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
+        await uploadAudio(file, 0, purpose)
+      }
+    })
+
+    audioLoadTimeout = setTimeout(async () => {
+      if (!durationDetected) {
+        URL.revokeObjectURL(audio.src)
+        toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
+        await uploadAudio(file, 0, purpose)
+      }
+    }, 5000)
   }
 
   const uploadAudio = async (file: File | Blob, duration: number, purpose: FilePurpose) => {
@@ -128,12 +162,6 @@ export default function SessionDetailPage() {
       toast.error('Upload fehlgeschlagen')
     } finally {
       setUploading(false)
-    }
-  }
-
-  const handleUploadRecording = async () => {
-    if (recordedBlob) {
-      await uploadAudio(recordedBlob, recordedDuration, recordedPurpose)
     }
   }
 
@@ -222,57 +250,6 @@ export default function SessionDetailPage() {
     
     // Force reload to ensure consistency
     await loadSession()
-  }
-
-  const handleUploadFile = async () => {
-    if (selectedFile) {
-      const audio = document.createElement('audio')
-      audio.src = URL.createObjectURL(selectedFile)
-
-      let durationDetected = false
-      let audioLoadTimeout: NodeJS.Timeout
-
-      audio.addEventListener('loadedmetadata', async () => {
-        durationDetected = true
-        clearTimeout(audioLoadTimeout)
-
-        const duration = Math.floor(audio.duration)
-        URL.revokeObjectURL(audio.src)
-
-        if (isNaN(duration) || duration < 1) {
-          toast.error('Die Audiodatei ist zu kurz oder ungültig. Mindestens 1 Sekunde erforderlich.')
-          return
-        }
-
-        if (duration > 7200) {
-          toast.error('Die Audiodatei ist zu lang. Maximum 2 Stunden.')
-          return
-        }
-
-        await uploadAudio(selectedFile, duration, selectedFilePurpose)
-      })
-
-      audio.addEventListener('error', async () => {
-        durationDetected = true
-        clearTimeout(audioLoadTimeout)
-        URL.revokeObjectURL(audio.src)
-
-        if (selectedFile.size < 1024) {
-          toast.error('Die Datei scheint leer oder beschädigt zu sein.')
-        } else {
-          toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
-          await uploadAudio(selectedFile, 0, selectedFilePurpose)
-        }
-      })
-
-      audioLoadTimeout = setTimeout(async () => {
-        if (!durationDetected) {
-          URL.revokeObjectURL(audio.src)
-          toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
-          await uploadAudio(selectedFile, 0, selectedFilePurpose)
-        }
-      }, 5000)
-    }
   }
 
   const triggerTranscription = async () => {
@@ -628,57 +605,15 @@ export default function SessionDetailPage() {
                     </TabsList>
                     <TabsContent value="record" className="mt-0">
                       <AudioRecorder
-                        onRecordingComplete={handleRecordingComplete}
-                        disabled={uploading}
+                        onRecordingComplete={(blob, duration, purpose) => 
+                          uploadAudio(blob, duration, purpose)
+                        }
                       />
-                      {recordedBlob && (
-                        <div className="mt-4">
-                          <AudioUploader
-                            file={recordedBlob}
-                            duration={recordedDuration}
-                            onUpload={(purpose) => uploadAudio(recordedBlob, recordedDuration, purpose)}
-                            uploading={uploading}
-                            onCancel={() => setRecordedBlob(null)}
-                          />
-                        </div>
-                      )}
                     </TabsContent>
                     <TabsContent value="upload" className="mt-0">
-                      <div className="space-y-4">
-                        <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center">
-                          <input
-                            type="file"
-                            accept="audio/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0]
-                              if (file) handleFileSelected(file, 'meeting')
-                            }}
-                            className="hidden"
-                            id="audio-upload"
-                          />
-                          <label
-                            htmlFor="audio-upload"
-                            className="cursor-pointer flex flex-col items-center gap-2"
-                          >
-                            <Download className="h-8 w-8 text-slate-400" />
-                            <span className="text-sm font-medium text-slate-700">
-                              Audio-Datei auswählen
-                            </span>
-                            <span className="text-xs text-slate-500">MP3, WAV, M4A, etc.</span>
-                          </label>
-                        </div>
-                        {selectedFile && (
-                          <AudioUploader
-                            file={selectedFile}
-                            duration={0}
-                            onUpload={(purpose) =>
-                              uploadAudio(selectedFile, 0, purpose)
-                            }
-                            uploading={uploading}
-                            onCancel={() => setSelectedFile(null)}
-                          />
-                        )}
-                      </div>
+                      <AudioUploader
+                        onFileSelected={handleFileSelected}
+                      />
                     </TabsContent>
                   </Tabs>
                 </div>
