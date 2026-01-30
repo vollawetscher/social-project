@@ -59,7 +59,8 @@ export default function SessionDetailPage() {
   const [deletingFile, setDeletingFile] = useState<FileType | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [analyzingContext, setAnalyzingContext] = useState(false)
-  const [showStructuredContext, setShowStructuredContext] = useState(false)
+  const [analyzingPrivateNotes, setAnalyzingPrivateNotes] = useState(false)
+  const [analyzingInstructions, setAnalyzingInstructions] = useState(false)
 
   useEffect(() => {
     loadSession()
@@ -205,27 +206,38 @@ export default function SessionDetailPage() {
     }
   }
 
-  const handleAnalyzeContext = async () => {
-    setAnalyzingContext(true)
+  const handleImproveField = async (
+    fieldName: 'context_text' | 'private_comments' | 'instructions',
+    currentText: string,
+    onSuccess: (improvedText: string) => void
+  ) => {
+    // Set analyzing state based on field
+    const setAnalyzing = 
+      fieldName === 'context_text' ? setAnalyzingContext :
+      fieldName === 'private_comments' ? setAnalyzingPrivateNotes :
+      setAnalyzingInstructions
+
+    setAnalyzing(true)
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/analyze-context`, {
+      const response = await fetch(`/api/sessions/${sessionId}/improve-field`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fieldName, text: currentText }),
       })
 
       if (response.ok) {
         const data = await response.json()
-        toast.success('Context erfolgreich analysiert! ✨')
-        await loadSession() // Wait for refresh
-        setShowStructuredContext(true) // Auto-show result
+        onSuccess(data.improved_text)
+        toast.success('✨ Text verbessert!')
       } else {
         const error = await response.json()
-        toast.error(error.error || 'Fehler bei der Analyse')
+        toast.error(error.error || 'Fehler bei der Verbesserung')
       }
     } catch (error) {
-      console.error('Analyze context error:', error)
-      toast.error('Fehler bei der Context-Analyse')
+      console.error('Improve field error:', error)
+      toast.error('Fehler beim Verbessern des Texts')
     } finally {
-      setAnalyzingContext(false)
+      setAnalyzing(false)
     }
   }
 
@@ -512,78 +524,12 @@ export default function SessionDetailPage() {
           fieldName="context_text"
           color="blue"
           onSave={(value) => handleSaveField('context_text', value)}
-          onAnalyze={handleAnalyzeContext}
+          onAnalyze={(currentText, setImprovedText) => 
+            handleImproveField('context_text', currentText, setImprovedText)
+          }
           showAnalyzeButton={true}
           analyzing={analyzingContext}
         />
-
-        {(session as any).structured_context && (
-          <Card className="border-purple-200 bg-purple-50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-purple-600" />
-                <CardTitle className="text-purple-900">Strukturierter Kontext</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {(session as any).structured_context.meeting_type && (
-                <div>
-                  <p className="text-xs font-semibold text-purple-600 uppercase">Meeting-Typ</p>
-                  <p className="text-sm text-purple-900">{(session as any).structured_context.meeting_type}</p>
-                </div>
-              )}
-              
-              {(session as any).structured_context.participants && (
-                <div>
-                  <p className="text-xs font-semibold text-purple-600 uppercase">
-                    Teilnehmer ({(session as any).structured_context.participants.length})
-                  </p>
-                  <div className="max-h-40 overflow-y-auto mt-1 space-y-1">
-                    {(session as any).structured_context.participants.slice(0, 10).map((p: any, i: number) => (
-                      <p key={i} className="text-xs text-purple-800">
-                        <span className="font-medium">{p.name}</span>
-                        {p.role && <span className="text-purple-600"> • {p.role}</span>}
-                        {p.party && <span className="text-purple-600"> ({p.party})</span>}
-                      </p>
-                    ))}
-                    {(session as any).structured_context.participants.length > 10 && (
-                      <p className="text-xs text-purple-600 italic">
-                        ... und {(session as any).structured_context.participants.length - 10} weitere
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {(session as any).structured_context.agenda && (
-                <div>
-                  <p className="text-xs font-semibold text-purple-600 uppercase">
-                    Tagesordnung ({(session as any).structured_context.agenda.length})
-                  </p>
-                  <div className="mt-1 space-y-1">
-                    {(session as any).structured_context.agenda.map((item: any, i: number) => (
-                      <p key={i} className="text-xs text-purple-800">
-                        {item.number && <span className="font-medium">{item.number}. </span>}
-                        {item.title}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {((session as any).structured_context.date || (session as any).structured_context.location) && (
-                <div className="flex gap-4 text-xs text-purple-700">
-                  {(session as any).structured_context.date && (
-                    <span>📅 {(session as any).structured_context.date}</span>
-                  )}
-                  {(session as any).structured_context.location && (
-                    <span>📍 {(session as any).structured_context.location}</span>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
 
         {/* Aufnahmen Section - Compact */}
         <Collapsible defaultOpen={files.length > 0}>
@@ -716,9 +662,11 @@ export default function SessionDetailPage() {
           fieldName="private_comments"
           color="amber"
           onSave={(value) => handleSaveField('private_comments', value)}
-          onAnalyze={handleAnalyzeContext}
+          onAnalyze={(currentText, setImprovedText) => 
+            handleImproveField('private_comments', currentText, setImprovedText)
+          }
           showAnalyzeButton={true}
-          analyzing={analyzingContext}
+          analyzing={analyzingPrivateNotes}
         />
 
         <CompactTranscribableField
@@ -731,9 +679,11 @@ export default function SessionDetailPage() {
           fieldName="instructions"
           color="green"
           onSave={(value) => handleSaveField('instructions', value)}
-          onAnalyze={handleAnalyzeContext}
+          onAnalyze={(currentText, setImprovedText) => 
+            handleImproveField('instructions', currentText, setImprovedText)
+          }
           showAnalyzeButton={true}
-          analyzing={analyzingContext}
+          analyzing={analyzingInstructions}
         />
 
         {session.status === 'transcribing' && (

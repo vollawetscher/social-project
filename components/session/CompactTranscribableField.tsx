@@ -18,7 +18,7 @@ interface CompactTranscribableFieldProps {
   fieldName: 'context_text' | 'private_comments' | 'instructions'
   color: 'blue' | 'amber' | 'green'
   onSave: (value: string) => Promise<void>
-  onAnalyze?: () => Promise<void>
+  onAnalyze?: (currentText: string, setImprovedText: (text: string) => void) => Promise<void>
   showAnalyzeButton?: boolean
   analyzing?: boolean
 }
@@ -272,52 +272,65 @@ export function CompactTranscribableField({
             <p className="text-xs text-slate-600">{description}</p>
 
             <div className="flex items-center gap-2">
-              {recording ? (
-                <Button onClick={stopRecording} variant="destructive" size="sm">
-                  <Square className="mr-2 h-4 w-4" />
-                  Stop
-                </Button>
-              ) : (
-                <Button 
-                  onClick={startRecording} 
-                  variant="outline" 
-                  size="sm" 
-                  disabled={transcribing || isLocked}
-                >
-                  <Mic className="mr-2 h-4 w-4" />
-                  Diktieren
-                </Button>
-              )}
-
-              {hasContent && (
+              {!isLocked && (
                 <>
-                  <Button 
-                    onClick={toggleLock} 
-                    variant="ghost" 
-                    size="sm"
-                    className={isLocked ? 'text-red-600' : 'text-green-600'}
-                  >
-                    {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                  </Button>
-                  <Button onClick={handleClear} variant="ghost" size="sm" disabled={isLocked}>
-                    <X className="h-4 w-4" />
-                  </Button>
+                  {recording ? (
+                    <Button onClick={stopRecording} variant="destructive" size="sm">
+                      <Square className="mr-2 h-4 w-4" />
+                      Stop
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={startRecording} 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={transcribing}
+                    >
+                      <Mic className="mr-2 h-4 w-4" />
+                      Diktieren
+                    </Button>
+                  )}
+
+                  {hasContent && (
+                    <>
+                      <Button onClick={handleClear} variant="ghost" size="sm">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+
+                  {showAnalyzeButton && onAnalyze && text && (
+                    <Button
+                      onClick={() => {
+                        onAnalyze(text, (improvedText) => {
+                          setText(improvedText)
+                          setHasChanges(true) // Mark as changed so user can save
+                        })
+                      }}
+                      disabled={analyzing}
+                      size="sm"
+                      variant="ghost"
+                      className="ml-auto"
+                    >
+                      {analyzing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
                 </>
               )}
 
-              {showAnalyzeButton && onAnalyze && text && (
-                <Button
-                  onClick={onAnalyze}
-                  disabled={analyzing || hasChanges}
+              {hasContent && (
+                <Button 
+                  onClick={toggleLock} 
+                  variant="ghost" 
                   size="sm"
-                  variant="ghost"
-                  className="ml-auto"
+                  className={isLocked ? 'text-red-600' : 'text-green-600'}
+                  disabled={hasChanges}
                 >
-                  {analyzing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
+                  {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                 </Button>
               )}
             </div>

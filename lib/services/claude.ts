@@ -152,6 +152,190 @@ If information is not available, omit the field.`
   }
 
   /**
+   * Improve/structure field text based on field type
+   */
+  async improveField(
+    text: string, 
+    fieldName: 'context_text' | 'private_comments' | 'instructions',
+    language: string = 'de'
+  ): Promise<string> {
+    if (!text || text.trim().length === 0) {
+      return text
+    }
+
+    const isGerman = language === 'de'
+    
+    // Different prompts based on field type
+    let prompt = ''
+    
+    if (fieldName === 'context_text') {
+      prompt = isGerman ? 
+        `Du bist ein Assistent der Freitext-Notizen in gut strukturierte, professionelle Kontextinformationen umwandelt.
+
+EINGABE (informell/schlampig):
+${text}
+
+AUFGABE:
+Strukturiere diese Notizen professionell. Wenn Teilnehmer, Agenda, Datum oder Ort erkennbar sind, formatiere sie klar:
+
+FORMAT:
+Teilnehmer:
+- Name (Rolle/Position)
+
+Agenda:
+1. Thema
+2. Weiteres Thema
+
+Datum: [falls erwähnt]
+Ort: [falls erwähnt]
+
+Weitere Notizen: [falls relevant]
+
+WICHTIG:
+- Halte dich an die Fakten aus dem Input
+- Erfinde NICHTS hinzu
+- Strukturiere nur was vorhanden ist
+- Schreibe auf Deutsch
+
+Antworte NUR mit dem strukturierten Text (kein "Hier ist..." oder Metakommentare).`
+        : `You are an assistant that transforms freeform notes into well-structured, professional context information.
+
+INPUT (informal/sloppy):
+${text}
+
+TASK:
+Structure these notes professionally. If participants, agenda, date, or location are recognizable, format them clearly:
+
+FORMAT:
+Participants:
+- Name (Role/Position)
+
+Agenda:
+1. Topic
+2. Another topic
+
+Date: [if mentioned]
+Location: [if mentioned]
+
+Additional notes: [if relevant]
+
+IMPORTANT:
+- Stick to facts from input
+- Do NOT invent anything
+- Only structure what exists
+- Write in English
+
+Reply ONLY with the structured text (no "Here is..." or meta comments).`
+    } else if (fieldName === 'private_comments') {
+      prompt = isGerman ?
+        `Du bist ein Assistent der informelle private Notizen in professionell formulierte Beobachtungen umwandelt.
+
+EINGABE (informell/schlampig):
+${text}
+
+AUFGABE:
+Formuliere diese privaten Gedanken/Beobachtungen professionell aus:
+- Vollständige Sätze
+- Klare Struktur
+- Professioneller Ton
+- Aber PRIVAT bleibend (keine Weitergabe an Dritte)
+
+WICHTIG:
+- Halte dich an die Fakten
+- Erfinde NICHTS hinzu
+- Schreibe auf Deutsch
+- Bleibe objektiv und professionell
+
+Antworte NUR mit dem ausformulierten Text (kein "Hier ist..." oder Metakommentare).`
+        : `You are an assistant that transforms informal private notes into professionally formulated observations.
+
+INPUT (informal/sloppy):
+${text}
+
+TASK:
+Formulate these private thoughts/observations professionally:
+- Complete sentences
+- Clear structure
+- Professional tone
+- But remaining PRIVATE (not for third parties)
+
+IMPORTANT:
+- Stick to facts
+- Do NOT invent anything
+- Write in English
+- Stay objective and professional
+
+Reply ONLY with the formulated text (no "Here is..." or meta comments).`
+    } else if (fieldName === 'instructions') {
+      prompt = isGerman ?
+        `Du bist ein Assistent der informelle Anweisungen in klare, präzise Instruktionen umwandelt.
+
+EINGABE (informell/schlampig):
+${text}
+
+AUFGABE:
+Formuliere diese Anweisungen klar und präzise:
+- Eindeutige Formulierungen
+- Strukturiert (bei mehreren Punkten)
+- Handlungsorientiert
+- Leicht verständlich
+
+WICHTIG:
+- Halte dich an die Intention
+- Erfinde NICHTS hinzu
+- Schreibe auf Deutsch
+- Kurz und prägnant
+
+Antworte NUR mit den klaren Anweisungen (kein "Hier ist..." oder Metakommentare).`
+        : `You are an assistant that transforms informal instructions into clear, precise directives.
+
+INPUT (informal/sloppy):
+${text}
+
+TASK:
+Formulate these instructions clearly and precisely:
+- Unambiguous phrasing
+- Structured (if multiple points)
+- Action-oriented
+- Easy to understand
+
+IMPORTANT:
+- Stick to the intention
+- Do NOT invent anything
+- Write in English
+- Brief and concise
+
+Reply ONLY with the clear instructions (no "Here is..." or meta comments).`
+    }
+
+    try {
+      const message = await this.client.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 2048,
+        temperature: 0.3,
+        messages: [{ role: 'user', content: prompt }],
+      })
+
+      const responseText = message.content
+        .filter((block) => block.type === 'text')
+        .map((block) => ('text' in block ? block.text : ''))
+        .join('\n')
+        .trim()
+
+      console.log('[ClaudeService] Field improvement:', {
+        fieldName,
+        original_length: text.length,
+        improved_length: responseText.length
+      })
+      
+      return responseText
+    } catch (error) {
+      console.error('Field improvement error:', error)
+      return text // Return original on error
+    }
+  }
+
+  /**
    * Detect the domain/topic of the conversation (with optional subdomain)
    */
   async detectDomain(input: ReportInput): Promise<{ 
