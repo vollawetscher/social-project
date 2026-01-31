@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 
 /**
  * Generate a temporary JWT token for Speechmatics real-time API
@@ -8,10 +7,7 @@ import { authOptions } from '@/lib/auth'
  */
 export async function POST() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    await requireAuth()
 
     const apiKey = process.env.SPEECHMATICS_API_KEY
     if (!apiKey) {
@@ -51,6 +47,14 @@ export async function POST() {
     })
   } catch (error: any) {
     console.error('[Speechmatics Token] Error:', error)
+    
+    if (error instanceof Error) {
+      const authError = handleAuthError(error)
+      if (authError.status === 401) {
+        return NextResponse.json({ error: authError.message }, { status: authError.status })
+      }
+    }
+    
     return NextResponse.json(
       { error: 'Failed to generate token' },
       { status: 500 }
