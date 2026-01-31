@@ -39,7 +39,7 @@ export default function QuickRecordPage() {
     }
   }
 
-  const handleRecordingComplete = async (blob: Blob, duration: number) => {
+  const handleRecordingComplete = async (blob: Blob, duration: number, purpose: string) => {
     try {
       const recording: LocalRecording = {
         id: `rec_${Date.now()}_${Math.random().toString(36).substring(7)}`,
@@ -173,7 +173,6 @@ export default function QuickRecordPage() {
           <Card className="p-6">
             <AudioRecorder
               onRecordingComplete={handleRecordingComplete}
-              recordingPurpose="meeting"
             />
             <Button
               variant="ghost"
