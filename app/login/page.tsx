@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const supabase = createClient();
 
@@ -22,12 +23,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Get redirect URL from query params (validate to prevent open redirect)
+  const redirectParam = searchParams?.get('redirect');
+  const redirect = redirectParam && redirectParam.startsWith('/') 
+    ? redirectParam 
+    : '/dashboard';
+
   React.useEffect(() => {
     // Only redirect if we're sure user is authenticated (don't wait for authLoading)
     if (user) {
-      router.push('/dashboard');
+      router.push(redirect);
     }
-  }, [user, router]);
+  }, [user, router, redirect]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +53,7 @@ export default function LoginPage() {
       router.refresh();
       
       // Force full page reload to ensure fresh auth state
-      window.location.href = '/dashboard';
+      window.location.href = redirect;
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
       setLoading(false);
