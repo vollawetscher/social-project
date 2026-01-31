@@ -142,11 +142,25 @@ async function processTranscriptionJob(sessionId: string) {
 
     console.log('[Transcribe] All files processed successfully')
 
+    // Get session duration to check if it's worth generating a report
+    const { data: sessionData } = await supabase
+      .from('sessions')
+      .select('duration_sec')
+      .eq('id', sessionId)
+      .single()
+
+    const sessionDuration = sessionData?.duration_sec || 0
+
     // Check if any of the transcribed files were "meeting" type
     const hasMeetingRecording = files.some(f => f.file_purpose === 'meeting')
 
-    if (hasMeetingRecording) {
-      console.log('[Transcribe] Meeting recording found - generating report...')
+    // SAFEGUARD: Only generate report if:
+    // 1. Has meeting recording AND
+    // 2. Duration is at least 30 seconds (otherwise too short to be meaningful)
+    const shouldGenerateReport = hasMeetingRecording && sessionDuration >= 30
+
+    if (shouldGenerateReport) {
+      console.log(`[Transcribe] Meeting recording found (${sessionDuration}s) - generating report...`)
       
       console.log('[Transcribe] Step 4: Updating session status to summarizing...')
       await supabase
@@ -170,7 +184,11 @@ async function processTranscriptionJob(sessionId: string) {
           .eq('id', sessionId)
       }
     } else {
-      console.log('[Transcribe] No meeting recording found - skipping report generation')
+      if (hasMeetingRecording && sessionDuration < 30) {
+        console.log(`[Transcribe] Meeting recording too short (${sessionDuration}s) - skipping report generation`)
+      } else {
+        console.log('[Transcribe] No meeting recording found - skipping report generation')
+      }
       console.log('[Transcribe] Updating session status to done (transcription only)...')
       await supabase
         .from('sessions')

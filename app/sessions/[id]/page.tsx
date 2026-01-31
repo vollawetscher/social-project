@@ -477,6 +477,18 @@ export default function SessionDetailPage() {
           </Card>
         )}
 
+        {/* Info: Recording too short for automatic report */}
+        {session.status === 'done' && session.duration_sec && session.duration_sec < 30 && (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="pt-6">
+              <p className="text-sm text-blue-800">
+                <strong>ℹ️ Info:</strong> Aufnahme zu kurz ({session.duration_sec} Sekunden) für automatischen Report. 
+                Transkript ist verfügbar. Für Reports bitte mindestens 30 Sekunden aufnehmen.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <Collapsible defaultOpen={false}>
           <div className="border rounded-lg border-purple-200 bg-white">
             <CollapsibleTrigger className="w-full p-4">
