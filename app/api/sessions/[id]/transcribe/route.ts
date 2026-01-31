@@ -142,25 +142,37 @@ async function processTranscriptionJob(sessionId: string) {
 
     console.log('[Transcribe] All files processed successfully')
 
-    // Get session duration to check if it's worth generating a report
+    // Get session info and user preferences
     const { data: sessionData } = await supabase
       .from('sessions')
-      .select('duration_sec')
+      .select('duration_sec, user_id')
       .eq('id', sessionId)
       .single()
 
     const sessionDuration = sessionData?.duration_sec || 0
+    const userId = sessionData?.user_id
+
+    // Get user's report generation preference
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('auto_generate_reports')
+      .eq('id', userId)
+      .single()
+
+    const autoGenerateReports = userProfile?.auto_generate_reports || false
 
     // Check if any of the transcribed files were "meeting" type
     const hasMeetingRecording = files.some(f => f.file_purpose === 'meeting')
 
-    // SAFEGUARD: Only generate report if:
-    // 1. Has meeting recording AND
-    // 2. Duration is at least 30 seconds (otherwise too short to be meaningful)
-    const shouldGenerateReport = hasMeetingRecording && sessionDuration >= 30
+    // NEW WORKFLOW: Only auto-generate if user has enabled it in settings
+    // AND it's a meeting recording with meaningful duration (30+ seconds)
+    const shouldGenerateReport = 
+      autoGenerateReports && 
+      hasMeetingRecording && 
+      sessionDuration >= 30
 
     if (shouldGenerateReport) {
-      console.log(`[Transcribe] Meeting recording found (${sessionDuration}s) - generating report...`)
+      console.log(`[Transcribe] User has auto-report enabled, meeting recording found (${sessionDuration}s) - generating report...`)
       
       console.log('[Transcribe] Step 4: Updating session status to summarizing...')
       await supabase
@@ -184,17 +196,21 @@ async function processTranscriptionJob(sessionId: string) {
           .eq('id', sessionId)
       }
     } else {
-      if (hasMeetingRecording && sessionDuration < 30) {
-        console.log(`[Transcribe] Meeting recording too short (${sessionDuration}s) - skipping report generation`)
-      } else {
+      // Transcription complete, no automatic report
+      if (!autoGenerateReports) {
+        console.log('[Transcribe] User has auto-report disabled - skipping report generation')
+      } else if (!hasMeetingRecording) {
         console.log('[Transcribe] No meeting recording found - skipping report generation')
+      } else if (sessionDuration < 30) {
+        console.log(`[Transcribe] Meeting recording too short (${sessionDuration}s) - skipping report generation`)
       }
+      
       console.log('[Transcribe] Updating session status to done (transcription only)...')
       await supabase
         .from('sessions')
         .update({ status: 'done' })
         .eq('id', sessionId)
-      console.log('[Transcribe] Session marked as done')
+      console.log('[Transcribe] Session marked as done - user can manually generate report if needed')
     }
 
     console.log('[Transcribe] All steps completed successfully!')

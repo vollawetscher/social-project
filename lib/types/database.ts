@@ -20,6 +20,8 @@ export interface Profile {
   auth_method: 'email' | 'phone'
   role: UserRole
   display_name?: string
+  auto_generate_reports?: boolean  // User preference: auto-generate reports after transcription
+  preferences?: Json  // Additional user preferences for future extensibility
   created_at: string
 }
 

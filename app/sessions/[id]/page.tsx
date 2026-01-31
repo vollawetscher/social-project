@@ -477,14 +477,19 @@ export default function SessionDetailPage() {
           </Card>
         )}
 
-        {/* Info: Recording too short for automatic report */}
-        {session.status === 'done' && session.duration_sec && session.duration_sec < 30 && (
-          <Card className="border-blue-200 bg-blue-50">
+        {/* Info: Transcription complete, ready to generate report */}
+        {session.status === 'done' && files.length > 0 && !session.last_error && (
+          <Card className="border-green-200 bg-green-50">
             <CardContent className="pt-6">
-              <p className="text-sm text-blue-800">
-                <strong>ℹ️ Info:</strong> Aufnahme zu kurz ({session.duration_sec} Sekunden) für automatischen Report. 
-                Transkript ist verfügbar. Für Reports bitte mindestens 30 Sekunden aufnehmen.
+              <p className="text-sm text-green-800">
+                <strong>✅ Transkription abgeschlossen!</strong> Sie können jetzt einen Report erstellen. 
+                Klicken Sie auf "Report neu erstellen" unten.
               </p>
+              {session.duration_sec && session.duration_sec < 30 && (
+                <p className="text-xs text-green-700 mt-2">
+                  Hinweis: Kurze Aufnahme ({session.duration_sec} Sekunden) - Report wird trotzdem generiert.
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
