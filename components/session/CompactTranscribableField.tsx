@@ -48,7 +48,7 @@ export function CompactTranscribableField({
   const [transcribing, setTranscribing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
-  const [isOpen, setIsOpen] = useState(!!value) // Auto-open if has content
+  const [isOpen, setIsOpen] = useState(!locked && !!value) // Auto-open only if unlocked and has content
   const [isLocked, setIsLocked] = useState(locked) // Lock feature
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -103,6 +103,13 @@ export function CompactTranscribableField({
 
   const colors = colorClasses[color]
   const hasContent = text.length > 0
+  
+  // Generate preview text (first ~50 chars)
+  const getPreview = () => {
+    if (!text) return null
+    const preview = text.substring(0, 50).trim()
+    return preview.length < text.length ? `${preview}...` : preview
+  }
 
   const startRecording = async () => {
     if (isLocked) {
@@ -253,9 +260,9 @@ export function CompactTranscribableField({
       <div className={`border rounded-lg ${colors.border} ${isOpen ? colors.bg : 'bg-white'}`}>
         <CollapsibleTrigger className="w-full p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className={colors.text}>{icon}</div>
-              <div className="text-left">
+              <div className="text-left flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm">{title}</span>
                   {hasContent && (
@@ -264,16 +271,33 @@ export function CompactTranscribableField({
                     </Badge>
                   )}
                 </div>
+                {!isOpen && hasContent && (
+                  <p className="text-xs text-slate-600 mt-0.5 truncate">{getPreview()}</p>
+                )}
                 {!isOpen && !hasContent && (
                   <p className="text-xs text-slate-500 mt-0.5">{description}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {!hasContent && !isOpen && (
                 <Button size="sm" variant="ghost" className={`${colors.text} hover:${colors.bg}`}>
                   <Plus className="h-4 w-4 mr-1" />
                   Hinzufügen
+                </Button>
+              )}
+              {hasContent && (
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleLock()
+                  }}
+                  variant="ghost" 
+                  size="sm"
+                  className={isLocked ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
+                  disabled={hasChanges}
+                >
+                  {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                 </Button>
               )}
               <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -334,18 +358,6 @@ export function CompactTranscribableField({
                     </Button>
                   )}
                 </>
-              )}
-
-              {hasContent && (
-                <Button 
-                  onClick={toggleLock} 
-                  variant="ghost" 
-                  size="sm"
-                  className={isLocked ? 'text-red-600' : 'text-green-600'}
-                  disabled={hasChanges}
-                >
-                  {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                </Button>
               )}
             </div>
 
