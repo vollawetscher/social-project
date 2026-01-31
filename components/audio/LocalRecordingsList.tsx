@@ -7,23 +7,14 @@ import { Badge } from '@/components/ui/badge'
 import { Play, Pause, Trash2, Clock, HardDrive, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
-import { FilePurpose } from '@/lib/types/database'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 interface LocalRecordingsListProps {
-  onFileSelected: (file: File, purpose: FilePurpose) => void
+  onFileSelected: (file: File) => void
 }
 
 export function LocalRecordingsList({ onFileSelected }: LocalRecordingsListProps) {
   const [recordings, setRecordings] = useState<LocalRecording[]>([])
   const [playingId, setPlayingId] = useState<string | null>(null)
-  const [selectedPurpose, setSelectedPurpose] = useState<{ [key: string]: FilePurpose }>({})
   const [uploadingId, setUploadingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -62,8 +53,6 @@ export function LocalRecordingsList({ onFileSelected }: LocalRecordingsListProps
   }
 
   const handleUpload = async (id: string) => {
-    const purpose = selectedPurpose[id] || 'meeting'
-    
     try {
       setUploadingId(id)
       const recording = await localStorageService.getRecording(id)
@@ -83,8 +72,8 @@ export function LocalRecordingsList({ onFileSelected }: LocalRecordingsListProps
         { type: recording.mimeType }
       )
 
-      // Upload via parent component's handler (same as file upload)
-      onFileSelected(file, purpose)
+      // Upload via parent component's handler (AI will classify after transcription)
+      onFileSelected(file)
 
       // Delete from local storage after triggering upload
       await localStorageService.deleteRecording(id)
@@ -207,37 +196,7 @@ export function LocalRecordingsList({ onFileSelected }: LocalRecordingsListProps
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Select
-                  value={selectedPurpose[rec.id] || 'meeting'}
-                  onValueChange={(value) => setSelectedPurpose(prev => ({ ...prev, [rec.id]: value as FilePurpose }))}
-                  disabled={uploadingId === rec.id}
-                >
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="meeting">
-                      <div className="flex items-center gap-2">
-                        <span>💬</span>
-                        <span>Gespräch / Meeting</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="context">
-                      <div className="flex items-center gap-2">
-                        <span>📝</span>
-                        <span>Kontext / Notizen</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="dictation">
-                      <div className="flex items-center gap-2">
-                        <span>🎙️</span>
-                        <span>Diktat</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                
+              <div className="flex items-center gap-2 justify-end">
                 <Button
                   size="sm"
                   onClick={() => handleUpload(rec.id)}

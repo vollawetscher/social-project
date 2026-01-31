@@ -39,7 +39,7 @@ export default function QuickRecordPage() {
     }
   }
 
-  const handleRecordingComplete = async (blob: Blob, duration: number, purpose: string) => {
+  const handleRecordingComplete = async (blob: Blob, duration: number) => {
     try {
       const recording: LocalRecording = {
         id: `rec_${Date.now()}_${Math.random().toString(36).substring(7)}`,

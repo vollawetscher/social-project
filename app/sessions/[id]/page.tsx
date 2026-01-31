@@ -88,7 +88,7 @@ export default function SessionDetailPage() {
     }
   }
 
-  const handleFileSelected = async (file: File, purpose: FilePurpose) => {
+  const handleFileSelected = async (file: File) => {
     // Detect audio duration before upload
     const audio = document.createElement('audio')
     audio.src = URL.createObjectURL(file)
@@ -113,7 +113,8 @@ export default function SessionDetailPage() {
         return
       }
 
-      await uploadAudio(file, duration, purpose)
+      // Default to 'meeting' - AI will classify after transcription
+      await uploadAudio(file, duration, 'meeting')
     })
 
     audio.addEventListener('error', async () => {
@@ -125,7 +126,8 @@ export default function SessionDetailPage() {
         toast.error('Die Datei scheint leer oder beschädigt zu sein.')
       } else {
         toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
-        await uploadAudio(file, 0, purpose)
+        // Default to 'meeting' - AI will classify after transcription
+        await uploadAudio(file, 0, 'meeting')
       }
     })
 
@@ -133,7 +135,8 @@ export default function SessionDetailPage() {
       if (!durationDetected) {
         URL.revokeObjectURL(audio.src)
         toast.warning('Audiodauer konnte nicht ermittelt werden. Upload wird versucht...')
-        await uploadAudio(file, 0, purpose)
+        // Default to 'meeting' - AI will classify after transcription
+        await uploadAudio(file, 0, 'meeting')
       }
     }, 5000)
   }
@@ -661,8 +664,8 @@ export default function SessionDetailPage() {
                     </TabsList>
                     <TabsContent value="record" className="mt-0">
                       <AudioRecorder
-                        onRecordingComplete={(blob, duration, purpose) => 
-                          uploadAudio(blob, duration, purpose)
+                        onRecordingComplete={(blob, duration) => 
+                          uploadAudio(blob, duration, 'meeting')
                         }
                       />
                     </TabsContent>
