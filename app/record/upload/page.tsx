@@ -137,15 +137,19 @@ export default function UploadRecordingsPage() {
     setUploading(true)
     const statuses = new Map<string, UploadStatus>()
 
-    for (const id of selectedIds) {
+    // Convert Set to Array for iteration
+    const selectedIdsArray = Array.from(selectedIds)
+
+    selectedIdsArray.forEach(id => {
       statuses.set(id, { id, status: 'pending' })
-    }
+    })
     setUploadStatuses(new Map(statuses))
 
     let successCount = 0
     let errorCount = 0
 
-    for (const id of selectedIds) {
+    for (let i = 0; i < selectedIdsArray.length; i++) {
+      const id = selectedIdsArray[i]
       try {
         statuses.set(id, { id, status: 'uploading' })
         setUploadStatuses(new Map(statuses))
