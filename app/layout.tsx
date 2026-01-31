@@ -9,6 +9,19 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Gesprächsbericht',
   description: 'Social work conversation transcription and reporting system',
+  manifest: '/manifest.json',
+  themeColor: '#3b82f6',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Gesprächsbericht',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
