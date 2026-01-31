@@ -6,6 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { AudioUploader } from '@/components/audio/AudioUploader'
+import { LocalRecordingsList } from '@/components/audio/LocalRecordingsList'
 import { BugReporter } from '@/components/error/BugReporter'
 import { CompactTranscribableField } from '@/components/session/CompactTranscribableField'
 import { Button } from '@/components/ui/button'
@@ -647,7 +648,14 @@ export default function SessionDetailPage() {
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="p-4 pt-0">
+                <div className="p-4 pt-0 space-y-4">
+                  {/* Show local recordings if any exist */}
+                  <LocalRecordingsList
+                    onUploadRecording={async (blob, duration, purpose) => {
+                      await uploadAudio(blob, duration, purpose)
+                    }}
+                  />
+
                   <Tabs defaultValue="record" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 mb-3">
                       <TabsTrigger value="record">Aufnehmen</TabsTrigger>

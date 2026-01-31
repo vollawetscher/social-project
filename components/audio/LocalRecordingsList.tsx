@@ -1,0 +1,199 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Play, Pause, Upload, Trash2, Clock, HardDrive } from 'lucide-react'
+import { toast } from 'sonner'
+import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
+import { FilePurpose } from '@/lib/types/database'
+
+interface LocalRecordingsListProps {
+  onUploadRecording: (blob: Blob, duration: number, purpose: FilePurpose) => Promise<void>
+}
+
+export function LocalRecordingsList({ onUploadRecording }: LocalRecordingsListProps) {
+  const [recordings, setRecordings] = useState<LocalRecording[]>([])
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadRecordings()
+  }, [])
+
+  const loadRecordings = async () => {
+    try {
+      const recs = await localStorageService.getAllRecordings()
+      recs.sort((a, b) => b.timestamp - a.timestamp)
+      setRecordings(recs)
+    } catch (error) {
+      console.error('Failed to load local recordings:', error)
+    }
+  }
+
+  const handlePlay = async (id: string) => {
+    try {
+      const recording = await localStorageService.getRecording(id)
+      if (!recording) return
+
+      if (playingId === id) {
+        setPlayingId(null)
+        return
+      }
+
+      const audio = new Audio(URL.createObjectURL(recording.blob))
+      audio.play()
+      setPlayingId(id)
+
+      audio.onended = () => setPlayingId(null)
+    } catch (error) {
+      console.error('Failed to play recording:', error)
+      toast.error('Wiedergabe fehlgeschlagen')
+    }
+  }
+
+  const handleUpload = async (id: string) => {
+    try {
+      setUploadingId(id)
+      const recording = await localStorageService.getRecording(id)
+      if (!recording) {
+        toast.error('Aufnahme nicht gefunden')
+        return
+      }
+
+      // Convert Blob to File for compatibility
+      const file = new File([recording.blob], `recording-${id}.webm`, {
+        type: recording.mimeType,
+      })
+
+      // Upload via parent component's handler (same as file upload)
+      await onUploadRecording(recording.blob, recording.duration, 'meeting')
+
+      // Delete from local storage after successful upload
+      await localStorageService.deleteRecording(id)
+      toast.success('Lokale Aufnahme hochgeladen')
+      
+      // Reload list
+      await loadRecordings()
+    } catch (error: any) {
+      console.error('Failed to upload recording:', error)
+      toast.error('Fehler beim Hochladen: ' + error.message)
+    } finally {
+      setUploadingId(null)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      await localStorageService.deleteRecording(id)
+      toast.success('Aufnahme gelöscht')
+      await loadRecordings()
+    } catch (error) {
+      console.error('Failed to delete recording:', error)
+      toast.error('Fehler beim Löschen')
+    }
+  }
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Heute ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Gestern ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+    } else {
+      return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' ' +
+             date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+    }
+  }
+
+  const formatSize = (bytes: number) => {
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+  }
+
+  if (recordings.length === 0) return null
+
+  return (
+    <Card className="p-4 bg-blue-50 border-blue-200">
+      <div className="flex items-center gap-2 mb-3">
+        <HardDrive className="h-5 w-5 text-blue-600" />
+        <h3 className="font-semibold text-blue-900">
+          Lokale Aufnahmen
+        </h3>
+        <Badge variant="outline" className="bg-blue-100 text-blue-700">
+          {recordings.length}
+        </Badge>
+      </div>
+      
+      <p className="text-xs text-blue-700 mb-3">
+        Diese Aufnahmen wurden lokal auf deinem Gerät gespeichert. Lade sie hoch, um sie zu transkribieren.
+      </p>
+
+      <div className="space-y-2">
+        {recordings.map((rec) => (
+          <Card key={rec.id} className="p-3 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Clock className="h-3 w-3 text-slate-400" />
+                  <span className="text-sm font-medium text-slate-900">
+                    {formatDuration(rec.duration)}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {formatSize(rec.size)}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">{formatDate(rec.timestamp)}</p>
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handlePlay(rec.id)}
+                  disabled={uploadingId === rec.id}
+                >
+                  {playingId === rec.id ? (
+                    <Pause className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleUpload(rec.id)}
+                  disabled={uploadingId === rec.id}
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                >
+                  <Upload className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDelete(rec.id)}
+                  disabled={uploadingId === rec.id}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </Card>
+  )
+}
