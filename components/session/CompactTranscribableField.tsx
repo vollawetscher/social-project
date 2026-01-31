@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, Plus, X, Lock, Unlock } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
+import { SpeechmaticsRealtimeService, getSpeechmaticsRealtimeToken } from '@/lib/services/speechmatics-realtime'
 
 interface CompactTranscribableFieldProps {
   title: string
@@ -52,9 +53,10 @@ export function CompactTranscribableField({
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
-  const recognitionRef = useRef<any>(null)
+  const speechmaticsServiceRef = useRef<SpeechmaticsRealtimeService | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const cursorPositionRef = useRef<number>(0)
+  const audioStreamRef = useRef<MediaStream | null>(null)
 
   // Sync with parent value changes
   useEffect(() => {
@@ -66,47 +68,15 @@ export function CompactTranscribableField({
     setIsLocked(locked)
   }, [locked])
 
-  // Initialize Web Speech API for real-time transcription
+  // Cleanup on unmount
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition
-      const recognition = new SpeechRecognition()
-      recognition.continuous = true
-      recognition.interimResults = true
-      recognition.lang = 'de-DE'
-
-      recognition.onresult = (event: any) => {
-        let interim = ''
-        let final = ''
-        
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript
-          if (event.results[i].isFinal) {
-            final += transcript + ' '
-          } else {
-            interim += transcript
-          }
-        }
-        
-        const fullTranscript = final + interim
-        setLiveTranscript(fullTranscript)
-        
-        // Insert at cursor position in real-time
-        if (textareaRef.current && fullTranscript) {
-          const start = cursorPositionRef.current
-          const before = text.substring(0, start)
-          const after = text.substring(start)
-          const newText = before + fullTranscript + after
-          setText(newText)
-          setHasChanges(true)
-        }
+    return () => {
+      if (speechmaticsServiceRef.current) {
+        speechmaticsServiceRef.current.stop()
       }
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error)
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop())
       }
-
-      recognitionRef.current = recognition
     }
   }, [])
 
@@ -146,59 +116,86 @@ export function CompactTranscribableField({
     }
 
     try {
+      // Get microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-      chunksRef.current = []
+      audioStreamRef.current = stream
+      
+      setLiveTranscript('')
+      
+      // Get secure temporary token from server
+      const token = await getSpeechmaticsRealtimeToken()
 
-      // Start Web Speech API for real-time
-      if (recognitionRef.current) {
-        setLiveTranscript('')
-        recognitionRef.current.start()
-      }
+      // Initialize Speechmatics real-time service (GDPR-compliant)
+      const speechmaticsService = new SpeechmaticsRealtimeService(token, {
+        language: 'de',
+        enablePartials: true,
+        onTranscript: (result) => {
+          const transcript = result.transcript
+          
+          if (result.isFinal) {
+            // Final transcript - insert permanently
+            const start = cursorPositionRef.current
+            const before = text.substring(0, start)
+            const after = text.substring(start)
+            const newText = before + transcript + ' ' + after
+            setText(newText)
+            setHasChanges(true)
+            cursorPositionRef.current = start + transcript.length + 1
+            setLiveTranscript('') // Clear partial
+          } else {
+            // Partial transcript - show as preview
+            setLiveTranscript(transcript)
+          }
+        },
+        onError: (error) => {
+          console.error('[Speechmatics RT] Error:', error)
+          toast.error('Transkriptionsfehler: ' + error.message)
+        },
+        onConnectionChange: (connected) => {
+          if (!connected && recording) {
+            toast.error('Verbindung zur Transkription verloren')
+          }
+        },
+      })
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data)
-        }
-      }
-
-      mediaRecorder.onstop = async () => {
-        // Stop Web Speech API
-        if (recognitionRef.current) {
-          recognitionRef.current.stop()
-        }
-        
-        stream.getTracks().forEach((track) => track.stop())
-        
-        // Text was already inserted during recognition
-        if (liveTranscript.trim()) {
-          toast.success(`✅ Diktat eingefügt (${liveTranscript.length} Zeichen)`)
-          setLiveTranscript('')
-        }
-      }
-
-      mediaRecorder.start()
+      speechmaticsServiceRef.current = speechmaticsService
+      
+      // Start real-time transcription
+      await speechmaticsService.start(stream)
+      
       setRecording(true)
-      toast.success('🎙️ Aufnahme läuft - spreche jetzt')
-    } catch (error) {
+      toast.success('🎙️ Aufnahme läuft - spreche jetzt (DSGVO-konform)')
+    } catch (error: any) {
       console.error('Recording error:', error)
-      toast.error('Fehler beim Starten der Aufnahme')
+      toast.error('Fehler beim Starten der Aufnahme: ' + (error.message || 'Unbekannter Fehler'))
+      
+      // Cleanup on error
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop())
+        audioStreamRef.current = null
+      }
     }
   }
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && recording) {
-      mediaRecorderRef.current.stop()
+  const stopRecording = async () => {
+    if (recording && speechmaticsServiceRef.current) {
       setRecording(false)
+      
+      // Stop Speechmatics service
+      await speechmaticsServiceRef.current.stop()
+      speechmaticsServiceRef.current = null
+      
+      // Stop microphone
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop())
+        audioStreamRef.current = null
+      }
+      
+      setLiveTranscript('')
+      toast.success('✅ Diktat beendet')
     }
   }
 
-  const transcribeAudioWithSpeechmatics = async (audioBlob: Blob) => {
-    // Optional: Refine with Speechmatics for better quality
-    // For now, we rely on live transcript
-    console.log('[Speechmatics] Skipped - using live transcript')
-  }
 
   const handleTextChange = (newText: string) => {
     if (isLocked) return
