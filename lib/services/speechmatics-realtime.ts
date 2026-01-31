@@ -125,9 +125,12 @@ export class SpeechmaticsRealtimeService {
 
         // Send raw binary audio to Speechmatics
         // Format: JSON message with base64-encoded audio
-        const audioBase64 = btoa(
-          String.fromCharCode(...new Uint8Array(pcmData.buffer))
-        )
+        const uint8Array = new Uint8Array(pcmData.buffer)
+        let binaryString = ''
+        for (let i = 0; i < uint8Array.length; i++) {
+          binaryString += String.fromCharCode(uint8Array[i])
+        }
+        const audioBase64 = btoa(binaryString)
 
         const message = {
           message: 'AddAudio',
