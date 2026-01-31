@@ -651,9 +651,7 @@ export default function SessionDetailPage() {
                 <div className="p-4 pt-0 space-y-4">
                   {/* Show local recordings if any exist */}
                   <LocalRecordingsList
-                    onUploadRecording={async (blob, duration, purpose) => {
-                      await uploadAudio(blob, duration, purpose)
-                    }}
+                    onFileSelected={handleFileSelected}
                   />
 
                   <Tabs defaultValue="record" className="w-full">

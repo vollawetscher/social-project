@@ -4,18 +4,26 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Play, Pause, Upload, Trash2, Clock, HardDrive } from 'lucide-react'
+import { Play, Pause, Trash2, Clock, HardDrive, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
 import { FilePurpose } from '@/lib/types/database'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface LocalRecordingsListProps {
-  onUploadRecording: (blob: Blob, duration: number, purpose: FilePurpose) => Promise<void>
+  onFileSelected: (file: File, purpose: FilePurpose) => void
 }
 
-export function LocalRecordingsList({ onUploadRecording }: LocalRecordingsListProps) {
+export function LocalRecordingsList({ onFileSelected }: LocalRecordingsListProps) {
   const [recordings, setRecordings] = useState<LocalRecording[]>([])
   const [playingId, setPlayingId] = useState<string | null>(null)
+  const [selectedPurpose, setSelectedPurpose] = useState<{ [key: string]: FilePurpose }>({})
   const [uploadingId, setUploadingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -54,6 +62,8 @@ export function LocalRecordingsList({ onUploadRecording }: LocalRecordingsListPr
   }
 
   const handleUpload = async (id: string) => {
+    const purpose = selectedPurpose[id] || 'meeting'
+    
     try {
       setUploadingId(id)
       const recording = await localStorageService.getRecording(id)
@@ -62,17 +72,23 @@ export function LocalRecordingsList({ onUploadRecording }: LocalRecordingsListPr
         return
       }
 
-      // Convert Blob to File for compatibility
-      const file = new File([recording.blob], `recording-${id}.webm`, {
-        type: recording.mimeType,
-      })
+      // Determine file extension from mimeType
+      const extension = recording.mimeType.split('/')[1]?.split(';')[0] || 'webm'
+      const timestamp = new Date(recording.timestamp).toISOString().replace(/[:.]/g, '-')
+      
+      // Convert Blob to File with proper name
+      const file = new File(
+        [recording.blob], 
+        `local-recording-${timestamp}.${extension}`,
+        { type: recording.mimeType }
+      )
 
       // Upload via parent component's handler (same as file upload)
-      await onUploadRecording(recording.blob, recording.duration, 'meeting')
+      onFileSelected(file, purpose)
 
-      // Delete from local storage after successful upload
+      // Delete from local storage after triggering upload
       await localStorageService.deleteRecording(id)
-      toast.success('Lokale Aufnahme hochgeladen')
+      toast.success('Lokale Aufnahme wird hochgeladen')
       
       // Reload list
       await loadRecordings()
@@ -136,58 +152,100 @@ export function LocalRecordingsList({ onUploadRecording }: LocalRecordingsListPr
       </div>
       
       <p className="text-xs text-blue-700 mb-3">
-        Diese Aufnahmen wurden lokal auf deinem Gerät gespeichert. Lade sie hoch, um sie zu transkribieren.
+        Diese Aufnahmen wurden lokal gespeichert ({recordings.reduce((total, rec) => total + rec.size, 0) > 1024 * 1024 ? 
+          formatSize(recordings.reduce((total, rec) => total + rec.size, 0)) : 
+          Math.round(recordings.reduce((total, rec) => total + rec.size, 0) / 1024) + ' KB'}). 
+        Wähle den Typ und lade sie hoch.
       </p>
 
       <div className="space-y-2">
         {recordings.map((rec) => (
           <Card key={rec.id} className="p-3 bg-white">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock className="h-3 w-3 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-900">
-                    {formatDuration(rec.duration)}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {formatSize(rec.size)}
-                  </span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-3 w-3 text-slate-400" />
+                    <span className="text-sm font-medium text-slate-900">
+                      {formatDuration(rec.duration)}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {formatSize(rec.size)}
+                    </span>
+                    <Badge variant="outline" className="text-xs">
+                      {rec.mimeType.split('/')[1]?.split(';')[0].toUpperCase()}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500">{formatDate(rec.timestamp)}</p>
                 </div>
-                <p className="text-xs text-slate-500">{formatDate(rec.timestamp)}</p>
+                
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handlePlay(rec.id)}
+                    disabled={uploadingId === rec.id}
+                    title="Abspielen"
+                  >
+                    {playingId === rec.id ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
+                  
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDelete(rec.id)}
+                    disabled={uploadingId === rec.id}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    title="Löschen"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handlePlay(rec.id)}
+
+              <div className="flex items-center gap-2">
+                <Select
+                  value={selectedPurpose[rec.id] || 'meeting'}
+                  onValueChange={(value) => setSelectedPurpose(prev => ({ ...prev, [rec.id]: value as FilePurpose }))}
                   disabled={uploadingId === rec.id}
                 >
-                  {playingId === rec.id ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
-                </Button>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="meeting">
+                      <div className="flex items-center gap-2">
+                        <span>💬</span>
+                        <span>Gespräch / Meeting</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="context">
+                      <div className="flex items-center gap-2">
+                        <span>📝</span>
+                        <span>Kontext / Notizen</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="dictation">
+                      <div className="flex items-center gap-2">
+                        <span>🎙️</span>
+                        <span>Diktat</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
                 
                 <Button
                   size="sm"
-                  variant="ghost"
                   onClick={() => handleUpload(rec.id)}
                   disabled={uploadingId === rec.id}
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  <Upload className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleDelete(rec.id)}
-                  disabled={uploadingId === rec.id}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
+                  <Upload className="h-4 w-4 mr-1" />
+                  Hochladen
                 </Button>
               </div>
             </div>
