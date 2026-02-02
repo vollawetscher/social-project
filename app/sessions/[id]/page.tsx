@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Session, FilePurpose, File as FileType, TranscriptSegment } from '@/lib/types/database'
-import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles, MessageSquare, Lock, ListTodo, ChevronDown, Mic, Plus } from 'lucide-react'
+import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles, MessageSquare, Lock, ListTodo, ChevronDown, Mic, Plus, Clock, Calendar, MapPin, User } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -441,11 +441,12 @@ export default function SessionDetailPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <Breadcrumbs items={breadcrumbItems} />
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => session.case_id ? router.push(`/cases/${session.case_id}`) : router.push('/dashboard')}
+            className="h-8 w-8"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -455,6 +456,7 @@ export default function SessionDetailPage() {
               fallback={`Gespräch ${session.id.slice(0, 8)}`}
               onSave={handleUpdateSessionName}
               placeholder="Gesprächsname eingeben"
+              className="text-lg"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -497,57 +499,105 @@ export default function SessionDetailPage() {
 
         <Collapsible defaultOpen={false}>
           <div className="border rounded-lg border-purple-200 bg-white">
-            <CollapsibleTrigger className="w-full p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+            <CollapsibleTrigger className="w-full p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1">
                   <Languages className="h-5 w-5 text-purple-600" />
-                  <div className="text-left">
+                  <div className="text-left flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">Report-Sprache</span>
-                      <Badge variant="outline" className="bg-purple-100 text-purple-700">
-                        {session.preferred_report_language === 'de' ? '🇩🇪 Deutsch' : 
-                         session.preferred_report_language === 'en' ? '🇬🇧 English' : 
-                         '🤖 Automatisch'}
+                      <span className="font-semibold text-sm">Metadaten & Sprache</span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-700">
+                        {session.preferred_report_language === 'de' ? '🇩🇪 DE' : 
+                         session.preferred_report_language === 'en' ? '🇬🇧 EN' : 
+                         '🤖 Auto'}
                       </Badge>
                     </div>
                   </div>
                 </div>
-                <ChevronDown className="h-4 w-4 text-slate-400 transition-transform" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="p-4 pt-0 space-y-3">
-                <p className="text-xs text-slate-600">
-                  Wähle die Sprache für den generierten Bericht. "Automatisch" nutzt die erkannte Audiosprache.
-                </p>
-                <Select
-                  value={session.preferred_report_language || 'auto'}
-                  onValueChange={handleUpdateReportLanguage}
-                >
-                  <SelectTrigger className="w-full sm:w-[280px]">
-                    <SelectValue placeholder="Sprache auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="auto">
-                      <div className="flex items-center gap-2">
-                        <span>🤖</span>
-                        <span>Automatisch (empfohlen)</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="de">
-                      <div className="flex items-center gap-2">
-                        <span>🇩🇪</span>
-                        <span>Deutsch</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="en">
-                      <div className="flex items-center gap-2">
-                        <span>🇬🇧</span>
-                        <span>English</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="px-3 pb-3 space-y-3">
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Date */}
+                  {session.structured_context?.date && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Calendar className="h-3.5 w-3.5 text-purple-600" />
+                      <span className="text-muted-foreground">{session.structured_context.date}</span>
+                    </div>
+                  )}
+                  
+                  {/* Duration */}
+                  {session.duration_sec > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Clock className="h-3.5 w-3.5 text-purple-600" />
+                      <span className="text-muted-foreground">{formatDuration(session.duration_sec)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Meeting Type */}
+                  {session.structured_context?.meeting_type && (
+                    <div className="flex items-center gap-1.5 text-xs col-span-2">
+                      <FileText className="h-3.5 w-3.5 text-purple-600" />
+                      <span className="text-muted-foreground">{session.structured_context.meeting_type}</span>
+                    </div>
+                  )}
+                  
+                  {/* Location */}
+                  {session.structured_context?.location && (
+                    <div className="flex items-center gap-1.5 text-xs col-span-2">
+                      <MapPin className="h-3.5 w-3.5 text-purple-600" />
+                      <span className="text-muted-foreground">{session.structured_context.location}</span>
+                    </div>
+                  )}
+                  
+                  {/* User Role / Participants */}
+                  {session.structured_context?.participants && session.structured_context.participants.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs col-span-2">
+                      <User className="h-3.5 w-3.5 text-purple-600" />
+                      <span className="text-muted-foreground">
+                        {session.structured_context.participants.map(p => p.role || p.name).join(', ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Report Language Selector */}
+                <div className="pt-2 border-t border-purple-100">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Report-Sprache (Automatisch nutzt erkannte Audiosprache)
+                  </p>
+                  <Select
+                    value={session.preferred_report_language || 'auto'}
+                    onValueChange={handleUpdateReportLanguage}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Sprache auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span>🤖</span>
+                          <span>Automatisch</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="de">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span>🇩🇪</span>
+                          <span>Deutsch</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="en">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span>🇬🇧</span>
+                          <span>English</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CollapsibleContent>
           </div>
