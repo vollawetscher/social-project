@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, FileAudio, Clock, Trash2, Eye, Loader2, FolderOpen, Calendar } from 'lucide-react'
+import { Plus, FileAudio, Clock, Trash2, Eye, Loader2, FolderOpen, Calendar, MapPin, User, FileText, Languages, CheckCircle2 } from 'lucide-react'
 import { Session, Case } from '@/lib/types/database'
 import { toast } from 'sonner'
 import {
@@ -196,17 +196,6 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-primary">
-              Dashboard
-            </h1>
-            <p className="text-foreground/70 mt-1">
-              Verwalten Sie Ihre Projekte und Aufnahmen
-            </p>
-          </div>
-        </div>
-
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -219,7 +208,8 @@ export default function DashboardPage() {
             </TabsList>
 
             <TabsContent value="cases" className="space-y-4">
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-primary">Projekte</h2>
                 <Button onClick={() => setShowCaseDialog(true)} size="lg">
                   <Plus className="mr-2 h-4 w-4" />
                   Neues Projekt
@@ -285,7 +275,8 @@ export default function DashboardPage() {
             </TabsContent>
 
             <TabsContent value="sessions" className="space-y-4">
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-primary">Einzelne Gespräche</h2>
                 <Button onClick={() => setShowSessionDialog(true)} size="lg">
                   <Plus className="mr-2 h-4 w-4" />
                   Neues Gespräch
@@ -311,7 +302,11 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {sessions.map((session) => (
-                    <Card key={session.id} className="hover:shadow-lg hover:shadow-primary/20 transition-all border-primary/20 hover:border-primary/40 bg-gradient-to-br from-white to-primary/5">
+                    <Card 
+                      key={session.id} 
+                      className="hover:shadow-lg hover:shadow-primary/20 transition-all border-primary/20 hover:border-primary/40 bg-gradient-to-br from-white to-primary/5 cursor-pointer"
+                      onClick={() => router.push(`/sessions/${session.id}`)}
+                    >
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -325,36 +320,90 @@ export default function DashboardPage() {
                               })}
                             </CardDescription>
                           </div>
-                          {getStatusBadge(session.status)}
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(session.status)}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteSession(session)
+                              }}
+                              className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-4">
+                      <CardContent className="space-y-3">
                         {session.context_note && (
                           <p className="text-sm text-muted-foreground line-clamp-2">
                             {session.context_note}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-4 w-4 text-primary" />
-                          <span>{formatDuration(session.duration_sec)}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="default"
-                            className="flex-1"
-                            onClick={() => router.push(`/sessions/${session.id}`)}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Öffnen
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setDeleteSession(session)}
-                            className="border-primary/30 hover:bg-primary/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        
+                        {/* Metadata Card */}
+                        <div className="space-y-2 pt-2 border-t border-primary/10">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {/* Transcription Status */}
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                              <span className="truncate">
+                                {session.status === 'done' ? 'Abgeschlossen' : 'In Bearbeitung'}
+                              </span>
+                            </div>
+                            
+                            {/* Report Language */}
+                            {session.preferred_report_language && (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <Languages className="h-3.5 w-3.5 text-primary" />
+                                <span className="truncate uppercase">
+                                  {session.preferred_report_language}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Duration */}
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Clock className="h-3.5 w-3.5 text-primary" />
+                              <span className="truncate">{formatDuration(session.duration_sec)}</span>
+                            </div>
+                            
+                            {/* Meeting Type */}
+                            {session.structured_context?.meeting_type && (
+                              <div className="flex items-center gap-1.5 text-muted-foreground">
+                                <FileText className="h-3.5 w-3.5 text-primary" />
+                                <span className="truncate">{session.structured_context.meeting_type}</span>
+                              </div>
+                            )}
+                            
+                            {/* Location */}
+                            {session.structured_context?.location && (
+                              <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                                <MapPin className="h-3.5 w-3.5 text-primary" />
+                                <span className="truncate">{session.structured_context.location}</span>
+                              </div>
+                            )}
+                            
+                            {/* User Role */}
+                            {session.structured_context?.participants && session.structured_context.participants.length > 0 && (
+                              <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                                <User className="h-3.5 w-3.5 text-primary" />
+                                <span className="truncate">
+                                  {session.structured_context.participants.map(p => p.role || p.name).join(', ')}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Date if available */}
+                            {session.structured_context?.date && (
+                              <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                                <Calendar className="h-3.5 w-3.5 text-primary" />
+                                <span className="truncate">{session.structured_context.date}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
