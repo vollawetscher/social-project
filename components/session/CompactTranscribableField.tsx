@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, Plus, X, Lock, Unlock } from 'lucide-react'
+import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, X, Lock, Unlock, Check } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
 import { SpeechmaticsRealtimeService, getSpeechmaticsRealtimeToken } from '@/lib/services/speechmatics-realtime'
@@ -290,8 +290,9 @@ export function CompactTranscribableField({
                   }}
                   variant="ghost"
                   size="icon"
-                  className={`h-7 w-7 ${recording ? 'text-red-600 hover:text-red-700' : colors.text}`}
+                  className={`h-7 w-7 ${recording ? 'text-red-600 hover:text-red-700' : transcribing ? 'text-muted-foreground/50' : colors.text}`}
                   disabled={transcribing}
+                  title={recording ? 'Aufnahme stoppen' : 'Diktieren'}
                 >
                   {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
@@ -306,11 +307,11 @@ export function CompactTranscribableField({
                   }}
                   variant="ghost" 
                   size="icon"
-                  className={`h-7 w-7 ${isLocked ? 'text-green-600 hover:text-green-700' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`h-7 w-7 ${isLocked ? 'text-green-600 hover:text-green-700' : hasChanges ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-foreground'}`}
                   disabled={hasChanges}
-                  title={isLocked ? 'Gesperrt' : 'Entsperrt'}
+                  title={isLocked ? 'Gesperrt ✓' : hasChanges ? 'Speichere zuerst' : 'Entsperrt'}
                 >
-                  {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                  {isLocked ? <Check className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                 </Button>
               )}
               
@@ -327,7 +328,13 @@ export function CompactTranscribableField({
             {!isLocked && (
               <div className="flex items-center gap-1">
                 {hasContent && (
-                  <Button onClick={handleClear} variant="ghost" size="icon" className="h-7 w-7" title="Löschen">
+                  <Button 
+                    onClick={handleClear} 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-7 w-7 hover:text-destructive hover:bg-destructive/10" 
+                    title="Löschen"
+                  >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 )}
@@ -343,7 +350,7 @@ export function CompactTranscribableField({
                     disabled={analyzing}
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 ml-auto"
+                    className={`h-7 w-7 ml-auto ${analyzing ? 'text-muted-foreground/50' : ''}`}
                     title="AI Strukturieren"
                   >
                     {analyzing ? (
@@ -384,7 +391,12 @@ export function CompactTranscribableField({
             />
 
             {hasChanges && (
-              <Button onClick={handleSave} disabled={saving} size="sm">
+              <Button 
+                onClick={handleSave} 
+                disabled={saving} 
+                size="sm"
+                className={saving ? 'opacity-50' : ''}
+              >
                 {saving ? (
                   <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                 ) : (
