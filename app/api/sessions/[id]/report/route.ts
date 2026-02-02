@@ -22,13 +22,14 @@ export async function GET(
       // Log not found as potential issue
       if (error) {
         await logError({
+          errorType: 'api_error',
+          severity: 'warning',
           message: 'Report retrieval failed',
-          stack: JSON.stringify(error),
-          context: {
-            sessionId: params.id,
-            endpoint: 'report-get',
-          },
-          user_id: user.id,
+          error,
+          sessionId: params.id,
+          userId: user.id,
+          endpoint: '/api/sessions/[id]/report',
+          method: 'GET',
         })
       }
       return NextResponse.json({ error: 'Report not found' }, { status: 404 })
@@ -42,13 +43,14 @@ export async function GET(
         const user = await requireAuth().catch(() => null)
         if (user) {
           await logError({
+            errorType: 'server_error',
+            severity: 'error',
             message: error.message,
-            stack: error.stack || '',
-            context: {
-              sessionId: params.id,
-              endpoint: 'report-get',
-            },
-            user_id: user.id,
+            error,
+            sessionId: params.id,
+            userId: user.id,
+            endpoint: '/api/sessions/[id]/report',
+            method: 'GET',
           })
         }
       } catch (logErr) {

@@ -156,15 +156,19 @@ export async function POST(
       
       // Log error for tracking
       await logError({
+        errorType: 'api_error',
+        severity: 'error',
         message: errorMessage,
-        stack: JSON.stringify(uploadError),
-        context: {
-          sessionId: params.id,
+        error: uploadError,
+        sessionId: params.id,
+        userId: user.id,
+        endpoint: '/api/sessions/[id]/upload',
+        method: 'POST',
+        metadata: {
           fileName: file.name,
           fileSize: file.size,
           mimeType: file.type,
         },
-        user_id: user.id,
       })
 
       await supabase
@@ -196,14 +200,18 @@ export async function POST(
       
       // Log error for tracking
       await logError({
+        errorType: 'api_error',
+        severity: 'error',
         message: errorMessage,
-        stack: JSON.stringify(fileRecordError),
-        context: {
-          sessionId: params.id,
+        error: fileRecordError,
+        sessionId: params.id,
+        userId: user.id,
+        endpoint: '/api/sessions/[id]/upload',
+        method: 'POST',
+        metadata: {
           storagePath,
           fileName: file.name,
         },
-        user_id: user.id,
       })
 
       await supabase.storage
@@ -243,13 +251,14 @@ export async function POST(
         const user = await requireAuth().catch(() => null)
         if (user) {
           await logError({
+            errorType: 'server_error',
+            severity: 'error',
             message: error.message,
-            stack: error.stack || '',
-            context: {
-              sessionId: params.id,
-              endpoint: 'upload',
-            },
-            user_id: user.id,
+            error,
+            sessionId: params.id,
+            userId: user.id,
+            endpoint: '/api/sessions/[id]/upload',
+            method: 'POST',
           })
         }
       } catch (logErr) {
