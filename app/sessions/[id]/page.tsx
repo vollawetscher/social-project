@@ -62,6 +62,7 @@ export default function SessionDetailPage() {
   const [analyzingContext, setAnalyzingContext] = useState(false)
   const [analyzingPrivateNotes, setAnalyzingPrivateNotes] = useState(false)
   const [analyzingInstructions, setAnalyzingInstructions] = useState(false)
+  const [showAudioUpload, setShowAudioUpload] = useState(false)
 
   useEffect(() => {
     loadSession()
@@ -572,76 +573,130 @@ export default function SessionDetailPage() {
           analyzing={analyzingContext}
         />
 
-        {/* Aufnahmen Section - Compact */}
-        <Collapsible defaultOpen={files.length > 0}>
+        {/* Aufnahmen Section - Integrated with Upload */}
+        <Collapsible defaultOpen={files.length > 0 || showAudioUpload}>
           <div className="border rounded-lg border-slate-200 bg-white">
-            <CollapsibleTrigger className="w-full p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+            <CollapsibleTrigger className="w-full p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1">
                   <FileAudio className="h-5 w-5 text-slate-600" />
-                  <div className="text-left">
+                  <div className="text-left flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">Aufnahmen</span>
                       {files.length > 0 && (
-                        <Badge variant="outline" className="bg-slate-100 text-slate-700">
-                          {files.length} Datei{files.length !== 1 ? 'en' : ''}
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-700">
+                          {files.length}
                         </Badge>
                       )}
                     </div>
                   </div>
                 </div>
-                <ChevronDown className="h-4 w-4 text-slate-400 transition-transform" />
+                <div className="flex items-center gap-1">
+                  {session.status === 'created' && (
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowAudioUpload(!showAudioUpload)
+                      }}
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-green-600 hover:text-green-700"
+                      title="Audio hinzufügen"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
+                </div>
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="p-4 pt-0 space-y-2">
-                {files.length === 0 ? (
-                  <p className="text-sm text-slate-500">Noch keine Aufnahmen</p>
+              <div className="px-3 pb-3 space-y-2">
+                {/* Audio Upload/Record Interface - Only show when '+' clicked */}
+                {showAudioUpload && session.status === 'created' && (
+                  <div className="space-y-3 pb-3 border-b border-slate-200">
+                    {/* Local recordings if any */}
+                    <LocalRecordingsList
+                      onFileSelected={handleFileSelected}
+                    />
+                    
+                    <Tabs defaultValue="record" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 h-8">
+                        <TabsTrigger value="record" className="text-xs">Aufnehmen</TabsTrigger>
+                        <TabsTrigger value="upload" className="text-xs">Hochladen</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="record" className="mt-2">
+                        <AudioRecorder
+                          onRecordingComplete={(blob, duration) => {
+                            uploadAudio(blob, duration, 'meeting')
+                            setShowAudioUpload(false)
+                          }}
+                        />
+                      </TabsContent>
+                      <TabsContent value="upload" className="mt-2">
+                        <AudioUploader
+                          onFileSelected={(file) => {
+                            handleFileSelected(file)
+                            setShowAudioUpload(false)
+                          }}
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                )}
+                
+                {/* File List */}
+                {files.length === 0 && !showAudioUpload ? (
+                  <p className="text-xs text-muted-foreground py-2">Noch keine Aufnahmen</p>
                 ) : (
                   files.map((file, index) => (
                     <div
                       key={file.id}
-                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors"
+                      className="flex items-center gap-2 p-2 border rounded-lg hover:bg-slate-50 transition-colors"
                     >
-                      <FileAudio className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <FileAudio className="w-4 h-4 text-primary flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-medium text-slate-900">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-xs font-medium text-foreground">
                             {getPurposeLabel(file.file_purpose)}
                           </span>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-[10px] px-1 py-0">
                             #{index + 1}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                           <span>{formatFileSize(file.size_bytes)}</span>
                           <span>•</span>
                           <span>{formatDate(file.created_at)}</span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
                         <Button
                           variant="outline"
-                          size="sm"
+                          size="icon"
                           onClick={() => handleViewTranscript(file)}
+                          className="h-7 w-7"
+                          title="Transkript"
                         >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Transkript
+                          <Eye className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="outline"
-                          size="sm"
+                          size="icon"
                           onClick={() => router.push(`/sessions/${sessionId}/report`)}
+                          className="h-7 w-7"
+                          title="Bericht"
                         >
-                          <FileText className="h-4 w-4 mr-1" />
-                          Bericht
+                          <FileText className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
                           onClick={() => setDeletingFile(file)}
+                          className="h-7 w-7 hover:bg-destructive/10 hover:text-destructive"
+                          title="Löschen"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -652,51 +707,6 @@ export default function SessionDetailPage() {
           </div>
         </Collapsible>
 
-        {/* Audio Upload/Record - Compact */}
-        {session.status === 'created' && (
-          <Collapsible defaultOpen={files.length === 0}>
-            <div className="border rounded-lg border-green-200 bg-white">
-              <CollapsibleTrigger className="w-full p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Mic className="h-5 w-5 text-green-600" />
-                    <div className="text-left">
-                      <span className="font-semibold text-sm">Audio hinzufügen</span>
-                    </div>
-                  </div>
-                  <ChevronDown className="h-4 w-4 text-slate-400 transition-transform" />
-                </div>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="p-4 pt-0 space-y-4">
-                  {/* Show local recordings if any exist */}
-                  <LocalRecordingsList
-                    onFileSelected={handleFileSelected}
-                  />
-
-                  <Tabs defaultValue="record" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 mb-3">
-                      <TabsTrigger value="record">Aufnehmen</TabsTrigger>
-                      <TabsTrigger value="upload">Hochladen</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="record" className="mt-0">
-                      <AudioRecorder
-                        onRecordingComplete={(blob, duration) => 
-                          uploadAudio(blob, duration, 'meeting')
-                        }
-                      />
-                    </TabsContent>
-                    <TabsContent value="upload" className="mt-0">
-                      <AudioUploader
-                        onFileSelected={handleFileSelected}
-                      />
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-        )}
 
         <CompactTranscribableField
           title="Private Notizen"

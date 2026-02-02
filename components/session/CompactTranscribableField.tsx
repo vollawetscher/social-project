@@ -258,34 +258,46 @@ export function CompactTranscribableField({
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <div className={`border rounded-lg ${colors.border} ${isOpen ? colors.bg : 'bg-white'}`}>
-        <CollapsibleTrigger className="w-full p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+        <CollapsibleTrigger className="w-full p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               <div className={colors.text}>{icon}</div>
               <div className="text-left flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm">{title}</span>
                   {hasContent && (
-                    <Badge variant="outline" className={colors.badge}>
-                      {text.length} Zeichen
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${colors.badge}`}>
+                      {text.length}
                     </Badge>
                   )}
                 </div>
                 {!isOpen && hasContent && (
-                  <p className="text-xs text-slate-600 mt-0.5 truncate">{getPreview()}</p>
-                )}
-                {!isOpen && !hasContent && (
-                  <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{getPreview()}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {!hasContent && !isOpen && (
-                <Button size="sm" variant="ghost" className={`${colors.text} hover:${colors.bg}`}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Hinzufügen
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Dictate Button - Icon Only */}
+              {!isLocked && (
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (recording) {
+                      stopRecording()
+                    } else {
+                      startRecording()
+                    }
+                  }}
+                  variant="ghost"
+                  size="icon"
+                  className={`h-7 w-7 ${recording ? 'text-red-600 hover:text-red-700' : colors.text}`}
+                  disabled={transcribing}
+                >
+                  {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
               )}
+              
+              {/* Lock/Check Status */}
               {hasContent && (
                 <Button 
                   onClick={(e) => {
@@ -293,85 +305,69 @@ export function CompactTranscribableField({
                     toggleLock()
                   }}
                   variant="ghost" 
-                  size="sm"
-                  className={isLocked ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
+                  size="icon"
+                  className={`h-7 w-7 ${isLocked ? 'text-green-600 hover:text-green-700' : 'text-muted-foreground hover:text-foreground'}`}
                   disabled={hasChanges}
+                  title={isLocked ? 'Gesperrt' : 'Entsperrt'}
                 >
-                  {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                  {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                 </Button>
               )}
-              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </div>
           </div>
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <div className="p-4 pt-0 space-y-3">
-            <p className="text-xs text-slate-600">{description}</p>
+          <div className="px-3 pb-3 space-y-2">
+            <p className="text-xs text-muted-foreground">{description}</p>
 
-            <div className="flex items-center gap-2">
-              {!isLocked && (
-                <>
-                  {recording ? (
-                    <Button onClick={stopRecording} variant="destructive" size="sm">
-                      <Square className="mr-2 h-4 w-4" />
-                      Stop
-                    </Button>
-                  ) : (
-                    <Button 
-                      onClick={startRecording} 
-                      variant="outline" 
-                      size="sm" 
-                      disabled={transcribing}
-                    >
-                      <Mic className="mr-2 h-4 w-4" />
-                      Diktieren
-                    </Button>
-                  )}
+            {/* Action buttons */}
+            {!isLocked && (
+              <div className="flex items-center gap-1">
+                {hasContent && (
+                  <Button onClick={handleClear} variant="ghost" size="icon" className="h-7 w-7" title="Löschen">
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
 
-                  {hasContent && (
-                    <>
-                      <Button onClick={handleClear} variant="ghost" size="sm">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
+                {showAnalyzeButton && onAnalyze && text && (
+                  <Button
+                    onClick={() => {
+                      onAnalyze(text, (improvedText) => {
+                        setText(improvedText)
+                        setHasChanges(true)
+                      })
+                    }}
+                    disabled={analyzing}
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 ml-auto"
+                    title="AI Strukturieren"
+                  >
+                    {analyzing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            )}
 
-                  {showAnalyzeButton && onAnalyze && text && (
-                    <Button
-                      onClick={() => {
-                        onAnalyze(text, (improvedText) => {
-                          setText(improvedText)
-                          setHasChanges(true) // Mark as changed so user can save
-                        })
-                      }}
-                      disabled={analyzing}
-                      size="sm"
-                      variant="ghost"
-                      className="ml-auto"
-                    >
-                      {analyzing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-
+            {/* Live Transcript */}
             {recording && liveTranscript && (
-              <div className="border-l-4 border-blue-500 pl-3 py-2 bg-blue-50 rounded">
-                <p className="text-xs text-blue-600 font-semibold mb-1">🎙️ Live-Transkription:</p>
-                <p className="text-sm text-slate-700">{liveTranscript}</p>
+              <div className="border-l-2 border-primary pl-2 py-1.5 bg-primary/5 rounded text-xs">
+                <p className="font-semibold text-primary mb-0.5">🎙️ Live:</p>
+                <p className="text-foreground">{liveTranscript}</p>
               </div>
             )}
 
             {transcribing && (
-              <div className="flex items-center gap-2 text-sm text-blue-600">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Transkribiere Audio...
+              <div className="flex items-center gap-2 text-xs text-primary">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Transkribiere...
               </div>
             )}
 
@@ -383,16 +379,16 @@ export function CompactTranscribableField({
               onClick={handleCursorChange}
               onKeyUp={handleCursorChange}
               placeholder={placeholder}
-              className={`min-h-[100px] ${isLocked ? 'bg-slate-100 cursor-not-allowed' : ''}`}
+              className={`min-h-[80px] text-sm ${isLocked ? 'bg-muted cursor-not-allowed' : ''}`}
               disabled={recording || isLocked}
             />
 
             {hasChanges && (
               <Button onClick={handleSave} disabled={saving} size="sm">
                 {saving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Save className="mr-2 h-4 w-4" />
+                  <Save className="mr-2 h-3.5 w-3.5" />
                 )}
                 Speichern
               </Button>
