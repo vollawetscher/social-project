@@ -198,7 +198,7 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold text-primary">
               Dashboard
             </h1>
             <p className="text-foreground/70 mt-1">
@@ -229,17 +229,14 @@ export default function DashboardPage() {
               {cases.length === 0 ? (
                 <Card className="border-primary/20 bg-gradient-to-br from-white to-primary/5">
                   <CardContent className="flex flex-col items-center justify-center py-12">
-                    <div className="relative mb-4">
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full blur-md opacity-20" />
-                      <FolderOpen className="h-12 w-12 text-primary relative" />
-                    </div>
+                    <FolderOpen className="h-12 w-12 text-primary mb-4" />
                     <h3 className="text-lg font-semibold text-foreground mb-2">
                       Keine Projekte vorhanden
                     </h3>
                     <p className="text-muted-foreground text-center mb-6">
                       Erstellen Sie Ihr erstes Projekt, um Gespräche zu verwalten
                     </p>
-                    <Button onClick={() => setShowCaseDialog(true)} className="bg-gradient-to-r from-primary to-secondary hover:opacity-90">
+                    <Button onClick={() => setShowCaseDialog(true)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Neues Projekt erstellen
                     </Button>
@@ -260,7 +257,7 @@ export default function DashboardPage() {
                               {caseItem.session_count} {caseItem.session_count === 1 ? 'Gespräch' : 'Gespräche'}
                             </CardDescription>
                           </div>
-                          <Badge className="bg-gradient-to-r from-primary to-secondary text-white border-0">
+                          <Badge>
                             {caseItem.status === 'active' ? 'Aktiv' : caseItem.status === 'closed' ? 'Geschlossen' : 'Archiviert'}
                           </Badge>
                         </div>
@@ -298,17 +295,14 @@ export default function DashboardPage() {
               {sessions.length === 0 ? (
                 <Card className="border-primary/20 bg-gradient-to-br from-white to-primary/5">
                   <CardContent className="flex flex-col items-center justify-center py-12">
-                    <div className="relative mb-4">
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full blur-md opacity-20" />
-                      <FileAudio className="h-12 w-12 text-primary relative" />
-                    </div>
+                    <FileAudio className="h-12 w-12 text-primary mb-4" />
                     <h3 className="text-lg font-semibold text-foreground mb-2">
                       Keine einzelnen Gespräche
                     </h3>
                     <p className="text-muted-foreground text-center mb-6">
                       Einzelne Gespräche sind nicht mit einem Projekt verknüpft
                     </p>
-                    <Button onClick={() => setShowSessionDialog(true)} className="bg-gradient-to-r from-primary to-secondary hover:opacity-90">
+                    <Button onClick={() => setShowSessionDialog(true)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Einzelnes Gespräch erstellen
                     </Button>
@@ -347,7 +341,7 @@ export default function DashboardPage() {
                         <div className="flex gap-2">
                           <Button
                             variant="default"
-                            className="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+                            className="flex-1"
                             onClick={() => router.push(`/sessions/${session.id}`)}
                           >
                             <Eye className="mr-2 h-4 w-4" />

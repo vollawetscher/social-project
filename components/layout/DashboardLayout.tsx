@@ -36,11 +36,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <header className="border-b border-blue-200/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-lg blur-sm opacity-50" />
-              <FileText className="w-6 h-6 text-primary relative" />
-            </div>
-            <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <FileText className="w-6 h-6 text-primary" />
+            <h1 className="text-xl font-semibold text-primary">
               Gesprächsbericht
             </h1>
           </div>
