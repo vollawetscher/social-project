@@ -183,7 +183,8 @@ export class SpeechmaticsRealtimeService {
       try {
         this.ws?.send(JSON.stringify(message))
       } catch (error) {
-        console.error('[Speechmatics RT] Failed to send audio:', error)
+        console.error('[Speechmatics RT] Failed to send audio chunk')
+        // Don't log full error - may contain large binary data
       }
     }
 
@@ -225,7 +226,8 @@ export class SpeechmaticsRealtimeService {
       try {
         this.ws?.send(JSON.stringify(message))
       } catch (error) {
-        console.error('[Speechmatics RT] Failed to send audio:', error)
+        console.error('[Speechmatics RT] Failed to send audio chunk')
+        // Don't log full error - may contain large binary data
       }
     }
 

@@ -373,28 +373,39 @@ export default function SessionDetailPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string }> = {
-      created: { variant: 'secondary', text: 'Bereit' },
-      uploading: { variant: 'default', text: 'Wird hochgeladen' },
-      transcribing: { variant: 'default', text: 'Wird transkribiert' },
-      summarizing: { variant: 'default', text: 'Wird zusammengefasst' },
-      done: { variant: 'outline', text: 'Fertig' },
-      error: { variant: 'destructive', text: 'Fehler' },
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string; icon: React.ReactNode }> = {
+      created: { variant: 'secondary', text: 'Bereit', icon: <FileText className="h-3 w-3" /> },
+      uploading: { variant: 'default', text: 'Wird hochgeladen', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
+      transcribing: { variant: 'default', text: 'Wird transkribiert', icon: <Mic className="h-3 w-3" /> },
+      summarizing: { variant: 'default', text: 'Wird zusammengefasst', icon: <Sparkles className="h-3 w-3" /> },
+      done: { variant: 'outline', text: 'Abgeschlossen', icon: <FileText className="h-3 w-3" /> },
+      error: { variant: 'destructive', text: 'Fehler', icon: <FileText className="h-3 w-3" /> },
     }
 
     const config = variants[status] || variants.created
-    return <Badge variant={config.variant}>{config.text}</Badge>
+    return (
+      <Badge variant={config.variant} className="gap-1">
+        {config.icon}
+        {config.text}
+      </Badge>
+    )
   }
 
   const getPurposeLabel = (purpose: FilePurpose) => {
-    const labels = {
-      context: '🎯 Kontext',
-      meeting: '💬 Besprechung',
-      dictation: '📝 Diktat',
-      instruction: '📋 Anweisungen',
-      addition: '➕ Ergänzung',
+    const labels: Record<FilePurpose, { icon: React.ReactNode; text: string }> = {
+      context: { icon: <FileText className="h-3 w-3" />, text: 'Kontext' },
+      meeting: { icon: <MessageSquare className="h-3 w-3" />, text: 'Besprechung' },
+      dictation: { icon: <Mic className="h-3 w-3" />, text: 'Diktat' },
+      instruction: { icon: <ListTodo className="h-3 w-3" />, text: 'Anweisungen' },
+      addition: { icon: <Plus className="h-3 w-3" />, text: 'Ergänzung' },
     }
-    return labels[purpose] || purpose
+    const config = labels[purpose] || { icon: <FileAudio className="h-3 w-3" />, text: purpose }
+    return (
+      <span className="flex items-center gap-1">
+        {config.icon}
+        {config.text}
+      </span>
+    )
   }
 
   const formatDuration = (seconds: number): string => {
@@ -490,9 +501,10 @@ export default function SessionDetailPage() {
         {/* Info: Transcription complete, ready to generate report */}
         {session.status === 'done' && files.length > 0 && !session.last_error && (
           <Card className="border-green-200 bg-green-50">
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 flex items-start gap-2">
+              <FileText className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-green-800">
-                <strong>✅ Transkription abgeschlossen!</strong> Sie können jetzt einen Report erstellen. 
+                <strong>Transkription abgeschlossen!</strong> Sie können jetzt einen Report erstellen. 
                 Klicken Sie auf "Report neu erstellen" unten.
               </p>
               {session.duration_sec && session.duration_sec < 30 && (
@@ -908,9 +920,10 @@ export default function SessionDetailPage() {
               Diese Aktion kann nicht rückgängig gemacht werden. Die Aufnahme, das
               zugehörige Transkript und alle PII-Daten werden dauerhaft gelöscht.
               {deletingFile?.file_purpose === 'meeting' && (
-                <span className="block mt-2 text-amber-600 font-medium">
-                  ⚠️ Warnung: Dies ist eine Besprechungsaufnahme. Der Bericht könnte
-                  dadurch unvollständig werden.
+                <span className="flex items-start gap-1 mt-2 text-amber-600 font-medium">
+                  <FileText className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>Warnung: Dies ist eine Besprechungsaufnahme. Der Bericht könnte
+                  dadurch unvollständig werden.</span>
                 </span>
               )}
             </AlertDialogDescription>

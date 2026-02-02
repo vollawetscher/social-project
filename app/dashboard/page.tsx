@@ -20,7 +20,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, format, differenceInHours } from 'date-fns'
 import { de } from 'date-fns/locale'
 import {
   AlertDialog,
@@ -125,22 +125,39 @@ export default function DashboardPage() {
   })
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string }> = {
-      created: { variant: 'secondary', text: 'Erstellt' },
-      uploading: { variant: 'default', text: 'Wird hochgeladen' },
-      transcribing: { variant: 'default', text: 'Wird transkribiert' },
-      summarizing: { variant: 'default', text: 'Wird zusammengefasst' },
-      done: { variant: 'outline', text: 'Fertig' },
-      error: { variant: 'destructive', text: 'Fehler' },
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string; icon: React.ReactNode }> = {
+      created: { variant: 'secondary', text: 'Erstellt', icon: <FileText className="h-3 w-3" /> },
+      uploading: { variant: 'default', text: 'Wird hochgeladen', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
+      transcribing: { variant: 'default', text: 'Wird transkribiert', icon: <Mic className="h-3 w-3" /> },
+      summarizing: { variant: 'default', text: 'Wird zusammengefasst', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
+      done: { variant: 'outline', text: 'Abgeschlossen', icon: <CheckCircle2 className="h-3 w-3" /> },
+      error: { variant: 'destructive', text: 'Fehler', icon: <FileText className="h-3 w-3" /> },
     }
 
     const config = variants[status] || variants.created
 
     return (
-      <Badge variant={config.variant}>
+      <Badge variant={config.variant} className="gap-1">
+        {config.icon}
         {config.text}
       </Badge>
     )
+  }
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const hoursDiff = differenceInHours(new Date(), date)
+    
+    if (hoursDiff > 8) {
+      // Show exact date and time if more than 8 hours ago
+      return format(date, 'dd.MM.yyyy HH:mm', { locale: de })
+    } else {
+      // Show relative time if within 8 hours
+      return formatDistanceToNow(date, {
+        addSuffix: true,
+        locale: de,
+      })
+    }
   }
 
   const formatDuration = (seconds: number) => {
@@ -183,7 +200,7 @@ export default function DashboardPage() {
               onClick={() => setFilterStatus('done')}
               className="flex-1"
             >
-              Fertig ({conversations.filter(c => c.status === 'done').length})
+              Abgeschlossen ({conversations.filter(c => c.status === 'done').length})
             </Button>
             <Button
               variant={filterStatus === 'processing' ? 'default' : 'outline'}
@@ -236,11 +253,20 @@ export default function DashboardPage() {
                       <CardTitle className="text-base text-foreground truncate">
                         {conversation.internal_case_id || `Gespräch ${conversation.id.slice(0, 8)}`}
                       </CardTitle>
-                      <CardDescription className="text-xs mt-0.5">
-                        {formatDistanceToNow(new Date(conversation.created_at), {
-                          addSuffix: true,
-                          locale: de,
-                        })}
+                      <CardDescription className="text-xs mt-0.5 space-y-0.5">
+                        <div>{formatDateTime(conversation.created_at)}</div>
+                        {conversation.structured_context?.meeting_type && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            <span>{conversation.structured_context.meeting_type}</span>
+                            {conversation.structured_context?.location && (
+                              <>
+                                <span>•</span>
+                                <span>{conversation.structured_context.location}</span>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-1">
@@ -268,12 +294,6 @@ export default function DashboardPage() {
                   
                   {/* Compact Metadata */}
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-primary/10">
-                    {/* Transcription Status */}
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
-                      <CheckCircle2 className="h-3 w-3 text-primary" />
-                      <span>{conversation.status === 'done' ? 'Fertig' : 'Läuft'}</span>
-                    </div>
-                    
                     {/* Duration */}
                     {conversation.duration_sec > 0 && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
@@ -293,7 +313,7 @@ export default function DashboardPage() {
                     {/* Meeting Type */}
                     {conversation.structured_context?.meeting_type && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
-                        <FileText className="h-3 w-3 text-primary" />
+                        <User className="h-3 w-3 text-primary" />
                         <span>{conversation.structured_context.meeting_type}</span>
                       </div>
                     )}

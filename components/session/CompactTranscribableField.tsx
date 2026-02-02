@@ -156,7 +156,10 @@ export function CompactTranscribableField({
         },
         onError: (error) => {
           console.error('[Speechmatics RT] Error:', error)
-          toast.error('Transkriptionsfehler: ' + error.message)
+          const errorMsg = error.message || 'Unbekannter Fehler'
+          // Limit error message length to prevent huge messages filling the screen
+          const displayMsg = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg
+          toast.error('Transkriptionsfehler: ' + displayMsg)
         },
         onConnectionChange: (connected) => {
           if (!connected && recording) {
@@ -171,10 +174,13 @@ export function CompactTranscribableField({
       await speechmaticsService.start(stream)
       
       setRecording(true)
-      toast.success('🎙️ Aufnahme läuft - spreche jetzt (DSGVO-konform)')
+      toast.success('Aufnahme läuft - spreche jetzt (DSGVO-konform)')
     } catch (error: any) {
       console.error('Recording error:', error)
-      toast.error('Fehler beim Starten der Aufnahme: ' + (error.message || 'Unbekannter Fehler'))
+      const errorMsg = error.message || 'Unbekannter Fehler'
+      // Limit error message length to prevent huge messages filling the screen
+      const displayMsg = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg
+      toast.error('Fehler beim Starten der Aufnahme: ' + displayMsg)
       
       // Cleanup on error
       if (audioStreamRef.current) {
@@ -199,7 +205,7 @@ export function CompactTranscribableField({
       }
       
       setLiveTranscript('')
-      toast.success('✅ Diktat beendet')
+      toast.success('Diktat beendet')
     }
   }
 
@@ -219,7 +225,7 @@ export function CompactTranscribableField({
     try {
       await onSave(text)
       setHasChanges(false)
-      toast.success('✅ Gespeichert!')
+      toast.success('Gespeichert!')
     } catch (error: any) {
       console.error('[Save] Error:', error)
       toast.error('❌ Fehler beim Speichern')
@@ -248,7 +254,7 @@ export function CompactTranscribableField({
     try {
       await onLockToggle(newLockState)
       setIsLocked(newLockState)
-      toast.success(newLockState ? '🔒 Gesperrt' : '🔓 Entsperrt')
+      toast.success(newLockState ? 'Gesperrt' : 'Entsperrt')
     } catch (error) {
       console.error('[Lock] Error:', error)
       toast.error('Fehler beim Ändern des Sperrstatus')
@@ -309,7 +315,7 @@ export function CompactTranscribableField({
                   size="icon"
                   className={`h-7 w-7 ${isLocked ? 'text-red-600 hover:text-red-700' : hasChanges ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-green-600'}`}
                   disabled={hasChanges}
-                  title={isLocked ? '🔒 Gesperrt - klicke zum Entsperren' : hasChanges ? 'Speichere zuerst um zu sperren' : '🔓 Entsperrt - klicke zum Sperren'}
+                  title={isLocked ? 'Gesperrt - klicke zum Entsperren' : hasChanges ? 'Speichere zuerst um zu sperren' : 'Entsperrt - klicke zum Sperren'}
                 >
                   {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                 </Button>
@@ -366,7 +372,10 @@ export function CompactTranscribableField({
             {/* Live Transcript */}
             {recording && liveTranscript && (
               <div className="border-l-2 border-primary pl-2 py-1.5 bg-primary/5 rounded text-xs">
-                <p className="font-semibold text-primary mb-0.5">🎙️ Live:</p>
+                <p className="font-semibold text-primary mb-0.5 flex items-center gap-1">
+                  <Mic className="h-3 w-3" />
+                  Live:
+                </p>
                 <p className="text-foreground">{liveTranscript}</p>
               </div>
             )}

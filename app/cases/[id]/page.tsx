@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Case, Session, CaseStatus } from '@/lib/types/database'
-import { Loader2, ArrowLeft, Plus, FolderOpen, Calendar, Clock, Settings } from 'lucide-react'
+import { Loader2, ArrowLeft, Plus, FolderOpen, Calendar, Clock, Settings, FileText, Mic, Sparkles } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -140,17 +140,22 @@ export default function CaseDetailPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string }> = {
-      created: { variant: 'secondary', text: 'Bereit' },
-      uploading: { variant: 'default', text: 'Wird hochgeladen' },
-      transcribing: { variant: 'default', text: 'Wird transkribiert' },
-      summarizing: { variant: 'default', text: 'Wird zusammengefasst' },
-      done: { variant: 'outline', text: 'Fertig' },
-      error: { variant: 'destructive', text: 'Fehler' },
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string; icon: React.ReactNode }> = {
+      created: { variant: 'secondary', text: 'Bereit', icon: <FileText className="h-3 w-3" /> },
+      uploading: { variant: 'default', text: 'Wird hochgeladen', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
+      transcribing: { variant: 'default', text: 'Wird transkribiert', icon: <Mic className="h-3 w-3" /> },
+      summarizing: { variant: 'default', text: 'Wird zusammengefasst', icon: <Sparkles className="h-3 w-3" /> },
+      done: { variant: 'outline', text: 'Abgeschlossen', icon: <FileText className="h-3 w-3" /> },
+      error: { variant: 'destructive', text: 'Fehler', icon: <FileText className="h-3 w-3" /> },
     }
 
     const config = variants[status] || variants.created
-    return <Badge variant={config.variant}>{config.text}</Badge>
+    return (
+      <Badge variant={config.variant} className="gap-1">
+        {config.icon}
+        {config.text}
+      </Badge>
+    )
   }
 
   const formatDate = (dateString: string): string => {
