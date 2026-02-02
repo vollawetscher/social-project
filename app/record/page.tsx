@@ -132,13 +132,13 @@ export default function QuickRecordPage() {
   return (
     <>
       <InstallPrompt />
-      <div className="min-h-screen bg-slate-50 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-blue-100 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Schnellaufnahme</h1>
-            <p className="text-sm text-slate-600">
+            <h1 className="text-2xl font-bold text-primary">Schnellaufnahme</h1>
+            <p className="text-sm text-muted-foreground">
               Aufnehmen ohne Anmeldung • Später hochladen
             </p>
           </div>
@@ -152,16 +152,16 @@ export default function QuickRecordPage() {
 
         {/* Storage Info */}
         {recordings.length > 0 && (
-          <Card className="p-4 bg-blue-50 border-blue-200">
+          <Card className="p-4 bg-primary/10 border-primary/30">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-blue-700">
+              <div className="flex items-center gap-2 text-sm text-primary">
                 <HardDrive className="h-4 w-4" />
                 <span>{recordings.length} Aufnahmen • {formatSize(totalSize)}</span>
               </div>
               {user && recordings.length > 0 && (
                 <Button size="sm" onClick={handleUpload}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Alle hochladen
+                  Hochladen
                 </Button>
               )}
             </div>
@@ -170,7 +170,7 @@ export default function QuickRecordPage() {
 
         {/* Recorder */}
         {showRecorder ? (
-          <Card className="p-6">
+          <Card className="p-6 border-primary/20 bg-gradient-to-br from-white to-primary/5">
             <AudioRecorder
               onRecordingComplete={handleRecordingComplete}
             />
@@ -185,40 +185,41 @@ export default function QuickRecordPage() {
         ) : (
           <Button
             size="lg"
-            className="w-full h-24 text-lg"
+            className="w-full h-24 text-lg shadow-lg"
             onClick={() => setShowRecorder(true)}
           >
             <Mic className="h-8 w-8 mr-3" />
-            Neue Aufnahme starten
+            Neue Aufnahme
           </Button>
         )}
 
         {/* Recordings List */}
         {recordings.length > 0 ? (
           <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-slate-700 px-1">
+            <h2 className="text-sm font-semibold text-foreground px-1">
               Gespeicherte Aufnahmen
             </h2>
             {recordings.map((rec) => (
-              <Card key={rec.id} className="p-4">
-                <div className="flex items-center justify-between">
+              <Card key={rec.id} className="p-3 border-primary/20 bg-gradient-to-br from-white to-primary/5">
+                <div className="flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="h-4 w-4 text-slate-400" />
-                      <span className="text-sm font-medium text-slate-900">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <Clock className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-sm font-medium text-foreground">
                         {formatDuration(rec.duration)}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted-foreground">
                         {formatSize(rec.size)}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500">{formatDate(rec.timestamp)}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(rec.timestamp)}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
                       onClick={() => handlePlay(rec.id)}
+                      className="h-8 w-8"
                     >
                       {playingId === rec.id ? (
                         <Pause className="h-4 w-4" />
@@ -227,10 +228,10 @@ export default function QuickRecordPage() {
                       )}
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
                       onClick={() => handleDelete(rec.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -240,19 +241,19 @@ export default function QuickRecordPage() {
             ))}
           </div>
         ) : !showRecorder && (
-          <Card className="p-8 text-center">
-            <Mic className="h-12 w-12 text-slate-400 mx-auto mb-3" />
-            <p className="text-slate-600">Noch keine Aufnahmen</p>
-            <p className="text-sm text-slate-500 mt-1">
+          <Card className="p-8 text-center border-primary/20 bg-gradient-to-br from-white to-primary/5">
+            <Mic className="h-12 w-12 text-primary mx-auto mb-3" />
+            <p className="text-foreground font-medium">Noch keine Aufnahmen</p>
+            <p className="text-sm text-muted-foreground mt-1">
               Starte deine erste Aufnahme – keine Anmeldung nötig
             </p>
           </Card>
         )}
 
         {/* Info Footer */}
-        <Card className="p-4 bg-slate-50">
-          <h3 className="font-semibold text-sm text-slate-900 mb-2">ℹ️ Wie funktioniert's?</h3>
-          <ul className="text-xs text-slate-600 space-y-1">
+        <Card className="p-4 border-primary/20 bg-white/50">
+          <h3 className="font-semibold text-sm text-foreground mb-2">ℹ️ Wie funktioniert's?</h3>
+          <ul className="text-xs text-muted-foreground space-y-1">
             <li>✅ Aufnehmen ohne Anmeldung</li>
             <li>✅ Aufnahmen bleiben auf deinem Gerät</li>
             <li>✅ Später anmelden und hochladen</li>
