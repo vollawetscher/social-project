@@ -201,7 +201,7 @@ export function TranscribableTextField({
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
           placeholder={placeholder}
-          className="min-h-[120px] font-mono text-sm"
+          className="min-h-[120px]"
           disabled={recording || transcribing}
         />
 

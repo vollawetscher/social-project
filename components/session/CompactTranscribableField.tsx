@@ -383,7 +383,7 @@ export function CompactTranscribableField({
               onClick={handleCursorChange}
               onKeyUp={handleCursorChange}
               placeholder={placeholder}
-              className={`min-h-[100px] font-mono text-sm ${isLocked ? 'bg-slate-100 cursor-not-allowed' : ''}`}
+              className={`min-h-[100px] ${isLocked ? 'bg-slate-100 cursor-not-allowed' : ''}`}
               disabled={recording || isLocked}
             />
 
