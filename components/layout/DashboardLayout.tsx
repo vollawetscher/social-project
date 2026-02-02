@@ -32,27 +32,32 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b bg-white sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-blue-100">
+      <header className="border-b border-blue-200/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <FileText className="w-6 h-6 text-slate-700" />
-            <h1 className="text-xl font-semibold text-slate-900">Gesprächsbericht</h1>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-lg blur-sm opacity-50" />
+              <FileText className="w-6 h-6 text-primary relative" />
+            </div>
+            <h1 className="text-xl font-semibold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Gesprächsbericht
+            </h1>
           </div>
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => setShowChangelog(true)}
-              className="gap-2"
+              className="gap-2 hover:bg-primary/10"
             >
               <Sparkles className="h-4 w-4" />
               What's New
             </Button>
-            <Button variant="ghost" onClick={() => router.push('/profile')}>
+            <Button variant="ghost" onClick={() => router.push('/profile')} className="hover:bg-primary/10">
               Profile
             </Button>
-            <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut}>
+            <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut} className="border-primary/30 hover:bg-primary/10">
               {isLoggingOut ? 'Logging out…' : 'Logout'}
             </Button>
           </div>

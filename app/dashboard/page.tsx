@@ -198,8 +198,10 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-slate-600 mt-1">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Dashboard
+            </h1>
+            <p className="text-foreground/70 mt-1">
               Verwalten Sie Ihre Projekte und Aufnahmen
             </p>
           </div>
@@ -207,7 +209,7 @@ export default function DashboardPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           <Tabs defaultValue="cases" className="w-full">
@@ -225,16 +227,19 @@ export default function DashboardPage() {
               </div>
 
               {cases.length === 0 ? (
-                <Card>
+                <Card className="border-primary/20 bg-gradient-to-br from-white to-primary/5">
                   <CardContent className="flex flex-col items-center justify-center py-12">
-                    <FolderOpen className="h-12 w-12 text-slate-300 mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    <div className="relative mb-4">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full blur-md opacity-20" />
+                      <FolderOpen className="h-12 w-12 text-primary relative" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
                       Keine Projekte vorhanden
                     </h3>
-                    <p className="text-slate-600 text-center mb-6">
+                    <p className="text-muted-foreground text-center mb-6">
                       Erstellen Sie Ihr erstes Projekt, um Gespräche zu verwalten
                     </p>
-                    <Button onClick={() => setShowCaseDialog(true)}>
+                    <Button onClick={() => setShowCaseDialog(true)} className="bg-gradient-to-r from-primary to-secondary hover:opacity-90">
                       <Plus className="mr-2 h-4 w-4" />
                       Neues Projekt erstellen
                     </Button>
@@ -243,29 +248,31 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {cases.map((caseItem) => (
-                    <Card key={caseItem.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push(`/cases/${caseItem.id}`)}>
+                    <Card key={caseItem.id} className="hover:shadow-lg hover:shadow-primary/20 transition-all cursor-pointer border-primary/20 hover:border-primary/40 bg-gradient-to-br from-white to-primary/5" onClick={() => router.push(`/cases/${caseItem.id}`)}>
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg flex items-center gap-2">
-                              <FolderOpen className="h-5 w-5" />
+                              <FolderOpen className="h-5 w-5 text-primary" />
                               {caseItem.title}
                             </CardTitle>
                             <CardDescription className="mt-1">
                               {caseItem.session_count} {caseItem.session_count === 1 ? 'Gespräch' : 'Gespräche'}
                             </CardDescription>
                           </div>
-                          <Badge>{caseItem.status === 'active' ? 'Aktiv' : caseItem.status === 'closed' ? 'Geschlossen' : 'Archiviert'}</Badge>
+                          <Badge className="bg-gradient-to-r from-primary to-secondary text-white border-0">
+                            {caseItem.status === 'active' ? 'Aktiv' : caseItem.status === 'closed' ? 'Geschlossen' : 'Archiviert'}
+                          </Badge>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {caseItem.description && (
-                          <p className="text-sm text-slate-600 line-clamp-2">
+                          <p className="text-sm text-muted-foreground line-clamp-2">
                             {caseItem.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <Calendar className="h-4 w-4" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4 text-primary" />
                           <span>
                             {formatDistanceToNow(new Date(caseItem.updated_at), {
                               addSuffix: true,
@@ -289,16 +296,19 @@ export default function DashboardPage() {
               </div>
 
               {sessions.length === 0 ? (
-                <Card>
+                <Card className="border-primary/20 bg-gradient-to-br from-white to-primary/5">
                   <CardContent className="flex flex-col items-center justify-center py-12">
-                    <FileAudio className="h-12 w-12 text-slate-300 mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                    <div className="relative mb-4">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full blur-md opacity-20" />
+                      <FileAudio className="h-12 w-12 text-primary relative" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
                       Keine einzelnen Gespräche
                     </h3>
-                    <p className="text-slate-600 text-center mb-6">
+                    <p className="text-muted-foreground text-center mb-6">
                       Einzelne Gespräche sind nicht mit einem Projekt verknüpft
                     </p>
-                    <Button onClick={() => setShowSessionDialog(true)}>
+                    <Button onClick={() => setShowSessionDialog(true)} className="bg-gradient-to-r from-primary to-secondary hover:opacity-90">
                       <Plus className="mr-2 h-4 w-4" />
                       Einzelnes Gespräch erstellen
                     </Button>
@@ -307,11 +317,11 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {sessions.map((session) => (
-                    <Card key={session.id} className="hover:shadow-md transition-shadow">
+                    <Card key={session.id} className="hover:shadow-lg hover:shadow-primary/20 transition-all border-primary/20 hover:border-primary/40 bg-gradient-to-br from-white to-primary/5">
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg">
+                            <CardTitle className="text-lg text-foreground">
                               {session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}`}
                             </CardTitle>
                             <CardDescription className="mt-1">
@@ -326,18 +336,18 @@ export default function DashboardPage() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {session.context_note && (
-                          <p className="text-sm text-slate-600 line-clamp-2">
+                          <p className="text-sm text-muted-foreground line-clamp-2">
                             {session.context_note}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <Clock className="h-4 w-4" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4 text-primary" />
                           <span>{formatDuration(session.duration_sec)}</span>
                         </div>
                         <div className="flex gap-2">
                           <Button
                             variant="default"
-                            className="flex-1"
+                            className="flex-1 bg-gradient-to-r from-primary to-secondary hover:opacity-90"
                             onClick={() => router.push(`/sessions/${session.id}`)}
                           >
                             <Eye className="mr-2 h-4 w-4" />
@@ -347,6 +357,7 @@ export default function DashboardPage() {
                             variant="outline"
                             size="icon"
                             onClick={() => setDeleteSession(session)}
+                            className="border-primary/30 hover:bg-primary/10"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
