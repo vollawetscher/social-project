@@ -269,14 +269,14 @@ export default function DashboardPage() {
                   {/* Compact Metadata */}
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-primary/10">
                     {/* Transcription Status */}
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
                       <CheckCircle2 className="h-3 w-3 text-primary" />
                       <span>{conversation.status === 'done' ? 'Fertig' : 'Läuft'}</span>
                     </div>
                     
                     {/* Duration */}
                     {conversation.duration_sec > 0 && (
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
                         <Clock className="h-3 w-3 text-primary" />
                         <span>{formatDuration(conversation.duration_sec)}</span>
                       </div>
@@ -284,7 +284,7 @@ export default function DashboardPage() {
                     
                     {/* Report Language */}
                     {conversation.preferred_report_language && (
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-primary/5 px-2 py-0.5 rounded uppercase">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded uppercase">
                         <Languages className="h-3 w-3 text-primary" />
                         <span>{conversation.preferred_report_language}</span>
                       </div>
@@ -292,7 +292,7 @@ export default function DashboardPage() {
                     
                     {/* Meeting Type */}
                     {conversation.structured_context?.meeting_type && (
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
                         <FileText className="h-3 w-3 text-primary" />
                         <span>{conversation.structured_context.meeting_type}</span>
                       </div>
@@ -300,7 +300,7 @@ export default function DashboardPage() {
                     
                     {/* Location */}
                     {conversation.structured_context?.location && (
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
                         <MapPin className="h-3 w-3 text-primary" />
                         <span className="truncate max-w-[120px]">{conversation.structured_context.location}</span>
                       </div>

@@ -36,7 +36,14 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     throw new Error('No transcripts found')
   }
 
-  console.log(`[ReportGenerator] Found ${transcriptsData.length} transcript(s)`)
+  // Validate transcripts have required properties
+  const invalidTranscripts = transcriptsData.filter(t => !t.text || typeof t.text !== 'string')
+  if (invalidTranscripts.length > 0) {
+    console.error('[ReportGenerator] Invalid transcripts detected:', invalidTranscripts.map(t => t.id))
+    throw new Error(`${invalidTranscripts.length} transcript(s) missing text content`)
+  }
+
+  console.log(`[ReportGenerator] Found ${transcriptsData.length} valid transcript(s)`)
 
   // Structure transcripts by purpose
   const transcriptsByPurpose: Record<FilePurpose, Transcript[]> = {
@@ -64,9 +71,20 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
   const claudeService = createClaudeService()
   
   // Determine language: preferred (user override) or detected (Speechmatics auto)
-  const detectedLanguage = transcriptsData[0]?.language || 'en'
+  // Validate that first transcript exists and has language property
+  if (!transcriptsData[0]) {
+    throw new Error('No transcripts available for language detection')
+  }
+  
+  const detectedLanguage = transcriptsData[0].language || 'en'
   const preferredLanguage = (session as any).preferred_report_language
   const finalLanguage = preferredLanguage || detectedLanguage
+  
+  // Validate final language is a valid code
+  if (!finalLanguage || typeof finalLanguage !== 'string' || finalLanguage.length < 2) {
+    console.warn('[ReportGenerator] Invalid language code, defaulting to English')
+    throw new Error('Invalid language configuration')
+  }
   
   console.log('[ReportGenerator] Language determination:', {
     detectedBySpeechmatics: detectedLanguage,

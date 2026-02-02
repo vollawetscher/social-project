@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
+import { logError } from '@/lib/services/error-logger'
 
 export async function GET(
   request: Request,
@@ -18,12 +19,42 @@ export async function GET(
       .maybeSingle()
 
     if (error || !report) {
+      // Log not found as potential issue
+      if (error) {
+        await logError({
+          message: 'Report retrieval failed',
+          stack: JSON.stringify(error),
+          context: {
+            sessionId: params.id,
+            endpoint: 'report-get',
+          },
+          user_id: user.id,
+        })
+      }
       return NextResponse.json({ error: 'Report not found' }, { status: 404 })
     }
 
     return NextResponse.json(report)
   } catch (error) {
     if (error instanceof Error) {
+      // Log the error for tracking
+      try {
+        const user = await requireAuth().catch(() => null)
+        if (user) {
+          await logError({
+            message: error.message,
+            stack: error.stack || '',
+            context: {
+              sessionId: params.id,
+              endpoint: 'report-get',
+            },
+            user_id: user.id,
+          })
+        }
+      } catch (logErr) {
+        console.error('Failed to log error:', logErr)
+      }
+
       const authError = handleAuthError(error)
       return NextResponse.json({ error: authError.message }, { status: authError.status })
     }

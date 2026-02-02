@@ -26,21 +26,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   useEffect(() => {
+    let isMounted = true
+
     const loadUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
+
+        if (!isMounted) return
 
         if (session?.user) {
           setSession(session)
           setUser(session.user)
 
-          // Load profile in parallel (don't block on it)
+          // Load profile with mounted check to prevent race condition
+          const userId = session.user.id
           supabase
             .from('profiles')
             .select('*')
-            .eq('id', session.user.id)
+            .eq('id', userId)
             .maybeSingle()
             .then(({ data: profileData, error }) => {
+              // Check if component is still mounted and user hasn't changed
+              if (!isMounted) return
+              
               if (error) {
                 console.error('Error loading profile:', error)
                 return
@@ -56,7 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error loading session:', error)
       } finally {
         // Set loading to false immediately after session check
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
@@ -64,15 +74,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       (async () => {
+        if (!isMounted) return
+
         setSession(session)
         setUser(session?.user ?? null)
 
         if (session?.user) {
+          const userId = session.user.id
           const { data: profileData, error } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', session.user.id)
+            .eq('id', userId)
             .maybeSingle()
+
+          // Check if component is still mounted before updating state
+          if (!isMounted) return
 
           if (error) {
             console.error('Error loading profile:', error)
@@ -90,11 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthMethod(null)
         }
 
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       })()
     })
 
     return () => {
+      isMounted = false
       subscription.unsubscribe()
     }
   }, [])

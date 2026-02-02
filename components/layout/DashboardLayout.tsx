@@ -2,10 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Sparkles } from 'lucide-react'
+import { FileText, Sparkles, User, LogOut, MessageSquarePlus, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { ChangelogDialog } from '@/components/changelog/ChangelogDialog'
+import { FeatureRequestDialog } from '@/components/feature-request/FeatureRequestDialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -13,9 +22,13 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter()
-  const { signOut } = useAuth()
+  const { signOut, user, profile } = useAuth()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
+  const [showFeatureRequest, setShowFeatureRequest] = useState(false)
+
+  // Get display name: prioritize display_name, then email, then phone, then fallback
+  const displayName = profile?.display_name || user?.email || profile?.phone_number || 'User'
 
   const handleLogout = async () => {
     try {
@@ -41,23 +54,43 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               Gesprächsbericht
             </h1>
           </div>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setShowChangelog(true)}
-              className="gap-2 hover:bg-primary/10"
-            >
-              <Sparkles className="h-4 w-4" />
-              What's New
-            </Button>
-            <Button variant="ghost" onClick={() => router.push('/profile')} className="hover:bg-primary/10">
-              Profile
-            </Button>
-            <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut} className="border-primary/30 hover:bg-primary/10">
-              {isLoggingOut ? 'Logging out…' : 'Logout'}
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="gap-2 hover:bg-primary/10 max-w-[200px] sm:max-w-none"
+              >
+                <User className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">{displayName}</span>
+                <ChevronDown className="h-4 w-4 flex-shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/profile')}>
+                <User className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowChangelog(true)}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                <span>What's New</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowFeatureRequest(true)}>
+                <MessageSquarePlus className="mr-2 h-4 w-4" />
+                <span>Feature Request</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={handleLogout} 
+                disabled={isLoggingOut}
+                className="text-red-600 focus:text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>{isLoggingOut ? 'Logging out…' : 'Logout'}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -66,6 +99,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </main>
 
       <ChangelogDialog open={showChangelog} onOpenChange={setShowChangelog} />
+      <FeatureRequestDialog open={showFeatureRequest} onOpenChange={setShowFeatureRequest} />
     </div>
   )
 }

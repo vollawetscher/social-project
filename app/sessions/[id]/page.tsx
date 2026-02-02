@@ -513,7 +513,7 @@ export default function SessionDetailPage() {
                   <div className="text-left flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">Metadaten & Sprache</span>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-700">
+                      <Badge variant="outline" className="text-xs px-1.5 py-0 bg-purple-100 text-purple-700">
                         {session.preferred_report_language === 'de' ? '🇩🇪 DE' : 
                          session.preferred_report_language === 'en' ? '🇬🇧 EN' : 
                          '🤖 Auto'}
@@ -641,7 +641,7 @@ export default function SessionDetailPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm">Aufnahmen</span>
                       {files.length > 0 && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-700">
+                        <Badge variant="outline" className="text-xs px-1.5 py-0 bg-slate-100 text-slate-700">
                           {files.length}
                         </Badge>
                       )}
@@ -717,11 +717,11 @@ export default function SessionDetailPage() {
                           <span className="text-xs font-medium text-foreground">
                             {getPurposeLabel(file.file_purpose)}
                           </span>
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">
+                          <Badge variant="outline" className="text-xs px-1 py-0">
                             #{index + 1}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <span>{formatFileSize(file.size_bytes)}</span>
                           <span>•</span>
                           <span>{formatDate(file.created_at)}</span>

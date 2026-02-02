@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
+import { logError } from '@/lib/services/error-logger'
 
 export async function POST(
   request: Request,
@@ -108,12 +109,26 @@ export async function POST(
       )
     }
 
+    // Enforce minimum duration of 1 second for valid audio
     if (duration === 0) {
-      console.warn('[Upload] Audio uploaded with zero duration, may fail transcription:', {
+      console.error('[Upload] Audio rejected: zero duration indicates invalid audio file:', {
         sessionId: params.id,
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type
+      })
+      return NextResponse.json(
+        { error: 'Audiodatei ist ungültig (keine Audiodauer erkannt). Bitte überprüfen Sie die Datei.' },
+        { status: 400 }
+      )
+    }
+
+    // Warn about very short audio (< 2 seconds) but allow it
+    if (duration > 0 && duration < 2) {
+      console.warn('[Upload] Very short audio detected (<2s), may not transcribe well:', {
+        sessionId: params.id,
+        fileName: file.name,
+        duration,
       })
     }
 
@@ -137,16 +152,31 @@ export async function POST(
       })
 
     if (uploadError) {
+      const errorMessage = 'Upload failed: ' + uploadError.message
+      
+      // Log error for tracking
+      await logError({
+        message: errorMessage,
+        stack: JSON.stringify(uploadError),
+        context: {
+          sessionId: params.id,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+        },
+        user_id: user.id,
+      })
+
       await supabase
         .from('sessions')
         .update({
           status: 'error',
-          last_error: 'Upload failed: ' + uploadError.message
+          last_error: errorMessage
         })
         .eq('id', params.id)
 
       return NextResponse.json(
-        { error: 'Upload failed: ' + uploadError.message },
+        { error: errorMessage },
         { status: 500 }
       )
     }
@@ -162,6 +192,20 @@ export async function POST(
       })
 
     if (fileRecordError) {
+      const errorMessage = 'Failed to record file metadata'
+      
+      // Log error for tracking
+      await logError({
+        message: errorMessage,
+        stack: JSON.stringify(fileRecordError),
+        context: {
+          sessionId: params.id,
+          storagePath,
+          fileName: file.name,
+        },
+        user_id: user.id,
+      })
+
       await supabase.storage
         .from('rohbericht-audio')
         .remove([storagePath])
@@ -170,12 +214,12 @@ export async function POST(
         .from('sessions')
         .update({
           status: 'error',
-          last_error: 'Failed to record file metadata'
+          last_error: errorMessage
         })
         .eq('id', params.id)
 
       return NextResponse.json(
-        { error: 'Failed to record file metadata' },
+        { error: errorMessage },
         { status: 500 }
       )
     }
@@ -194,6 +238,24 @@ export async function POST(
     })
   } catch (error) {
     if (error instanceof Error) {
+      // Log the error for tracking
+      try {
+        const user = await requireAuth().catch(() => null)
+        if (user) {
+          await logError({
+            message: error.message,
+            stack: error.stack || '',
+            context: {
+              sessionId: params.id,
+              endpoint: 'upload',
+            },
+            user_id: user.id,
+          })
+        }
+      } catch (logErr) {
+        console.error('Failed to log error:', logErr)
+      }
+
       const authError = handleAuthError(error)
       return NextResponse.json({ error: authError.message }, { status: authError.status })
     }

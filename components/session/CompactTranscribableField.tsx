@@ -257,7 +257,7 @@ export function CompactTranscribableField({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className={`border rounded-lg ${colors.border} ${isOpen ? colors.bg : 'bg-white'}`}>
+      <div className={`border rounded-lg ${colors.border} ${isOpen ? colors.bg : 'bg-white'} ${isLocked ? 'ring-2 ring-red-200' : ''}`}>
         <CollapsibleTrigger className="w-full p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -266,7 +266,7 @@ export function CompactTranscribableField({
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm">{title}</span>
                   {hasContent && (
-                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${colors.badge}`}>
+                    <Badge variant="outline" className={`text-xs px-1.5 py-0 ${colors.badge}`}>
                       {text.length}
                     </Badge>
                   )}
@@ -298,7 +298,7 @@ export function CompactTranscribableField({
                 </Button>
               )}
               
-              {/* Lock/Check Status */}
+              {/* Lock/Unlock Toggle */}
               {hasContent && (
                 <Button 
                   onClick={(e) => {
@@ -307,11 +307,11 @@ export function CompactTranscribableField({
                   }}
                   variant="ghost" 
                   size="icon"
-                  className={`h-7 w-7 ${isLocked ? 'text-green-600 hover:text-green-700' : hasChanges ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`h-7 w-7 ${isLocked ? 'text-red-600 hover:text-red-700' : hasChanges ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-green-600'}`}
                   disabled={hasChanges}
-                  title={isLocked ? 'Gesperrt ✓' : hasChanges ? 'Speichere zuerst' : 'Entsperrt'}
+                  title={isLocked ? '🔒 Gesperrt - klicke zum Entsperren' : hasChanges ? 'Speichere zuerst um zu sperren' : '🔓 Entsperrt - klicke zum Sperren'}
                 >
-                  {isLocked ? <Check className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                  {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                 </Button>
               )}
               
