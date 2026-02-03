@@ -62,6 +62,7 @@ export default function SessionDetailPage() {
     loading: boolean
   } | null>(null)
   const [deletingFile, setDeletingFile] = useState<FileType | null>(null)
+  const [deleteType, setDeleteType] = useState<'report' | 'transcript' | 'all' | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [analyzingContext, setAnalyzingContext] = useState(false)
   const [analyzingPrivateNotes, setAnalyzingPrivateNotes] = useState(false)
@@ -384,28 +385,65 @@ export default function SessionDetailPage() {
     }
   }
 
-  const handleDeleteFile = async () => {
-    if (!deletingFile) return
+  const handleDeleteFile = async (type: 'report' | 'transcript' | 'all') => {
+    if (!deletingFile && type !== 'report') return
 
     setDeleting(true)
     try {
-      const response = await fetch(`/api/files/${deletingFile.id}`, {
-        method: 'DELETE',
-      })
+      if (type === 'report') {
+        // Delete only the report
+        const response = await fetch(`/api/sessions/${sessionId}/report`, {
+          method: 'DELETE',
+        })
 
-      if (response.ok) {
-        toast.success('Aufnahme gelöscht')
-        setFiles(files.filter((f) => f.id !== deletingFile.id))
-        await loadSession() // Reload to update session status if needed
-      } else {
-        const error = await response.json()
-        toast.error('Fehler beim Löschen: ' + (error.error || 'Unbekannter Fehler'))
+        if (response.ok) {
+          toast.success('Bericht gelöscht')
+          setDetectedDomain(null)
+          setReportSummary(null)
+          await loadSession() // Reload to update session status
+        } else {
+          const error = await response.json()
+          toast.error('Fehler beim Löschen: ' + (error.error || 'Unbekannter Fehler'))
+        }
+      } else if (type === 'transcript' && deletingFile) {
+        // Delete only the transcript (file + transcript)
+        const response = await fetch(`/api/files/${deletingFile.id}`, {
+          method: 'DELETE',
+        })
+
+        if (response.ok) {
+          toast.success('Transkript gelöscht')
+          setFiles(files.filter((f) => f.id !== deletingFile.id))
+          await loadSession()
+        } else {
+          const error = await response.json()
+          toast.error('Fehler beim Löschen: ' + (error.error || 'Unbekannter Fehler'))
+        }
+      } else if (type === 'all') {
+        // Delete everything - all files and report
+        const deletePromises = files.map(file => 
+          fetch(`/api/files/${file.id}`, { method: 'DELETE' })
+        )
+        
+        // Also delete report if exists
+        deletePromises.push(
+          fetch(`/api/sessions/${sessionId}/report`, { method: 'DELETE' })
+        )
+
+        await Promise.all(deletePromises)
+        
+        toast.success('Alles gelöscht')
+        setFiles([])
+        setDetectedDomain(null)
+        setReportSummary(null)
+        await loadSession()
       }
     } catch (error) {
       toast.error('Fehler beim Löschen')
     } finally {
       setDeleting(false)
       setDeletingFile(null)
+      setDeleteType(null)
     }
   }
 
@@ -778,8 +816,8 @@ export default function SessionDetailPage() {
           analyzing={analyzingInstructions}
         />
 
-        {/* Regenerate Report Button - only show if status is done or summarizing */}
-        {(session.status === 'done' || session.status === 'summarizing') && files.length > 0 && (
+        {/* Regenerate Report Button - only show if status is done, error, or summarizing */}
+        {(session.status === 'done' || session.status === 'error' || session.status === 'summarizing') && files.length > 0 && (
           <Card className="border-green-200 bg-green-50">
             <CardContent className="flex items-center justify-between py-4">
               <div className="flex items-center gap-3">
@@ -893,39 +931,69 @@ export default function SessionDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete File Confirmation Dialog */}
-      <AlertDialog open={!!deletingFile} onOpenChange={() => setDeletingFile(null)}>
+      {/* Delete Options Dialog */}
+      <AlertDialog open={!!deletingFile} onOpenChange={() => !deleting && setDeletingFile(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Aufnahme löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Was möchten Sie löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rückgängig gemacht werden. Die Aufnahme, das
-              zugehörige Transkript und alle PII-Daten werden dauerhaft gelöscht.
-              {deletingFile?.file_purpose === 'meeting' && (
-                <span className="flex items-start gap-1 mt-2 text-amber-600 font-medium">
-                  <FileText className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span>Warnung: Dies ist eine Besprechungsaufnahme. Der Bericht könnte
-                  dadurch unvollständig werden.</span>
-                </span>
-              )}
+              Wählen Sie, was gelöscht werden soll. Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="flex flex-col gap-3 py-4">
+            <Button
+              onClick={() => handleDeleteFile('report')}
+              disabled={deleting}
+              variant="outline"
+              className="justify-start h-auto py-3 px-4 hover:bg-red-50 hover:border-red-300"
+            >
+              <div className="flex flex-col items-start gap-1">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-red-600" />
+                  <span className="font-semibold">Nur Bericht löschen</span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Transkripte bleiben erhalten. Bericht kann neu generiert werden.
+                </span>
+              </div>
+            </Button>
+            
+            <Button
+              onClick={() => handleDeleteFile('transcript')}
+              disabled={deleting}
+              variant="outline"
+              className="justify-start h-auto py-3 px-4 hover:bg-red-50 hover:border-red-300"
+            >
+              <div className="flex flex-col items-start gap-1">
+                <div className="flex items-center gap-2">
+                  <FileAudio className="h-4 w-4 text-red-600" />
+                  <span className="font-semibold">Nur Transkript löschen</span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Löscht diese Aufnahme und ihr Transkript. Bericht bleibt erhalten.
+                </span>
+              </div>
+            </Button>
+            
+            <Button
+              onClick={() => handleDeleteFile('all')}
+              disabled={deleting}
+              variant="outline"
+              className="justify-start h-auto py-3 px-4 hover:bg-red-50 hover:border-red-300"
+            >
+              <div className="flex flex-col items-start gap-1">
+                <div className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4 text-red-600" />
+                  <span className="font-semibold">Alles löschen</span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Löscht alle Aufnahmen, Transkripte und den Bericht dauerhaft.
+                </span>
+              </div>
+            </Button>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteFile}
-              disabled={deleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Wird gelöscht...
-                </>
-              ) : (
-                'Löschen'
-              )}
-            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
