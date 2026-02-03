@@ -37,9 +37,18 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
   }
 
   // Validate transcripts have required properties
-  const invalidTranscripts = transcriptsData.filter(t => !t.text || typeof t.text !== 'string')
+  const invalidTranscripts = transcriptsData.filter(t => 
+    (!t.raw_text || typeof t.raw_text !== 'string' || t.raw_text.trim().length === 0) &&
+    (!t.redacted_text || typeof t.redacted_text !== 'string' || t.redacted_text.trim().length === 0)
+  )
   if (invalidTranscripts.length > 0) {
-    console.error('[ReportGenerator] Invalid transcripts detected:', invalidTranscripts.map(t => t.id))
+    console.error('[ReportGenerator] Invalid transcripts detected:', invalidTranscripts.map(t => ({
+      id: t.id,
+      hasRawText: !!t.raw_text,
+      hasRedactedText: !!t.redacted_text,
+      rawTextLength: t.raw_text?.length || 0,
+      redactedTextLength: t.redacted_text?.length || 0
+    })))
     throw new Error(`${invalidTranscripts.length} transcript(s) missing text content`)
   }
 
