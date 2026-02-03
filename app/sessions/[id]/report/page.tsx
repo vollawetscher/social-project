@@ -216,15 +216,9 @@ export default function ReportPage() {
 
           <Button onClick={handleDownloadPDF} disabled={downloading}>
             {downloading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Wird erstellt...
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Als PDF exportieren
-              </>
+              <Download className="h-4 w-4" />
             )}
           </Button>
         </div>

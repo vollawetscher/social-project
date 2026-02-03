@@ -43,6 +43,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 
 export default function SessionDetailPage() {
   const params = useParams()
@@ -68,6 +70,10 @@ export default function SessionDetailPage() {
   const [analyzingPrivateNotes, setAnalyzingPrivateNotes] = useState(false)
   const [analyzingInstructions, setAnalyzingInstructions] = useState(false)
   const [showAudioUpload, setShowAudioUpload] = useState(false)
+  const [showReportDialog, setShowReportDialog] = useState(false)
+  const [selectedRecordings, setSelectedRecordings] = useState<string[]>([])
+  const [reportLanguage, setReportLanguage] = useState<'de' | 'en'>('de')
+  const [hasReport, setHasReport] = useState(false)
 
   // Memoize loadSession to prevent infinite re-renders (fixes Bug 1)
   const loadSession = useCallback(async () => {
@@ -95,20 +101,22 @@ export default function SessionDetailPage() {
         }
         
         // Fetch domain and summary from report if available
-        if (sessionData.status === 'done') {
-          try {
-            const reportResponse = await fetch(`/api/sessions/${sessionId}/report`)
-            if (reportResponse.ok) {
-              const reportData = await reportResponse.json()
-              if (reportData.claude_json) {
-                setDetectedDomain(reportData.claude_json.detected_domain || null)
-                setReportSummary(reportData.claude_json.summary_short || null)
-              }
+        try {
+          const reportResponse = await fetch(`/api/sessions/${sessionId}/report`)
+          if (reportResponse.ok) {
+            const reportData = await reportResponse.json()
+            setHasReport(true)
+            if (reportData.claude_json) {
+              setDetectedDomain(reportData.claude_json.detected_domain || null)
+              setReportSummary(reportData.claude_json.summary_short || null)
             }
-          } catch (error) {
-            // Silently fail if report not available yet
-            console.log('Report not yet available')
+          } else {
+            setHasReport(false)
           }
+        } catch (error) {
+          // Silently fail if report not available yet
+          setHasReport(false)
+          console.log('Report not yet available')
         }
       } else {
         toast.error('Fehler beim Laden des Gesprächs')
@@ -340,10 +348,32 @@ export default function SessionDetailPage() {
     }
   }
 
+  const openReportDialog = () => {
+    // Pre-select all meeting recordings
+    const meetingFiles = files.filter(f => f.file_purpose === 'meeting')
+    setSelectedRecordings(meetingFiles.map(f => f.id))
+    setReportLanguage('de')
+    setShowReportDialog(true)
+  }
+
   const triggerSummarization = async () => {
+    if (selectedRecordings.length === 0) {
+      toast.error('Bitte wählen Sie mindestens eine Aufnahme aus')
+      return
+    }
+
+    setShowReportDialog(false)
+    
     try {
       const response = await fetch(`/api/sessions/${sessionId}/summarize`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recordingIds: selectedRecordings,
+          language: reportLanguage,
+        }),
       })
 
       if (!response.ok) {
@@ -769,15 +799,27 @@ export default function SessionDetailPage() {
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => router.push(`/sessions/${sessionId}/report`)}
-                          className="h-7 w-7"
-                          title="Bericht"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                        </Button>
+                        {session.status === 'summarizing' ? (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled
+                            className="h-7 w-7"
+                            title="Bericht wird erstellt..."
+                          >
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          </Button>
+                        ) : hasReport && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => router.push(`/sessions/${sessionId}/report`)}
+                            className="h-7 w-7"
+                            title="Bericht"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -830,7 +872,7 @@ export default function SessionDetailPage() {
                 </div>
               </div>
               <Button
-                onClick={triggerSummarization}
+                onClick={openReportDialog}
                 disabled={session.status === 'summarizing'}
                 variant="outline"
                 size="sm"
@@ -928,6 +970,85 @@ export default function SessionDetailPage() {
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Generation Settings Dialog */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bericht generieren</DialogTitle>
+            <DialogDescription>
+              Wählen Sie die Aufnahmen und Sprache für den Bericht
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Recording Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Aufnahmen auswählen</Label>
+              {files.filter(f => f.file_purpose === 'meeting').length === 0 ? (
+                <p className="text-sm text-muted-foreground">Keine Besprechungsaufnahmen verfügbar</p>
+              ) : (
+                files.filter(f => f.file_purpose === 'meeting').map((file, index) => (
+                  <div key={file.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`recording-${file.id}`}
+                      checked={selectedRecordings.includes(file.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedRecordings([...selectedRecordings, file.id])
+                        } else {
+                          setSelectedRecordings(selectedRecordings.filter(id => id !== file.id))
+                        }
+                      }}
+                    />
+                    <Label
+                      htmlFor={`recording-${file.id}`}
+                      className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                    >
+                      <Badge variant="outline" className="text-xs px-1.5 py-0">
+                        #{index + 1}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatFileSize(file.size_bytes)} • {formatDate(file.created_at)}
+                      </span>
+                    </Label>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Language Selection */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Berichtssprache</Label>
+              <Select value={reportLanguage} onValueChange={(value: 'de' | 'en') => setReportLanguage(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="de">🇩🇪 Deutsch</SelectItem>
+                  <SelectItem value="en">🇬🇧 English</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowReportDialog(false)}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={triggerSummarization}
+              disabled={selectedRecordings.length === 0}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Generieren
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

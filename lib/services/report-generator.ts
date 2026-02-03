@@ -2,8 +2,15 @@ import { createClaudeService } from '@/lib/services/claude'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { FilePurpose, Transcript } from '@/lib/types/database'
 
-export async function generateReport(sessionId: string, supabase: SupabaseClient) {
+export async function generateReport(
+  sessionId: string, 
+  supabase: SupabaseClient,
+  options?: { recordingIds?: string[]; language?: string }
+) {
   console.log('[ReportGenerator] Starting for session:', sessionId)
+  if (options?.recordingIds) {
+    console.log('[ReportGenerator] Filtering to selected recordings:', options.recordingIds)
+  }
 
   console.log('[ReportGenerator] Fetching session data...')
   const { data: session, error: sessionError } = await supabase
@@ -36,8 +43,21 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     throw new Error('No transcripts found')
   }
 
+  // Filter transcripts if specific recordings were selected
+  let filteredTranscripts = transcriptsData
+  if (options?.recordingIds && options.recordingIds.length > 0) {
+    filteredTranscripts = transcriptsData.filter(t => 
+      t.file_id && options.recordingIds!.includes(t.file_id)
+    )
+    console.log(`[ReportGenerator] Filtered to ${filteredTranscripts.length} transcript(s) from selected recordings`)
+    
+    if (filteredTranscripts.length === 0) {
+      throw new Error('No transcripts found for selected recordings')
+    }
+  }
+
   // Validate transcripts have required properties
-  const invalidTranscripts = transcriptsData.filter(t => 
+  const invalidTranscripts = filteredTranscripts.filter(t => 
     (!t.raw_text || typeof t.raw_text !== 'string' || t.raw_text.trim().length === 0) &&
     (!t.redacted_text || typeof t.redacted_text !== 'string' || t.redacted_text.trim().length === 0)
   )
@@ -52,7 +72,7 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     throw new Error(`${invalidTranscripts.length} transcript(s) missing text content`)
   }
 
-  console.log(`[ReportGenerator] Found ${transcriptsData.length} valid transcript(s)`)
+  console.log(`[ReportGenerator] Found ${filteredTranscripts.length} valid transcript(s)`)
 
   // Structure transcripts by purpose
   const transcriptsByPurpose: Record<FilePurpose, Transcript[]> = {
@@ -63,7 +83,7 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
     addition: []
   }
 
-  transcriptsData.forEach((t: any) => {
+  filteredTranscripts.forEach((t: any) => {
     const purpose: FilePurpose = t.files?.file_purpose || 'meeting'
     transcriptsByPurpose[purpose].push(t)
   })
@@ -79,14 +99,14 @@ export async function generateReport(sessionId: string, supabase: SupabaseClient
   console.log('[ReportGenerator] Calling Claude API with structured transcripts...')
   const claudeService = createClaudeService()
   
-  // Determine language: preferred (user override) or detected (Speechmatics auto)
+  // Determine language: user selected (options) > session preference > detected (Speechmatics auto)
   // Validate that first transcript exists and has language property
-  if (!transcriptsData[0]) {
+  if (!filteredTranscripts[0]) {
     throw new Error('No transcripts available for language detection')
   }
   
-  const detectedLanguage = transcriptsData[0].language || 'en'
-  const preferredLanguage = (session as any).preferred_report_language
+  const detectedLanguage = filteredTranscripts[0].language || 'en'
+  const preferredLanguage = options?.language || (session as any).preferred_report_language
   const finalLanguage = preferredLanguage || detectedLanguage
   
   // Validate final language is a valid code
