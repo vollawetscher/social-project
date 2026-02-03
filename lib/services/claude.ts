@@ -430,8 +430,10 @@ Respond ONLY with a JSON object in this format:
    */
   async generateReport(input: ReportInput): Promise<GenericReportJSON> {
     // Use Speechmatics-detected language if provided, otherwise detect from transcript
-    const language = input.detectedLanguage || 'en'
-    console.log('[ClaudeService] Using language:', language, input.detectedLanguage ? '(from Speechmatics)' : '(default)')
+    // Normalize language code: 'de-DE' -> 'de', 'en-US' -> 'en'
+    const rawLanguage = input.detectedLanguage || 'en'
+    const language = rawLanguage.toLowerCase().split('-')[0]
+    console.log('[ClaudeService] Using language:', language, '(normalized from:', rawLanguage + ')')
     
     // Detect domain only (language already known)
     const detection = await this.detectDomain(input)
@@ -522,8 +524,9 @@ Respond ONLY with a JSON object in this format:
     const { transcriptsByPurpose, sessionMetadata } = input
     const duration = this.formatDuration(sessionMetadata.duration_sec)
     
-    // Determine language for the report
-    const isGerman = detection.language === 'de'
+    // Determine language for the report (handle both 'de' and 'de-DE' formats)
+    const normalizedLang = detection.language.toLowerCase().split('-')[0]
+    const isGerman = normalizedLang === 'de'
     
     let promptSections = isGerman 
       ? this.buildGermanPromptHeader(sessionMetadata, duration, detection.domain)
