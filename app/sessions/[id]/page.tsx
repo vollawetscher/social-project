@@ -346,10 +346,16 @@ export default function SessionDetailPage() {
       })
 
       if (!response.ok) {
-        toast.error('Fehler beim Erstellen des Berichts')
+        const errorData = await response.json().catch(() => ({}))
+        const errorMsg = errorData.error || 'Unbekannter Fehler'
+        console.error('[Report Generation] Failed:', errorMsg)
+        toast.error(`Fehler beim Erstellen des Berichts: ${errorMsg}`)
+      } else {
+        toast.success('Berichterstellung gestartet')
       }
-    } catch (error) {
-      toast.error('Fehler beim Erstellen des Berichts')
+    } catch (error: any) {
+      console.error('[Report Generation] Exception:', error)
+      toast.error(`Fehler beim Erstellen des Berichts: ${error.message || 'Netzwerkfehler'}`)
     }
   }
 
