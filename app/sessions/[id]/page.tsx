@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Session, FilePurpose, File as FileType, TranscriptSegment } from '@/lib/types/database'
-import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Notebook, Sparkles, MessageSquare, Lock, ListTodo, ChevronDown, Mic, Plus, Clock, Calendar, MapPin, User } from 'lucide-react'
+import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Notebook, Globe, Sparkles, MessageSquare, Lock, ListTodo, ChevronDown, Mic, Plus, Clock, Calendar, MapPin, User } from 'lucide-react'
 import { PROCESSING_STATUSES, POLLING_INTERVALS, SESSION_STATUS_CONFIG, FILE_PURPOSE_CONFIG } from '@/lib/constants/ui'
 import { formatDetailDate, formatDuration, formatTimecode, formatFileSize } from '@/lib/utils/date-formatters'
 import {
@@ -52,6 +52,7 @@ export default function SessionDetailPage() {
 
   const [session, setSession] = useState<Session | null>(null)
   const [files, setFiles] = useState<FileType[]>([])
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [viewingTranscript, setViewingTranscript] = useState<{
@@ -75,6 +76,21 @@ export default function SessionDetailPage() {
         const { files: sessionFiles, ...sessionData } = data
         setSession(sessionData)
         setFiles(sessionFiles || [])
+        
+        // Fetch language from first file's transcript if available
+        if (sessionFiles && sessionFiles.length > 0) {
+          const firstFile = sessionFiles[0]
+          try {
+            const transcriptResponse = await fetch(`/api/files/${firstFile.id}/transcript`)
+            if (transcriptResponse.ok) {
+              const transcriptData = await transcriptResponse.json()
+              setDetectedLanguage(transcriptData.transcript.language)
+            }
+          } catch (error) {
+            // Silently fail if transcript not available yet
+            console.log('Transcript not yet available')
+          }
+        }
       } else {
         toast.error('Fehler beim Laden des Gesprächs')
         router.push('/dashboard')
@@ -490,6 +506,18 @@ export default function SessionDetailPage() {
                     <div className="flex items-center gap-1.5 text-xs">
                       <Clock className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
                       <span className="text-muted-foreground">Dauer: {formatDuration(session.duration_sec)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Detected Language (from transcript) */}
+                  {detectedLanguage && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Globe className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <span className="text-muted-foreground">
+                        Sprache: {detectedLanguage === 'de' ? 'Deutsch' : 
+                                  detectedLanguage === 'en' ? 'English' : 
+                                  detectedLanguage.toUpperCase()}
+                      </span>
                     </div>
                   )}
                   
