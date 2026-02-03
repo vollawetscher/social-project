@@ -428,6 +428,10 @@ export function CompactTranscribableField({
 
         <CollapsibleContent>
           <div className="px-3 pb-3 space-y-1.5">
+            {description && (
+              <p className="text-xs text-muted-foreground mb-2">{description}</p>
+            )}
+            
             {/* Action buttons - shown first for quick access */}
             {!isLocked && (
               <div className="flex items-center gap-1">

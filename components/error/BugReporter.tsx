@@ -23,6 +23,7 @@ interface BugReporterProps {
   fileId?: string | null
   variant?: 'default' | 'outline' | 'ghost'
   size?: 'default' | 'sm' | 'lg' | 'icon'
+  iconOnly?: boolean
   className?: string
 }
 
@@ -32,6 +33,7 @@ export function BugReporter({
   fileId,
   variant = 'outline',
   size = 'sm',
+  iconOnly = false,
   className,
 }: BugReporterProps) {
   const [open, setOpen] = useState(false)
@@ -122,9 +124,9 @@ export function BugReporter({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} size={size} className={className}>
-          <Bug className="h-4 w-4 mr-2" />
-          Problem melden
+        <Button variant={variant} size={size} className={className} title="Problem melden">
+          <Bug className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} />
+          {!iconOnly && 'Problem melden'}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">

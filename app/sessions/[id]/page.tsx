@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { AudioUploader } from '@/components/audio/AudioUploader'
 import { LocalRecordingsList } from '@/components/audio/LocalRecordingsList'
@@ -53,6 +52,8 @@ export default function SessionDetailPage() {
   const [session, setSession] = useState<Session | null>(null)
   const [files, setFiles] = useState<FileType[]>([])
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null)
+  const [detectedDomain, setDetectedDomain] = useState<string | null>(null)
+  const [reportSummary, setReportSummary] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [viewingTranscript, setViewingTranscript] = useState<{
@@ -89,6 +90,23 @@ export default function SessionDetailPage() {
           } catch (error) {
             // Silently fail if transcript not available yet
             console.log('Transcript not yet available')
+          }
+        }
+        
+        // Fetch domain and summary from report if available
+        if (sessionData.status === 'done') {
+          try {
+            const reportResponse = await fetch(`/api/sessions/${sessionId}/report`)
+            if (reportResponse.ok) {
+              const reportData = await reportResponse.json()
+              if (reportData.claude_json) {
+                setDetectedDomain(reportData.claude_json.detected_domain || null)
+                setReportSummary(reportData.claude_json.summary_short || null)
+              }
+            }
+          } catch (error) {
+            // Silently fail if report not available yet
+            console.log('Report not yet available')
           }
         }
       } else {
@@ -422,23 +440,9 @@ export default function SessionDetailPage() {
     )
   }
 
-  // Build breadcrumb items
-  const breadcrumbItems = session.case_id
-    ? [
-        { label: 'Projekte', href: '/dashboard' },
-        { label: 'Projekt', href: `/cases/${session.case_id}` },
-        { label: session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}` },
-      ]
-    : [
-        { label: 'Gespräche', href: '/dashboard' },
-        { label: session.internal_case_id || `Gespräch ${session.id.slice(0, 8)}` },
-      ]
-
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-6">
-        <Breadcrumbs items={breadcrumbItems} />
-        
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -458,12 +462,12 @@ export default function SessionDetailPage() {
             />
           </div>
           <div className="flex items-center gap-2">
-            {getStatusBadge(session.status)}
             <BugReporter
               caseId={session.case_id}
               sessionId={session.id}
               variant="ghost"
-              size="sm"
+              size="icon"
+              iconOnly
             />
           </div>
         </div>
@@ -480,11 +484,11 @@ export default function SessionDetailPage() {
 
         {/* Info: Transcription complete, ready to generate report */}
         <Collapsible defaultOpen={false}>
-          <div className="border rounded-lg border-purple-200 bg-white">
+          <div className="border rounded-lg border-slate-200 bg-white">
             <CollapsibleTrigger className="w-full p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-1">
-                  <Notebook className="h-5 w-5 text-purple-600" />
+                  <Notebook className="h-5 w-5 text-slate-600" />
                   <div className="text-left flex-1">
                     <span className="font-semibold text-sm">Metadaten</span>
                   </div>
@@ -497,14 +501,14 @@ export default function SessionDetailPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {/* Created Date */}
                   <div className="flex items-center gap-1.5 text-xs">
-                    <Calendar className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                    <Calendar className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
                     <span className="text-muted-foreground">Erstellt: {formatDate(session.created_at)}</span>
                   </div>
                   
                   {/* Duration */}
                   {session.duration_sec > 0 && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <Clock className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <Clock className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
                       <span className="text-muted-foreground">Dauer: {formatDuration(session.duration_sec)}</span>
                     </div>
                   )}
@@ -512,32 +516,27 @@ export default function SessionDetailPage() {
                   {/* Detected Language (from transcript) */}
                   {detectedLanguage && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <Globe className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <Globe className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
                       <span className="text-muted-foreground">
-                        Sprache: {detectedLanguage === 'de' ? 'Deutsch' : 
-                                  detectedLanguage === 'en' ? 'English' : 
-                                  detectedLanguage.toUpperCase()}
+                        {detectedLanguage === 'de' ? 'Deutsch' : 
+                         detectedLanguage === 'en' ? 'English' : 
+                         detectedLanguage.toUpperCase()}
                       </span>
                     </div>
                   )}
                   
-                  {/* Status */}
-                  <div className="flex items-center gap-1.5 text-xs">
-                    {getStatusBadge(session.status)}
-                  </div>
-                  
                   {/* Transcription Status */}
                   {session.status === 'done' && files.length > 0 && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <FileText className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                      <span className="text-green-600 font-medium">Transkript verfügbar</span>
+                      <FileText className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
+                      <span className="text-muted-foreground font-medium">Transkript</span>
                     </div>
                   )}
                   
                   {/* Structured Context: Date */}
                   {session.structured_context?.date && (
                     <div className="flex items-center gap-1.5 text-xs col-span-full">
-                      <Calendar className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <Calendar className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
                       <span className="text-muted-foreground">Termin: {session.structured_context.date}</span>
                     </div>
                   )}
@@ -545,7 +544,7 @@ export default function SessionDetailPage() {
                   {/* Meeting Type */}
                   {session.structured_context?.meeting_type && (
                     <div className="flex items-center gap-1.5 text-xs col-span-full">
-                      <FileText className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <FileText className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
                       <span className="text-muted-foreground">{session.structured_context.meeting_type}</span>
                     </div>
                   )}
@@ -553,7 +552,7 @@ export default function SessionDetailPage() {
                   {/* Location */}
                   {session.structured_context?.location && (
                     <div className="flex items-center gap-1.5 text-xs col-span-full">
-                      <MapPin className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <MapPin className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
                       <span className="text-muted-foreground">{session.structured_context.location}</span>
                     </div>
                   )}
@@ -561,10 +560,29 @@ export default function SessionDetailPage() {
                   {/* Participants */}
                   {session.structured_context?.participants && session.structured_context.participants.length > 0 && (
                     <div className="flex items-center gap-1.5 text-xs col-span-full">
-                      <User className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <User className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
                       <span className="text-muted-foreground">
                         {session.structured_context.participants.map(p => p.role || p.name).join(', ')}
                       </span>
+                    </div>
+                  )}
+                  
+                  {/* Domain (from report) */}
+                  {detectedDomain && (
+                    <div className="flex items-center gap-1.5 text-xs col-span-full">
+                      <Sparkles className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
+                      <span className="text-muted-foreground font-medium capitalize">
+                        {detectedDomain.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Summary (from report) */}
+                  {reportSummary && (
+                    <div className="col-span-full pt-2 border-t border-slate-100">
+                      <p className="text-xs text-muted-foreground italic leading-relaxed">
+                        {reportSummary}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -576,11 +594,11 @@ export default function SessionDetailPage() {
         {/* Kontext Section - Before Recordings */}
         <CompactTranscribableField
           title="Kontext"
-          description="Teilnehmer, Agenda, Hintergründe - per Live-Diktat oder Text"
+          description="Informationen, um das Transkript besser zu verstehen"
           icon={<MessageSquare className="h-5 w-5" />}
           value={(session as any).context_text || ''}
           locked={(session as any).context_text_locked || false}
-          placeholder="Teilnehmer:\n- Max Mustermann (CEO)\n- Anna Schmidt (CFO)\n\nAgenda:\n1. Q4 Review\n2. Budget Planning"
+          placeholder=""
           sessionId={sessionId}
           fieldName="context_text"
           color="blue"
@@ -728,31 +746,12 @@ export default function SessionDetailPage() {
 
 
         <CompactTranscribableField
-          title="Private Notizen"
-          description="Persönliche Beobachtungen die NICHT im Report erscheinen"
-          icon={<Lock className="h-5 w-5" />}
-          value={(session as any).private_comments || ''}
-          locked={(session as any).private_comments_locked || false}
-          placeholder="Private Gedanken:\n- Patient wirkte angespannt\n- Nächste Sitzung anders strukturieren"
-          sessionId={sessionId}
-          fieldName="private_comments"
-          color="amber"
-          onSave={(value) => handleSaveField('private_comments', value)}
-          onLockToggle={(locked) => handleLockToggle('private_comments', locked)}
-          onAnalyze={(currentText, setImprovedText) => 
-            handleImproveField('private_comments', currentText, setImprovedText)
-          }
-          showAnalyzeButton={true}
-          analyzing={analyzingPrivateNotes}
-        />
-
-        <CompactTranscribableField
           title="Anweisungen"
-          description="Spezielle Anweisungen wie der Report strukturiert werden soll"
+          description="Auf was soll bei der Berichterstellung geachtet werden?"
           icon={<ListTodo className="h-5 w-5" />}
           value={(session as any).instructions || ''}
           locked={(session as any).instructions_locked || false}
-          placeholder="Anweisungen:\n- Fokus auf Budget-Diskussion\n- Erwähne Zeitplan-Bedenken\n- Ton: formal und sachlich"
+          placeholder=""
           sessionId={sessionId}
           fieldName="instructions"
           color="green"
@@ -800,6 +799,25 @@ export default function SessionDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        <CompactTranscribableField
+          title="Private Notizen"
+          description="Ihre persönlichen Anmerkungen. Diese werden nicht verarbeitet."
+          icon={<Lock className="h-5 w-5" />}
+          value={(session as any).private_comments || ''}
+          locked={(session as any).private_comments_locked || false}
+          placeholder=""
+          sessionId={sessionId}
+          fieldName="private_comments"
+          color="amber"
+          onSave={(value) => handleSaveField('private_comments', value)}
+          onLockToggle={(locked) => handleLockToggle('private_comments', locked)}
+          onAnalyze={(currentText, setImprovedText) => 
+            handleImproveField('private_comments', currentText, setImprovedText)
+          }
+          showAnalyzeButton={true}
+          analyzing={analyzingPrivateNotes}
+        />
 
         {session.status === 'transcribing' && (
           <Card className="border-blue-200 bg-blue-50">
