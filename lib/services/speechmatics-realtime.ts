@@ -243,18 +243,21 @@ export class SpeechmaticsRealtimeService {
       if (this.ws?.readyState !== WebSocket.OPEN) return
 
       const pcmData: Int16Array = event.data
-      const uint8Array = new Uint8Array(pcmData.buffer)
       
-      // Convert to base64
-      let binaryString = ''
-      for (let i = 0; i < uint8Array.length; i++) {
-        binaryString += String.fromCharCode(uint8Array[i])
-      }
-      const audioBase64 = btoa(binaryString)
+      // Convert Int16Array to base64 properly for binary data
+      // Use Uint8Array view of the buffer for correct byte representation
+      const bytes = new Uint8Array(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength)
+      
+      // Use proper binary-to-base64 encoding
+      const base64 = btoa(
+        Array.from(bytes)
+          .map(byte => String.fromCharCode(byte))
+          .join('')
+      )
 
       const message = {
         message: 'AddAudio',
-        audio: audioBase64,
+        audio: base64,
       }
 
       try {
@@ -287,17 +290,19 @@ export class SpeechmaticsRealtimeService {
         pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF
       }
 
-      // Send raw binary audio to Speechmatics
-      const uint8Array = new Uint8Array(pcmData.buffer)
-      let binaryString = ''
-      for (let i = 0; i < uint8Array.length; i++) {
-        binaryString += String.fromCharCode(uint8Array[i])
-      }
-      const audioBase64 = btoa(binaryString)
+      // Convert Int16Array to base64 properly for binary data
+      const bytes = new Uint8Array(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength)
+      
+      // Use proper binary-to-base64 encoding
+      const base64 = btoa(
+        Array.from(bytes)
+          .map(byte => String.fromCharCode(byte))
+          .join('')
+      )
 
       const message = {
         message: 'AddAudio',
-        audio: audioBase64,
+        audio: base64,
       }
 
       try {
