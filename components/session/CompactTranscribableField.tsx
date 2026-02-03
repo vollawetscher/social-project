@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, X, Lock, Unlock, Wifi, WifiOff } from 'lucide-react'
+import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, Lock, Unlock, Wifi, WifiOff, Undo2 } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
 import { SpeechmaticsRealtimeService, getSpeechmaticsRealtimeToken } from '@/lib/services/speechmatics-realtime'
@@ -45,6 +45,7 @@ export function CompactTranscribableField({
   analyzing = false,
 }: CompactTranscribableFieldProps) {
   const [text, setText] = useState(value)
+  const [previousText, setPreviousText] = useState('') // Store text before AI improvement
   const [liveTranscript, setLiveTranscript] = useState('')
   const [recording, setRecording] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
@@ -252,8 +253,14 @@ export function CompactTranscribableField({
       microphoneManager.releaseMicrophone('live-dictation')
       
       setLiveTranscript('')
-      setIsDirty(false) // Allow parent sync again
-      toast.success('Diktat beendet')
+      // DON'T set isDirty(false) here! Keep it true so the text isn't reset.
+      // isDirty will be set to false when user saves (handleSave)
+      toast.success('Diktat beendet - Bitte speichern', {
+        action: {
+          label: 'Speichern',
+          onClick: handleSave
+        }
+      })
     }
   }
 
@@ -291,14 +298,34 @@ export function CompactTranscribableField({
     }
   }
 
-  const handleClear = () => {
+  const handleUndo = () => {
     if (isLocked) {
       toast.error('Feld ist gesperrt')
       return
     }
-    setText('')
+    if (!previousText) {
+      toast.error('Keine vorherige Version verfügbar')
+      return
+    }
+    setText(previousText)
+    setPreviousText('')
     setHasChanges(true)
-    toast.success('Gelöscht')
+    toast.success('Vorherige Version wiederhergestellt')
+  }
+
+  // Helper to strip markdown formatting
+  const stripMarkdown = (text: string): string => {
+    return text
+      // Remove markdown headers (# ## ###)
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove bold/italic (**text** or *text*)
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      // Remove links [text](url)
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+      // Remove inline code `code`
+      .replace(/`([^`]+)`/g, '$1')
+      .trim()
   }
 
   const toggleLock = async () => {
@@ -400,29 +427,32 @@ export function CompactTranscribableField({
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <div className="px-3 pb-3 space-y-2">
-            <p className="text-xs text-muted-foreground">{description}</p>
-
-            {/* Action buttons */}
+          <div className="px-3 pb-3 space-y-1.5">
+            {/* Action buttons - shown first for quick access */}
             {!isLocked && (
               <div className="flex items-center gap-1">
-                {hasContent && (
+                {previousText && (
                   <Button 
-                    onClick={handleClear} 
+                    onClick={handleUndo} 
                     variant="ghost" 
-                    size="icon" 
-                    className="h-7 w-7 hover:text-destructive hover:bg-destructive/10" 
-                    title="Löschen"
+                    size="icon"
+                    className="h-7 w-7 hover:bg-amber-50 hover:text-amber-700" 
+                    title="Vorherige Version wiederherstellen"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <Undo2 className="h-3.5 w-3.5" />
                   </Button>
                 )}
 
                 {showAnalyzeButton && onAnalyze && text && (
                   <Button
                     onClick={() => {
+                      // Save current text so user can undo
+                      setPreviousText(text)
+                      
                       onAnalyze(text, (improvedText) => {
-                        setText(improvedText)
+                        // Strip markdown formatting before setting
+                        const plainText = stripMarkdown(improvedText)
+                        setText(plainText)
                         setHasChanges(true)
                       })
                     }}

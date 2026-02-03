@@ -196,8 +196,9 @@ WICHTIG:
 - Erfinde NICHTS hinzu
 - Strukturiere nur was vorhanden ist
 - Schreibe auf Deutsch
+- KEIN MARKDOWN! Nur normalen Text mit Zeilenumbrüchen
 
-Antworte NUR mit dem strukturierten Text (kein "Hier ist..." oder Metakommentare).`
+Antworte NUR mit dem strukturierten Text (kein "Hier ist..." oder Metakommentare, kein Markdown).`
         : `You are an assistant that transforms freeform notes into well-structured, professional context information.
 
 INPUT (informal/sloppy):
@@ -224,8 +225,9 @@ IMPORTANT:
 - Do NOT invent anything
 - Only structure what exists
 - Write in English
+- NO MARKDOWN! Only plain text with line breaks
 
-Reply ONLY with the structured text (no "Here is..." or meta comments).`
+Reply ONLY with the structured text (no "Here is..." or meta comments, no markdown).`
     } else if (fieldName === 'private_comments') {
       prompt = isGerman ?
         `Du bist ein Assistent der informelle private Notizen in professionell formulierte Beobachtungen umwandelt.
@@ -245,8 +247,9 @@ WICHTIG:
 - Erfinde NICHTS hinzu
 - Schreibe auf Deutsch
 - Bleibe objektiv und professionell
+- KEIN MARKDOWN! Nur normalen Text mit Zeilenumbrüchen
 
-Antworte NUR mit dem ausformulierten Text (kein "Hier ist..." oder Metakommentare).`
+Antworte NUR mit dem ausformulierten Text (kein "Hier ist..." oder Metakommentare, kein Markdown).`
         : `You are an assistant that transforms informal private notes into professionally formulated observations.
 
 INPUT (informal/sloppy):
@@ -264,8 +267,9 @@ IMPORTANT:
 - Do NOT invent anything
 - Write in English
 - Stay objective and professional
+- NO MARKDOWN! Only plain text with line breaks
 
-Reply ONLY with the formulated text (no "Here is..." or meta comments).`
+Reply ONLY with the formulated text (no "Here is..." or meta comments, no markdown).`
     } else if (fieldName === 'instructions') {
       prompt = isGerman ?
         `Du bist ein Assistent der informelle Anweisungen in klare, präzise Instruktionen umwandelt.
@@ -285,8 +289,9 @@ WICHTIG:
 - Erfinde NICHTS hinzu
 - Schreibe auf Deutsch
 - Kurz und prägnant
+- KEIN MARKDOWN! Nur normalen Text mit Zeilenumbrüchen
 
-Antworte NUR mit den klaren Anweisungen (kein "Hier ist..." oder Metakommentare).`
+Antworte NUR mit den klaren Anweisungen (kein "Hier ist..." oder Metakommentare, kein Markdown).`
         : `You are an assistant that transforms informal instructions into clear, precise directives.
 
 INPUT (informal/sloppy):
@@ -304,8 +309,9 @@ IMPORTANT:
 - Do NOT invent anything
 - Write in English
 - Brief and concise
+- NO MARKDOWN! Only plain text with line breaks
 
-Reply ONLY with the clear instructions (no "Here is..." or meta comments).`
+Reply ONLY with the clear instructions (no "Here is..." or meta comments, no markdown).`
     }
 
     try {

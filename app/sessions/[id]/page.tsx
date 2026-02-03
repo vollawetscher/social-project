@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Session, FilePurpose, File as FileType, TranscriptSegment } from '@/lib/types/database'
-import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles, MessageSquare, Lock, ListTodo, ChevronDown, Mic, Plus, Clock, Calendar, MapPin, User } from 'lucide-react'
+import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Notebook, Globe, Sparkles, MessageSquare, Lock, ListTodo, ChevronDown, Mic, Plus, Clock, Calendar, MapPin, User } from 'lucide-react'
 import { PROCESSING_STATUSES, POLLING_INTERVALS, SESSION_STATUS_CONFIG, FILE_PURPOSE_CONFIG } from '@/lib/constants/ui'
 import { formatDetailDate, formatDuration, formatTimecode, formatFileSize } from '@/lib/utils/date-formatters'
 import {
@@ -212,26 +212,6 @@ export default function SessionDetailPage() {
       }
     } catch (error) {
       toast.error('Fehler beim Aktualisieren des Namens')
-    }
-  }
-
-  const handleUpdateReportLanguage = async (language: string) => {
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferred_report_language: language === 'auto' ? null : language }),
-      })
-
-      if (response.ok) {
-        const updatedSession = await response.json()
-        setSession(updatedSession)
-        toast.success('Report-Sprache aktualisiert')
-      } else {
-        toast.error('Fehler beim Aktualisieren der Sprache')
-      }
-    } catch (error) {
-      toast.error('Fehler beim Aktualisieren der Sprache')
     }
   }
 
@@ -483,123 +463,94 @@ export default function SessionDetailPage() {
         )}
 
         {/* Info: Transcription complete, ready to generate report */}
-        {session.status === 'done' && files.length > 0 && !session.last_error && (
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="pt-6 flex items-start gap-2">
-              <FileText className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-green-800">
-                <strong>Transkription abgeschlossen!</strong> Sie können jetzt einen Report erstellen. 
-                Klicken Sie auf "Report neu erstellen" unten.
-              </p>
-              {session.duration_sec && session.duration_sec < 30 && (
-                <p className="text-xs text-green-700 mt-2">
-                  Hinweis: Kurze Aufnahme ({session.duration_sec} Sekunden) - Report wird trotzdem generiert.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         <Collapsible defaultOpen={false}>
           <div className="border rounded-lg border-purple-200 bg-white">
             <CollapsibleTrigger className="w-full p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-1">
-                  <Languages className="h-5 w-5 text-purple-600" />
+                  <Notebook className="h-5 w-5 text-purple-600" />
                   <div className="text-left flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">Metadaten & Sprache</span>
-                      <Badge variant="outline" className="text-xs px-1.5 py-0 bg-purple-100 text-purple-700">
-                        {session.preferred_report_language === 'de' ? '🇩🇪 DE' : 
-                         session.preferred_report_language === 'en' ? '🇬🇧 EN' : 
-                         '🤖 Auto'}
-                      </Badge>
-                    </div>
+                    <span className="font-semibold text-sm">Metadaten</span>
                   </div>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform" />
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="px-3 pb-3 space-y-3">
-                {/* Metadata Grid - Fixed for mobile */}
+              <div className="px-3 pb-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {/* Date */}
-                  {session.structured_context?.date && (
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <Calendar className="h-3.5 w-3.5 text-purple-600" />
-                      <span className="text-muted-foreground">{session.structured_context.date}</span>
-                    </div>
-                  )}
+                  {/* Created Date */}
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Calendar className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                    <span className="text-muted-foreground">Erstellt: {formatDate(session.created_at)}</span>
+                  </div>
                   
                   {/* Duration */}
                   {session.duration_sec > 0 && (
                     <div className="flex items-center gap-1.5 text-xs">
-                      <Clock className="h-3.5 w-3.5 text-purple-600" />
-                      <span className="text-muted-foreground">{formatDuration(session.duration_sec)}</span>
+                      <Clock className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <span className="text-muted-foreground">Dauer: {formatDuration(session.duration_sec)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Base Language (detected from audio) */}
+                  {session.detected_language && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <Globe className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <span className="text-muted-foreground">
+                        Sprache: {session.detected_language === 'de' ? 'Deutsch' : 
+                                  session.detected_language === 'en' ? 'English' : 
+                                  session.detected_language?.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Status */}
+                  <div className="flex items-center gap-1.5 text-xs">
+                    {getStatusBadge(session.status)}
+                  </div>
+                  
+                  {/* Transcription Status */}
+                  {session.status === 'done' && files.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <FileText className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                      <span className="text-green-600 font-medium">Transkript verfügbar</span>
+                    </div>
+                  )}
+                  
+                  {/* Structured Context: Date */}
+                  {session.structured_context?.date && (
+                    <div className="flex items-center gap-1.5 text-xs col-span-full">
+                      <Calendar className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                      <span className="text-muted-foreground">Termin: {session.structured_context.date}</span>
                     </div>
                   )}
                   
                   {/* Meeting Type */}
                   {session.structured_context?.meeting_type && (
-                    <div className="flex items-center gap-1.5 text-xs col-span-2">
-                      <FileText className="h-3.5 w-3.5 text-purple-600" />
+                    <div className="flex items-center gap-1.5 text-xs col-span-full">
+                      <FileText className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
                       <span className="text-muted-foreground">{session.structured_context.meeting_type}</span>
                     </div>
                   )}
                   
                   {/* Location */}
                   {session.structured_context?.location && (
-                    <div className="flex items-center gap-1.5 text-xs col-span-2">
-                      <MapPin className="h-3.5 w-3.5 text-purple-600" />
+                    <div className="flex items-center gap-1.5 text-xs col-span-full">
+                      <MapPin className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
                       <span className="text-muted-foreground">{session.structured_context.location}</span>
                     </div>
                   )}
                   
-                  {/* User Role / Participants */}
+                  {/* Participants */}
                   {session.structured_context?.participants && session.structured_context.participants.length > 0 && (
-                    <div className="flex items-center gap-1.5 text-xs col-span-2">
-                      <User className="h-3.5 w-3.5 text-purple-600" />
+                    <div className="flex items-center gap-1.5 text-xs col-span-full">
+                      <User className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
                       <span className="text-muted-foreground">
                         {session.structured_context.participants.map(p => p.role || p.name).join(', ')}
                       </span>
                     </div>
                   )}
-                </div>
-                
-                {/* Report Language Selector */}
-                <div className="pt-2 border-t border-purple-100">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Report-Sprache (Automatisch nutzt erkannte Audiosprache)
-                  </p>
-                  <Select
-                    value={session.preferred_report_language || 'auto'}
-                    onValueChange={handleUpdateReportLanguage}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Sprache auswählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span>🤖</span>
-                          <span>Automatisch</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="de">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span>🇩🇪</span>
-                          <span>Deutsch</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="en">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span>🇬🇧</span>
-                          <span>English</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </CollapsibleContent>
@@ -707,7 +658,6 @@ export default function SessionDetailPage() {
                       key={file.id}
                       className="flex items-center gap-2 p-2 border rounded-lg hover:bg-slate-50 transition-colors"
                     >
-                      <FileAudio className="w-4 h-4 text-primary flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-xs font-medium text-foreground">
@@ -806,9 +756,9 @@ export default function SessionDetailPage() {
               <div className="flex items-center gap-3">
                 <Sparkles className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="font-semibold text-sm text-green-900">Bericht neu generieren</p>
+                  <p className="font-semibold text-sm text-green-900">Bericht generieren</p>
                   <p className="text-xs text-green-700">
-                    {session.status === 'summarizing' ? 'Wird gerade erstellt...' : 'Erstelle einen neuen Bericht mit aktualisierten Einstellungen'}
+                    {session.status === 'summarizing' ? 'Wird gerade erstellt...' : 'Erstelle einen Bericht mit aktualisierten Einstellungen'}
                   </p>
                 </div>
               </div>
@@ -827,7 +777,7 @@ export default function SessionDetailPage() {
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Neu generieren
+                    Generieren
                   </>
                 )}
               </Button>
