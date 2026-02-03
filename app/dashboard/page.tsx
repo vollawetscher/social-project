@@ -151,7 +151,7 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto pb-24">
         {/* Header with Filters - Fixed responsive sticky positioning */}
-        <div className="sticky top-14 sm:top-16 z-40 bg-gradient-to-br from-blue-50 via-purple-50 to-blue-100 pb-4 space-y-3">
+        <div className="sticky top-14 sm:top-16 z-40 bg-background pb-4 space-y-3">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary">Gespräche</h1>
             <Button
@@ -180,7 +180,7 @@ export default function DashboardPage() {
               onClick={() => setFilterStatus('done')}
               className="flex-1"
             >
-              Abgeschlossen ({conversations.filter(c => c.status === 'done').length})
+              Fertig ({conversations.filter(c => c.status === 'done').length})
             </Button>
             <Button
               variant={filterStatus === 'processing' ? 'default' : 'outline'}
@@ -198,7 +198,7 @@ export default function DashboardPage() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : filteredConversations.length === 0 ? (
-          <Card className="border-primary/20 bg-gradient-to-br from-white to-primary/5 mt-4">
+          <Card className="border-primary/20 bg-white mt-4">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileAudio className="h-12 w-12 text-primary mb-4" />
               <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -224,7 +224,7 @@ export default function DashboardPage() {
             {filteredConversations.map((conversation) => (
               <Card 
                 key={conversation.id} 
-                className="hover:shadow-lg hover:shadow-primary/20 transition-all border-primary/20 hover:border-primary/40 bg-gradient-to-br from-white to-primary/5 cursor-pointer active:scale-[0.98]"
+                className="hover:shadow-lg hover:shadow-primary/20 transition-all border-primary/20 hover:border-primary/40 bg-white cursor-pointer active:scale-[0.98]"
                 onClick={() => router.push(`/sessions/${conversation.id}`)}
               >
                 <CardHeader className="pb-3">

@@ -543,27 +543,33 @@ export default function SessionDetailPage() {
                   
                   {/* Meeting Type */}
                   {session.structured_context?.meeting_type && (
-                    <div className="flex items-center gap-1.5 text-xs col-span-full">
-                      <FileText className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
-                      <span className="text-muted-foreground">{session.structured_context.meeting_type}</span>
+                    <div className="flex items-start gap-1.5 text-xs col-span-full">
+                      <FileText className="h-3.5 w-3.5 text-slate-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0 max-h-[5.5em] overflow-y-auto">
+                        <span className="text-muted-foreground">{session.structured_context.meeting_type}</span>
+                      </div>
                     </div>
                   )}
                   
                   {/* Location */}
                   {session.structured_context?.location && (
-                    <div className="flex items-center gap-1.5 text-xs col-span-full">
-                      <MapPin className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
-                      <span className="text-muted-foreground">{session.structured_context.location}</span>
+                    <div className="flex items-start gap-1.5 text-xs col-span-full">
+                      <MapPin className="h-3.5 w-3.5 text-slate-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0 max-h-[5.5em] overflow-y-auto">
+                        <span className="text-muted-foreground">{session.structured_context.location}</span>
+                      </div>
                     </div>
                   )}
                   
                   {/* Participants */}
                   {session.structured_context?.participants && session.structured_context.participants.length > 0 && (
-                    <div className="flex items-center gap-1.5 text-xs col-span-full">
-                      <User className="h-3.5 w-3.5 text-slate-600 flex-shrink-0" />
-                      <span className="text-muted-foreground">
-                        {session.structured_context.participants.map(p => p.role || p.name).join(', ')}
-                      </span>
+                    <div className="flex items-start gap-1.5 text-xs col-span-full">
+                      <User className="h-3.5 w-3.5 text-slate-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0 max-h-[5.5em] overflow-y-auto">
+                        <span className="text-muted-foreground">
+                          {session.structured_context.participants.map(p => p.role || p.name).join(', ')}
+                        </span>
+                      </div>
                     </div>
                   )}
                   
@@ -580,9 +586,11 @@ export default function SessionDetailPage() {
                   {/* Summary (from report) */}
                   {reportSummary && (
                     <div className="col-span-full pt-2 border-t border-slate-100">
-                      <p className="text-xs text-muted-foreground italic leading-relaxed">
-                        {reportSummary}
-                      </p>
+                      <div className="max-h-[5.5em] overflow-y-auto">
+                        <p className="text-xs text-muted-foreground italic leading-relaxed">
+                          {reportSummary}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

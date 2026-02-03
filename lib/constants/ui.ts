@@ -69,8 +69,8 @@ export const SESSION_STATUS_CONFIG = {
   },
   done: {
     variant: 'outline' as const,
-    label: 'Abgeschlossen',
-    icon: CheckCircle2,
+    label: 'Transkript',
+    icon: FileText,
     color: 'text-green-600'
   },
   error: {

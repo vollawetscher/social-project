@@ -349,7 +349,7 @@ export function CompactTranscribableField({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className={`border rounded-lg ${colors.border} ${isOpen ? colors.bg : 'bg-white'} ${isLocked ? 'ring-2 ring-red-200' : ''}`}>
+      <div className={`border rounded-lg ${colors.border} ${isOpen ? colors.bg : 'bg-white'}`}>
         <CollapsibleTrigger className="w-full p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
