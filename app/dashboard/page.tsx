@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Button } from '@/components/ui/button'
@@ -20,8 +20,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { formatDistanceToNow, format, differenceInHours } from 'date-fns'
-import { de } from 'date-fns/locale'
+import { formatSessionDate } from '@/lib/utils/date-formatters'
+import { SESSION_STATUS_CONFIG } from '@/lib/constants/ui'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,11 +44,7 @@ export default function DashboardPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'done' | 'processing'>('all')
   const router = useRouter()
 
-  useEffect(() => {
-    loadConversations()
-  }, [])
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       const response = await fetch('/api/sessions')
       if (response.ok) {
@@ -61,7 +57,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadConversations()
+  }, [loadConversations])
 
   const handleCreateConversation = async () => {
     setCreating(true)
@@ -125,41 +125,21 @@ export default function DashboardPage() {
   })
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string; icon: React.ReactNode }> = {
-      created: { variant: 'secondary', text: 'Erstellt', icon: <FileText className="h-3 w-3" /> },
-      uploading: { variant: 'default', text: 'Wird hochgeladen', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-      transcribing: { variant: 'default', text: 'Wird transkribiert', icon: <Mic className="h-3 w-3" /> },
-      summarizing: { variant: 'default', text: 'Wird zusammengefasst', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-      done: { variant: 'outline', text: 'Abgeschlossen', icon: <CheckCircle2 className="h-3 w-3" /> },
-      error: { variant: 'destructive', text: 'Fehler', icon: <FileText className="h-3 w-3" /> },
-    }
-
-    const config = variants[status] || variants.created
+    const config = SESSION_STATUS_CONFIG[status as keyof typeof SESSION_STATUS_CONFIG] || SESSION_STATUS_CONFIG.created
+    const Icon = config.icon
+    const animated = 'animated' in config && config.animated
 
     return (
       <Badge variant={config.variant} className="gap-1">
-        {config.icon}
-        {config.text}
+        <Icon className={`h-3 w-3 ${animated ? 'animate-spin' : ''}`} />
+        {config.label}
       </Badge>
     )
   }
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString)
-    const hoursDiff = differenceInHours(new Date(), date)
-    
-    if (hoursDiff > 8) {
-      // Show exact date and time if more than 8 hours ago
-      return format(date, 'dd.MM.yyyy HH:mm', { locale: de })
-    } else {
-      // Show relative time if within 8 hours
-      return formatDistanceToNow(date, {
-        addSuffix: true,
-        locale: de,
-      })
-    }
-  }
-
+  // Use shared date formatter for consistency
+  const formatDateTime = formatSessionDate
+  
   const formatDuration = (seconds: number) => {
     if (seconds === 0) return '-'
     const mins = Math.floor(seconds / 60)
@@ -170,8 +150,8 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto pb-24">
-        {/* Header with Filters */}
-        <div className="sticky top-16 z-40 bg-gradient-to-br from-blue-50 via-purple-50 to-blue-100 pb-4 space-y-3">
+        {/* Header with Filters - Fixed responsive sticky positioning */}
+        <div className="sticky top-14 sm:top-16 z-40 bg-gradient-to-br from-blue-50 via-purple-50 to-blue-100 pb-4 space-y-3">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-primary">Gespräche</h1>
             <Button
@@ -292,8 +272,8 @@ export default function DashboardPage() {
                     </p>
                   )}
                   
-                  {/* Compact Metadata */}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-primary/10">
+                  {/* Compact Metadata - Fixed for mobile */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-primary/10 text-xs sm:text-sm">
                     {/* Duration */}
                     {conversation.duration_sec > 0 && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded">
@@ -333,8 +313,8 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Floating Action Button (FAB) */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+      {/* Floating Action Button (FAB) - Mobile friendly positioning */}
+      <div className="fixed bottom-20 sm:bottom-6 right-6 z-50 flex flex-col gap-3">
         <Button
           onClick={() => setShowDialog(true)}
           size="icon"

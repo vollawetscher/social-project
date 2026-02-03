@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Mic, Square, Play, Pause, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { detectSupportedAudioFormat, isMobileSafari } from '@/lib/utils/audio-format-detector'
+import { microphoneManager } from '@/lib/services/microphone-manager'
 
 interface AudioRecorderProps {
   onRecordingComplete: (blob: Blob, duration: number) => void
@@ -40,6 +41,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       if (audioURL) {
         URL.revokeObjectURL(audioURL)
       }
+      // Release microphone on unmount
+      microphoneManager.releaseMicrophone('audio-recorder')
     }
   }, [audioURL])
 
@@ -167,8 +170,21 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   }
 
   const startRecording = async () => {
+    // Check if microphone is available
+    if (!microphoneManager.isAvailable()) {
+      const owner = microphoneManager.getCurrentOwner()
+      const ownerName = microphoneManager.getOwnerDisplayName(owner)
+      toast.error(`Mikrofon wird bereits verwendet von: ${ownerName}`)
+      return
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Request microphone via manager
+      const stream = await microphoneManager.requestMicrophone('audio-recorder')
+      if (!stream) {
+        toast.error('Mikrofon wird bereits verwendet')
+        return
+      }
       
       // Monitor for stream ending unexpectedly
       stream.getAudioTracks().forEach(track => {
@@ -254,7 +270,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         const url = URL.createObjectURL(blob)
         setAudioURL(url)
 
-        stream.getTracks().forEach((track) => track.stop())
+        // Release microphone via manager
+        microphoneManager.releaseMicrophone('audio-recorder')
 
         setDuration(finalDuration)
         onRecordingComplete(blob, finalDuration)
@@ -285,8 +302,19 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       startHealthMonitoring()
 
       toast.success('Aufnahme gestartet')
-    } catch (error) {
-      toast.error('Fehler beim Zugriff auf das Mikrofon')
+    } catch (error: any) {
+      console.error('[AudioRecorder] Start error:', error)
+      
+      // Better error messages
+      let errorMsg = 'Fehler beim Zugriff auf das Mikrofon'
+      if (error.message?.includes('Permission denied') || error.name === 'NotAllowedError') {
+        errorMsg = 'Mikrofon-Berechtigung verweigert. Bitte erlaube Zugriff in den Browser-Einstellungen.'
+      } else if (error.name === 'NotFoundError') {
+        errorMsg = 'Kein Mikrofon gefunden. Bitte schließe ein Mikrofon an.'
+      }
+      
+      toast.error(errorMsg)
+      microphoneManager.releaseMicrophone('audio-recorder')
     }
   }
 
@@ -367,6 +395,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     setDuration(0)
     setRecordingTime(0)
     chunksRef.current = []
+    // Ensure microphone is released
+    microphoneManager.releaseMicrophone('audio-recorder')
   }
 
   const formatTime = (seconds: number) => {

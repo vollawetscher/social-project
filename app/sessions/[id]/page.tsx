@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
@@ -17,6 +17,8 @@ import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Session, FilePurpose, File as FileType, TranscriptSegment } from '@/lib/types/database'
 import { Loader2, ArrowLeft, FileText, Download, FileAudio, PlayCircle, Eye, Trash2, Languages, Sparkles, MessageSquare, Lock, ListTodo, ChevronDown, Mic, Plus, Clock, Calendar, MapPin, User } from 'lucide-react'
+import { PROCESSING_STATUSES, POLLING_INTERVALS, SESSION_STATUS_CONFIG, FILE_PURPOSE_CONFIG } from '@/lib/constants/ui'
+import { formatDetailDate, formatDuration, formatTimecode, formatFileSize } from '@/lib/utils/date-formatters'
 import {
   Dialog,
   DialogContent,
@@ -64,13 +66,8 @@ export default function SessionDetailPage() {
   const [analyzingInstructions, setAnalyzingInstructions] = useState(false)
   const [showAudioUpload, setShowAudioUpload] = useState(false)
 
-  useEffect(() => {
-    loadSession()
-    const interval = setInterval(loadSession, 3000)
-    return () => clearInterval(interval)
-  }, [sessionId])
-
-  const loadSession = async () => {
+  // Memoize loadSession to prevent infinite re-renders (fixes Bug 1)
+  const loadSession = useCallback(async () => {
     try {
       const response = await fetch(`/api/sessions/${sessionId}`)
       if (response.ok) {
@@ -87,7 +84,34 @@ export default function SessionDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [sessionId, router])
+
+  // Load session on mount
+  useEffect(() => {
+    loadSession()
+  }, [loadSession])
+
+  // Smart polling: only poll when session is processing (fixes Bug 1)
+  useEffect(() => {
+    if (!session) return
+
+    // @ts-ignore - PROCESSING_STATUSES is readonly array
+    const isProcessing = PROCESSING_STATUSES.includes(session.status)
+    
+    if (isProcessing) {
+      console.log(`[SessionDetail] Starting polling for status: ${session.status}`)
+      const interval = setInterval(() => {
+        loadSession()
+      }, POLLING_INTERVALS.SESSION_STATUS)
+      
+      return () => {
+        console.log('[SessionDetail] Stopping polling')
+        clearInterval(interval)
+      }
+    } else {
+      console.log(`[SessionDetail] No polling needed for status: ${session.status}`)
+    }
+  }, [session?.status, loadSession])
 
   const handleFileSelected = async (file: File) => {
     // Detect audio duration before upload
@@ -365,72 +389,32 @@ export default function SessionDetailPage() {
     }
   }
 
-  const formatTimecode = (ms: number): string => {
-    const totalSeconds = Math.floor(ms / 1000)
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }
-
+  // Use shared utilities for consistency across the app
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; text: string; icon: React.ReactNode }> = {
-      created: { variant: 'secondary', text: 'Bereit', icon: <FileText className="h-3 w-3" /> },
-      uploading: { variant: 'default', text: 'Wird hochgeladen', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-      transcribing: { variant: 'default', text: 'Wird transkribiert', icon: <Mic className="h-3 w-3" /> },
-      summarizing: { variant: 'default', text: 'Wird zusammengefasst', icon: <Sparkles className="h-3 w-3" /> },
-      done: { variant: 'outline', text: 'Abgeschlossen', icon: <FileText className="h-3 w-3" /> },
-      error: { variant: 'destructive', text: 'Fehler', icon: <FileText className="h-3 w-3" /> },
-    }
-
-    const config = variants[status] || variants.created
+    const config = SESSION_STATUS_CONFIG[status as keyof typeof SESSION_STATUS_CONFIG] || SESSION_STATUS_CONFIG.created
+    const Icon = config.icon
+    const animated = 'animated' in config && config.animated
     return (
       <Badge variant={config.variant} className="gap-1">
-        {config.icon}
-        {config.text}
+        <Icon className={`h-3 w-3 ${animated ? 'animate-spin' : ''}`} />
+        {config.label}
       </Badge>
     )
   }
 
   const getPurposeLabel = (purpose: FilePurpose) => {
-    const labels: Record<FilePurpose, { icon: React.ReactNode; text: string }> = {
-      context: { icon: <FileText className="h-3 w-3" />, text: 'Kontext' },
-      meeting: { icon: <MessageSquare className="h-3 w-3" />, text: 'Besprechung' },
-      dictation: { icon: <Mic className="h-3 w-3" />, text: 'Diktat' },
-      instruction: { icon: <ListTodo className="h-3 w-3" />, text: 'Anweisungen' },
-      addition: { icon: <Plus className="h-3 w-3" />, text: 'Ergänzung' },
-    }
-    const config = labels[purpose] || { icon: <FileAudio className="h-3 w-3" />, text: purpose }
+    const config = FILE_PURPOSE_CONFIG[purpose] || FILE_PURPOSE_CONFIG.meeting
+    const Icon = config.icon
     return (
       <span className="flex items-center gap-1">
-        {config.icon}
-        {config.text}
+        <Icon className="h-3 w-3" />
+        {config.label}
       </span>
     )
   }
 
-  const formatDuration = (seconds: number): string => {
-    if (seconds === 0) return '-'
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B'
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
-  }
-
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString)
-    return date.toLocaleString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+  // Use shared formatters
+  const formatDate = formatDetailDate
 
   if (loading || !session) {
     return (
@@ -538,8 +522,8 @@ export default function SessionDetailPage() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="px-3 pb-3 space-y-3">
-                {/* Metadata Grid */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* Metadata Grid - Fixed for mobile */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {/* Date */}
                   {session.structured_context?.date && (
                     <div className="flex items-center gap-1.5 text-xs">

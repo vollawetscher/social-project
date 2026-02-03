@@ -4,10 +4,12 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, X, Lock, Unlock, Check } from 'lucide-react'
+import { Mic, Square, Loader2, Save, Sparkles, ChevronDown, X, Lock, Unlock, Wifi, WifiOff } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
 import { SpeechmaticsRealtimeService, getSpeechmaticsRealtimeToken } from '@/lib/services/speechmatics-realtime'
+import { microphoneManager } from '@/lib/services/microphone-manager'
+import { MIN_TAP_TARGET_SIZE } from '@/lib/constants/ui'
 
 interface CompactTranscribableFieldProps {
   title: string
@@ -45,23 +47,25 @@ export function CompactTranscribableField({
   const [text, setText] = useState(value)
   const [liveTranscript, setLiveTranscript] = useState('')
   const [recording, setRecording] = useState(false)
-  const [transcribing, setTranscribing] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
   const [saving, setSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [isOpen, setIsOpen] = useState(!locked && !!value) // Auto-open only if unlocked and has content
   const [isLocked, setIsLocked] = useState(locked) // Lock feature
+  const [isDirty, setIsDirty] = useState(false) // Track if user is actively editing
   
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
   const speechmaticsServiceRef = useRef<SpeechmaticsRealtimeService | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const cursorPositionRef = useRef<number>(0)
-  const audioStreamRef = useRef<MediaStream | null>(null)
+  const lastSavedValueRef = useRef<string>(value)
 
-  // Sync with parent value changes
+  // Sync with parent value changes ONLY if not dirty (prevents race condition)
   useEffect(() => {
-    setText(value)
-  }, [value])
+    if (!isDirty && !recording) {
+      setText(value)
+      lastSavedValueRef.current = value
+    }
+  }, [value, isDirty, recording])
 
   // Sync with parent lock status changes
   useEffect(() => {
@@ -74,9 +78,7 @@ export function CompactTranscribableField({
       if (speechmaticsServiceRef.current) {
         speechmaticsServiceRef.current.stop()
       }
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop())
-      }
+      microphoneManager.releaseMicrophone('live-dictation')
     }
   }, [])
 
@@ -117,17 +119,29 @@ export function CompactTranscribableField({
       return
     }
 
+    // Check if microphone is available
+    if (!microphoneManager.isAvailable()) {
+      const owner = microphoneManager.getCurrentOwner()
+      const ownerName = microphoneManager.getOwnerDisplayName(owner)
+      toast.error(`Mikrofon wird bereits verwendet von: ${ownerName}`)
+      return
+    }
+
     // Save cursor position before recording
     if (textareaRef.current) {
       cursorPositionRef.current = textareaRef.current.selectionStart || text.length
     }
 
     try {
-      // Get microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      audioStreamRef.current = stream
+      // Request microphone via manager
+      const stream = await microphoneManager.requestMicrophone('live-dictation')
+      if (!stream) {
+        toast.error('Mikrofon wird bereits verwendet')
+        return
+      }
       
       setLiveTranscript('')
+      setIsDirty(true) // Mark as dirty to prevent parent sync
       
       // Get secure temporary token from server
       const token = await getSpeechmaticsRealtimeToken()
@@ -141,29 +155,40 @@ export function CompactTranscribableField({
           
           if (result.isFinal) {
             // Final transcript - insert permanently
-            const start = cursorPositionRef.current
-            const before = text.substring(0, start)
-            const after = text.substring(start)
-            const newText = before + transcript + ' ' + after
-            setText(newText)
+            setText(currentText => {
+              const start = cursorPositionRef.current
+              const before = currentText.substring(0, start)
+              const after = currentText.substring(start)
+              // Add space only if needed
+              const needsSpace = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n')
+              const newText = before + (needsSpace ? ' ' : '') + transcript + ' ' + after
+              return newText
+            })
             setHasChanges(true)
-            cursorPositionRef.current = start + transcript.length + 1
+            cursorPositionRef.current += transcript.length + 1
             setLiveTranscript('') // Clear partial
           } else {
             // Partial transcript - show as preview
             setLiveTranscript(transcript)
           }
         },
-        onError: (error) => {
-          console.error('[Speechmatics RT] Error:', error)
-          const errorMsg = error.message || 'Unbekannter Fehler'
-          // Limit error message length to prevent huge messages filling the screen
-          const displayMsg = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg
-          toast.error('Transkriptionsfehler: ' + displayMsg)
+        onError: (error, diagnostic) => {
+          console.error('[Speechmatics RT] Error:', error, diagnostic)
+          const errorMsg = diagnostic || error.message || 'Unbekannter Fehler'
+          toast.error('Transkriptionsfehler: ' + errorMsg, {
+            duration: 5000,
+          })
         },
         onConnectionChange: (connected) => {
+          setIsConnected(connected)
           if (!connected && recording) {
-            toast.error('Verbindung zur Transkription verloren')
+            toast.warning('Verbindung unterbrochen - versuche neu zu verbinden...', {
+              duration: 3000,
+            })
+          } else if (connected && recording) {
+            toast.success('Verbindung wiederhergestellt', {
+              duration: 2000,
+            })
           }
         },
       })
@@ -174,37 +199,47 @@ export function CompactTranscribableField({
       await speechmaticsService.start(stream)
       
       setRecording(true)
-      toast.success('Aufnahme läuft - spreche jetzt (DSGVO-konform)')
+      toast.success('🎤 Live-Diktat aktiv (DSGVO-konform)', {
+        duration: 2000,
+      })
     } catch (error: any) {
       console.error('Recording error:', error)
       const errorMsg = error.message || 'Unbekannter Fehler'
-      // Limit error message length to prevent huge messages filling the screen
-      const displayMsg = errorMsg.length > 100 ? errorMsg.substring(0, 100) + '...' : errorMsg
-      toast.error('Fehler beim Starten der Aufnahme: ' + displayMsg)
+      
+      // Better error messages
+      let displayMsg = errorMsg
+      if (errorMsg.includes('Permission denied') || errorMsg.includes('NotAllowedError')) {
+        displayMsg = 'Mikrofon-Berechtigung verweigert. Bitte erlaube Zugriff in den Browser-Einstellungen.'
+      } else if (errorMsg.includes('NotFoundError')) {
+        displayMsg = 'Kein Mikrofon gefunden. Bitte schließe ein Mikrofon an.'
+      } else if (errorMsg.includes('Failed to get Speechmatics token')) {
+        displayMsg = 'Authentifizierung fehlgeschlagen. Bitte neu anmelden.'
+      }
+      
+      toast.error(displayMsg, {
+        duration: 6000,
+      })
       
       // Cleanup on error
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop())
-        audioStreamRef.current = null
-      }
+      microphoneManager.releaseMicrophone('live-dictation')
+      setIsDirty(false)
     }
   }
 
   const stopRecording = async () => {
     if (recording && speechmaticsServiceRef.current) {
       setRecording(false)
+      setIsConnected(false)
       
       // Stop Speechmatics service
       await speechmaticsServiceRef.current.stop()
       speechmaticsServiceRef.current = null
       
-      // Stop microphone
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop())
-        audioStreamRef.current = null
-      }
+      // Release microphone via manager
+      microphoneManager.releaseMicrophone('live-dictation')
       
       setLiveTranscript('')
+      setIsDirty(false) // Allow parent sync again
       toast.success('Diktat beendet')
     }
   }
@@ -213,18 +248,27 @@ export function CompactTranscribableField({
   const handleTextChange = (newText: string) => {
     if (isLocked) return
     setText(newText)
-    setHasChanges(newText !== value)
+    setHasChanges(newText !== lastSavedValueRef.current)
+    setIsDirty(true)
   }
 
   const handleCursorChange = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
     cursorPositionRef.current = e.currentTarget.selectionStart || 0
+  }
+  
+  // Also track cursor on change (fixes Bug 5)
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    handleTextChange(e.target.value)
+    handleCursorChange(e)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
       await onSave(text)
+      lastSavedValueRef.current = text
       setHasChanges(false)
+      setIsDirty(false) // Allow parent sync again
       toast.success('Gespeichert!')
     } catch (error: any) {
       console.error('[Save] Error:', error)
@@ -253,11 +297,13 @@ export function CompactTranscribableField({
     const newLockState = !isLocked
     try {
       await onLockToggle(newLockState)
+      // Only update state AFTER successful server update (fixes Bug 4)
       setIsLocked(newLockState)
-      toast.success(newLockState ? 'Gesperrt' : 'Entsperrt')
+      toast.success(newLockState ? '🔒 Gesperrt' : '🔓 Entsperrt')
     } catch (error) {
       console.error('[Lock] Error:', error)
       toast.error('Fehler beim Ändern des Sperrstatus')
+      // Don't update local state on error
     }
   }
 
@@ -283,7 +329,14 @@ export function CompactTranscribableField({
               </div>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              {/* Dictate Button - Icon Only */}
+              {/* Connection Status Indicator */}
+              {recording && (
+                <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${isConnected ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                </div>
+              )}
+              
+              {/* Dictate Button - Larger tap target for mobile */}
               {!isLocked && (
                 <Button
                   onClick={(e) => {
@@ -294,13 +347,20 @@ export function CompactTranscribableField({
                       startRecording()
                     }
                   }}
-                  variant="ghost"
-                  size="icon"
-                  className={`h-7 w-7 ${recording ? 'text-red-600 hover:text-red-700' : transcribing ? 'text-muted-foreground/50' : colors.text}`}
-                  disabled={transcribing}
-                  title={recording ? 'Aufnahme stoppen' : 'Diktieren'}
+                  variant={recording ? 'destructive' : 'ghost'}
+                  size="sm"
+                  className={`h-9 ${recording ? '' : colors.text}`}
+                  style={{ minHeight: `${MIN_TAP_TARGET_SIZE}px` }}
+                  title={recording ? 'Diktat stoppen' : 'Diktieren'}
                 >
-                  {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  {recording ? (
+                    <>
+                      <Square className="h-4 w-4 mr-1" />
+                      <span className="text-xs">Stop</span>
+                    </>
+                  ) : (
+                    <Mic className="h-4 w-4" />
+                  )}
                 </Button>
               )}
               
@@ -313,11 +373,11 @@ export function CompactTranscribableField({
                   }}
                   variant="ghost" 
                   size="icon"
-                  className={`h-7 w-7 ${isLocked ? 'text-red-600 hover:text-red-700' : hasChanges ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-green-600'}`}
+                  className={`h-8 w-8 ${isLocked ? 'text-red-600 hover:text-red-700' : hasChanges ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-green-600'}`}
                   disabled={hasChanges}
-                  title={isLocked ? 'Gesperrt - klicke zum Entsperren' : hasChanges ? 'Speichere zuerst um zu sperren' : 'Entsperrt - klicke zum Sperren'}
+                  title={isLocked ? 'Gesperrt' : hasChanges ? 'Speichere zuerst' : 'Entsperrt'}
                 >
-                  {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                  {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                 </Button>
               )}
               
@@ -369,33 +429,30 @@ export function CompactTranscribableField({
               </div>
             )}
 
-            {/* Live Transcript */}
-            {recording && liveTranscript && (
-              <div className="border-l-2 border-primary pl-2 py-1.5 bg-primary/5 rounded text-xs">
-                <p className="font-semibold text-primary mb-0.5 flex items-center gap-1">
-                  <Mic className="h-3 w-3" />
-                  Live:
+            {/* Recording Status & Live Transcript */}
+            {recording && (
+              <div className={`border-l-2 pl-2 py-1.5 rounded text-xs ${isConnected ? 'border-green-500 bg-green-50' : 'border-amber-500 bg-amber-50'}`}>
+                <p className={`font-semibold mb-0.5 flex items-center gap-1 ${isConnected ? 'text-green-700' : 'text-amber-700'}`}>
+                  <Mic className="h-3 w-3 animate-pulse" />
+                  {isConnected ? 'Höre zu...' : 'Verbinde...'}
                 </p>
-                <p className="text-foreground">{liveTranscript}</p>
-              </div>
-            )}
-
-            {transcribing && (
-              <div className="flex items-center gap-2 text-xs text-primary">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Transkribiere...
+                {liveTranscript ? (
+                  <p className="text-foreground">{liveTranscript}</p>
+                ) : (
+                  <p className="text-muted-foreground italic text-xs">Spreche jetzt...</p>
+                )}
               </div>
             )}
 
             <Textarea
               ref={textareaRef}
               value={text}
-              onChange={(e) => handleTextChange(e.target.value)}
+              onChange={handleTextareaChange}
               onSelect={handleCursorChange}
               onClick={handleCursorChange}
               onKeyUp={handleCursorChange}
               placeholder={placeholder}
-              className={`min-h-[80px] text-sm ${isLocked ? 'bg-muted cursor-not-allowed' : ''}`}
+              className={`min-h-[100px] text-sm ${isLocked ? 'bg-muted cursor-not-allowed' : ''}`}
               disabled={recording || isLocked}
             />
 

@@ -1,6 +1,11 @@
 /**
  * Speechmatics Real-Time WebSocket Transcription
  * GDPR/EU AI Act compliant - all processing on Speechmatics servers
+ * 
+ * Features:
+ * - Automatic reconnection on connection loss
+ * - iOS Safari AudioContext support
+ * - Better error handling and diagnostics
  */
 
 export interface RealtimeTranscriptResult {
@@ -12,7 +17,7 @@ export interface RealtimeConfig {
   language?: string
   enablePartials?: boolean
   onTranscript: (result: RealtimeTranscriptResult) => void
-  onError: (error: Error) => void
+  onError: (error: Error, diagnostic?: string) => void
   onConnectionChange?: (connected: boolean) => void
 }
 
@@ -25,6 +30,10 @@ export class SpeechmaticsRealtimeService {
   private mediaStreamSource: MediaStreamAudioSourceNode | null = null
   private config: RealtimeConfig
   private tempToken: string
+  private reconnectAttempts = 0
+  private maxReconnectAttempts = 3
+  private isManualStop = false
+  private reconnectTimeout: NodeJS.Timeout | null = null
 
   constructor(tempToken: string, config: RealtimeConfig) {
     this.tempToken = tempToken
@@ -33,71 +42,131 @@ export class SpeechmaticsRealtimeService {
 
   async start(stream: MediaStream): Promise<void> {
     this.audioStream = stream
+    this.isManualStop = false
+    this.reconnectAttempts = 0
 
-    // Create WebSocket connection to Speechmatics real-time API with auth token
-    const wsUrl = `wss://eu2.rt.speechmatics.com/v2?jwt=${this.tempToken}`
-    this.ws = new WebSocket(wsUrl)
+    await this.connectWebSocket()
+  }
 
-    this.ws.onopen = () => {
-      console.log('[Speechmatics RT] WebSocket connected')
-      this.config.onConnectionChange?.(true)
+  private async connectWebSocket(): Promise<void> {
+    try {
+      // Create WebSocket connection to Speechmatics real-time API with auth token
+      const wsUrl = `wss://eu2.rt.speechmatics.com/v2?jwt=${this.tempToken}`
+      this.ws = new WebSocket(wsUrl)
 
-      // Send start recognition message
-      const startMessage = {
-        message: 'StartRecognition',
-        audio_format: {
-          type: 'raw',
-          encoding: 'pcm_s16le',
-          sample_rate: 16000,
-        },
-        transcription_config: {
-          language: this.config.language || 'de',
-          enable_partials: this.config.enablePartials ?? true,
-          max_delay: 2,
-          enable_entities: true,
-        },
-      }
+      this.ws.onopen = () => {
+        console.log('[Speechmatics RT] WebSocket connected')
+        this.reconnectAttempts = 0 // Reset on successful connection
+        this.config.onConnectionChange?.(true)
 
-      this.ws?.send(JSON.stringify(startMessage))
-      console.log('[Speechmatics RT] Sent StartRecognition')
-
-      // Start audio processing
-      this.startAudioProcessing()
-    }
-
-    this.ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        
-        if (data.message === 'AddPartialTranscript') {
-          this.config.onTranscript({
-            transcript: data.metadata.transcript,
-            isFinal: false,
-          })
-        } else if (data.message === 'AddTranscript') {
-          this.config.onTranscript({
-            transcript: data.metadata.transcript,
-            isFinal: true,
-          })
-        } else if (data.message === 'RecognitionStarted') {
-          console.log('[Speechmatics RT] Recognition started')
-        } else if (data.message === 'Error') {
-          this.config.onError(new Error(data.reason || 'Speechmatics error'))
+        // Send start recognition message
+        const startMessage = {
+          message: 'StartRecognition',
+          audio_format: {
+            type: 'raw',
+            encoding: 'pcm_s16le',
+            sample_rate: 16000,
+          },
+          transcription_config: {
+            language: this.config.language || 'de',
+            enable_partials: this.config.enablePartials ?? true,
+            max_delay: 2,
+            enable_entities: true,
+          },
         }
-      } catch (error) {
-        console.error('[Speechmatics RT] Message parse error:', error)
+
+        this.ws?.send(JSON.stringify(startMessage))
+        console.log('[Speechmatics RT] Sent StartRecognition')
+
+        // Start audio processing (only on first connection)
+        if (!this.audioContext) {
+          this.startAudioProcessing()
+        }
       }
-    }
 
-    this.ws.onerror = (error) => {
-      console.error('[Speechmatics RT] WebSocket error:', error)
-      this.config.onError(new Error('WebSocket connection error'))
-      this.config.onConnectionChange?.(false)
-    }
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          
+          if (data.message === 'AddPartialTranscript') {
+            this.config.onTranscript({
+              transcript: data.metadata.transcript,
+              isFinal: false,
+            })
+          } else if (data.message === 'AddTranscript') {
+            this.config.onTranscript({
+              transcript: data.metadata.transcript,
+              isFinal: true,
+            })
+          } else if (data.message === 'RecognitionStarted') {
+            console.log('[Speechmatics RT] Recognition started')
+          } else if (data.message === 'Error') {
+            const errorMsg = data.reason || 'Speechmatics API error'
+            console.error('[Speechmatics RT] API Error:', errorMsg)
+            this.config.onError(
+              new Error(errorMsg),
+              `API Error: ${errorMsg}. Check if token is valid and not expired.`
+            )
+          } else if (data.message === 'Warning') {
+            console.warn('[Speechmatics RT] Warning:', data.reason)
+          }
+        } catch (error) {
+          console.error('[Speechmatics RT] Message parse error:', error)
+          this.config.onError(
+            error as Error,
+            'Failed to parse WebSocket message'
+          )
+        }
+      }
 
-    this.ws.onclose = () => {
-      console.log('[Speechmatics RT] WebSocket closed')
-      this.config.onConnectionChange?.(false)
+      this.ws.onerror = (error) => {
+        console.error('[Speechmatics RT] WebSocket error:', error)
+        this.config.onError(
+          new Error('WebSocket connection error'),
+          'Network error or connection refused. Check internet connection.'
+        )
+      }
+
+      this.ws.onclose = (event) => {
+        console.log('[Speechmatics RT] WebSocket closed', {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean
+        })
+        
+        this.config.onConnectionChange?.(false)
+
+        // Attempt reconnection if not manually stopped
+        if (!this.isManualStop && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.reconnectAttempts++
+          const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 5000)
+          
+          console.log(`[Speechmatics RT] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+          
+          this.reconnectTimeout = setTimeout(() => {
+            console.log('[Speechmatics RT] Attempting reconnection...')
+            this.connectWebSocket().catch(err => {
+              console.error('[Speechmatics RT] Reconnection failed:', err)
+              this.config.onError(
+                err,
+                `Reconnection failed after ${this.reconnectAttempts} attempts`
+              )
+            })
+          }, delay)
+        } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          this.config.onError(
+            new Error('Max reconnection attempts reached'),
+            'Could not reconnect to transcription service. Please try again.'
+          )
+        }
+      }
+    } catch (error) {
+      console.error('[Speechmatics RT] Connection error:', error)
+      this.config.onError(
+        error as Error,
+        'Failed to establish WebSocket connection'
+      )
+      throw error
     }
   }
 
@@ -105,7 +174,15 @@ export class SpeechmaticsRealtimeService {
     if (!this.audioStream) return
 
     try {
+      // Create AudioContext with iOS Safari support
       this.audioContext = new AudioContext({ sampleRate: 16000 })
+      
+      // Resume AudioContext if suspended (iOS autoplay policy)
+      if (this.audioContext.state === 'suspended') {
+        console.log('[Speechmatics RT] Resuming suspended AudioContext')
+        await this.audioContext.resume()
+      }
+      
       this.mediaStreamSource = this.audioContext.createMediaStreamSource(this.audioStream)
 
       // Try AudioWorkletNode (modern), fallback to ScriptProcessorNode (deprecated but compatible)
@@ -237,36 +314,63 @@ export class SpeechmaticsRealtimeService {
 
   async stop(): Promise<void> {
     console.log('[Speechmatics RT] Stopping...')
+    this.isManualStop = true
+
+    // Clear any pending reconnection
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout)
+      this.reconnectTimeout = null
+    }
 
     // Send end of stream
     if (this.ws?.readyState === WebSocket.OPEN) {
-      const endMessage = {
-        message: 'EndOfStream',
+      try {
+        const endMessage = {
+          message: 'EndOfStream',
+        }
+        this.ws.send(JSON.stringify(endMessage))
+        
+        // Wait a bit for final transcripts
+        await new Promise(resolve => setTimeout(resolve, 500))
+      } catch (error) {
+        console.warn('[Speechmatics RT] Error sending EndOfStream:', error)
       }
-      this.ws.send(JSON.stringify(endMessage))
-      
-      // Wait a bit for final transcripts
-      await new Promise(resolve => setTimeout(resolve, 500))
     }
 
     // Clean up audio processing
     if (this.audioWorklet) {
-      this.audioWorklet.disconnect()
+      try {
+        this.audioWorklet.disconnect()
+      } catch (e) {
+        console.warn('[Speechmatics RT] Error disconnecting audioWorklet:', e)
+      }
       this.audioWorklet = null
     }
 
     if (this.scriptProcessor) {
-      this.scriptProcessor.disconnect()
+      try {
+        this.scriptProcessor.disconnect()
+      } catch (e) {
+        console.warn('[Speechmatics RT] Error disconnecting scriptProcessor:', e)
+      }
       this.scriptProcessor = null
     }
 
     if (this.mediaStreamSource) {
-      this.mediaStreamSource.disconnect()
+      try {
+        this.mediaStreamSource.disconnect()
+      } catch (e) {
+        console.warn('[Speechmatics RT] Error disconnecting mediaStreamSource:', e)
+      }
       this.mediaStreamSource = null
     }
 
     if (this.audioContext) {
-      await this.audioContext.close()
+      try {
+        await this.audioContext.close()
+      } catch (e) {
+        console.warn('[Speechmatics RT] Error closing audioContext:', e)
+      }
       this.audioContext = null
     }
 
