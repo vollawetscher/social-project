@@ -52,6 +52,9 @@ export class SpeechmaticsRealtimeService {
     try {
       // Create WebSocket connection to Speechmatics real-time API with auth token
       const wsUrl = `wss://eu2.rt.speechmatics.com/v2?jwt=${this.tempToken}`
+      console.log('[Speechmatics RT] Attempting to connect to WebSocket...')
+      console.log('[Speechmatics RT] Token length:', this.tempToken.length)
+      console.log('[Speechmatics RT] Token preview:', this.tempToken.substring(0, 20) + '...')
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
@@ -121,6 +124,9 @@ export class SpeechmaticsRealtimeService {
 
       this.ws.onerror = (error) => {
         console.error('[Speechmatics RT] WebSocket error:', error)
+        console.error('[Speechmatics RT] WebSocket readyState:', this.ws?.readyState)
+        console.error('[Speechmatics RT] Error type:', (error as any).type)
+        console.error('[Speechmatics RT] Error message:', (error as any).message)
         this.config.onError(
           new Error('WebSocket connection error'),
           'Network error or connection refused. Check internet connection.'
@@ -396,14 +402,25 @@ export class SpeechmaticsRealtimeService {
  * This should be called from the client to get a secure token
  */
 export async function getSpeechmaticsRealtimeToken(): Promise<string> {
+  console.log('[Speechmatics RT] Requesting token from API...')
   const response = await fetch('/api/speechmatics/token', {
     method: 'POST',
   })
 
+  console.log('[Speechmatics RT] Token API response status:', response.status)
+
   if (!response.ok) {
-    throw new Error('Failed to get Speechmatics token')
+    const errorData = await response.json().catch(() => ({}))
+    console.error('[Speechmatics RT] Token API error:', errorData)
+    throw new Error('Failed to get Speechmatics token: ' + (errorData.error || response.statusText))
   }
 
   const data = await response.json()
+  console.log('[Speechmatics RT] Token received, length:', data.token?.length || 0)
+  
+  if (!data.token) {
+    throw new Error('No token in API response')
+  }
+  
   return data.token
 }
