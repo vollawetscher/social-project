@@ -250,27 +250,15 @@ export class SpeechmaticsRealtimeService {
 
       const pcmData: Int16Array = event.data
       
-      // Convert Int16Array to base64 properly for binary data
-      // Use Uint8Array view of the buffer for correct byte representation
-      const bytes = new Uint8Array(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength)
-      
-      // Use proper binary-to-base64 encoding
-      const base64 = btoa(
-        Array.from(bytes)
-          .map(byte => String.fromCharCode(byte))
-          .join('')
-      )
-
-      const message = {
-        message: 'AddAudio',
-        audio: base64,
-      }
+      // Speechmatics RT API v2 expects BINARY WebSocket messages for audio
+      // Send raw PCM bytes directly, not as JSON
+      const audioBytes = new Uint8Array(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength)
 
       try {
-        this.ws?.send(JSON.stringify(message))
+        // Send as BINARY WebSocket message (not JSON!)
+        this.ws?.send(audioBytes)
       } catch (error) {
-        console.error('[Speechmatics RT] Failed to send audio chunk')
-        // Don't log full error - may contain large binary data
+        console.error('[Speechmatics RT] Failed to send audio chunk:', error)
       }
     }
 
@@ -296,26 +284,15 @@ export class SpeechmaticsRealtimeService {
         pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF
       }
 
-      // Convert Int16Array to base64 properly for binary data
-      const bytes = new Uint8Array(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength)
-      
-      // Use proper binary-to-base64 encoding
-      const base64 = btoa(
-        Array.from(bytes)
-          .map(byte => String.fromCharCode(byte))
-          .join('')
-      )
-
-      const message = {
-        message: 'AddAudio',
-        audio: base64,
-      }
+      // Speechmatics RT API v2 expects BINARY WebSocket messages for audio
+      // Send raw PCM bytes directly, not as JSON
+      const audioBytes = new Uint8Array(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength)
 
       try {
-        this.ws?.send(JSON.stringify(message))
+        // Send as BINARY WebSocket message (not JSON!)
+        this.ws?.send(audioBytes)
       } catch (error) {
-        console.error('[Speechmatics RT] Failed to send audio chunk')
-        // Don't log full error - may contain large binary data
+        console.error('[Speechmatics RT] Failed to send audio chunk:', error)
       }
     }
 
