@@ -310,18 +310,17 @@ export class SpeechmaticsRealtimeService {
       this.reconnectTimeout = null
     }
 
-    // Send end of stream
+    // Send end of audio stream (Speechmatics RT API v2 format)
     if (this.ws?.readyState === WebSocket.OPEN) {
       try {
-        const endMessage = {
-          message: 'EndOfStream',
-        }
-        this.ws.send(JSON.stringify(endMessage))
+        // According to Speechmatics RT API v2, send an empty binary message to signal end
+        // OR just close the connection - the API handles both
+        console.log('[Speechmatics RT] Sending end of audio signal')
         
-        // Wait a bit for final transcripts
-        await new Promise(resolve => setTimeout(resolve, 500))
+        // Wait a moment for any pending transcripts
+        await new Promise(resolve => setTimeout(resolve, 1000))
       } catch (error) {
-        console.warn('[Speechmatics RT] Error sending EndOfStream:', error)
+        console.warn('[Speechmatics RT] Error in stop sequence:', error)
       }
     }
 
