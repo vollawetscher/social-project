@@ -231,6 +231,19 @@ export function CompactTranscribableField({
       setRecording(false)
       setIsConnected(false)
       
+      // Save any remaining partial transcript before stopping
+      if (liveTranscript) {
+        setText(currentText => {
+          const start = cursorPositionRef.current
+          const before = currentText.substring(0, start)
+          const after = currentText.substring(start)
+          const needsSpace = before.length > 0 && !before.endsWith(' ') && !before.endsWith('\n')
+          const newText = before + (needsSpace ? ' ' : '') + liveTranscript + after
+          return newText
+        })
+        setHasChanges(true)
+      }
+      
       // Stop Speechmatics service
       await speechmaticsServiceRef.current.stop()
       speechmaticsServiceRef.current = null
