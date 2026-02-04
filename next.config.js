@@ -7,7 +7,8 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   images: { unoptimized: true },
-  output: 'standalone',
+  // Railway doesn't need standalone build
+  // output: 'standalone',
 };
 
 module.exports = nextConfig;
