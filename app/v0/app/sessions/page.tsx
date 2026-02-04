@@ -47,7 +47,6 @@ import {
 import { Progress } from "@/components/ui/progress"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
-import { useEffect } from "react"
 
 const statusConfig: Record<
   SessionStatus,
