@@ -28,6 +28,16 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
   transcript?: any
   files?: any[]
 }): V0Session {
+  // Extract speakers from transcript if available
+  const speakers = additionalData?.transcript?.raw_json 
+    ? extractSpeakers(additionalData.transcript.raw_json)
+    : []
+
+  // Transform transcript segments
+  const transcriptSegments = additionalData?.transcript?.raw_json
+    ? transformTranscriptSegments(additionalData.transcript.raw_json)
+    : []
+
   return {
     id: dbSession.id,
     filename: additionalData?.filename || dbSession.internal_case_id || `Session ${dbSession.id.slice(0, 8)}`,
@@ -37,9 +47,43 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     status: mapStatus(dbSession.status),
     piiRedactionEnabled: false, // TODO: Get from user preferences or session metadata
     isOfflineCached: false, // TODO: Implement offline caching detection
-    speakers: [], // TODO: Extract from transcript
-    transcript: [], // TODO: Transform transcript segments
+    speakers,
+    transcript: transcriptSegments,
   }
+}
+
+/**
+ * Extract unique speakers from transcript
+ */
+function extractSpeakers(transcriptSegments: any[]): any[] {
+  const speakerMap = new Map()
+  
+  transcriptSegments.forEach((segment: any) => {
+    if (segment.speaker && !speakerMap.has(segment.speaker)) {
+      speakerMap.set(segment.speaker, {
+        id: segment.speaker,
+        name: segment.speaker,
+        participantRole: 'party_a', // Default, could be enhanced
+      })
+    }
+  })
+  
+  return Array.from(speakerMap.values())
+}
+
+/**
+ * Transform transcript segments to v0 format
+ */
+function transformTranscriptSegments(dbSegments: any[]): any[] {
+  return dbSegments.map((segment: any, index: number) => ({
+    id: `seg_${index}`,
+    speakerId: segment.speaker || 'unknown',
+    speakerName: segment.speaker || 'Unknown',
+    startTime: segment.start_ms || 0,
+    endTime: segment.end_ms || 0,
+    text: segment.text || '',
+    isPiiRedacted: false,
+  }))
 }
 
 /**

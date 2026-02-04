@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -18,26 +18,85 @@ import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
 import { GenerateOutputModal } from "@/components/generate-output-modal"
 import {
-  mockSessions,
   mockTemplates,
   getRecordingTypeSuggestions,
   getDomainSuggestions,
   getSuggestedTemplates,
 } from "@/lib/mock/data"
+import { toV0Session } from "@/lib/adapters/session-adapter"
+import type { Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
 export default function SessionDetailPage() {
   const params = useParams()
   const sessionId = params.id as string
 
-  const session = mockSessions.find((s) => s.id === sessionId) || mockSessions[0]
-  const recordingTypeSuggestions = getRecordingTypeSuggestions(session.id)
-  const domainSuggestions = getDomainSuggestions(session.id)
-  const suggestedTemplates = getSuggestedTemplates(session.domain)
-
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+
+  // Fetch real session data
+  useEffect(() => {
+    async function fetchSession() {
+      try {
+        // Fetch session
+        const sessionRes = await fetch(`/api/sessions/${sessionId}`)
+        if (!sessionRes.ok) throw new Error('Failed to fetch session')
+        const sessionData = await sessionRes.json()
+
+        // Fetch transcript
+        const transcriptRes = await fetch(`/api/sessions/${sessionId}/transcript`)
+        const transcriptData = transcriptRes.ok ? await transcriptRes.json() : null
+
+        // Convert to v0 format
+        const v0Session = toV0Session(sessionData, {
+          filename: sessionData.internal_case_id,
+          transcript: transcriptData,
+          files: sessionData.files
+        })
+
+        setSession(v0Session)
+      } catch (error) {
+        console.error('Error fetching session:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchSession()
+  }, [sessionId])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+          <p className="mt-2 text-sm text-muted-foreground">Loading session...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-muted-foreground">Session not found</p>
+          <Link href="/v0/app/sessions">
+            <Button variant="outline" className="mt-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Sessions
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const recordingTypeSuggestions = getRecordingTypeSuggestions(session.id)
+  const domainSuggestions = getDomainSuggestions(session.id)
+  const suggestedTemplates = getSuggestedTemplates(session.domain)
 
   const handleGenerateOutput = (templateId: string) => {
     setSelectedTemplateId(templateId)
@@ -51,7 +110,7 @@ export default function SessionDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <Link href="/app/sessions">
+          <Link href="/v0/app/sessions">
             <Button variant="ghost" size="sm" className="gap-1.5">
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden sm:inline">Back</span>
