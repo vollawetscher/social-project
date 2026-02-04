@@ -78,7 +78,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
               Sections
             </h3>
             <div className="space-y-2">
-              {template.sections.map((section) => (
+              {template.sections.map((section: any) => (
                 <div
                   key={section.id}
                   className="p-3 rounded-lg border border-border bg-secondary/30"
@@ -108,7 +108,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
               Required Inputs
             </h3>
             <div className="flex flex-wrap gap-1.5">
-              {template.requiredInputs.map((input) => (
+              {template.requiredInputs.map((input: string) => (
                 <Badge key={input} variant="secondary" className="capitalize">
                   {input}
                 </Badge>
@@ -120,7 +120,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground">Style Rules</h3>
             <ul className="space-y-1">
-              {template.styleRules.map((rule, i) => (
+              {template.styleRules.map((rule: string, i: number) => (
                 <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                   <span className="text-foreground">•</span>
                   {rule}
@@ -136,7 +136,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
               This template is suggested when these keywords are detected:
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {template.suggestionTriggers.map((trigger) => (
+              {template.suggestionTriggers.map((trigger: string) => (
                 <Badge key={trigger} variant="outline" className="text-xs">
                   {trigger}
                 </Badge>
@@ -151,7 +151,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
               Intended Perspectives
             </h3>
             <div className="flex flex-wrap gap-1.5">
-              {template.intendedPerspectives.map((perspective) => (
+              {template.intendedPerspectives.map((perspective: any) => (
                 <Badge key={perspective} variant="secondary">
                   {participantRoleLabels[perspective]}
                 </Badge>
@@ -298,7 +298,7 @@ export default function TemplatesPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1 max-w-[150px]">
-                    {template.intendedPerspectives.slice(0, 2).map((perspective) => (
+                    {template.intendedPerspectives.slice(0, 2).map((perspective: any) => (
                       <Badge key={perspective} variant="secondary" className="text-[10px]">
                         {participantRoleLabels[perspective].split(" ")[0]}
                       </Badge>
@@ -312,7 +312,7 @@ export default function TemplatesPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    {template.allowedAudience.map((audience) => (
+                    {template.allowedAudience.map((audience: string) => (
                       <Badge key={audience} variant="outline" className="text-[10px] capitalize">
                         {audience}
                       </Badge>
@@ -321,11 +321,11 @@ export default function TemplatesPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
-                    {template.domainTags.map((domain) => (
+                    {template.domainTags.map((domain: string) => (
                       <Badge
                         key={domain}
                         variant="outline"
-                        className={`text-[10px] capitalize ${domainColors[domain] || ""}`}
+                        className={`text-[10px] capitalize ${domainColors[domain as keyof typeof domainColors] || ""}`}
                       >
                         {domain}
                       </Badge>
