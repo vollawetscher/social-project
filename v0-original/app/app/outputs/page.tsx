@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/accordion"
 import { cn } from "@/lib/utils"
 import { mockOutputs, mockTemplates, participantRoleLabels, audienceLabels } from "@/lib/mock/data"
-import type { Output } from "@/lib/types"
+import type { Output } from "@/lib/types-v0"
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-US", {

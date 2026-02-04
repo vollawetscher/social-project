@@ -42,7 +42,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { mockTemplates, participantRoleLabels } from "@/lib/mock/data"
-import type { Template } from "@/lib/types"
+import type { Template } from "@/lib/types-v0"
 
 const domainColors: Record<string, string> = {
   legal: "bg-blue-500/20 text-blue-400 border-blue-500/30",

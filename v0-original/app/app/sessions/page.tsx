@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/collapsible"
 import { Progress } from "@/components/ui/progress"
 import { mockSessions } from "@/lib/mock/data"
-import type { SessionStatus, Session } from "@/lib/types"
+import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
 const statusConfig: Record<

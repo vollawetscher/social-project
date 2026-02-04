@@ -42,7 +42,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import type { Template, Session, ParticipantRole, Audience, OutputTone, OutputFormat } from "@/lib/types"
+import type { Template, Session, ParticipantRole, Audience, OutputTone, OutputFormat } from "@/lib/types-v0"
 import { participantRoleLabels, semanticRoleLabels, audienceLabels, languages, mockTemplates } from "@/lib/mock/data"
 
 interface GenerateOutputModalProps {

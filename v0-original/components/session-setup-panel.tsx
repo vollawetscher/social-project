@@ -40,7 +40,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import type { Session, Template, AiSuggestion, RecordingType, Domain } from "@/lib/types"
+import type { Session, Template, AiSuggestion, RecordingType, Domain } from "@/lib/types-v0"
 
 interface SessionSetupPanelProps {
   session: Session

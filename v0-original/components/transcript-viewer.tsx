@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import type { TranscriptSegment } from "@/lib/types"
+import type { TranscriptSegment } from "@/lib/types-v0"
 
 interface TranscriptViewerProps {
   segments: TranscriptSegment[]
