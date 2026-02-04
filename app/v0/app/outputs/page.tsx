@@ -152,7 +152,7 @@ export default function OutputsPage() {
     if (templateFilter !== "all" && output.templateId !== templateFilter) return false
     if (audienceFilter !== "all" && output.audience !== audienceFilter) return false
     if (perspectiveFilter !== "all" && output.perspective !== perspectiveFilter) return false
-    if (roleFilter !== "all" && output.role !== roleFilter) return false
+    // roleFilter removed - not a property on Output type
     return true
   })
 

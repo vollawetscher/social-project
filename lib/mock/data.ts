@@ -5,7 +5,7 @@ import type {
   AiSuggestion, 
   RecordingType, 
   Domain 
-} from '@/lib/types'
+} from '@/lib/types-v0'
 
 export const mockSessions: Session[] = [
   {

@@ -78,7 +78,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
               Sections
             </h3>
             <div className="space-y-2">
-              {template.sections.map((section) => (
+              {template.sections.map((section: any) => (
                 <div
                   key={section.id}
                   className="p-3 rounded-lg border border-border bg-secondary/30"
@@ -108,7 +108,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
               Required Inputs
             </h3>
             <div className="flex flex-wrap gap-1.5">
-              {template.requiredInputs.map((input) => (
+              {template.requiredInputs.map((input: any) => (
                 <Badge key={input} variant="secondary" className="capitalize">
                   {input}
                 </Badge>

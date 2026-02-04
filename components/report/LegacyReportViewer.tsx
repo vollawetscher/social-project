@@ -1,6 +1,6 @@
 'use client'
 
-import { GespraechsberichtJSON } from '@/lib/types-v0/database'
+import { GespraechsberichtJSON } from '@/lib/types/database'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -99,7 +99,7 @@ export function LegacyReportViewer({ gespraechsbericht }: { gespraechsbericht: G
             <CardDescription>Chronologischer Ablauf des Gesprächs</CardDescription>
           </div>
           <CopyButton
-            text={report.gespraechsverlauf_kurz.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+            text={report.gespraechsverlauf_kurz.map((p: any, i: number) => `${i + 1}. ${p}`).join('\n')}
             section="Gesprächsverlauf"
           />
         </CardHeader>
@@ -145,7 +145,7 @@ export function LegacyReportViewer({ gespraechsbericht }: { gespraechsbericht: G
             <CardDescription>Sachliche Feststellungen</CardDescription>
           </div>
           <CopyButton
-            text={report.beobachtungen.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+            text={report.beobachtungen.map((b: any, i: number) => `${i + 1}. ${b}`).join('\n')}
             section="Beobachtungen"
           />
         </CardHeader>
@@ -187,7 +187,7 @@ export function LegacyReportViewer({ gespraechsbericht }: { gespraechsbericht: G
             <CardDescription>Stärken und unterstützende Faktoren</CardDescription>
           </div>
           <CopyButton
-            text={report.ressourcen_und_schutzfaktoren.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+            text={report.ressourcen_und_schutzfaktoren.map((r: any, i: number) => `${i + 1}. ${r}`).join('\n')}
             section="Ressourcen"
           />
         </CardHeader>
@@ -207,7 +207,7 @@ export function LegacyReportViewer({ gespraechsbericht }: { gespraechsbericht: G
             <CardDescription>Als Beobachtungen formuliert, nicht diagnostisch</CardDescription>
           </div>
           <CopyButton
-            text={report.belastungen_und_risikoindikatoren.map((b, i) => `${i + 1}. ${b}`).join('\n')}
+            text={report.belastungen_und_risikoindikatoren.map((b: any, i: number) => `${i + 1}. ${b}`).join('\n')}
             section="Belastungen"
           />
         </CardHeader>
@@ -227,7 +227,7 @@ export function LegacyReportViewer({ gespraechsbericht }: { gespraechsbericht: G
             <CardDescription>Klärungsbedarf und offene Fragen</CardDescription>
           </div>
           <CopyButton
-            text={report.offene_punkte.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+            text={report.offene_punkte.map((p: any, i: number) => `${i + 1}. ${p}`).join('\n')}
             section="Offene Punkte"
           />
         </CardHeader>
@@ -247,7 +247,7 @@ export function LegacyReportViewer({ gespraechsbericht }: { gespraechsbericht: G
             <CardDescription>Empfohlene Maßnahmen und Folgeaktionen</CardDescription>
           </div>
           <CopyButton
-            text={report.naechste_schritte_vorschlag.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+            text={report.naechste_schritte_vorschlag.map((s: any, i: number) => `${i + 1}. ${s}`).join('\n')}
             section="Nächste Schritte"
           />
         </CardHeader>
