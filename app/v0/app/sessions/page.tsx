@@ -218,14 +218,14 @@ export default function SessionsPage() {
     }
   }, [isRecording])
 
-  const startRecording = (mode: 'batch' | 'realtime') => {
-    setIsRecording(true)
-    // In a real app, this would start actual recording
+  const startRecording = async (mode: 'batch' | 'realtime') => {
+    // TODO: Implement real recording
+    // For now, redirect to the recording page
+    window.location.href = '/record'
   }
 
   const stopRecording = () => {
     setIsRecording(false)
-    // In a real app, this would stop recording and process the audio
   }
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -306,45 +306,14 @@ export default function SessionsPage() {
             </div>
           </div>
           
-          {isRecording ? (
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={stopRecording}
-              className="shrink-0"
-            >
-              Stop
-            </Button>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" className="shrink-0 gap-1">
-                  Record
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem 
-                  className="flex flex-col items-start py-3"
-                  onClick={() => startRecording('batch')}
-                >
-                  <span className="font-medium">Batch Recording</span>
-                  <span className="text-xs text-muted-foreground">
-                    Record now, transcribe later
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="flex flex-col items-start py-3"
-                  onClick={() => startRecording('realtime')}
-                >
-                  <span className="font-medium">Real-time Transcription</span>
-                  <span className="text-xs text-muted-foreground">
-                    Live transcription as you speak
-                  </span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <Button 
+            size="sm" 
+            className="shrink-0"
+            onClick={() => window.location.href = '/record'}
+          >
+            <Mic className="h-4 w-4 mr-2" />
+            Record
+          </Button>
         </div>
 
         {/* Upload Section - Same Height */}
