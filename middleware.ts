@@ -5,7 +5,7 @@ import { createServerClient } from '@supabase/ssr';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const protectedRoutes = ['/dashboard', '/sessions'];
+  const protectedRoutes = ['/dashboard', '/sessions', '/v0/app'];
   const publicRoutes = ['/login', '/api/auth'];
 
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
@@ -74,5 +74,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/sessions/:path*'],
+  matcher: ['/dashboard/:path*', '/sessions/:path*', '/v0/:path*'],
 };
