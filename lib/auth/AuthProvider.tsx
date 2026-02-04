@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .select('*')
             .eq('id', userId)
             .maybeSingle()
-            .then(({ data: profileData, error }) => {
+            .then(({ data: profileData, error }: { data: any; error: any }) => {
               // Check if component is still mounted and user hasn't changed
               if (!isMounted) return
               
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     loadUser()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       (async () => {
         if (!isMounted) return
 
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (session?.user) {
           const userId = session.user.id
-          const { data: profileData, error } = await supabase
+          const { data: profileData, error }: { data: any; error: any } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = async () => {
     if (!user) return
     
-    const { data: profileData, error } = await supabase
+    const { data: profileData, error }: { data: any; error: any } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
