@@ -45,9 +45,9 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Progress } from "@/components/ui/progress"
-import { mockSessions } from "@/lib/mock/data"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
+import { useEffect } from "react"
 
 const statusConfig: Record<
   SessionStatus,
@@ -175,10 +175,28 @@ export default function SessionsPage() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [sessions, setSessions] = useState(mockSessions)
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [loading, setLoading] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Fetch real sessions from API
+  useEffect(() => {
+    async function fetchSessions() {
+      try {
+        const response = await fetch('/api/sessions?format=v0')
+        if (!response.ok) throw new Error('Failed to fetch sessions')
+        const data = await response.json()
+        setSessions(data)
+      } catch (error) {
+        console.error('Error fetching sessions:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchSessions()
+  }, [])
 
   // Recording timer effect
   useEffect(() => {
@@ -402,7 +420,12 @@ export default function SessionsPage() {
         
         {/* Mobile: Card List */}
         <div className="md:hidden divide-y divide-border">
-          {filteredSessions.length === 0 ? (
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+              <p className="mt-2 text-sm text-muted-foreground">Loading sessions...</p>
+            </div>
+          ) : filteredSessions.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
               No sessions found
             </div>
@@ -498,7 +521,14 @@ export default function SessionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSessions.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+                    <p className="mt-2 text-sm text-muted-foreground">Loading sessions...</p>
+                  </TableCell>
+                </TableRow>
+              ) : filteredSessions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                     No sessions found

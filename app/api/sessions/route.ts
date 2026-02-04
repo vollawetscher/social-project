@@ -1,11 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
+import { toV0Sessions } from '@/lib/adapters/session-adapter'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const user = await requireAuth()
     const supabase = createClient()
+
+    // Check if v0 format is requested
+    const { searchParams } = new URL(request.url)
+    const format = searchParams.get('format')
 
     const { data: sessions, error } = await supabase
       .from('sessions')
@@ -18,6 +23,12 @@ export async function GET() {
     }
 
     console.log('Found sessions:', sessions?.length || 0)
+    
+    // Return v0 format if requested
+    if (format === 'v0' && sessions) {
+      return NextResponse.json(toV0Sessions(sessions))
+    }
+    
     return NextResponse.json(sessions || [])
   } catch (error) {
     if (error instanceof Error) {
