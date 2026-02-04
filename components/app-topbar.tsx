@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Search, WifiOff, RefreshCw, Bell, User, LogOut, Settings, Mic } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth/AuthProvider"
 
 interface AppTopbarProps {
   sidebarCollapsed: boolean
@@ -28,12 +30,29 @@ interface AppTopbarProps {
 export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
   const [isOffline, setIsOffline] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const { user, profile, signOut } = useAuth()
+  const router = useRouter()
 
   // Simulated sync function
   const handleSync = () => {
     setIsSyncing(true)
     setTimeout(() => setIsSyncing(false), 2000)
   }
+
+  const handleLogout = async () => {
+    await signOut()
+    router.push('/login')
+  }
+
+  // Get user display info
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'User'
+  const email = user?.email || ''
+  const initials = displayName
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'U'
 
   return (
     <TooltipProvider>
@@ -145,31 +164,31 @@ export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
                 className="h-8 gap-2 px-2"
               >
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
-                  JD
+                  {initials}
                 </div>
-                <span className="hidden sm:inline text-sm">John Doe</span>
+                <span className="hidden sm:inline text-sm">{displayName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col">
-                  <span className="font-medium">John Doe</span>
+                  <span className="font-medium">{displayName}</span>
                   <span className="text-xs text-muted-foreground">
-                    john@company.com
+                    {email}
                   </span>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/v0/app/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Log out
               </DropdownMenuItem>
