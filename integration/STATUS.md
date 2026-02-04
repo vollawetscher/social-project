@@ -60,7 +60,16 @@
 ## 🔄 In Progress
 
 ### Phase 3: Connect to Real Backend
-**Status:** Ready to start  
+**Status:** 50% Complete ✅  
+**Latest Commit:** `0029048`
+
+**Completed:**
+- ✅ Sessions list connected to Supabase
+- ✅ Session adapter created (DB → v0 format)
+- ✅ Auth integration complete
+- ✅ User info showing in topbar
+- ✅ Logout working
+
 **Next steps:**
 
 1. **Replace Mock Data**
