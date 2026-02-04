@@ -218,11 +218,11 @@ export default function TemplatesPage() {
                     {template.description}
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-2">
-                    {template.domainTags.map((domain) => (
+                    {template.domainTags.map((domain: string) => (
                       <Badge
                         key={domain}
                         variant="outline"
-                        className={`text-[10px] capitalize ${domainColors[domain] || ""}`}
+                        className={`text-[10px] capitalize ${domainColors[domain as keyof typeof domainColors] || ""}`}
                       >
                         {domain}
                       </Badge>
