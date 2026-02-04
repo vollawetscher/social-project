@@ -1,6 +1,6 @@
 'use client'
 
-import { GespraechsberichtJSON, GenericReportJSON } from '@/lib/types/database'
+import { GespraechsberichtJSON, GenericReportJSON } from '@/lib/types-v0/database'
 import { GenericReportViewer } from './GenericReportViewer'
 import { LegacyReportViewer } from './LegacyReportViewer'
 

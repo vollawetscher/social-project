@@ -1,6 +1,6 @@
 'use client'
 
-import { GespraechsberichtJSON } from '@/lib/types/database'
+import { GespraechsberichtJSON } from '@/lib/types-v0/database'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
