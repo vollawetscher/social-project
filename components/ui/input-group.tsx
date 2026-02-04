@@ -132,6 +132,7 @@ function InputGroupInput({
   ...props
 }: React.ComponentProps<'input'>) {
   return (
+    // @ts-expect-error React 18/19 ref type incompatibility
     <Input
       data-slot="input-group-control"
       className={cn(
@@ -148,6 +149,7 @@ function InputGroupTextarea({
   ...props
 }: React.ComponentProps<'textarea'>) {
   return (
+    // @ts-expect-error React 18/19 ref type incompatibility
     <Textarea
       data-slot="input-group-control"
       className={cn(
