@@ -154,7 +154,7 @@ function EditableSessionName({
   return (
     <div className="flex items-center gap-1 group/name">
       <Link
-        href={`/app/sessions/${session.id}`}
+        href={`/sessions/${session.id}`}
         className="font-medium text-foreground truncate max-w-[180px] hover:underline"
       >
         {session.filename}

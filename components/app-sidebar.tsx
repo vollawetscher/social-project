@@ -27,22 +27,22 @@ interface AppSidebarProps {
 const navItems = [
   {
     name: "Sessions",
-    href: "/app/sessions",
+    href: "/sessions",
     icon: Mic,
   },
   {
     name: "Outputs",
-    href: "/app/outputs",
+    href: "/outputs",
     icon: FileText,
   },
   {
     name: "Templates",
-    href: "/app/templates",
+    href: "/templates",
     icon: LayoutTemplate,
   },
   {
     name: "Settings",
-    href: "/app/settings",
+    href: "/settings",
     icon: Settings,
   },
 ]
@@ -60,7 +60,7 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
       >
         {/* Logo */}
         <div className="flex h-14 items-center border-b border-sidebar-border px-4">
-          <Link href="/app" className="flex items-center gap-2">
+          <Link href="/sessions" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Mic className="h-4 w-4" />
             </div>

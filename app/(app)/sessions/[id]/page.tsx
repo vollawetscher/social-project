@@ -85,7 +85,7 @@ export default function SessionDetailPage() {
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <p className="text-muted-foreground">Session not found</p>
-          <Link href="/v0/app/sessions">
+          <Link href="/sessions">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Sessions
@@ -112,7 +112,7 @@ export default function SessionDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <Link href="/v0/app/sessions">
+          <Link href="/sessions">
             <Button variant="ghost" size="sm" className="gap-1.5">
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden sm:inline">Back</span>

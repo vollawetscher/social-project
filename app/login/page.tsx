@@ -28,7 +28,7 @@ export default function LoginPage() {
   const redirectParam = searchParams?.get('redirect');
   const redirect = redirectParam && redirectParam.startsWith('/') 
     ? redirectParam 
-    : '/dashboard';
+    : '/sessions';
 
   React.useEffect(() => {
     // Only redirect if we're sure user is authenticated (don't wait for authLoading)

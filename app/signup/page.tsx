@@ -60,7 +60,7 @@ export default function SignupPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${siteUrl}/auth/callback?next=/dashboard`,
+          emailRedirectTo: `${siteUrl}/auth/callback?next=/sessions`,
         },
       });
 
@@ -77,7 +77,7 @@ export default function SignupPage() {
       if (data?.session) {
         // User has immediate session = auto-confirmed
         setEmailSuccess('Account created! Redirecting to dashboard...');
-        setTimeout(() => router.push('/dashboard'), 2000);
+        setTimeout(() => router.push('/sessions'), 2000);
       } else if (data?.user) {
         // User created but no session = email confirmation required
         setEmailSuccess('Account created! Check your email for a confirmation link. Note: Email delivery may take a few minutes due to rate limits.');
