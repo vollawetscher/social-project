@@ -1,8 +1,9 @@
 "use client"
 
+  const [templates, setTemplates] = useState<any[]>([])
 export const dynamic = 'force-dynamic'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   FileText,
   Filter,
@@ -41,7 +42,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { cn } from "@/lib/utils"
-import { mockOutputs, mockTemplates, participantRoleLabels, audienceLabels } from "@/lib/mock/data"
+import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
 import type { Output } from "@/lib/types-v0"
 
 function formatDate(dateString: string): string {
@@ -145,18 +146,71 @@ function OutputDetailSheet({ output }: { output: Output }) {
 }
 
 export default function OutputsPage() {
+  const [outputs, setOutputs] = useState<Output[]>([])
+  const [loading, setLoading] = useState(true)
   const [templateFilter, setTemplateFilter] = useState<string>("all")
   const [audienceFilter, setAudienceFilter] = useState<string>("all")
   const [perspectiveFilter, setPerspectiveFilter] = useState<string>("all")
-  const [roleFilter, setRoleFilter] = useState<string>("all")
 
-  const filteredOutputs = mockOutputs.filter((output) => {
+  useEffect(() => {
+    async function fetchOutputs() {
+
+    async function fetchTemplates() {
+      try {
+        const response = await fetch("/api/templates")
+        if (response.ok) {
+          const data = await response.json()
+          setTemplates(data)
+        }
+      } catch (error) {
+        console.error("Error fetching templates:", error)
+      }
+    }
+    fetchTemplates()
+      try {
+        const response = await fetch('/api/outputs')
+        if (!response.ok) throw new Error('Failed to fetch outputs')
+        const data = await response.json()
+        setOutputs(data)
+      } catch (error) {
+        console.error('Error fetching outputs:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchOutputs()
+
+    async function fetchTemplates() {
+      try {
+        const response = await fetch("/api/templates")
+        if (response.ok) {
+          const data = await response.json()
+          setTemplates(data)
+        }
+      } catch (error) {
+        console.error("Error fetching templates:", error)
+      }
+    }
+    fetchTemplates()
+  }, [])
+
+  const filteredOutputs = outputs.filter((output: Output) => {
     if (templateFilter !== "all" && output.templateId !== templateFilter) return false
     if (audienceFilter !== "all" && output.audience !== audienceFilter) return false
     if (perspectiveFilter !== "all" && output.perspective !== perspectiveFilter) return false
-    // roleFilter removed - not a property on Output type
     return true
   })
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+          <p className="mt-2 text-sm text-muted-foreground">Loading outputs...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -187,7 +241,7 @@ export default function OutputsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Templates</SelectItem>
-                  {mockTemplates.map((t) => (
+                  {templates.map((t: any) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
                     </SelectItem>
@@ -234,14 +288,14 @@ export default function OutputsPage() {
               <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="font-medium text-foreground mb-1">No outputs found</h3>
               <p className="text-sm text-muted-foreground">
-                {mockOutputs.length === 0
+                {outputs.length === 0
                   ? "Generate your first output from a session"
                   : "Try adjusting your filters"}
               </p>
             </CardContent>
           </Card>
         ) : (
-          filteredOutputs.map((output) => (
+          filteredOutputs.map((output: Output) => (
             <Card key={output.id} className="border-border group hover:border-muted-foreground/50 transition-colors">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">

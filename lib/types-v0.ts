@@ -143,4 +143,5 @@ export interface GenerateOutputConfig {
   doInstructions: string
   dontInstructions: string
   createTemplateFromConfig: boolean
+  citeTimestamps: boolean
 }
