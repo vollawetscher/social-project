@@ -10,7 +10,7 @@ export async function GET(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data: session } = await supabase
       .from('sessions')

@@ -14,7 +14,7 @@ export async function POST(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const body = await request.json()
     const { fieldName, text } = body

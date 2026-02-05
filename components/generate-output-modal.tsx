@@ -70,6 +70,7 @@ export function GenerateOutputModal({
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [perspectiveConfirmed, setPerspectiveConfirmed] = useState(false)
   const [audienceConfirmed, setAudienceConfirmed] = useState(false)
+  const [generating, setGenerating] = useState(false)
 
   // Get speakers with their roles for perspective selection
   const sessionSpeakers = session.speakers.filter(s => s.participantRole !== 'observer')
@@ -126,10 +127,54 @@ export function GenerateOutputModal({
     }
   }
 
-  const handleGenerate = () => {
-    if (!canGenerate) return
-    // Mock generation
-    onOpenChange(false)
+  const handleGenerate = async () => {
+    if (!canGenerate || generating) return
+    
+    setGenerating(true)
+    
+    try {
+      const response = await fetch('/api/outputs/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: session.id,
+          config: {
+            templateId: selectedTemplate,
+            perspective: selectedPerspective,
+            audience: selectedAudience,
+            language: selectedLanguage === 'English' ? 'en' : 'de',
+            tone,
+            format,
+            doInstructions,
+            dontInstructions,
+            createTemplateFromConfig: createTemplate,
+            citeTimestamps: false, // TODO: Add UI control for this
+          }
+        })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to generate output')
+      }
+      
+      const output = await response.json()
+      
+      // Success! Close modal and optionally navigate to outputs
+      onOpenChange(false)
+      
+      // Show success message
+      alert(`Output generated successfully! View it in the Outputs page.`)
+      
+      // Optional: Navigate to outputs page
+      // window.location.href = '/outputs'
+      
+    } catch (error) {
+      console.error('Error generating output:', error)
+      alert('Failed to generate output: ' + (error as Error).message)
+    } finally {
+      setGenerating(false)
+    }
   }
 
   const handleReset = () => {
@@ -480,8 +525,17 @@ export function GenerateOutputModal({
             <Button variant="outline" onClick={handleReset}>
               Reset
             </Button>
-            <Button onClick={handleGenerate} disabled={!canGenerate}>
-              {canGenerate ? "Generate Output" : "Confirm Required Fields"}
+            <Button onClick={handleGenerate} disabled={!canGenerate || generating}>
+              {generating ? (
+                <>
+                  <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></div>
+                  Generating...
+                </>
+              ) : canGenerate ? (
+                "Generate Output"
+              ) : (
+                "Confirm Required Fields"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

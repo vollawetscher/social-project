@@ -12,13 +12,17 @@ import {
   ScrollText,
   PanelRightClose,
   PanelRight,
+  Copy,
+  Download,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
 import { GenerateOutputModal } from "@/components/generate-output-modal"
+import { AudioPlayer } from "@/components/audio/AudioPlayer"
 import {
   mockTemplates,
   getRecordingTypeSuggestions,
@@ -38,6 +42,11 @@ export default function SessionDetailPage() {
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [outputs, setOutputs] = useState<any[]>([])
+  const [outputsLoading, setOutputsLoading] = useState(true)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysis, setAnalysis] = useState<any>(null)
+  const [currentAudioTime, setCurrentAudioTime] = useState(0)
 
   // Fetch real session data
   useEffect(() => {
@@ -60,13 +69,52 @@ export default function SessionDetailPage() {
         })
 
         setSession(v0Session)
+        
+        // Also fetch outputs for this session
+        fetchOutputs()
       } catch (error) {
         console.error('Error fetching session:', error)
       } finally {
         setLoading(false)
       }
     }
+
+    async function fetchOutputs() {
+      try {
+        const response = await fetch(`/api/outputs?sessionId=${sessionId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setOutputs(data)
+        }
+      } catch (error) {
+        console.error('Error fetching outputs:', error)
+      } finally {
+        setOutputsLoading(false)
+      }
+    }
+
+    async function analyzeSession() {
+      // Skip if already analyzing
+      if (analyzing) return
+
+      setAnalyzing(true)
+      try {
+        const response = await fetch(`/api/sessions/${sessionId}/analyze`, {
+          method: 'POST',
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setAnalysis(data)
+        }
+      } catch (error) {
+        console.error('Error analyzing session:', error)
+      } finally {
+        setAnalyzing(false)
+      }
+    }
+    
     fetchSession()
+    analyzeSession()
   }, [sessionId])
 
   if (loading) {
@@ -96,8 +144,23 @@ export default function SessionDetailPage() {
     )
   }
 
-  const recordingTypeSuggestions = getRecordingTypeSuggestions(session.id)
-  const domainSuggestions = getDomainSuggestions(session.id)
+  // Use AI analysis if available, otherwise fall back to mock data
+  const recordingTypeSuggestions = analysis?.recordingType 
+    ? [{ 
+        value: analysis.recordingType, 
+        label: analysis.recordingType.charAt(0).toUpperCase() + analysis.recordingType.slice(1),
+        confidence: analysis.recordingTypeConfidence 
+      }]
+    : getRecordingTypeSuggestions(session.id)
+  
+  const domainSuggestions = analysis?.domains?.length > 0
+    ? analysis.domains.map((d: any) => ({
+        value: d.domain,
+        label: d.domain.charAt(0).toUpperCase() + d.domain.slice(1),
+        confidence: d.confidence
+      }))
+    : getDomainSuggestions(session.id)
+  
   const suggestedTemplates = getSuggestedTemplates(session.domain)
 
   const handleGenerateOutput = (templateId: string) => {
@@ -218,15 +281,91 @@ export default function SessionDetailPage() {
           </TabsContent>
           <TabsContent value="outputs" className="flex-1 min-h-0 mt-0">
             <div className="h-full rounded-lg border border-border bg-card overflow-auto p-4">
-              <p className="text-sm text-muted-foreground">No outputs generated yet.</p>
+              {outputsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading outputs...</p>
+              ) : outputs.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground mb-4">No outputs generated yet.</p>
+                  <Button size="sm" onClick={() => setGenerateModalOpen(true)}>
+                    Generate Your First Output
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {outputs.map((output) => (
+                    <div key={output.id} className="p-3 border border-border rounded-lg">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium">{output.templateName}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {output.audience} · {output.perspective} · {output.tone}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-xs mr-1">{output.format}</Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(output.content)
+                                alert('Copied to clipboard!')
+                              } catch (err) {
+                                console.error('Failed to copy:', err)
+                                alert('Failed to copy to clipboard')
+                              }
+                            }}
+                            title="Copy to clipboard"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => {
+                              const blob = new Blob([output.content], { type: 'text/plain' })
+                              const url = window.URL.createObjectURL(blob)
+                              const a = document.createElement('a')
+                              a.href = url
+                              a.download = `${output.templateName}-${output.perspective}-${output.audience}.txt`
+                              document.body.appendChild(a)
+                              a.click()
+                              window.URL.revokeObjectURL(url)
+                              document.body.removeChild(a)
+                            }}
+                            title="Download"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{output.content.substring(0, 150)}...</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
 
         {/* Center: Transcript Viewer (Desktop) */}
-        <div className="hidden md:flex flex-1 min-h-0">
-          <div className="w-full h-full rounded-lg border border-border bg-card overflow-hidden">
-            <TranscriptViewer segments={session.transcript} />
+        <div className="hidden md:flex flex-1 min-h-0 flex-col gap-4">
+          {/* Audio Player */}
+          {session.audioUrl && (
+            <AudioPlayer
+              audioUrl={session.audioUrl}
+              onTimeUpdate={setCurrentAudioTime}
+            />
+          )}
+          
+          {/* Transcript */}
+          <div className="flex-1 rounded-lg border border-border bg-card overflow-hidden">
+            <TranscriptViewer 
+              segments={session.transcript}
+              currentTime={currentAudioTime}
+            />
           </div>
         </div>
 

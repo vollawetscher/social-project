@@ -9,7 +9,7 @@ export async function GET(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data: session, error } = await supabase
       .from('sessions')
@@ -48,7 +48,7 @@ export async function PATCH(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
     const body = await request.json()
 
     const { data: session, error } = await supabase
@@ -79,7 +79,7 @@ export async function DELETE(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data: files } = await supabase
       .from('files')

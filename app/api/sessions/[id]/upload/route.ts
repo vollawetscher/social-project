@@ -10,7 +10,7 @@ export async function POST(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')

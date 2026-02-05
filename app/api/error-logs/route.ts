@@ -7,8 +7,8 @@ import { createErrorLogger, ErrorContext } from '@/lib/services/error-logger'
 export async function POST(request: Request) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
-    const logger = createErrorLogger(supabase)
+    const supabase = await createClient()
+    const logger = await createErrorLogger(supabase)
 
     const body = await request.json()
 
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Check if user is admin
     const { data: profile } = await supabase

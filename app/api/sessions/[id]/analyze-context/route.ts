@@ -14,7 +14,7 @@ export async function POST(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Get session with context (prefer context_text, fallback to context_note)
     const { data: session, error: sessionError } = await supabase

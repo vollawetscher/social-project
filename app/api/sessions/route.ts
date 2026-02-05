@@ -6,7 +6,7 @@ import { toV0Sessions } from '@/lib/adapters/session-adapter'
 export async function GET(request: Request) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Check if v0 format is requested
     const { searchParams } = new URL(request.url)
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
+    const supabase = await createClient()
     const body = await request.json()
     const { context_note = '', internal_case_id = '', case_id = null } = body
 

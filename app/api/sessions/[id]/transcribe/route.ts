@@ -8,8 +8,8 @@ import { createErrorLogger } from '@/lib/services/error-logger'
 
 // Background job processor - runs independently of HTTP request
 async function processTranscriptionJob(sessionId: string) {
-  const supabase = createClient()
-  const errorLogger = createErrorLogger(supabase)
+  const supabase = await createClient()
+  const errorLogger = await createErrorLogger(supabase)
   
   try {
     // Get all files for this session
@@ -219,7 +219,7 @@ async function processTranscriptionJob(sessionId: string) {
     console.error('[Transcribe] Error message:', error.message)
     console.error('[Transcribe] Error stack:', error.stack)
 
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Get case_id for error logging
     const { data: session } = await supabase
@@ -261,8 +261,8 @@ export async function POST(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
-    const errorLogger = createErrorLogger(supabase)
+    const supabase = await createClient()
+    const errorLogger = await createErrorLogger(supabase)
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
@@ -298,8 +298,8 @@ export async function POST(
   } catch (error: any) {
     console.error('[Transcribe] Failed to start job:', error)
 
-    const supabase = createClient()
-    const errorLogger = createErrorLogger(supabase)
+    const supabase = await createClient()
+    const errorLogger = await createErrorLogger(supabase)
 
     // Get session context for error logging
     const { data: session } = await supabase

@@ -186,20 +186,62 @@ export default function TemplatesPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchTemplates() {
-      try {
-        const response = await fetch('/api/templates')
-        if (!response.ok) throw new Error('Failed to fetch templates')
-        const data = await response.json()
-        setTemplates(data)
-      } catch (error) {
-        console.error('Error fetching templates:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchTemplates()
   }, [])
+
+  async function fetchTemplates() {
+    try {
+      const response = await fetch('/api/templates')
+      if (!response.ok) throw new Error('Failed to fetch templates')
+      const data = await response.json()
+      setTemplates(data)
+    } catch (error) {
+      console.error('Error fetching templates:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (templateId: string, templateName: string) => {
+    if (!confirm(`Are you sure you want to delete "${templateName}"? This cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/templates/${templateId}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) throw new Error('Failed to delete template')
+      
+      // Refresh templates list
+      await fetchTemplates()
+    } catch (error) {
+      console.error('Error deleting template:', error)
+      alert('Failed to delete template')
+    }
+  }
+
+  const handleDuplicate = async (templateId: string, templateName: string) => {
+    try {
+      const response = await fetch(`/api/templates/${templateId}/duplicate`, {
+        method: 'POST',
+      })
+      
+      if (!response.ok) throw new Error('Failed to duplicate template')
+      
+      const data = await response.json()
+      
+      // Refresh templates list
+      await fetchTemplates()
+      
+      // Show success message
+      alert(`Created "${data.name}"`)
+    } catch (error) {
+      console.error('Error duplicating template:', error)
+      alert('Failed to duplicate template')
+    }
+  }
 
   if (loading) {
     return (
@@ -281,15 +323,23 @@ export default function TemplatesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
+                      <DropdownMenuItem asChild>
+                        <Link href={`/templates/${template.id}/edit`} className="cursor-pointer">
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleDuplicate(template.id, template.name)}
+                        className="cursor-pointer"
+                      >
                         <Copy className="mr-2 h-4 w-4" />
                         Duplicate
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem 
+                        className="text-destructive cursor-pointer"
+                        onClick={() => handleDelete(template.id, template.name)}
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                       </DropdownMenuItem>
@@ -385,15 +435,23 @@ export default function TemplatesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
+                        <DropdownMenuItem asChild>
+                          <Link href={`/templates/${template.id}/edit`} className="cursor-pointer">
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDuplicate(template.id, template.name)}
+                          className="cursor-pointer"
+                        >
                           <Copy className="mr-2 h-4 w-4" />
                           Duplicate
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem 
+                          className="text-destructive cursor-pointer"
+                          onClick={() => handleDelete(template.id, template.name)}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>

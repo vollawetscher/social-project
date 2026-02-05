@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Get the file and verify ownership through session
     const { data: file, error: fileError } = await supabase

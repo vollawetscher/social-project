@@ -7,7 +7,7 @@ import { createAISupportService } from '@/lib/services/ai-support'
 export async function POST(request: Request) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
+    const supabase = await createClient()
     const body = await request.json()
 
     // Check if user is admin

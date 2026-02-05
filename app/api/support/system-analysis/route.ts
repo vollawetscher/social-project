@@ -7,7 +7,7 @@ import { createAISupportService } from '@/lib/services/ai-support'
 export async function GET(request: Request) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Check if user is admin
     const { data: profile } = await supabase

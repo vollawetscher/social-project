@@ -230,8 +230,8 @@ export class ErrorLogger {
 /**
  * Helper function to create ErrorLogger instance
  */
-export function createErrorLogger(supabase?: SupabaseClient): ErrorLogger {
-  return new ErrorLogger(supabase || createClient())
+export async function createErrorLogger(supabase?: SupabaseClient): Promise<ErrorLogger> {
+  return new ErrorLogger(supabase || await createClient())
 }
 
 /**
@@ -251,6 +251,6 @@ export function createErrorLogger(supabase?: SupabaseClient): ErrorLogger {
  * }
  */
 export async function logError(context: ErrorContext) {
-  const logger = createErrorLogger()
+  const logger = await createErrorLogger()
   return logger.log(context)
 }

@@ -6,7 +6,7 @@ import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 export async function GET(request: Request) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data: cases, error } = await supabase
       .from('cases')
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireAuth()
-    const supabase = createClient()
+    const supabase = await createClient()
     const body = await request.json()
 
     const { title, client_identifier, description } = body

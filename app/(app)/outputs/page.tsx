@@ -1,9 +1,8 @@
 "use client"
 
-  const [templates, setTemplates] = useState<any[]>([])
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import {
   FileText,
   Filter,
@@ -16,10 +15,13 @@ import {
   Copy,
   Download,
   Eye,
+  Search,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -56,6 +58,31 @@ function formatDate(dateString: string): string {
 }
 
 function OutputDetailSheet({ output }: { output: Output }) {
+  const [copySuccess, setCopySuccess] = React.useState(false)
+
+  const handleCopy = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (error) {
+      console.error('Failed to copy:', error)
+      alert('Failed to copy to clipboard')
+    }
+  }
+
+  const handleDownload = (output: Output) => {
+    const blob = new Blob([output.content], { type: 'text/plain' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${output.templateName}-${output.perspective}-${output.audience}.txt`
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  }
+
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -125,10 +152,22 @@ function OutputDetailSheet({ output }: { output: Output }) {
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium">Content</h3>
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" className="h-8">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8" 
+                  onClick={() => handleCopy(output.content)}
+                  title={copySuccess ? "Copied!" : "Copy to clipboard"}
+                >
                   <Copy className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8"
+                  onClick={() => handleDownload(output)}
+                  title="Download"
+                >
                   <Download className="h-4 w-4" />
                 </Button>
               </div>
@@ -148,9 +187,11 @@ function OutputDetailSheet({ output }: { output: Output }) {
 export default function OutputsPage() {
   const [outputs, setOutputs] = useState<Output[]>([])
   const [loading, setLoading] = useState(true)
+  const [templates, setTemplates] = useState<any[]>([])
   const [templateFilter, setTemplateFilter] = useState<string>("all")
   const [audienceFilter, setAudienceFilter] = useState<string>("all")
   const [perspectiveFilter, setPerspectiveFilter] = useState<string>("all")
+  const [searchQuery, setSearchQuery] = useState<string>("")
 
   useEffect(() => {
     async function fetchOutputs() {
@@ -195,11 +236,40 @@ export default function OutputsPage() {
   }, [])
 
   const filteredOutputs = outputs.filter((output: Output) => {
+    // Template filter
     if (templateFilter !== "all" && output.templateId !== templateFilter) return false
+    
+    // Audience filter
     if (audienceFilter !== "all" && output.audience !== audienceFilter) return false
+    
+    // Perspective filter
     if (perspectiveFilter !== "all" && output.perspective !== perspectiveFilter) return false
+    
+    // Search filter (search in content, template name, and session filename)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      const matchesContent = output.content.toLowerCase().includes(query)
+      const matchesTemplate = output.templateName.toLowerCase().includes(query)
+      const matchesSession = output.sessionFilename.toLowerCase().includes(query)
+      
+      if (!matchesContent && !matchesTemplate && !matchesSession) return false
+    }
+    
     return true
   })
+
+  const handleClearFilters = () => {
+    setTemplateFilter("all")
+    setAudienceFilter("all")
+    setPerspectiveFilter("all")
+    setSearchQuery("")
+  }
+
+  const hasActiveFilters = 
+    templateFilter !== "all" || 
+    audienceFilter !== "all" || 
+    perspectiveFilter !== "all" || 
+    searchQuery.trim() !== ""
 
   if (loading) {
     return (
@@ -227,14 +297,27 @@ export default function OutputsPage() {
       {/* Filters */}
       <Card className="border-border">
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">Filters:</span>
+          <div className="flex flex-col gap-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search outputs..."
+                value={searchQuery}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-secondary border-border"
+              />
             </div>
-            
-            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-              <Select value={templateFilter} onValueChange={setTemplateFilter}>
+
+            {/* Filter Dropdowns */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Filters:</span>
+              </div>
+              
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                  <Select value={templateFilter} onValueChange={setTemplateFilter}>
                 <SelectTrigger className="w-full sm:w-[180px] bg-secondary border-border">
                   <LayoutTemplate className="h-4 w-4 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="Template" />
@@ -274,9 +357,23 @@ export default function OutputsPage() {
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Clear Filters Button */}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
+                  className="self-start text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear All Filters
+                </Button>
+              )}
             </div>
-          </div>
         </CardContent>
       </Card>
 

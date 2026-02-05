@@ -4,7 +4,7 @@ import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 
 // Helper function to check case ownership
 async function requireCaseOwnership(caseId: string, userId: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: caseData, error } = await supabase
     .from('cases')
     .select('user_id')
@@ -28,7 +28,7 @@ export async function GET(
   try {
     const user = await requireAuth()
     await requireCaseOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Get case details
     const { data: caseData, error: caseError } = await supabase
@@ -73,7 +73,7 @@ export async function PATCH(
   try {
     const user = await requireAuth()
     await requireCaseOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
     const body = await request.json()
 
     const { data: updatedCase, error } = await supabase
@@ -105,7 +105,7 @@ export async function DELETE(
   try {
     const user = await requireAuth()
     await requireCaseOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Get all sessions for this case to delete their audio files
     const { data: sessions } = await supabase

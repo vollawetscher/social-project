@@ -80,6 +80,7 @@ export interface Session {
   speakers: Speaker[]
   transcript: TranscriptSegment[]
   extractedContext?: ExtractedContext
+  audioUrl?: string // Optional audio file URL
 }
 
 export interface ExtractedContext {

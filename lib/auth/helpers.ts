@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { User } from '@supabase/supabase-js'
 
 export async function requireAuth(): Promise<User> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
 
   if (error || !user) {
@@ -13,7 +13,7 @@ export async function requireAuth(): Promise<User> {
 }
 
 export async function requireSessionOwnership(sessionId: string, userId: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: session, error } = await supabase
     .from('sessions')

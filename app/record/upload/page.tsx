@@ -25,8 +25,6 @@ export default function UploadRecordingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [uploadStatuses, setUploadStatuses] = useState<Map<string, UploadStatus>>(new Map())
   const [uploading, setUploading] = useState(false)
-  const [cases, setCases] = useState<any[]>([])
-  const [selectedCaseId, setSelectedCaseId] = useState<string>('')
   const router = useRouter()
   const { user, loading } = useAuth()
   const supabase = createClient()
@@ -39,7 +37,6 @@ export default function UploadRecordingsPage() {
 
     if (user) {
       loadRecordings()
-      loadCases()
     }
   }, [user, loading])
 
@@ -53,23 +50,7 @@ export default function UploadRecordingsPage() {
       setSelectedIds(new Set(recs.map(r => r.id)))
     } catch (error) {
       console.error('Failed to load recordings:', error)
-      toast.error('Fehler beim Laden der Aufnahmen')
-    }
-  }
-
-  const loadCases = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('cases')
-        .select('id, title, client_name')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
-        .limit(20)
-
-      if (error) throw error
-      setCases(data || [])
-    } catch (error) {
-      console.error('Failed to load cases:', error)
+      toast.error('Failed to load recordings')
     }
   }
 
@@ -83,55 +64,62 @@ export default function UploadRecordingsPage() {
     setSelectedIds(newSet)
   }
 
-  const uploadRecording = async (recording: LocalRecording, caseId: string): Promise<string> => {
-    // Create session
+  const uploadRecording = async (recording: LocalRecording): Promise<string> => {
+    // Create session with a default name
+    const timestamp = new Date(recording.timestamp).toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    const sessionName = `Recording ${timestamp}`
+    
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .insert({
-        case_id: caseId,
+        internal_case_id: sessionName,
         user_id: user?.id,
-        duration_sec: recording.duration,
         status: 'pending',
+        language: 'de', // Default to German
       })
       .select()
       .single()
 
     if (sessionError) throw sessionError
 
-    // Upload audio file
-    const fileName = `${session.id}-meeting-${Date.now()}.${recording.mimeType.split('/')[1]}`
-    const { error: uploadError } = await supabase.storage
+    // Upload audio file to Supabase Storage
+    const extension = recording.mimeType.split('/')[1] || 'webm'
+    const fileName = `${session.id}_${Date.now()}.${extension}`
+    
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('rohbericht-audio')
       .upload(fileName, recording.blob, {
         contentType: recording.mimeType,
+        upsert: false
       })
 
     if (uploadError) throw uploadError
 
-    // Create file record
-    const { error: fileError } = await supabase
-      .from('files')
-      .insert({
-        session_id: session.id,
-        storage_path: fileName,
-        mime_type: recording.mimeType,
-        file_size: recording.size,
-        file_purpose: 'meeting',
-      })
+    // Get public URL for the audio file
+    const { data: { publicUrl } } = supabase.storage
+      .from('rohbericht-audio')
+      .getPublicUrl(fileName)
 
-    if (fileError) throw fileError
+    // Update session with audio URL
+    const { error: updateError } = await supabase
+      .from('sessions')
+      .update({ audio_url: publicUrl })
+      .eq('id', session.id)
+
+    if (updateError) throw updateError
 
     return session.id
   }
 
   const handleUpload = async () => {
     if (selectedIds.size === 0) {
-      toast.error('Keine Aufnahmen ausgewählt')
-      return
-    }
-
-    if (!selectedCaseId) {
-      toast.error('Bitte wähle einen Fall aus')
+      toast.error('No recordings selected')
       return
     }
 
@@ -148,6 +136,7 @@ export default function UploadRecordingsPage() {
 
     let successCount = 0
     let errorCount = 0
+    let lastSessionId: string | undefined
 
     for (let i = 0; i < selectedIdsArray.length; i++) {
       const id = selectedIdsArray[i]
@@ -158,7 +147,8 @@ export default function UploadRecordingsPage() {
         const recording = await localStorageService.getRecording(id)
         if (!recording) throw new Error('Recording not found')
 
-        const sessionId = await uploadRecording(recording, selectedCaseId)
+        const sessionId = await uploadRecording(recording)
+        lastSessionId = sessionId
 
         statuses.set(id, { id, status: 'success', sessionId })
         setUploadStatuses(new Map(statuses))
@@ -177,19 +167,23 @@ export default function UploadRecordingsPage() {
     setUploading(false)
 
     if (successCount > 0) {
-      toast.success(`${successCount} Aufnahme(n) hochgeladen`)
+      toast.success(`${successCount} recording(s) uploaded successfully`)
       
       // Reload recordings list
       await loadRecordings()
       
-      // Navigate to case after short delay
+      // Navigate to sessions list after short delay
       setTimeout(() => {
-        router.push(`/cases/${selectedCaseId}`)
+        if (lastSessionId && successCount === 1) {
+          router.push(`/sessions/${lastSessionId}`)
+        } else {
+          router.push('/sessions')
+        }
       }, 2000)
     }
 
     if (errorCount > 0) {
-      toast.error(`${errorCount} Aufnahme(n) fehlgeschlagen`)
+      toast.error(`${errorCount} recording(s) failed to upload`)
     }
   }
 
@@ -216,37 +210,11 @@ export default function UploadRecordingsPage() {
     <div className="min-h-screen bg-slate-50 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Aufnahmen hochladen</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Upload Recordings</h1>
           <p className="text-sm text-slate-600">
-            Wähle Aufnahmen aus und lade sie zu einem Fall hoch
+            Select recordings to upload and create new sessions
           </p>
         </div>
-
-        {/* Case Selection */}
-        <Card className="p-4">
-          <Label htmlFor="case-select" className="text-sm font-semibold mb-2 block">
-            Fall auswählen
-          </Label>
-          <select
-            id="case-select"
-            className="w-full p-2 border rounded-md"
-            value={selectedCaseId}
-            onChange={(e) => setSelectedCaseId(e.target.value)}
-            disabled={uploading}
-          >
-            <option value="">-- Fall wählen --</option>
-            {cases.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.client_name || c.title}
-              </option>
-            ))}
-          </select>
-          {cases.length === 0 && (
-            <p className="text-xs text-slate-500 mt-2">
-              Keine Fälle gefunden. <Button variant="link" size="sm" onClick={() => router.push('/cases/new')}>Neuen Fall erstellen</Button>
-            </p>
-          )}
-        </Card>
 
         {/* Recordings List */}
         {recordings.length > 0 ? (
@@ -301,7 +269,7 @@ export default function UploadRecordingsPage() {
             size="lg"
             className="w-full"
             onClick={handleUpload}
-            disabled={uploading || selectedIds.size === 0 || !selectedCaseId}
+            disabled={uploading || selectedIds.size === 0}
           >
             {uploading ? (
               <>

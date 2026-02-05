@@ -29,7 +29,7 @@ export class AISupportService {
    * Analyze errors for a specific case and provide AI-powered insights
    */
   async analyzeCaseErrors(caseId: string): Promise<ErrorAnalysis> {
-    const errorLogger = createErrorLogger(this.supabase)
+    const errorLogger = await createErrorLogger(this.supabase)
 
     // Get all unresolved errors for the case
     const errors = await errorLogger.getErrorPatterns({
@@ -115,7 +115,7 @@ Focus on:
    * Analyze errors for a specific session
    */
   async analyzeSessionErrors(sessionId: string): Promise<ErrorAnalysis> {
-    const errorLogger = createErrorLogger(this.supabase)
+    const errorLogger = await createErrorLogger(this.supabase)
 
     const errors = await errorLogger.getErrorPatterns({
       sessionId,

@@ -9,7 +9,7 @@ export async function GET(
   try {
     const user = await requireAuth()
     await requireSessionOwnership(params.id, user.id)
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data: transcript, error } = await supabase
       .from('transcripts')
