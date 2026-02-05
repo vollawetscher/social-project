@@ -239,16 +239,121 @@ export default function SessionsPage() {
     setIsDragging(false)
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    // Mock file upload handling
+    
+    const files = Array.from(e.dataTransfer.files)
+    const audioFiles = files.filter(file => 
+      file.type.startsWith('audio/') || 
+      /\.(mp3|wav|webm|m4a)$/i.test(file.name)
+    )
+
+    if (audioFiles.length === 0) {
+      alert('Please drop audio files (MP3, WAV, WebM, M4A)')
+      return
+    }
+
+    // Redirect to upload page if user is logged in
+    // For now, show alert - could implement inline upload in future
+    alert(`${audioFiles.length} file(s) ready to upload. Please use the upload button or /record/upload page.`)
   }, [])
 
-  const handleRenameSession = (id: string, newName: string) => {
-    setSessions(prev => prev.map(s => 
-      s.id === id ? { ...s, filename: newName } : s
-    ))
+  const handleRenameSession = async (id: string, newName: string) => {
+    try {
+      // Optimistic update
+      setSessions(prev => prev.map(s => 
+        s.id === id ? { ...s, filename: newName } : s
+      ))
+
+      // Persist to database
+      const response = await fetch(`/api/sessions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ internal_case_id: newName }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to rename session')
+      }
+    } catch (error) {
+      console.error('Error renaming session:', error)
+      // Revert optimistic update on error
+      const response = await fetch('/api/sessions?format=v0')
+      if (response.ok) {
+        const data = await response.json()
+        setSessions(data)
+      }
+    }
+  }
+
+  const handleDeleteSession = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      // Optimistic update
+      setSessions(prev => prev.filter(s => s.id !== id))
+
+      const response = await fetch(`/api/sessions/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete session')
+      }
+    } catch (error) {
+      console.error('Error deleting session:', error)
+      // Revert optimistic update on error
+      const response = await fetch('/api/sessions?format=v0')
+      if (response.ok) {
+        const data = await response.json()
+        setSessions(data)
+      }
+    }
+  }
+
+  const handleDownloadTranscript = async (session: Session) => {
+    try {
+      const response = await fetch(`/api/sessions/${session.id}/transcript`)
+      if (!response.ok) throw new Error('Failed to fetch transcript')
+      
+      const data = await response.json()
+      
+      // Format transcript as text
+      const formattedText = data.raw_json
+        .map((seg: any) => {
+          const timestamp = formatTimestamp((seg.start_ms || 0) / 1000)
+          return `[${timestamp}] ${seg.speaker || 'Unknown'}: ${seg.text || ''}`
+        })
+        .join('\n\n')
+
+      // Create and download file
+      const blob = new Blob([formattedText], { type: 'text/plain' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${session.filename}-transcript.txt`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error downloading transcript:', error)
+      alert('Failed to download transcript')
+    }
+  }
+
+  // Helper function for transcript formatting
+  function formatTimestamp(seconds: number): string {
+    const hrs = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = Math.floor(seconds % 60)
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   const filteredSessions = sessions.filter(session => 
@@ -460,11 +565,14 @@ export default function SessionsPage() {
                             View
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
                           <Download className="mr-2 h-4 w-4" />
                           Download
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDeleteSession(session.id)}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>
@@ -581,14 +689,17 @@ export default function SessionsPage() {
                                 View
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Download className="mr-2 h-4 w-4" />
-                              Download
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDeleteSession(session.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

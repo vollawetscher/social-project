@@ -49,6 +49,8 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     isOfflineCached: false, // TODO: Implement offline caching detection
     speakers,
     transcript: transcriptSegments,
+    audioUrl: (dbSession as any).audio_url, // Include audio URL if available
+    domain: (dbSession as any).recording_type || 'general',
   }
 }
 
@@ -79,8 +81,8 @@ function transformTranscriptSegments(dbSegments: any[]): any[] {
     id: `seg_${index}`,
     speakerId: segment.speaker || 'unknown',
     speakerName: segment.speaker || 'Unknown',
-    startTime: segment.start_ms || 0,
-    endTime: segment.end_ms || 0,
+    startTime: (segment.start_ms || 0) / 1000, // Convert milliseconds to seconds
+    endTime: (segment.end_ms || 0) / 1000, // Convert milliseconds to seconds
     text: segment.text || '',
     isPiiRedacted: false,
   }))
