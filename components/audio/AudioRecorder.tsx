@@ -152,7 +152,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       if (currentChunkCount === lastChunkCountRef.current && timeSinceLastCheck > 5000 && !isPaused) {
         console.error('[AudioRecorder] HEALTH CHECK FAILED - No data received in 5 seconds!')
         playErrorAlert() // Audio alert works even with screen off
-        toast.error('⚠️ WARNUNG: Aufnahme empfängt keine Daten! Bitte Aufnahme beenden und neu starten.', {
+        toast.error('⚠️ WARNING: Recording not receiving data! Please stop and restart recording.', {
           duration: 10000,
         })
       }
@@ -174,7 +174,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     if (!microphoneManager.isAvailable()) {
       const owner = microphoneManager.getCurrentOwner()
       const ownerName = microphoneManager.getOwnerDisplayName(owner)
-      toast.error(`Mikrofon wird bereits verwendet von: ${ownerName}`)
+      toast.error(`Microphone already in use by: ${ownerName}`)
       return
     }
 
@@ -182,7 +182,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       // Request microphone via manager
       const stream = await microphoneManager.requestMicrophone('audio-recorder')
       if (!stream) {
-        toast.error('Mikrofon wird bereits verwendet')
+        toast.error('Microphone already in use')
         return
       }
       
@@ -192,7 +192,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
           console.error('[AudioRecorder] Audio track ended unexpectedly!')
           if (isRecording) {
             playErrorAlert()
-            toast.error('⚠️ KRITISCH: Mikrofon-Zugriff wurde beendet! Aufnahme könnte unvollständig sein.', {
+            toast.error('⚠️ CRITICAL: Microphone access ended! Recording may be incomplete.', {
               duration: 15000,
             })
             stopHealthMonitoring()
@@ -231,7 +231,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       mediaRecorder.onerror = (event: any) => {
         console.error('[AudioRecorder] MediaRecorder error:', event.error)
         playErrorAlert()
-        toast.error('⚠️ KRITISCHER FEHLER bei der Aufnahme! Bitte sofort beenden und neu starten.', {
+        toast.error('⚠️ CRITICAL ERROR during recording! Please stop immediately and restart.', {
           duration: 15000,
         })
         stopHealthMonitoring()
@@ -262,7 +262,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             chunks: chunksRef.current.length
           })
           playErrorAlert()
-          toast.error(`⚠️ Warnung: Aufnahme könnte unvollständig sein (${finalDuration}s aufgezeichnet, aber nur ${Math.round(blob.size / 1024)}KB Daten)`, {
+          toast.error(`⚠️ Warning: Recording may be incomplete (${finalDuration}s recorded, but only ${Math.round(blob.size / 1024)}KB data)`, {
             duration: 10000,
           })
         }
@@ -301,16 +301,16 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       // CRITICAL: This runs even with screen off
       startHealthMonitoring()
 
-      toast.success('Aufnahme gestartet')
+      toast.success('Recording started')
     } catch (error: any) {
       console.error('[AudioRecorder] Start error:', error)
       
       // Better error messages
-      let errorMsg = 'Fehler beim Zugriff auf das Mikrofon'
+      let errorMsg = 'Failed to access microphone'
       if (error.message?.includes('Permission denied') || error.name === 'NotAllowedError') {
-        errorMsg = 'Mikrofon-Berechtigung verweigert. Bitte erlaube Zugriff in den Browser-Einstellungen.'
+        errorMsg = 'Microphone permission denied. Please allow access in browser settings.'
       } else if (error.name === 'NotFoundError') {
-        errorMsg = 'Kein Mikrofon gefunden. Bitte schließe ein Mikrofon an.'
+        errorMsg = 'No microphone found. Please connect a microphone.'
       }
       
       toast.error(errorMsg)
@@ -335,7 +335,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
           }, 100)
         }
         
-        toast.info('Aufnahme fortgesetzt')
+        toast.info('Recording resumed')
       } else {
         // Pausing - request data before pausing to ensure nothing is lost
         if (mediaRecorderRef.current.state === 'recording') {
@@ -348,7 +348,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         mediaRecorderRef.current.pause()
         pausedTimeRef.current = Date.now()
         setIsPaused(true)
-        toast.info('Aufnahme pausiert')
+        toast.info('Recording paused')
       }
     }
   }
@@ -382,7 +382,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       
       setIsRecording(false)
       setIsPaused(false)
-      toast.success('Aufnahme beendet')
+      toast.success('Recording stopped')
     }
   }
 
@@ -437,7 +437,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                 {!isRecording ? (
                   <Button onClick={startRecording} size="lg">
                     <Mic className="mr-2 h-4 w-4" />
-                    Aufnahme starten
+                    Start Recording
                   </Button>
                 ) : (
                   <>
@@ -449,12 +449,12 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                       {isPaused ? (
                         <>
                           <Play className="mr-2 h-4 w-4" />
-                          Fortsetzen
+                          Resume
                         </>
                       ) : (
                         <>
                           <Pause className="mr-2 h-4 w-4" />
-                          Pausieren
+                          Pause
                         </>
                       )}
                     </Button>
@@ -464,7 +464,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                       size="lg"
                     >
                       <Square className="mr-2 h-4 w-4" />
-                      Beenden
+                      Stop
                     </Button>
                   </>
                 )}
@@ -475,7 +475,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
               <div className="w-full space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-700">
-                    Aufnahme fertig
+                    Recording complete
                   </span>
                   <span className="text-sm text-slate-600">
                     {formatTime(duration)}
@@ -491,7 +491,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                     className="flex-1"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Verwerfen
+                    Discard
                   </Button>
                   <Button
                     onClick={startRecording}
@@ -499,7 +499,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
                     className="flex-1"
                   >
                     <Mic className="mr-2 h-4 w-4" />
-                    Neu aufnehmen
+                    Record New
                   </Button>
                 </div>
               </div>

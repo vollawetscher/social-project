@@ -17,6 +17,7 @@ export default function QuickRecordPage() {
   const [totalSize, setTotalSize] = useState(0)
   const [showRecorder, setShowRecorder] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null)
   const router = useRouter()
   const { user, loading } = useAuth()
 
@@ -85,19 +86,33 @@ export default function QuickRecordPage() {
 
   const handlePlay = async (id: string) => {
     try {
-      const recording = await localStorageService.getRecording(id)
-      if (!recording) return
-
-      if (playingId === id) {
+      // If already playing, stop it
+      if (playingId === id && currentAudio) {
+        currentAudio.pause()
+        currentAudio.currentTime = 0
         setPlayingId(null)
+        setCurrentAudio(null)
         return
       }
+
+      // Stop any currently playing audio
+      if (currentAudio) {
+        currentAudio.pause()
+        currentAudio.currentTime = 0
+      }
+
+      const recording = await localStorageService.getRecording(id)
+      if (!recording) return
 
       const audio = new Audio(URL.createObjectURL(recording.blob))
       audio.play()
       setPlayingId(id)
+      setCurrentAudio(audio)
 
-      audio.onended = () => setPlayingId(null)
+      audio.onended = () => {
+        setPlayingId(null)
+        setCurrentAudio(null)
+      }
     } catch (error) {
       console.error('Failed to play recording:', error)
       toast.error('Playback failed')
@@ -162,7 +177,7 @@ export default function QuickRecordPage() {
               {user && recordings.length > 0 && (
                 <Button size="sm" onClick={handleUpload}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload
+                  Upload & Transcribe
                 </Button>
               )}
             </div>

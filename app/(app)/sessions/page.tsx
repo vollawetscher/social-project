@@ -266,6 +266,7 @@ export default function SessionsPage() {
 
     setUploadingFiles(true)
     let successCount = 0
+    let errorCount = 0
 
     for (const file of audioFiles) {
       try {
@@ -289,7 +290,10 @@ export default function SessionsPage() {
           .select()
           .single()
 
-        if (sessionError) throw sessionError
+        if (sessionError) {
+          console.error('Session creation error:', sessionError)
+          throw new Error(`Failed to create session: ${sessionError.message}`)
+        }
 
         // Upload file to storage
         const extension = file.name.split('.').pop() || 'mp3'
@@ -298,11 +302,14 @@ export default function SessionsPage() {
         const { error: uploadError } = await supabase.storage
           .from('rohbericht-audio')
           .upload(fileName, file, {
-            contentType: file.type,
+            contentType: file.type || 'audio/mpeg',
             upsert: false
           })
 
-        if (uploadError) throw uploadError
+        if (uploadError) {
+          console.error('Storage upload error:', uploadError)
+          throw new Error(`Failed to upload file: ${uploadError.message}`)
+        }
 
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
@@ -310,14 +317,19 @@ export default function SessionsPage() {
           .getPublicUrl(fileName)
 
         // Update session with audio URL
-        await supabase
+        const { error: updateError } = await supabase
           .from('sessions')
           .update({ audio_url: publicUrl })
           .eq('id', session.id)
 
+        if (updateError) {
+          console.error('Session update error:', updateError)
+          throw new Error(`Failed to update session: ${updateError.message}`)
+        }
+
         // Trigger transcription
         try {
-          await fetch(`/api/sessions/${session.id}/transcribe`, {
+          const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -325,14 +337,19 @@ export default function SessionsPage() {
               language: language,
             }),
           })
+          if (!transcribeRes.ok) {
+            console.error('Transcription trigger failed:', await transcribeRes.text())
+          }
         } catch (error) {
           console.error('Failed to trigger transcription:', error)
+          // Don't fail the upload if transcription trigger fails
         }
 
         successCount++
-      } catch (error) {
-        console.error('Upload failed:', error)
-        toast.error(`Failed to upload ${file.name}`)
+      } catch (error: any) {
+        console.error('Upload failed for', file.name, ':', error)
+        toast.error(`Failed to upload ${file.name}: ${error.message || 'Unknown error'}`)
+        errorCount++
       }
     }
 
@@ -342,7 +359,11 @@ export default function SessionsPage() {
     if (successCount > 0) {
       toast.success(`${successCount} file(s) uploaded successfully`)
       // Refresh sessions list
-      fetchSessions()
+      await fetchSessions()
+    }
+
+    if (errorCount > 0 && successCount === 0) {
+      toast.error(`All uploads failed. Please check console for details.`)
     }
   }
 
@@ -700,7 +721,7 @@ export default function SessionsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link href={`/app/sessions/${session.id}`}>
+                          <Link href={`/sessions/${session.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
                             View
                           </Link>
@@ -824,7 +845,7 @@ export default function SessionsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={`/app/sessions/${session.id}`}>
+                              <Link href={`/sessions/${session.id}`}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View
                               </Link>
