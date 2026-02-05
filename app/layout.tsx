@@ -4,7 +4,11 @@ import { Inter } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/lib/auth/AuthProvider';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+});
 
 export const metadata: Metadata = {
   title: 'Gesprächsbericht',
