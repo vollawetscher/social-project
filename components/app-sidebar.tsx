@@ -54,7 +54,7 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
+          "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 overflow-hidden",
           isCollapsed ? "w-16" : "w-60"
         )}
       >
@@ -65,7 +65,7 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
               <Mic className="h-4 w-4" />
             </div>
             {!isCollapsed && (
-              <span className="font-semibold text-sidebar-foreground">
+              <span className="font-semibold text-sidebar-foreground whitespace-nowrap">
                 Notissima
               </span>
             )}
@@ -114,8 +114,8 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
                     : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-sm font-medium">{item.name}</span>
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className="text-sm font-medium whitespace-nowrap">{item.name}</span>
               </Link>
             )
           })}
