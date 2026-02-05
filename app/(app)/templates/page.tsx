@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { toast } from "sonner"
 import {
   LayoutTemplate,
   Plus,
@@ -216,9 +217,10 @@ export default function TemplatesPage() {
       
       // Refresh templates list
       await fetchTemplates()
+      toast.success(`Template "${templateName}" deleted`)
     } catch (error) {
       console.error('Error deleting template:', error)
-      alert('Failed to delete template')
+      toast.error('Failed to delete template')
     }
   }
 
@@ -236,10 +238,10 @@ export default function TemplatesPage() {
       await fetchTemplates()
       
       // Show success message
-      alert(`Created "${data.name}"`)
+      toast.success(`Created "${data.name}"`)
     } catch (error) {
       console.error('Error duplicating template:', error)
-      alert('Failed to duplicate template')
+      toast.error('Failed to duplicate template')
     }
   }
 

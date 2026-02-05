@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   Save,
@@ -56,14 +57,14 @@ export default function EditTemplatePage() {
       // Populate form
       setName(data.name)
       setDescription(data.description)
-      setSelectedPerspectives(data.intendedPerspectives)
-      setSelectedAudiences(data.allowedAudience)
-      setSelectedDomains(data.domainTags)
-      setStyleRules(data.styleRules.join('\n'))
-      setRequiredInputs(data.requiredInputs.join('\n'))
+      setSelectedPerspectives(data.intended_perspectives || data.intendedPerspectives || [])
+      setSelectedAudiences(data.allowed_audience || data.allowedAudience || [])
+      setSelectedDomains(data.domain_tags || data.domainTags || [])
+      setStyleRules((data.style_rules || data.styleRules || []).join('\n'))
+      setRequiredInputs((data.required_inputs || data.requiredInputs || []).join('\n'))
     } catch (error) {
       console.error('Error fetching template:', error)
-      alert('Failed to load template')
+      toast.error('Failed to load template')
     } finally {
       setLoading(false)
     }
@@ -71,42 +72,43 @@ export default function EditTemplatePage() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      alert('Please enter a template name')
+      toast.error('Please enter a template name')
       return
     }
 
     if (selectedPerspectives.length === 0) {
-      alert('Please select at least one perspective')
+      toast.error('Please select at least one perspective')
       return
     }
 
     if (selectedAudiences.length === 0) {
-      alert('Please select at least one audience')
+      toast.error('Please select at least one audience')
       return
     }
 
     setSaving(true)
     try {
       const response = await fetch(`/api/templates/${templateId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),
-          intendedPerspectives: selectedPerspectives,
-          allowedAudience: selectedAudiences,
-          domainTags: selectedDomains,
-          styleRules: styleRules.split('\n').filter(r => r.trim()),
-          requiredInputs: requiredInputs.split('\n').filter(i => i.trim()),
+          intended_perspectives: selectedPerspectives,
+          allowed_audience: selectedAudiences,
+          domain_tags: selectedDomains,
+          style_rules: styleRules.split('\n').filter(r => r.trim()),
+          required_inputs: requiredInputs.split('\n').filter(i => i.trim()),
         }),
       })
 
       if (!response.ok) throw new Error('Failed to update template')
 
+      toast.success(`Template "${name}" updated`)
       router.push('/templates')
     } catch (error) {
       console.error('Error updating template:', error)
-      alert('Failed to update template')
+      toast.error('Failed to update template')
     } finally {
       setSaving(false)
     }

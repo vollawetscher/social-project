@@ -2,8 +2,10 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import {
   ArrowLeft,
   ArrowRight,
@@ -17,6 +19,7 @@ import {
   Save,
   X,
   File,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,13 +46,14 @@ interface UploadedFile {
 }
 
 export default function TemplateWizardPage() {
+  const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [currentStep, setCurrentStep] = useState(1)
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([
-    { name: "quarterly_report_template.pdf", size: "245 KB", type: "PDF" },
-    { name: "client_summary_example.docx", size: "128 KB", type: "DOCX" },
-  ])
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [uploadedFileData, setUploadedFileData] = useState<File[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisComplete, setAnalysisComplete] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Analysis results (mocked)
   const analysisResults = {
@@ -75,16 +79,96 @@ export default function TemplateWizardPage() {
   const [templateDescription, setTemplateDescription] = useState("")
   const [templateTags, setTemplateTags] = useState("")
 
-  const handleAnalyze = () => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    const fileArray = Array.from(files)
+    const fileInfoArray = fileArray.map(file => ({
+      name: file.name,
+      size: `${(file.size / 1024).toFixed(0)} KB`,
+      type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
+    }))
+
+    setUploadedFiles(prev => [...prev, ...fileInfoArray])
+    setUploadedFileData(prev => [...prev, ...fileArray])
+  }
+
+  const handleAnalyze = async () => {
+    if (uploadedFileData.length === 0) {
+      toast.error('Please upload at least one file')
+      return
+    }
+
     setIsAnalyzing(true)
-    setTimeout(() => {
+    try {
+      // For now, use mock analysis - full AI implementation would require file parsing
+      setTimeout(() => {
+        setIsAnalyzing(false)
+        setAnalysisComplete(true)
+        toast.success('Analysis complete')
+      }, 2000)
+    } catch (error) {
+      console.error('Analysis failed:', error)
+      toast.error('Failed to analyze samples')
       setIsAnalyzing(false)
-      setAnalysisComplete(true)
-    }, 2000)
+    }
   }
 
   const handleRemoveFile = (fileName: string) => {
+    const index = uploadedFiles.findIndex(f => f.name === fileName)
     setUploadedFiles(uploadedFiles.filter((f) => f.name !== fileName))
+    if (index !== -1) {
+      setUploadedFileData(prev => prev.filter((_, i) => i !== index))
+    }
+  }
+
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim()) {
+      toast.error('Please enter a template name')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: templateName.trim(),
+          description: templateDescription.trim(),
+          intended_perspectives: selectedPerspectives,
+          allowed_audience: selectedAudience,
+          domain_tags: templateTags.split(',').map(t => t.trim()).filter(t => t),
+          sections: analysisResults.sections
+            .filter(s => s.detected)
+            .map((s, i) => ({
+              id: `section_${i}`,
+              name: s.name,
+              description: `${s.name} section`,
+              isRequired: true,
+            })),
+          required_inputs: requiredInputs,
+          style_rules: [
+            `Tone: ${analysisResults.tone}`,
+            `Perspective: ${analysisResults.perspective}`,
+            `Language: ${analysisResults.language}`,
+          ],
+          suggestion_triggers: [],
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to create template')
+
+      const data = await response.json()
+      toast.success(`Template "${templateName}" created`)
+      router.push('/templates')
+    } catch (error) {
+      console.error('Error creating template:', error)
+      toast.error('Failed to create template')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const togglePerspective = (perspective: string) => {
@@ -197,7 +281,18 @@ export default function TemplateWizardPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Upload Area */}
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors cursor-pointer">
+              <div 
+                className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-muted-foreground transition-colors cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,.txt,.doc"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
                 <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                 <p className="text-sm text-foreground font-medium mb-1">
                   Drag and drop files here
@@ -500,11 +595,21 @@ export default function TemplateWizardPage() {
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         ) : (
-          <Button disabled={!canProceed()} asChild>
-            <Link href="/app/templates">
-              <Save className="h-4 w-4 mr-2" />
-              Save Template
-            </Link>
+          <Button 
+            disabled={!canProceed() || isSaving} 
+            onClick={handleSaveTemplate}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Template
+              </>
+            )}
           </Button>
         )}
       </div>
