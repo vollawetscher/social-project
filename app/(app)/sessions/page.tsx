@@ -5,6 +5,8 @@ export const dynamic = 'force-dynamic'
 import React from "react"
 import { useState, useCallback, useRef, useEffect } from "react"
 import Link from "next/link"
+import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 import {
   Upload,
   Mic,
@@ -180,22 +182,27 @@ export default function SessionsPage() {
   const [loading, setLoading] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
+  const [uploadingFiles, setUploadingFiles] = useState(false)
+  const [language, setLanguage] = useState<string>('en')
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const supabase = createClient()
 
   // Fetch real sessions from API
-  useEffect(() => {
-    async function fetchSessions() {
-      try {
-        const response = await fetch('/api/sessions?format=v0')
-        if (!response.ok) throw new Error('Failed to fetch sessions')
-        const data = await response.json()
-        setSessions(data)
-      } catch (error) {
-        console.error('Error fetching sessions:', error)
-      } finally {
-        setLoading(false)
-      }
+  const fetchSessions = async () => {
+    try {
+      const response = await fetch('/api/sessions?format=v0')
+      if (!response.ok) throw new Error('Failed to fetch sessions')
+      const data = await response.json()
+      setSessions(data)
+    } catch (error) {
+      console.error('Error fetching sessions:', error)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchSessions()
   }, [])
 
@@ -239,25 +246,113 @@ export default function SessionsPage() {
     setIsDragging(false)
   }, [])
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    
-    const files = Array.from(e.dataTransfer.files)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files) {
+      handleFiles(Array.from(files))
+    }
+  }
+
+  const handleFiles = async (files: File[]) => {
     const audioFiles = files.filter(file => 
       file.type.startsWith('audio/') || 
       /\.(mp3|wav|webm|m4a)$/i.test(file.name)
     )
 
     if (audioFiles.length === 0) {
-      alert('Please drop audio files (MP3, WAV, WebM, M4A)')
+      toast.error('Please select audio files (MP3, WAV, WebM, M4A)')
       return
     }
 
-    // Redirect to upload page if user is logged in
-    // For now, show alert - could implement inline upload in future
-    alert(`${audioFiles.length} file(s) ready to upload. Please use the upload button or /record/upload page.`)
-  }, [])
+    setUploadingFiles(true)
+    let successCount = 0
+
+    for (const file of audioFiles) {
+      try {
+        // Create session
+        const timestamp = new Date().toLocaleString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+        const sessionName = file.name.replace(/\.[^/.]+$/, '') || `Upload ${timestamp}`
+        
+        const { data: session, error: sessionError } = await supabase
+          .from('sessions')
+          .insert({
+            internal_case_id: sessionName,
+            status: 'uploading',
+            language: language,
+          })
+          .select()
+          .single()
+
+        if (sessionError) throw sessionError
+
+        // Upload file to storage
+        const extension = file.name.split('.').pop() || 'mp3'
+        const fileName = `${session.id}_${Date.now()}.${extension}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from('rohbericht-audio')
+          .upload(fileName, file, {
+            contentType: file.type,
+            upsert: false
+          })
+
+        if (uploadError) throw uploadError
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('rohbericht-audio')
+          .getPublicUrl(fileName)
+
+        // Update session with audio URL
+        await supabase
+          .from('sessions')
+          .update({ audio_url: publicUrl })
+          .eq('id', session.id)
+
+        // Trigger transcription
+        try {
+          await fetch(`/api/sessions/${session.id}/transcribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              storage_path: fileName,
+              language: language,
+            }),
+          })
+        } catch (error) {
+          console.error('Failed to trigger transcription:', error)
+        }
+
+        successCount++
+      } catch (error) {
+        console.error('Upload failed:', error)
+        toast.error(`Failed to upload ${file.name}`)
+      }
+    }
+
+    setUploadingFiles(false)
+    setIsUploadOpen(false)
+
+    if (successCount > 0) {
+      toast.success(`${successCount} file(s) uploaded successfully`)
+      // Refresh sessions list
+      fetchSessions()
+    }
+  }
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    
+    const files = Array.from(e.dataTransfer.files)
+    handleFiles(files)
+  }, [language])
 
   const handleRenameSession = async (id: string, newName: string) => {
     try {
@@ -449,25 +544,70 @@ export default function SessionsPage() {
             </div>
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3">
-            <div
-              className={cn(
-                "border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer",
-                isDragging
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-muted-foreground"
-              )}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <div className="flex flex-col items-center text-center">
-                <Upload className="h-8 w-8 text-muted-foreground mb-3" />
-                <p className="text-sm font-medium text-foreground mb-1">
-                  Drag and drop or click to browse
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Max file size: 500MB
-                </p>
+            <div className="space-y-3">
+              {/* Language Selection */}
+              <div>
+                <label htmlFor="upload-language" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Recording Language
+                </label>
+                <select
+                  id="upload-language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  disabled={uploadingFiles}
+                  className="w-full p-2 border rounded-md text-sm bg-background"
+                >
+                  <option value="en">English</option>
+                  <option value="de">German (Deutsch)</option>
+                  <option value="es">Spanish (Español)</option>
+                  <option value="fr">French (Français)</option>
+                  <option value="it">Italian (Italiano)</option>
+                  <option value="pt">Portuguese (Português)</option>
+                  <option value="nl">Dutch (Nederlands)</option>
+                  <option value="pl">Polish (Polski)</option>
+                </select>
+              </div>
+
+              {/* Upload Area */}
+              <div
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer",
+                  isDragging
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground",
+                  uploadingFiles && "opacity-50 pointer-events-none"
+                )}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.webm,.m4a"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <div className="flex flex-col items-center text-center">
+                  {uploadingFiles ? (
+                    <>
+                      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent mb-3"></div>
+                      <p className="text-sm font-medium text-foreground">Uploading...</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-muted-foreground mb-3" />
+                      <p className="text-sm font-medium text-foreground mb-1">
+                        Drag and drop or click to browse
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        MP3, WAV, WebM, M4A • Max 500MB
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </CollapsibleContent>

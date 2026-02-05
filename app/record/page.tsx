@@ -36,7 +36,7 @@ export default function QuickRecordPage() {
       setTotalSize(size)
     } catch (error) {
       console.error('Failed to load recordings:', error)
-      toast.error('Fehler beim Laden der Aufnahmen')
+      toast.error('Failed to load recordings')
     }
   }
 
@@ -52,29 +52,29 @@ export default function QuickRecordPage() {
       }
 
       await localStorageService.saveRecording(recording)
-      toast.success('Aufnahme gespeichert')
+      toast.success('Recording saved')
       setShowRecorder(false)
       await loadRecordings()
     } catch (error) {
       console.error('Failed to save recording:', error)
-      toast.error('Fehler beim Speichern')
+      toast.error('Failed to save recording')
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await localStorageService.deleteRecording(id)
-      toast.success('Aufnahme gelöscht')
+      toast.success('Recording deleted')
       await loadRecordings()
     } catch (error) {
       console.error('Failed to delete recording:', error)
-      toast.error('Fehler beim Löschen')
+      toast.error('Failed to delete recording')
     }
   }
 
   const handleUpload = () => {
     if (!user) {
-      toast.error('Bitte melde dich an, um Aufnahmen hochzuladen')
+      toast.error('Please sign in to upload recordings')
       router.push(`/login?redirect=/record`)
       return
     }
@@ -100,7 +100,7 @@ export default function QuickRecordPage() {
       audio.onended = () => setPlayingId(null)
     } catch (error) {
       console.error('Failed to play recording:', error)
-      toast.error('Wiedergabe fehlgeschlagen')
+      toast.error('Playback failed')
     }
   }
 
@@ -121,12 +121,12 @@ export default function QuickRecordPage() {
     yesterday.setDate(yesterday.getDate() - 1)
 
     if (date.toDateString() === today.toDateString()) {
-      return 'Heute ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+      return 'Today ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Gestern ' + date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+      return 'Yesterday ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     } else {
-      return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' ' +
-             date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+      return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }) + ' ' +
+             date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     }
   }
 
@@ -138,15 +138,15 @@ export default function QuickRecordPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-primary">Schnellaufnahme</h1>
+            <h1 className="text-2xl font-bold text-primary">Quick Record</h1>
             <p className="text-sm text-muted-foreground">
-              Aufnehmen ohne Anmeldung • Später hochladen
+              Record without login • Upload later
             </p>
           </div>
           {!loading && !user && (
             <Button variant="outline" size="sm" onClick={() => router.push('/login')}>
               <LogIn className="h-4 w-4 mr-2" />
-              Anmelden
+              Sign In
             </Button>
           )}
         </div>
@@ -157,12 +157,12 @@ export default function QuickRecordPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-primary">
                 <HardDrive className="h-4 w-4" />
-                <span>{recordings.length} Aufnahmen • {formatSize(totalSize)}</span>
+                <span>{recordings.length} Recording{recordings.length !== 1 ? 's' : ''} • {formatSize(totalSize)}</span>
               </div>
               {user && recordings.length > 0 && (
                 <Button size="sm" onClick={handleUpload}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Hochladen
+                  Upload
                 </Button>
               )}
             </div>
@@ -180,7 +180,7 @@ export default function QuickRecordPage() {
               className="w-full mt-4"
               onClick={() => setShowRecorder(false)}
             >
-              Abbrechen
+              Cancel
             </Button>
           </Card>
         ) : (
@@ -190,7 +190,7 @@ export default function QuickRecordPage() {
             onClick={() => setShowRecorder(true)}
           >
             <Mic className="h-8 w-8 mr-3" />
-            Neue Aufnahme
+            New Recording
           </Button>
         )}
 
@@ -198,7 +198,7 @@ export default function QuickRecordPage() {
         {recordings.length > 0 ? (
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-foreground px-1">
-              Gespeicherte Aufnahmen
+              Saved Recordings
             </h2>
             {recordings.map((rec) => (
               <Card key={rec.id} className="p-3 border-primary/20 bg-gradient-to-br from-white to-primary/5">
@@ -244,21 +244,21 @@ export default function QuickRecordPage() {
         ) : !showRecorder && (
           <Card className="p-8 text-center border-primary/20 bg-gradient-to-br from-white to-primary/5">
             <Mic className="h-12 w-12 text-primary mx-auto mb-3" />
-            <p className="text-foreground font-medium">Noch keine Aufnahmen</p>
+            <p className="text-foreground font-medium">No recordings yet</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Starte deine erste Aufnahme – keine Anmeldung nötig
+              Start your first recording – no sign-in required
             </p>
           </Card>
         )}
 
         {/* Info Footer */}
         <Card className="p-4 border-primary/20 bg-white/50">
-          <h3 className="font-semibold text-sm text-foreground mb-2">ℹ️ Wie funktioniert's?</h3>
+          <h3 className="font-semibold text-sm text-foreground mb-2">ℹ️ How it works</h3>
           <ul className="text-xs text-muted-foreground space-y-1">
-            <li>✅ Aufnehmen ohne Anmeldung</li>
-            <li>✅ Aufnahmen bleiben auf deinem Gerät</li>
-            <li>✅ Später anmelden und hochladen</li>
-            <li>✅ Erst beim Upload wird transkribiert</li>
+            <li>✅ Record without sign-in</li>
+            <li>✅ Recordings stay on your device</li>
+            <li>✅ Sign in later to upload</li>
+            <li>✅ Transcription starts after upload</li>
           </ul>
         </Card>
       </div>

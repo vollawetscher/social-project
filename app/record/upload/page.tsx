@@ -25,6 +25,7 @@ export default function UploadRecordingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [uploadStatuses, setUploadStatuses] = useState<Map<string, UploadStatus>>(new Map())
   const [uploading, setUploading] = useState(false)
+  const [language, setLanguage] = useState<string>('en')
   const router = useRouter()
   const { user, loading } = useAuth()
   const supabase = createClient()
@@ -64,7 +65,7 @@ export default function UploadRecordingsPage() {
     setSelectedIds(newSet)
   }
 
-  const uploadRecording = async (recording: LocalRecording): Promise<string> => {
+  const uploadRecording = async (recording: LocalRecording, language: string = 'en'): Promise<string> => {
     // Create session with a default name
     const timestamp = new Date(recording.timestamp).toLocaleString('en-US', {
       month: '2-digit',
@@ -80,8 +81,8 @@ export default function UploadRecordingsPage() {
       .insert({
         internal_case_id: sessionName,
         user_id: user?.id,
-        status: 'pending',
-        language: 'de', // Default to German
+        status: 'uploading',
+        language: language,
       })
       .select()
       .single()
@@ -106,13 +107,35 @@ export default function UploadRecordingsPage() {
       .from('rohbericht-audio')
       .getPublicUrl(fileName)
 
-    // Update session with audio URL
+    // Update session with audio URL and storage path
     const { error: updateError } = await supabase
       .from('sessions')
-      .update({ audio_url: publicUrl })
+      .update({ 
+        audio_url: publicUrl,
+        status: 'uploading'
+      })
       .eq('id', session.id)
 
     if (updateError) throw updateError
+
+    // Trigger transcription
+    try {
+      const transcribeResponse = await fetch(`/api/sessions/${session.id}/transcribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storage_path: fileName,
+          language: language,
+        }),
+      })
+      
+      if (!transcribeResponse.ok) {
+        console.error('Failed to trigger transcription')
+      }
+    } catch (error) {
+      console.error('Error triggering transcription:', error)
+      // Don't throw - session is created, transcription can be retried
+    }
 
     return session.id
   }
@@ -147,7 +170,7 @@ export default function UploadRecordingsPage() {
         const recording = await localStorageService.getRecording(id)
         if (!recording) throw new Error('Recording not found')
 
-        const sessionId = await uploadRecording(recording)
+        const sessionId = await uploadRecording(recording, language)
         lastSessionId = sessionId
 
         statuses.set(id, { id, status: 'success', sessionId })
@@ -195,7 +218,7 @@ export default function UploadRecordingsPage() {
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
   }
 
   if (loading) {
@@ -215,6 +238,31 @@ export default function UploadRecordingsPage() {
             Select recordings to upload and create new sessions
           </p>
         </div>
+
+        {/* Language Selection */}
+        {recordings.length > 0 && (
+          <Card className="p-4">
+            <Label htmlFor="language" className="text-sm font-medium mb-2 block">
+              Recording Language
+            </Label>
+            <select
+              id="language"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              disabled={uploading}
+              className="w-full p-2 border rounded-md text-sm"
+            >
+              <option value="en">English</option>
+              <option value="de">German (Deutsch)</option>
+              <option value="es">Spanish (Español)</option>
+              <option value="fr">French (Français)</option>
+              <option value="it">Italian (Italiano)</option>
+              <option value="pt">Portuguese (Português)</option>
+              <option value="nl">Dutch (Nederlands)</option>
+              <option value="pl">Polish (Polski)</option>
+            </select>
+          </Card>
+        )}
 
         {/* Recordings List */}
         {recordings.length > 0 ? (
@@ -256,9 +304,9 @@ export default function UploadRecordingsPage() {
           </div>
         ) : (
           <Card className="p-8 text-center">
-            <p className="text-slate-600">Keine Aufnahmen zum Hochladen</p>
+            <p className="text-slate-600">No recordings to upload</p>
             <Button variant="link" onClick={() => router.push('/record')}>
-              Zurück zur Aufnahme
+              Back to Recording
             </Button>
           </Card>
         )}
@@ -274,12 +322,12 @@ export default function UploadRecordingsPage() {
             {uploading ? (
               <>
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                Wird hochgeladen...
+                Uploading...
               </>
             ) : (
               <>
                 <Upload className="h-5 w-5 mr-2" />
-                {selectedIds.size} Aufnahme(n) hochladen
+                Upload {selectedIds.size} Recording{selectedIds.size !== 1 ? 's' : ''}
               </>
             )}
           </Button>
