@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   LayoutTemplate,
@@ -43,7 +43,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { mockTemplates, participantRoleLabels } from "@/lib/mock/data"
+import { participantRoleLabels } from "@/lib/mock/data"
 import type { Template } from "@/lib/types-v0"
 
 const domainColors: Record<string, string> = {
@@ -182,6 +182,36 @@ function TemplateDetailSheet({ template }: { template: Template }) {
 }
 
 export default function TemplatesPage() {
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchTemplates() {
+      try {
+        const response = await fetch('/api/templates')
+        if (!response.ok) throw new Error('Failed to fetch templates')
+        const data = await response.json()
+        setTemplates(data)
+      } catch (error) {
+        console.error('Error fetching templates:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTemplates()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
+          <p className="mt-2 text-sm text-muted-foreground">Loading templates...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -208,7 +238,7 @@ export default function TemplatesPage() {
 
       {/* Mobile: Template Cards */}
       <div className="md:hidden space-y-3">
-        {mockTemplates.map((template) => (
+        {templates.map((template) => (
           <Card key={template.id} className="border-border">
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-3">
@@ -286,7 +316,7 @@ export default function TemplatesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockTemplates.map((template) => (
+            {templates.map((template) => (
               <TableRow key={template.id} className="group">
                 <TableCell>
                   <div>
