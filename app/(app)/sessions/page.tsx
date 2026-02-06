@@ -7,6 +7,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/lib/auth/AuthProvider"
 import {
   Upload,
   Mic,
@@ -175,6 +176,7 @@ function EditableSessionName({
 }
 
 export default function SessionsPage() {
+  const { user } = useAuth()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -280,10 +282,16 @@ export default function SessionsPage() {
         })
         const sessionName = file.name.replace(/\.[^/.]+$/, '') || `Upload ${timestamp}`
         
+        // Check if user is authenticated
+        if (!user?.id) {
+          throw new Error('You must be logged in to upload files')
+        }
+
         const { data: session, error: sessionError } = await supabase
           .from('sessions')
           .insert({
             internal_case_id: sessionName,
+            user_id: user.id,
             status: 'uploading',
             language: language,
           })
