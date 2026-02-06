@@ -107,18 +107,25 @@ export default function SessionDetailPage() {
 
       setAnalyzing(true)
       try {
+        console.log('[AI Analysis] Starting analysis for session:', sessionId)
         const response = await fetch(`/api/sessions/${sessionId}/analyze`, {
           method: 'POST',
         })
+        console.log('[AI Analysis] Response status:', response.status)
+        
         if (response.ok) {
           const data = await response.json()
+          console.log('[AI Analysis] Success! Data:', data)
           setAnalysis(data)
         } else if (response.status === 400) {
           // Transcript not ready yet, skip silently
-          console.log('Transcript not ready for analysis yet')
+          console.log('[AI Analysis] Transcript not ready for analysis yet (400)')
+        } else {
+          const errorData = await response.json().catch(() => ({}))
+          console.warn('[AI Analysis] Failed with status:', response.status, errorData)
         }
       } catch (error) {
-        console.error('Error analyzing session:', error)
+        console.error('[AI Analysis] Error analyzing session:', error)
       } finally {
         setAnalyzing(false)
       }
@@ -175,6 +182,11 @@ export default function SessionDetailPage() {
         confidence: d.confidence
       }))
     : getDomainSuggestions(session.id)
+  
+  // Debug log
+  console.log('[Session Detail] Analysis state:', analysis)
+  console.log('[Session Detail] Recording type suggestions:', recordingTypeSuggestions)
+  console.log('[Session Detail] Domain suggestions:', domainSuggestions)
   
   const suggestedTemplates = getSuggestedTemplates(session.domain)
 
