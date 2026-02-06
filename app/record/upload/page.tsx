@@ -120,6 +120,7 @@ export default function UploadRecordingsPage() {
     if (updateError) throw updateError
 
     // Create file record (required for transcription)
+    // file_purpose enum values: 'context', 'meeting', 'dictation', 'instruction', 'addition'
     const { error: fileError } = await supabase
       .from('files')
       .insert({
@@ -128,7 +129,7 @@ export default function UploadRecordingsPage() {
         original_filename: `recording_${timestamp}.${extension}`,
         mime_type: recording.mimeType,
         size_bytes: recording.size,
-        file_purpose: 'recording',
+        file_purpose: 'meeting', // Use valid enum value
         upload_status: 'completed',
       })
 
