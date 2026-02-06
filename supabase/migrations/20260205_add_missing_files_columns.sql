@@ -1,8 +1,5 @@
 -- Add missing columns to files table for upload workflow
-
--- Add file_size column
-ALTER TABLE files
-ADD COLUMN IF NOT EXISTS file_size BIGINT;
+-- Note: size_bytes already exists, we just add the missing ones
 
 -- Add original_filename column
 ALTER TABLE files
@@ -17,7 +14,6 @@ ALTER TABLE files
 ADD COLUMN IF NOT EXISTS upload_status TEXT DEFAULT 'pending';
 
 -- Add comments for documentation
-COMMENT ON COLUMN files.file_size IS 'Size of the file in bytes';
 COMMENT ON COLUMN files.original_filename IS 'Original filename from user upload';
 COMMENT ON COLUMN files.file_purpose IS 'Purpose of the file (recording, document, etc.)';
 COMMENT ON COLUMN files.upload_status IS 'Status of the upload (pending, uploading, completed, failed)';

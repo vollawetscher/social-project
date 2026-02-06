@@ -127,7 +127,7 @@ export default function UploadRecordingsPage() {
         storage_path: fileName,
         original_filename: `recording_${timestamp}.${extension}`,
         mime_type: recording.mimeType,
-        file_size: recording.size,
+        size_bytes: recording.size,
         file_purpose: 'recording',
         upload_status: 'completed',
       })

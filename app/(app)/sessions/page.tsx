@@ -347,7 +347,7 @@ export default function SessionsPage() {
             storage_path: fileName,
             original_filename: file.name,
             mime_type: file.type || 'audio/mpeg',
-            file_size: file.size,
+            size_bytes: file.size,
             file_purpose: 'recording',
             upload_status: 'completed',
           })
