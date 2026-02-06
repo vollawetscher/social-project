@@ -32,12 +32,12 @@ export async function POST(
     }
 
     const transcript = session.transcripts?.[0]
-    if (!transcript || !transcript.segments) {
+    if (!transcript || !transcript.raw_json) {
       return NextResponse.json({ error: 'No transcript found' }, { status: 400 })
     }
 
     // Build conversation sample (first 5 minutes or 2000 characters)
-    const segments = transcript.segments as any[]
+    const segments = transcript.raw_json as any[]
     const sample = segments
       .slice(0, Math.min(segments.length, 20))
       .map((seg: any) => `${seg.speaker}: ${seg.text}`)
