@@ -38,8 +38,25 @@ export default function UploadRecordingsPage() {
 
     if (user) {
       loadRecordings()
+      fetchUserPreferences()
     }
   }, [user, loading])
+
+  // Fetch user profile to get default language
+  const fetchUserPreferences = async () => {
+    if (!user) return
+    
+    try {
+      const response = await fetch('/api/profile')
+      if (response.ok) {
+        const profile = await response.json()
+        setLanguage(profile.default_recording_language || 'de')
+      }
+    } catch (error) {
+      console.error('Error fetching user preferences:', error)
+      // Keep default 'de' if fetch fails
+    }
+  }
 
   const loadRecordings = async () => {
     try {

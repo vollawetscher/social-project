@@ -2,19 +2,22 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Shield,
   Lock,
-  Eye,
   Clock,
   Database,
   Wifi,
-  Trash2,
   ExternalLink,
   Info,
   Check,
   AlertTriangle,
+  Languages,
+  Globe,
+  Zap,
+  Loader2,
+  Save,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -39,22 +42,273 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert"
+import { toast } from "sonner"
+import { useAuth } from "@/lib/auth/AuthProvider"
+import { UserProfile, SUPPORTED_LANGUAGES, TIMEZONES, AFTER_TRANSCRIPT_ACTIONS } from "@/lib/types/profile"
 
 export default function SettingsPage() {
+  const { user, loading: authLoading } = useAuth()
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  
+  // Form state
+  const [defaultRecordingLanguage, setDefaultRecordingLanguage] = useState("de")
+  const [preferredReportLanguage, setPreferredReportLanguage] = useState("de")
+  const [timezone, setTimezone] = useState("Europe/Berlin")
+  const [afterTranscriptAction, setAfterTranscriptAction] = useState<string>("nothing")
   const [sessionTimeout, setSessionTimeout] = useState(true)
-  const [piiRedactionDefault, setPiiRedactionDefault] = useState(true)
   const [retentionPolicy, setRetentionPolicy] = useState("90")
+
+  // Fetch user profile on mount
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch('/api/profile')
+        if (!response.ok) throw new Error('Failed to fetch profile')
+        
+        const data: UserProfile = await response.json()
+        setProfile(data)
+        
+        // Populate form with profile data
+        setDefaultRecordingLanguage(data.default_recording_language || 'de')
+        setPreferredReportLanguage(data.preferred_report_language || 'de')
+        setTimezone(data.timezone || 'Europe/Berlin')
+        setAfterTranscriptAction(data.after_transcript_action || 'nothing')
+      } catch (error) {
+        console.error('Error fetching profile:', error)
+        toast.error('Failed to load settings')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (!authLoading) {
+      fetchProfile()
+    }
+  }, [user, authLoading])
+
+  // Save profile changes
+  const handleSave = async () => {
+    if (!user) return
+
+    setSaving(true)
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          default_recording_language: defaultRecordingLanguage,
+          preferred_report_language: preferredReportLanguage,
+          timezone: timezone,
+          after_transcript_action: afterTranscriptAction,
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to save settings')
+      
+      const updatedProfile = await response.json()
+      setProfile(updatedProfile)
+      toast.success('Settings saved successfully')
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      toast.error('Failed to save settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (authLoading || loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-12 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+        <p className="text-sm text-muted-foreground mt-4">Loading settings...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto py-12 text-center">
+        <AlertTriangle className="h-12 w-12 mx-auto text-warning mb-4" />
+        <h2 className="text-lg font-semibold">Authentication Required</h2>
+        <p className="text-sm text-muted-foreground mt-2">Please log in to access settings</p>
+      </div>
+    )
+  }
 
   return (
     <TooltipProvider>
       <div className="max-w-4xl space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your security, privacy, and integration preferences
-          </p>
+        {/* Header with Save Button */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage your language, workflow, and integration preferences
+            </p>
+          </div>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
         </div>
+
+        {/* Language Preferences */}
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Languages className="h-5 w-5" />
+              Language Preferences
+            </CardTitle>
+            <CardDescription>
+              Set your default languages for transcription and reports
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Default Recording Language */}
+            <div className="space-y-2">
+              <Label htmlFor="recording-language" className="font-medium">
+                Default Recording Language
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Language used for audio transcription (you can override per session)
+              </p>
+              <Select value={defaultRecordingLanguage} onValueChange={setDefaultRecordingLanguage}>
+                <SelectTrigger className="w-full bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Preferred Report Language */}
+            <div className="space-y-2">
+              <Label htmlFor="report-language" className="font-medium">
+                Preferred Report Language
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Language used for AI-generated reports and summaries
+              </p>
+              <Select value={preferredReportLanguage} onValueChange={setPreferredReportLanguage}>
+                <SelectTrigger className="w-full bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <SelectItem key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Timezone */}
+            <div className="space-y-2">
+              <Label htmlFor="timezone" className="font-medium flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Timezone
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Used for displaying timestamps in sessions and reports
+              </p>
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger className="w-full bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONES.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Workflow Automation */}
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Workflow Automation
+            </CardTitle>
+            <CardDescription>
+              Automatic actions after transcription completes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* After Transcript Action */}
+            <div className="space-y-3">
+              <Label htmlFor="after-transcript" className="font-medium">
+                After Transcript Completes
+              </Label>
+              <p className="text-sm text-muted-foreground mb-3">
+                Choose what happens automatically after a recording is transcribed
+              </p>
+              <div className="space-y-2">
+                {AFTER_TRANSCRIPT_ACTIONS.map((action) => (
+                  <div
+                    key={action.value}
+                    onClick={() => setAfterTranscriptAction(action.value)}
+                    className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                      afterTranscriptAction === action.value
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                        afterTranscriptAction === action.value
+                          ? 'border-primary'
+                          : 'border-muted-foreground'
+                      }`}>
+                        {afterTranscriptAction === action.value && (
+                          <div className="h-2 w-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">{action.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{action.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Alert className="border-info/30 bg-info/10">
+              <Info className="h-4 w-4 text-info" />
+              <AlertDescription className="text-foreground/80">
+                You can always manually generate additional reports or summaries from any session, 
+                regardless of this setting.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
 
         {/* Security Section */}
         <Card className="border-border">
@@ -107,45 +361,18 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Privacy Section */}
+        {/* Privacy & Data Retention */}
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              Privacy
+              <Database className="h-5 w-5" />
+              Privacy & Data Retention
             </CardTitle>
             <CardDescription>
               GDPR compliance and data handling preferences
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* PII Redaction Default */}
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="pii-default" className="font-medium">
-                    Default PII Redaction
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[200px]">
-                      When enabled, all new sessions will have PII redaction turned on by default
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Automatically redact emails, phone numbers, and addresses
-                </p>
-              </div>
-              <Switch
-                id="pii-default"
-                checked={piiRedactionDefault}
-                onCheckedChange={setPiiRedactionDefault}
-              />
-            </div>
-
             {/* Retention Policy */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -184,57 +411,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* PWA / Offline Section */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wifi className="h-5 w-5" />
-              Offline & PWA
-            </CardTitle>
-            <CardDescription>
-              Progressive Web App and offline cache settings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                  <Label className="font-medium">Offline Cache Size</Label>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  IndexedDB storage used for offline access
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-foreground">245 MB</p>
-                <p className="text-xs text-muted-foreground">of 500 MB limit</p>
-              </div>
-            </div>
-
-            <div className="h-2 rounded-full bg-secondary overflow-hidden">
-              <div className="h-full w-[49%] bg-info rounded-full" />
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-success" />
-                <span className="text-sm text-foreground">
-                  3 sessions cached for offline access
-                </span>
-              </div>
-              <Button variant="outline" size="sm" className="text-destructive bg-transparent">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear Cache
-              </Button>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              Cached sessions are stored locally using IndexedDB and encrypted at rest.
-              They will sync automatically when you reconnect.
-            </p>
-          </CardContent>
-        </Card>
 
         {/* Integrations Section */}
         <Card className="border-border">

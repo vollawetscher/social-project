@@ -190,6 +190,22 @@ export default function SessionsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
+  // Fetch user profile to get default language
+  const fetchUserPreferences = async () => {
+    if (!user) return
+    
+    try {
+      const response = await fetch('/api/profile')
+      if (response.ok) {
+        const profile = await response.json()
+        setLanguage(profile.default_recording_language || 'de')
+      }
+    } catch (error) {
+      console.error('Error fetching user preferences:', error)
+      // Keep default 'de' if fetch fails
+    }
+  }
+
   // Fetch real sessions from API
   const fetchSessions = async () => {
     try {
@@ -206,7 +222,8 @@ export default function SessionsPage() {
 
   useEffect(() => {
     fetchSessions()
-  }, [])
+    fetchUserPreferences()
+  }, [user])
 
   // Recording timer effect
   useEffect(() => {

@@ -17,7 +17,11 @@
 | phone_number | text | YES | - | Added 20260119 |
 | email_verified | boolean | NO | false | Added 20260119 |
 | auto_generate_reports | boolean | NO | false | Added 20260131 |
-| preferred_report_language | text | YES | - | Added 20260129 |
+| preferred_report_language | text | NO | 'de' | **Added 20260205** - Language for AI reports |
+| default_recording_language | text | NO | 'de' | **Added 20260205** - Default for transcription |
+| timezone | text | NO | 'Europe/Berlin' | **Added 20260205** - User timezone (IANA) |
+| after_transcript_action | text | NO | 'nothing' | **Added 20260205** - Auto action after transcription |
+| preferences | jsonb | YES | '{}' | Added 20260131 - Additional preferences |
 
 ### `sessions`
 | Column | Type | Nullable | Default | Notes |
