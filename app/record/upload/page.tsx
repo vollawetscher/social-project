@@ -107,16 +107,35 @@ export default function UploadRecordingsPage() {
       .from('rohbericht-audio')
       .getPublicUrl(fileName)
 
-    // Update session with audio URL and storage path
+    // Update session with audio URL, duration and status
     const { error: updateError } = await supabase
       .from('sessions')
       .update({ 
         audio_url: publicUrl,
+        duration_sec: recording.duration,
         status: 'uploading'
       })
       .eq('id', session.id)
 
     if (updateError) throw updateError
+
+    // Create file record (required for transcription)
+    const { error: fileError } = await supabase
+      .from('files')
+      .insert({
+        session_id: session.id,
+        storage_path: fileName,
+        original_filename: `recording_${timestamp}.${extension}`,
+        mime_type: recording.mimeType,
+        file_size: recording.size,
+        file_purpose: 'recording',
+        upload_status: 'completed',
+      })
+
+    if (fileError) {
+      console.error('File record creation error:', fileError)
+      throw fileError
+    }
 
     // Trigger transcription
     try {
