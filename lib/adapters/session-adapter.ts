@@ -38,11 +38,31 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     ? transformTranscriptSegments(additionalData.transcript.raw_json)
     : []
 
+  // Map language codes to display names
+  const getLanguageDisplay = (langCode: string) => {
+    const languageMap: Record<string, string> = {
+      'de': 'German (Deutsch)',
+      'en': 'English',
+      'es': 'Spanish (Español)',
+      'fr': 'French (Français)',
+      'it': 'Italian (Italiano)',
+      'pt': 'Portuguese (Português)',
+      'nl': 'Dutch (Nederlands)',
+      'pl': 'Polish (Polski)',
+    }
+    return languageMap[langCode] || langCode.toUpperCase()
+  }
+
+  // Get language: prefer transcript language, then session language, finally default to English
+  const languageCode = additionalData?.transcript?.language || 
+                       (dbSession as any).language || 
+                       'en'
+  
   return {
     id: dbSession.id,
     filename: additionalData?.filename || dbSession.internal_case_id || `Session ${dbSession.id.slice(0, 8)}`,
     duration: dbSession.duration_sec || 0,
-    language: additionalData?.transcript?.language || 'English',
+    language: getLanguageDisplay(languageCode),
     createdAt: dbSession.created_at,
     status: mapStatus(dbSession.status),
     piiRedactionEnabled: false, // TODO: Get from user preferences or session metadata
