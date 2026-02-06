@@ -185,7 +185,7 @@ export default function SessionsPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [uploadingFiles, setUploadingFiles] = useState(false)
-  const [language, setLanguage] = useState<string>('en')
+  const [language, setLanguage] = useState<string>('de') // Default to German
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()

@@ -25,7 +25,7 @@ export default function UploadRecordingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [uploadStatuses, setUploadStatuses] = useState<Map<string, UploadStatus>>(new Map())
   const [uploading, setUploading] = useState(false)
-  const [language, setLanguage] = useState<string>('en')
+  const [language, setLanguage] = useState<string>('de') // Default to German
   const router = useRouter()
   const { user, loading } = useAuth()
   const supabase = createClient()
