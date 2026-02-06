@@ -105,6 +105,9 @@ export default function SessionDetailPage() {
         if (response.ok) {
           const data = await response.json()
           setAnalysis(data)
+        } else if (response.status === 400) {
+          // Transcript not ready yet, skip silently
+          console.log('Transcript not ready for analysis yet')
         }
       } catch (error) {
         console.error('Error analyzing session:', error)
@@ -114,7 +117,11 @@ export default function SessionDetailPage() {
     }
     
     fetchSession()
-    analyzeSession()
+    // Only analyze if session is ready (has transcript)
+    fetchSession().then(() => {
+      // Wait a bit to see if transcript exists
+      setTimeout(() => analyzeSession(), 1000)
+    })
   }, [sessionId])
 
   if (loading) {

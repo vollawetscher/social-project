@@ -324,15 +324,37 @@ export default function SessionsPage() {
           .from('rohbericht-audio')
           .getPublicUrl(fileName)
 
-        // Update session with audio URL
+        // Update session with audio URL and duration
+        const audioDuration = await getAudioDuration(file)
         const { error: updateError } = await supabase
           .from('sessions')
-          .update({ audio_url: publicUrl })
+          .update({ 
+            audio_url: publicUrl,
+            duration_sec: audioDuration 
+          })
           .eq('id', session.id)
 
         if (updateError) {
           console.error('Session update error:', updateError)
           throw new Error(`Failed to update session: ${updateError.message}`)
+        }
+
+        // Create file record (required for transcription)
+        const { error: fileError } = await supabase
+          .from('files')
+          .insert({
+            session_id: session.id,
+            storage_path: fileName,
+            original_filename: file.name,
+            mime_type: file.type || 'audio/mpeg',
+            file_size: file.size,
+            file_purpose: 'recording',
+            upload_status: 'completed',
+          })
+
+        if (fileError) {
+          console.error('File record creation error:', fileError)
+          throw new Error(`Failed to create file record: ${fileError.message}`)
         }
 
         // Trigger transcription
@@ -478,6 +500,22 @@ export default function SessionsPage() {
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     }
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Helper to get audio duration
+  const getAudioDuration = (file: File): Promise<number> => {
+    return new Promise((resolve) => {
+      const audio = document.createElement('audio')
+      audio.preload = 'metadata'
+      audio.onloadedmetadata = () => {
+        URL.revokeObjectURL(audio.src)
+        resolve(Math.floor(audio.duration))
+      }
+      audio.onerror = () => {
+        resolve(0) // Default to 0 if can't read
+      }
+      audio.src = URL.createObjectURL(file)
+    })
   }
 
   const filteredSessions = sessions.filter(session => 
