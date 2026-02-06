@@ -55,10 +55,10 @@ import { cn } from "@/lib/utils"
 
 const statusConfig: Record<
   SessionStatus,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string }
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string; animated?: boolean }
 > = {
-  uploading: { label: "Uploading", variant: "secondary", className: "bg-info/20 text-info border-info/30" },
-  transcribing: { label: "Transcribing", variant: "secondary", className: "bg-warning/20 text-warning border-warning/30" },
+  uploading: { label: "Uploading", variant: "secondary", className: "bg-info/20 text-info border-info/30 animate-pulse", animated: true },
+  transcribing: { label: "Transcribing", variant: "secondary", className: "bg-warning/20 text-warning border-warning/30 animate-pulse", animated: true },
   ready: { label: "Ready", variant: "default", className: "bg-success/20 text-success border-success/30" },
   failed: { label: "Failed", variant: "destructive" },
 }
@@ -755,10 +755,11 @@ export default function SessionsPage() {
                         <span>{formatDate(session.createdAt)}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge
+                        <Badge 
                           variant={status.variant}
                           className={cn("text-[10px]", status.className)}
                         >
+                          {status.animated && <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1 animate-ping" />}
                           {status.label}
                         </Badge>
                         {session.piiRedactionEnabled && (
@@ -882,6 +883,7 @@ export default function SessionsPage() {
                             variant={status.variant}
                             className={cn("w-fit", status.className)}
                           >
+                            {status.animated && <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-ping" />}
                             {status.label}
                           </Badge>
                           {session.status === "uploading" && (

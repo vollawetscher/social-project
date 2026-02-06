@@ -18,14 +18,48 @@ interface AudioPlayerProps {
   className?: string
 }
 
-export function AudioPlayer({ audioUrl, onTimeUpdate, className = '' }: AudioPlayerProps) {
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(1)
-  const [isMuted, setIsMuted] = useState(false)
-  const [playbackRate, setPlaybackRate] = useState(1)
+export interface AudioPlayerHandle {
+  seekTo: (time: number) => void
+  play: () => void
+  pause: () => void
+}
+
+export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>(
+  ({ audioUrl, onTimeUpdate, className = '' }, ref) => {
+    const audioRef = useRef<HTMLAudioElement>(null)
+    const [isPlaying, setIsPlaying] = useState(false)
+    const [currentTime, setCurrentTime] = useState(0)
+    const [duration, setDuration] = useState(0)
+    const [volume, setVolume] = useState(1)
+    const [isMuted, setIsMuted] = useState(false)
+    const [playbackRate, setPlaybackRate] = useState(1)
+
+    // Expose methods via ref
+    React.useImperativeHandle(ref, () => ({
+      seekTo: (time: number) => {
+        const audio = audioRef.current
+        if (!audio) return
+        audio.currentTime = time
+        setCurrentTime(time)
+        // Auto-play when seeking from transcript
+        if (!isPlaying) {
+          audio.play()
+          setIsPlaying(true)
+        }
+      },
+      play: () => {
+        const audio = audioRef.current
+        if (!audio) return
+        audio.play()
+        setIsPlaying(true)
+      },
+      pause: () => {
+        const audio = audioRef.current
+        if (!audio) return
+        audio.pause()
+        setIsPlaying(false)
+      }
+    }))
 
   useEffect(() => {
     const audio = audioRef.current
@@ -227,4 +261,6 @@ export function AudioPlayer({ audioUrl, onTimeUpdate, className = '' }: AudioPla
       </div>
     </div>
   )
-}
+})
+
+AudioPlayer.displayName = 'AudioPlayer'

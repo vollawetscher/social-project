@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -47,6 +47,14 @@ export default function SessionDetailPage() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<any>(null)
   const [currentAudioTime, setCurrentAudioTime] = useState(0)
+  const audioPlayerRef = useRef<any>(null)
+
+  // Handle seeking to a specific time from transcript click
+  const handleSeekToTime = (time: number) => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.seekTo(time)
+    }
+  }
 
   // Fetch real session data
   useEffect(() => {
@@ -278,7 +286,11 @@ export default function SessionDetailPage() {
           </TabsList>
           <TabsContent value="transcript" className="flex-1 min-h-0 mt-0">
             <div className="h-full rounded-lg border border-border bg-card overflow-hidden">
-              <TranscriptViewer segments={session.transcript} />
+              <TranscriptViewer 
+                segments={session.transcript}
+                currentTime={currentAudioTime}
+                onSeek={handleSeekToTime}
+              />
             </div>
           </TabsContent>
           <TabsContent value="context" className="flex-1 min-h-0 mt-0">
@@ -362,6 +374,7 @@ export default function SessionDetailPage() {
           {/* Audio Player */}
           {session.audioUrl && (
             <AudioPlayer
+              ref={audioPlayerRef}
               audioUrl={session.audioUrl}
               onTimeUpdate={setCurrentAudioTime}
             />
@@ -369,10 +382,11 @@ export default function SessionDetailPage() {
           
           {/* Transcript */}
           <div className="flex-1 rounded-lg border border-border bg-card overflow-hidden">
-            <TranscriptViewer 
-              segments={session.transcript}
-              currentTime={currentAudioTime}
-            />
+                      <TranscriptViewer 
+                        segments={session.transcript} 
+                        currentTime={currentAudioTime}
+                        onSeek={handleSeekToTime}
+                      />
           </div>
         </div>
 

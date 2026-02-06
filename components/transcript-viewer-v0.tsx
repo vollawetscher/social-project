@@ -7,6 +7,7 @@ import type { TranscriptSegment } from '@/lib/types-v0'
 interface TranscriptViewerProps {
   segments: TranscriptSegment[]
   currentTime?: number // Current audio playback time for highlighting
+  onSeek?: (time: number) => void // Callback when user clicks on a timestamp
 }
 
 // Speaker colors for visual distinction
@@ -19,7 +20,7 @@ const SPEAKER_COLORS = [
   'bg-cyan-500/20 text-cyan-700 border-cyan-500/30 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30',
 ]
 
-export function TranscriptViewer({ segments, currentTime = 0 }: TranscriptViewerProps) {
+export function TranscriptViewer({ segments, currentTime = 0, onSeek }: TranscriptViewerProps) {
   if (!segments || segments.length === 0) {
     return (
       <div className="flex items-center justify-center h-full p-8">
@@ -64,11 +65,18 @@ export function TranscriptViewer({ segments, currentTime = 0 }: TranscriptViewer
               key={index} 
               className={cn(
                 "flex gap-3 group hover:bg-muted/50 -mx-2 px-2 py-2 rounded-md transition-colors",
-                isActive && "bg-primary/10 border-l-2 border-primary"
+                isActive && "bg-primary/10 border-l-2 border-primary",
+                onSeek && "cursor-pointer"
               )}
+              onClick={() => onSeek && onSeek(segment.startTime)}
+              role={onSeek ? "button" : undefined}
+              tabIndex={onSeek ? 0 : undefined}
             >
               {/* Timestamp */}
-              <div className="text-xs text-muted-foreground font-mono pt-1 min-w-[60px] shrink-0 tabular-nums">
+              <div className={cn(
+                "text-xs text-muted-foreground font-mono pt-1 min-w-[60px] shrink-0 tabular-nums",
+                onSeek && "group-hover:text-primary transition-colors"
+              )}>
                 {formatTimestamp(segment.startTime)}
               </div>
               
