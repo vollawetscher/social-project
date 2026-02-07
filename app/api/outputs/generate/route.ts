@@ -162,6 +162,20 @@ Please generate the requested output following all requirements and guidelines.`
     }
 
     // Save the output to database
+    console.log('[Generate Output] Saving to database...')
+    console.log('[Generate Output] Insert data:', {
+      session_id: sessionId,
+      template_id: config.templateId || null,
+      template_name: template?.name || 'Custom Output',
+      perspective: config.perspective || 'observer',
+      audience: config.audience || 'internal',
+      language: config.language || 'en',
+      tone: config.tone,
+      format: config.format,
+      content_length: generatedContent.length,
+      created_by: user.id,
+    })
+    
     const { data: output, error: insertError } = await supabase
       .from('outputs')
       .insert({
@@ -182,9 +196,17 @@ Please generate the requested output following all requirements and guidelines.`
       .single()
 
     if (insertError || !output) {
-      console.error('Error saving output:', insertError)
-      return NextResponse.json({ error: 'Failed to save output' }, { status: 500 })
+      console.error('[Generate Output] Database insert error:', insertError)
+      console.error('[Generate Output] Error details:', JSON.stringify(insertError, null, 2))
+      return NextResponse.json({ 
+        error: 'Failed to save output',
+        details: insertError,
+        message: insertError?.message,
+        code: insertError?.code
+      }, { status: 500 })
     }
+    
+    console.log('[Generate Output] Output saved successfully:', output.id)
 
     // Return the generated output
     return NextResponse.json({
