@@ -99,7 +99,19 @@ Be concise and accurate. Base your analysis on the conversation style, topics, a
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
     console.log('[Analyze API] Claude response:', responseText.substring(0, 200))
     
-    const analysis = JSON.parse(responseText)
+    // Extract JSON from markdown code blocks if present
+    let jsonText = responseText.trim()
+    
+    // Remove markdown code blocks (```json ... ``` or ``` ... ```)
+    if (jsonText.startsWith('```')) {
+      const jsonMatch = jsonText.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+      if (jsonMatch) {
+        jsonText = jsonMatch[1].trim()
+      }
+    }
+    
+    console.log('[Analyze API] Extracted JSON:', jsonText.substring(0, 200))
+    const analysis = JSON.parse(jsonText)
     console.log('[Analyze API] Parsed analysis:', analysis)
 
     // Update session with suggestions
