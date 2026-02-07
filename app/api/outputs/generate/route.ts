@@ -66,15 +66,20 @@ export async function POST(request: Request) {
     }
 
     // Build the generation prompt
-    const transcriptText = transcript.text || ''
-    const speakers = transcript.raw_json?.results?.speakers || []
+    const transcriptText = transcript.raw_text || transcript.redacted_text || ''
+    console.log('[Generate Output] Transcript text length:', transcriptText.length)
+    
+    // Extract speakers from raw_json segments
+    const segments = transcript.raw_json as any[]
+    const uniqueSpeakers = Array.from(new Set(segments.map((s: any) => s.speaker).filter(Boolean)))
     
     let speakersText = ''
-    if (speakers.length > 0) {
-      speakersText = '\n\nSpeakers identified:\n' + speakers.map((s: any) => 
-        `- ${s.name} (Speaker ${s.id})`
+    if (uniqueSpeakers.length > 0) {
+      speakersText = '\n\nSpeakers identified:\n' + uniqueSpeakers.map((speaker, idx) => 
+        `- ${speaker}`
       ).join('\n')
     }
+    console.log('[Generate Output] Speakers found:', uniqueSpeakers.length)
 
     const perspectiveMap: Record<string, string> = {
       party_a: 'first speaker (party A)',
@@ -134,11 +139,19 @@ ${config.doInstructions}`
 ${config.dontInstructions}`
     }
 
+    // Validate transcript exists
+    if (!transcriptText || transcriptText.length < 10) {
+      console.error('[Generate Output] Transcript is empty or too short')
+      return NextResponse.json({ error: 'No transcript content available' }, { status: 400 })
+    }
+
     const userPrompt = `Conversation transcript:
 
 ${transcriptText}${speakersText}
 
 Please generate the requested output following all requirements and guidelines.`
+    
+    console.log('[Generate Output] Prompt length:', userPrompt.length)
 
     // Generate with Claude
     const message = await anthropic.messages.create({
