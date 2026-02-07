@@ -81,6 +81,7 @@ export interface Session {
   transcript: TranscriptSegment[]
   extractedContext?: ExtractedContext
   audioUrl?: string // Optional audio file URL
+  outputCount?: number // Number of generated outputs for this session
 }
 
 export interface ExtractedContext {

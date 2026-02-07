@@ -71,6 +71,8 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     transcript: transcriptSegments,
     audioUrl: (dbSession as any).audio_url, // Include audio URL if available
     domain: (dbSession as any).recording_type || 'general',
+    outputCount: (dbSession as any).output_count || 0, // Number of generated outputs
+    extractedContext: (dbSession as any).ai_extracted_context || {}, // AI-extracted rich context
   }
 }
 

@@ -12,9 +12,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const format = searchParams.get('format')
 
+    // Fetch sessions with output count
     const { data: sessions, error } = await supabase
       .from('sessions')
-      .select('*')
+      .select(`
+        *,
+        outputs:outputs(count)
+      `)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -22,14 +26,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message, details: error }, { status: 500 })
     }
 
-    console.log('Found sessions:', sessions?.length || 0)
+    // Transform to include output_count
+    const sessionsWithCount = sessions?.map(session => {
+      const outputCount = session.outputs?.[0]?.count || 0
+      const { outputs, ...rest } = session
+      return {
+        ...rest,
+        output_count: outputCount
+      }
+    })
+
+    console.log('Found sessions:', sessionsWithCount?.length || 0)
     
     // Return v0 format if requested
-    if (format === 'v0' && sessions) {
-      return NextResponse.json(toV0Sessions(sessions))
+    if (format === 'v0' && sessionsWithCount) {
+      return NextResponse.json(toV0Sessions(sessionsWithCount))
     }
     
-    return NextResponse.json(sessions || [])
+    return NextResponse.json(sessionsWithCount || [])
   } catch (error) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)

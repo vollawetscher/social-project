@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import {
   ChevronDown,
   ChevronUp,
@@ -13,6 +14,8 @@ import {
   Target,
   ListTodo,
   MapPin,
+  Save,
+  Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -110,15 +113,137 @@ export function SessionSetupPanel({
   const [agenda, setAgenda] = useState(session.extractedContext?.agenda.join("\n") || "")
   const [venue, setVenue] = useState(session.extractedContext?.venue || "")
 
+  // Track if changes have been made
+  const [hasChanges, setHasChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Initial values for comparison
+  const [initialValues, setInitialValues] = useState({
+    recordingType: session.recordingType,
+    domain: session.domain,
+    participants,
+    purpose,
+    agenda,
+    venue
+  })
+
+  // Update initial values when session changes (e.g., after AI analysis)
+  useEffect(() => {
+    setInitialValues({
+      recordingType: session.recordingType,
+      domain: session.domain,
+      participants: session.extractedContext?.participants.join(", ") || "",
+      purpose: session.extractedContext?.purpose || "",
+      agenda: session.extractedContext?.agenda.join("\n") || "",
+      venue: session.extractedContext?.venue || ""
+    })
+    setParticipants(session.extractedContext?.participants.join(", ") || "")
+    setPurpose(session.extractedContext?.purpose || "")
+    setAgenda(session.extractedContext?.agenda.join("\n") || "")
+    setVenue(session.extractedContext?.venue || "")
+    setSelectedRecordingType(session.recordingType)
+    setSelectedDomain(session.domain)
+  }, [session])
+
+  // Check for changes
+  useEffect(() => {
+    const changed = 
+      selectedRecordingType !== initialValues.recordingType ||
+      selectedDomain !== initialValues.domain ||
+      participants !== initialValues.participants ||
+      purpose !== initialValues.purpose ||
+      agenda !== initialValues.agenda ||
+      venue !== initialValues.venue
+    setHasChanges(changed)
+  }, [selectedRecordingType, selectedDomain, participants, purpose, agenda, venue, initialValues])
+
+  // Save context
+  const handleSaveContext = async () => {
+    setIsSaving(true)
+    try {
+      const response = await fetch(`/api/sessions/${session.id}/context`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recordingType: selectedRecordingType,
+          domains: selectedDomain ? [{ domain: selectedDomain, confidence: 1.0 }] : [],
+          extractedContext: {
+            participants: participants.split(',').map(p => p.trim()).filter(Boolean),
+            purpose,
+            agenda: agenda.split('\n').filter(Boolean),
+            venue
+          },
+          lockContext: true
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save context')
+      }
+
+      const data = await response.json()
+      
+      // Update initial values to reflect saved state
+      setInitialValues({
+        recordingType: selectedRecordingType,
+        domain: selectedDomain,
+        participants,
+        purpose,
+        agenda,
+        venue
+      })
+      setHasChanges(false)
+      
+      toast.success('Context saved successfully', {
+        description: 'Your selections won\'t be overwritten by AI analysis'
+      })
+    } catch (error) {
+      console.error('Error saving context:', error)
+      toast.error('Failed to save context', {
+        description: error instanceof Error ? error.message : 'Unknown error'
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-4 p-4 h-full overflow-auto">
+        {/* Save Button - Visible when changes detected */}
+        {hasChanges && (
+          <Button 
+            onClick={handleSaveContext}
+            disabled={isSaving}
+            className="w-full sticky top-0 z-10 shadow-md"
+            size="sm"
+          >
+            {isSaving ? (
+              <>
+                <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-3.5 w-3.5 mr-2" />
+                Save Context & Lock AI Suggestions
+              </>
+            )}
+          </Button>
+        )}
+
         {/* AI Suggestions */}
         <Card className="border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-info" />
               AI Suggestions
+              {initialValues.recordingType && (
+                <Badge variant="outline" className="text-[10px] ml-auto">
+                  <Check className="h-3 w-3 mr-1" />
+                  Locked
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
