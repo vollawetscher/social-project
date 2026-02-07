@@ -1,7 +1,24 @@
 # Improvement Roadmap
 
 ## Date: February 7, 2026
-## Status: Post-MVP Feature Enhancements
+## Status: Phase 1 COMPLETE ✅ | Phase 2 Pending
+
+---
+
+## ✅ PHASE 1 IMPLEMENTED (2026-02-07)
+
+**Status:** Complete and pushed to dev branch  
+**Commit:** `5f9f5b7` - feat: Phase 1 Core Usability Improvements
+
+**What was implemented:**
+1. ✅ **Save AI Suggestions & Manual Overrides** - Database columns, API endpoint, UI save button
+2. ✅ **Show Output Count in Sessions List** - JOIN query, badges on sessions list
+3. ✅ **Enhanced AI Context Extraction** - Participants, purpose, agenda, venue, decisions, action items
+
+**Next Steps:**
+- User must run migration: `supabase/migrations/20260207_phase1_improvements.sql`
+- Test all features (checklist in `PHASE1_IMPLEMENTATION_COMPLETE.md`)
+- Proceed to Phase 2 if Phase 1 tests pass
 
 ---
 
