@@ -58,6 +58,8 @@ export function GenerateOutputModal({
   template,
   session,
 }: GenerateOutputModalProps) {
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [selectedTemplate, setSelectedTemplate] = useState<string>(template?.id || "")
   const [selectedPerspective, setSelectedPerspective] = useState<ParticipantRole | "">("")
   const [selectedAudience, setSelectedAudience] = useState<Audience | "">("")
@@ -71,6 +73,29 @@ export function GenerateOutputModal({
   const [perspectiveConfirmed, setPerspectiveConfirmed] = useState(false)
   const [audienceConfirmed, setAudienceConfirmed] = useState(false)
   const [generating, setGenerating] = useState(false)
+
+  // Fetch real templates from API
+  useEffect(() => {
+    async function fetchTemplates() {
+      try {
+        const response = await fetch('/api/templates')
+        if (response.ok) {
+          const data = await response.json()
+          // Use real templates if available, otherwise fall back to mock
+          setTemplates(data.length > 0 ? data : mockTemplates)
+        } else {
+          // Fallback to mock if API fails
+          setTemplates(mockTemplates)
+        }
+      } catch (error) {
+        console.error('Error fetching templates:', error)
+        setTemplates(mockTemplates)
+      } finally {
+        setLoadingTemplates(false)
+      }
+    }
+    fetchTemplates()
+  }, [])
 
   // Get speakers with their roles for perspective selection
   const sessionSpeakers = session.speakers.filter(s => s.participantRole !== 'observer')
@@ -88,7 +113,7 @@ export function GenerateOutputModal({
     }
   }, [template])
 
-  const currentTemplate = mockTemplates.find((t) => t.id === selectedTemplate)
+  const currentTemplate = templates.find((t) => t.id === selectedTemplate)
 
   const isPerspectiveValid = selectedPerspective !== "" && perspectiveConfirmed
   const isAudienceValid = selectedAudience !== "" && audienceConfirmed
@@ -208,12 +233,12 @@ export function GenerateOutputModal({
             {/* Template Selection */}
             <div className="space-y-2">
               <Label>Template</Label>
-              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate} disabled={loadingTemplates}>
                 <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Select a template..." />
+                  <SelectValue placeholder={loadingTemplates ? "Loading templates..." : "Select a template..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockTemplates.map((t) => (
+                  {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
                     </SelectItem>
