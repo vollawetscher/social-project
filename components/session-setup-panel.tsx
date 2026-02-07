@@ -107,10 +107,10 @@ export function SessionSetupPanel({
   const [citeTimestamps, setCiteTimestamps] = useState(true)
 
   const [participants, setParticipants] = useState(
-    session.extractedContext?.participants.join(", ") || ""
+    session.extractedContext?.participants?.join(", ") || ""
   )
   const [purpose, setPurpose] = useState(session.extractedContext?.purpose || "")
-  const [agenda, setAgenda] = useState(session.extractedContext?.agenda.join("\n") || "")
+  const [agenda, setAgenda] = useState(session.extractedContext?.agenda?.join("\n") || "")
   const [venue, setVenue] = useState(session.extractedContext?.venue || "")
 
   // Track if changes have been made
@@ -132,14 +132,14 @@ export function SessionSetupPanel({
     setInitialValues({
       recordingType: session.recordingType,
       domain: session.domain,
-      participants: session.extractedContext?.participants.join(", ") || "",
+      participants: session.extractedContext?.participants?.join(", ") || "",
       purpose: session.extractedContext?.purpose || "",
-      agenda: session.extractedContext?.agenda.join("\n") || "",
+      agenda: session.extractedContext?.agenda?.join("\n") || "",
       venue: session.extractedContext?.venue || ""
     })
-    setParticipants(session.extractedContext?.participants.join(", ") || "")
+    setParticipants(session.extractedContext?.participants?.join(", ") || "")
     setPurpose(session.extractedContext?.purpose || "")
-    setAgenda(session.extractedContext?.agenda.join("\n") || "")
+    setAgenda(session.extractedContext?.agenda?.join("\n") || "")
     setVenue(session.extractedContext?.venue || "")
     setSelectedRecordingType(session.recordingType)
     setSelectedDomain(session.domain)
