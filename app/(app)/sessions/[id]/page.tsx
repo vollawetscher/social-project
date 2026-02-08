@@ -412,16 +412,20 @@ export default function SessionDetailPage() {
               ) : (
                 <div className="space-y-3">
                   {outputs.map((output) => (
-                    <div key={output.id} className="p-3 border border-border rounded-lg">
+                    <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium">{output.templateName}</h4>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium truncate">{output.templateName}</h4>
                           <p className="text-xs text-muted-foreground">
-                            {output.audience} · {output.perspective} · {output.tone}
+                            {new Date(output.createdAt).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Badge variant="outline" className="text-xs mr-1">{output.format}</Badge>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -429,13 +433,12 @@ export default function SessionDetailPage() {
                             onClick={async () => {
                               try {
                                 await navigator.clipboard.writeText(output.content)
-                                alert('Copied to clipboard!')
+                                toast.success('Output copied to clipboard')
                               } catch (err) {
-                                console.error('Failed to copy:', err)
-                                alert('Failed to copy to clipboard')
+                                toast.error('Failed to copy to clipboard')
                               }
                             }}
-                            title="Copy to clipboard"
+                            title="Copy"
                           >
                             <Copy className="h-3.5 w-3.5" />
                           </Button>
@@ -444,19 +447,31 @@ export default function SessionDetailPage() {
                             size="icon"
                             className="h-7 w-7"
                             onClick={() => {
-                              const blob = new Blob([output.content], { type: 'text/plain' })
+                              const blob = new Blob([output.content], { type: 'text/markdown' })
                               const url = window.URL.createObjectURL(blob)
                               const a = document.createElement('a')
                               a.href = url
-                              a.download = `${output.templateName}-${output.perspective}-${output.audience}.txt`
+                              a.download = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}.md`
                               document.body.appendChild(a)
                               a.click()
                               window.URL.revokeObjectURL(url)
                               document.body.removeChild(a)
+                              toast.success('Output downloaded')
                             }}
                             title="Download"
                           >
                             <Download className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            asChild
+                            title="Open full page"
+                          >
+                            <Link href={`/outputs/${output.id}`}>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
                           </Button>
                         </div>
                       </div>
