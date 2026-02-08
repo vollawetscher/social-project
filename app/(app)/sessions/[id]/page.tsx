@@ -416,13 +416,23 @@ export default function SessionDetailPage() {
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
                           <h4 className="text-sm font-medium truncate">{output.templateName}</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(output.createdAt).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
+                          <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>
+                              {new Date(output.createdAt).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            {output.language && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  {output.language === 'en' ? 'English' : output.language === 'de' ? 'German' : output.language}
+                                </span>
+                              </>
+                            )}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">

@@ -110,14 +110,19 @@ export default function SettingsPage() {
         })
       })
 
-      if (!response.ok) throw new Error('Failed to save settings')
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Error response from API:', errorData)
+        throw new Error(errorData.error || 'Failed to save settings')
+      }
       
       const updatedProfile = await response.json()
       setProfile(updatedProfile)
       toast.success('Settings saved successfully')
     } catch (error) {
       console.error('Error saving settings:', error)
-      toast.error('Failed to save settings')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save settings'
+      toast.error(errorMessage)
     } finally {
       setSaving(false)
     }
@@ -172,7 +177,7 @@ export default function SettingsPage() {
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Languages className="h-5 w-5" />
+              <Globe className="h-5 w-5" />
               Language Preferences
             </CardTitle>
             <CardDescription>

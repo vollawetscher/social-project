@@ -18,6 +18,7 @@ import {
   Eye,
   Search,
   X,
+  Globe,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -421,6 +422,10 @@ export default function OutputsPage() {
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {formatDate(output.createdAt)}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Globe className="h-3 w-3" />
+                        {output.language === 'en' ? 'English' : output.language === 'de' ? 'German' : output.language}
                       </span>
                       <span className="capitalize">{output.tone} tone</span>
                     </div>

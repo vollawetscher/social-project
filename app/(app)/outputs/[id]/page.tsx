@@ -322,7 +322,7 @@ export default function OutputDetailPage() {
             ) : isPublic ? (
               <>
                 <LinkIcon className="h-4 w-4" />
-                Copy
+                Share
               </>
             ) : (
               <>
