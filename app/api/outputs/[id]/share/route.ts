@@ -27,12 +27,21 @@ export async function POST(
       return NextResponse.json({ error: 'Output not found' }, { status: 404 })
     }
 
+    // Generate share token if needed
+    let shareToken = output.share_token
+    if (!shareToken) {
+      // Generate new UUID
+      const { data: tokenData } = await supabase.rpc('gen_random_uuid')
+      shareToken = tokenData || crypto.randomUUID()
+    }
+
     // Enable sharing
     const { data: updated, error: updateError } = await supabase
       .from('outputs')
       .update({
         is_public: true,
         shared_at: new Date().toISOString(),
+        share_token: shareToken,
       })
       .eq('id', params.id)
       .select('share_token')
@@ -43,12 +52,17 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to enable sharing' }, { status: 500 })
     }
 
+    const finalToken = updated?.share_token || shareToken
+    
     // Generate share URL
-    const shareUrl = `${request.headers.get('origin')}/share/${updated.share_token}`
+    const origin = request.headers.get('origin') || 'https://notissima.up.railway.app'
+    const shareUrl = `${origin}/share/${finalToken}`
+
+    console.log('[Share] Generated share URL:', shareUrl)
 
     return NextResponse.json({
       success: true,
-      shareToken: updated.share_token,
+      shareToken: finalToken,
       shareUrl,
       isPublic: true,
     })
