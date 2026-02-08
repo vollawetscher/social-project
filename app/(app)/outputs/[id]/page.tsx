@@ -20,6 +20,10 @@ import {
   Users,
   MessageSquare,
   Sparkles,
+  Share2,
+  Link as LinkIcon,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -54,6 +58,10 @@ export default function OutputDetailPage() {
   const [loading, setLoading] = useState(true)
   const [sections, setSections] = useState<CopyableSection[]>([])
   const [copiedAll, setCopiedAll] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [isPublic, setIsPublic] = useState(false)
+  const [copiedShareLink, setCopiedShareLink] = useState(false)
 
   useEffect(() => {
     fetchOutput()
@@ -71,12 +79,78 @@ export default function OutputDetailPage() {
       if (!response.ok) throw new Error('Failed to fetch output')
       const data = await response.json()
       setOutput(data)
+      
+      // Check if already shared
+      if (data.isPublic && data.shareToken) {
+        setIsPublic(true)
+        setShareUrl(`${window.location.origin}/share/${data.shareToken}`)
+      }
     } catch (error) {
       console.error('Error fetching output:', error)
       toast.error('Failed to load output')
       router.push('/outputs')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleShare() {
+    if (!output) return
+    
+    setIsSharing(true)
+    try {
+      const response = await fetch(`/api/outputs/${outputId}/share`, {
+        method: 'POST',
+      })
+      
+      if (!response.ok) throw new Error('Failed to enable sharing')
+      
+      const data = await response.json()
+      setShareUrl(data.shareUrl)
+      setIsPublic(true)
+      
+      // Auto-copy link
+      await navigator.clipboard.writeText(data.shareUrl)
+      setCopiedShareLink(true)
+      setTimeout(() => setCopiedShareLink(false), 2000)
+      
+      toast.success('Share link copied to clipboard!')
+    } catch (error) {
+      console.error('Error enabling sharing:', error)
+      toast.error('Failed to enable sharing')
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
+  async function handleCopyShareLink() {
+    if (!shareUrl) return
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopiedShareLink(true)
+      setTimeout(() => setCopiedShareLink(false), 2000)
+      toast.success('Share link copied!')
+    } catch (error) {
+      toast.error('Failed to copy link')
+    }
+  }
+
+  async function handleDisableSharing() {
+    if (!output) return
+    
+    try {
+      const response = await fetch(`/api/outputs/${outputId}/share`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) throw new Error('Failed to disable sharing')
+      
+      setIsPublic(false)
+      toast.success('Sharing disabled')
+    } catch (error) {
+      console.error('Error disabling sharing:', error)
+      toast.error('Failed to disable sharing')
     }
   }
 
@@ -216,7 +290,53 @@ export default function OutputDetailPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {!isPublic ? (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleShare}
+              disabled={isSharing}
+              className="gap-2"
+            >
+              {isSharing ? (
+                <>
+                  <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
+                  Sharing...
+                </>
+              ) : (
+                <>
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </>
+              )}
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyShareLink}
+                className="gap-2"
+              >
+                {copiedShareLink ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <LinkIcon className="h-4 w-4" />
+                )}
+                {copiedShareLink ? 'Copied!' : 'Copy Link'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDisableSharing}
+                className="gap-2 text-muted-foreground"
+              >
+                <EyeOff className="h-4 w-4" />
+                Disable
+              </Button>
+            </>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -252,6 +372,31 @@ export default function OutputDetailPage() {
           </Button>
         </div>
       </div>
+
+      {/* Share Status Banner */}
+      {isPublic && shareUrl && (
+        <Card className="border-success/50 bg-success/5">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm">
+              <Eye className="h-4 w-4 text-success" />
+              <span className="font-medium">This output is publicly shared</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyShareLink}
+              className="gap-2"
+            >
+              {copiedShareLink ? (
+                <Check className="h-3 w-3" />
+              ) : (
+                <LinkIcon className="h-3 w-3" />
+              )}
+              {copiedShareLink ? 'Copied!' : 'Copy Link'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Metadata */}
       <Card className="border-border">

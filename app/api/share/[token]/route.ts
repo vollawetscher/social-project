@@ -1,39 +1,39 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// Get shared output by token (public access, no auth required)
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { token: string } }
 ) {
   try {
     const supabase = await createClient()
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
-    // Fetch output with session info
+    // Fetch output by share token (no user filter - public access)
     const { data: output, error } = await supabase
       .from('outputs')
       .select(`
         *,
-        sessions!inner(id, internal_case_id),
-        templates(name)
+        sessions!inner(id, internal_case_id, user_id),
+        templates(name),
+        profiles!outputs_created_by_fkey(full_name, company_name)
       `)
-      .eq('id', params.id)
-      .eq('created_by', user.id)
+      .eq('share_token', params.token)
+      .eq('is_public', true)
       .single()
 
-    if (error) {
-      console.error('Error fetching output:', error)
-      return NextResponse.json({ error: 'Output not found' }, { status: 404 })
+    if (error || !output) {
+      console.error('Error fetching shared output:', error)
+      return NextResponse.json({ error: 'Shared output not found or no longer available' }, { status: 404 })
     }
 
-    if (!output) {
-      return NextResponse.json({ error: 'Output not found' }, { status: 404 })
-    }
+    // Increment view count (non-blocking)
+    supabase
+      .from('outputs')
+      .update({ view_count: (output.view_count || 0) + 1 })
+      .eq('id', output.id)
+      .then(() => console.log(`[Share] Incremented view count for output ${output.id}`))
+      .catch((err) => console.error('[Share] Failed to increment view count:', err))
 
     // Transform to v0 format
     const v0Output = {
@@ -49,18 +49,14 @@ export async function GET(
       format: output.format || 'markdown',
       content: output.content,
       createdAt: output.generated_at || output.created_at,
-      transcriptVersionHash: output.transcript_version_hash || output.id.slice(0, 8),
-      citeTimestamps: output.cite_timestamps !== false,
-      // Sharing info
-      isPublic: output.is_public || false,
-      shareToken: output.share_token,
-      viewCount: output.view_count || 0,
+      sharedBy: output.profiles?.full_name || output.profiles?.company_name || 'Notissima User',
+      viewCount: (output.view_count || 0) + 1, // Include the current view
       sharedAt: output.shared_at,
     }
 
     return NextResponse.json(v0Output)
   } catch (error: any) {
-    console.error('Error in GET /api/outputs/[id]:', error)
+    console.error('Error in GET /api/share/[token]:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
       message: error.message 
