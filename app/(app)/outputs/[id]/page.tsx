@@ -302,52 +302,35 @@ export default function OutputDetailPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          {!isPublic ? (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleShare}
-              disabled={isSharing}
-              className="gap-2"
-            >
-              {isSharing ? (
-                <>
-                  <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-                  Sharing...
-                </>
-              ) : (
-                <>
-                  <Share2 className="h-4 w-4" />
-                  Share
-                </>
-              )}
-            </Button>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCopyShareLink}
-                className="gap-2"
-              >
-                {copiedShareLink ? (
-                  <Check className="h-4 w-4 text-success" />
-                ) : (
-                  <LinkIcon className="h-4 w-4" />
-                )}
-                {copiedShareLink ? 'Copied!' : 'Copy Link'}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDisableSharing}
-                className="gap-2 text-muted-foreground"
-              >
-                <EyeOff className="h-4 w-4" />
-                Disable
-              </Button>
-            </>
-          )}
+          <Button
+            variant={isPublic ? "outline" : "default"}
+            size="sm"
+            onClick={isPublic ? handleCopyShareLink : handleShare}
+            disabled={isSharing}
+            className="gap-2"
+          >
+            {isSharing ? (
+              <>
+                <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
+                Sharing...
+              </>
+            ) : copiedShareLink ? (
+              <>
+                <Check className="h-4 w-4 text-success" />
+                Copied!
+              </>
+            ) : isPublic ? (
+              <>
+                <LinkIcon className="h-4 w-4" />
+                Copy Share Link
+              </>
+            ) : (
+              <>
+                <Share2 className="h-4 w-4" />
+                Share (3 Days)
+              </>
+            )}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -386,25 +369,12 @@ export default function OutputDetailPage() {
 
       {/* Share Status Banner */}
       {isPublic && shareUrl && (
-        <Card className="border-success/50 bg-success/5">
-          <CardContent className="p-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm">
-              <Eye className="h-4 w-4 text-success" />
-              <span className="font-medium">This output is publicly shared</span>
+        <Card className="border-info/50 bg-info/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-info">
+              <Eye className="h-4 w-4" />
+              <span className="font-medium">Publicly shared • Expires in 3 days</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyShareLink}
-              className="gap-2"
-            >
-              {copiedShareLink ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                <LinkIcon className="h-3 w-3" />
-              )}
-              {copiedShareLink ? 'Copied!' : 'Copy Link'}
-            </Button>
           </CardContent>
         </Card>
       )}
