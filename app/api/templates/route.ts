@@ -67,7 +67,8 @@ export async function POST(request: Request) {
       sections, 
       requiredInputs, 
       styleRules, 
-      suggestionTriggers 
+      suggestionTriggers,
+      instructions 
     } = body
 
     // Validate required fields
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
         required_inputs: requiredInputs || [],
         style_rules: styleRules || [],
         suggestion_triggers: suggestionTriggers || [],
+        instructions: instructions || `Generate a ${name} following the defined structure and style.`,
         created_by: user.id,
         is_system: false,
       })
