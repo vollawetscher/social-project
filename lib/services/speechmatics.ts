@@ -37,7 +37,7 @@ export class SpeechmaticsService {
         language: 'auto',
         operating_point: 'enhanced',
         diarization: 'speaker',
-        enable_entities: true,
+        enable_entities: false, // Disabled to preserve numbers in transcript
       },
     }
 
