@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Search, WifiOff, RefreshCw, Bell, User, LogOut, Settings, Mic } from "lucide-react"
+import { Logo } from "@/components/ui/logo"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -67,11 +68,8 @@ export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
         {/* Left: Logo (mobile) + Workspace + Search */}
         <div className="flex items-center gap-3">
           {/* Mobile Logo */}
-          <div className="flex md:hidden items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Mic className="h-4 w-4" />
-            </div>
-            <span className="font-semibold text-foreground">Notissima</span>
+          <div className="flex md:hidden">
+            <Logo variant="full" />
           </div>
           
           {/* Desktop Workspace */}

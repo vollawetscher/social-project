@@ -11,20 +11,51 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Gesprächsbericht',
-  description: 'Social work conversation transcription and reporting system',
+  title: 'Notissima - Professional Meeting Documentation',
+  description: 'AI-powered transcription and documentation for meetings, consultations, and conversations',
   manifest: '/manifest.json',
-  themeColor: '#3b82f6',
+  themeColor: '#7C3AED',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Gesprächsbericht',
+    title: 'Notissima',
   },
   viewport: {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
+  },
+  openGraph: {
+    title: 'Notissima - Professional Meeting Documentation',
+    description: 'AI-powered transcription and documentation for meetings, consultations, and conversations',
+    url: 'https://notissima.com',
+    siteName: 'Notissima',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Notissima',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Notissima - Professional Meeting Documentation',
+    description: 'AI-powered transcription and documentation for meetings, consultations, and conversations',
+    images: ['/og-image.png'],
   },
 };
 

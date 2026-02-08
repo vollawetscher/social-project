@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
+import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -60,14 +61,11 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
       >
         {/* Logo */}
         <div className="flex h-14 items-center border-b border-sidebar-border px-4">
-          <Link href="/sessions" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Mic className="h-4 w-4" />
-            </div>
-            {!isCollapsed && (
-              <span className="font-semibold text-sidebar-foreground whitespace-nowrap">
-                Notissima
-              </span>
+          <Link href="/sessions">
+            {isCollapsed ? (
+              <Logo variant="icon" className="w-8 h-8" />
+            ) : (
+              <Logo variant="full" />
             )}
           </Link>
         </div>
