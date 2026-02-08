@@ -8,20 +8,53 @@ export async function GET(
 ) {
   try {
     console.log('[Share] Looking up token:', params.token)
+    
+    // Create Supabase client with service role to bypass RLS for debugging
     const supabase = await createClient()
 
     // First check if output exists with this token (regardless of is_public)
+    console.log('[Share] Step 1: Checking if output exists...')
     const { data: checkOutput, error: checkError } = await supabase
       .from('outputs')
-      .select('id, is_public, share_token')
+      .select('id, is_public, share_token, created_by, share_expires_at')
       .eq('share_token', params.token)
       .maybeSingle()
 
-    console.log('[Share] Found output:', checkOutput ? `${checkOutput.id} (is_public: ${checkOutput.is_public})` : 'not found')
-    console.log('[Share] Check error:', checkError)
+    console.log('[Share] Check result:', {
+      found: !!checkOutput,
+      id: checkOutput?.id,
+      isPublic: checkOutput?.is_public,
+      expiresAt: checkOutput?.share_expires_at,
+      error: checkError
+    })
 
-    // Fetch output by share token (no user filter - public access)
-    // Use left join for sessions since anonymous users might not have access
+    if (!checkOutput) {
+      console.error('[Share] No output found with token:', params.token)
+      return NextResponse.json({ 
+        error: 'Shared output not found or no longer available',
+        debug: 'No output with this token exists in database'
+      }, { status: 404 })
+    }
+
+    if (!checkOutput.is_public) {
+      console.error('[Share] Output exists but is_public=false')
+      return NextResponse.json({ 
+        error: 'This output is not publicly shared',
+        debug: 'Output exists but is_public is false'
+      }, { status: 403 })
+    }
+
+    // Check expiration
+    if (checkOutput.share_expires_at && new Date(checkOutput.share_expires_at) < new Date()) {
+      console.error('[Share] Output has expired:', checkOutput.share_expires_at)
+      return NextResponse.json({ 
+        error: 'This share link has expired',
+        debug: `Expired on ${checkOutput.share_expires_at}`
+      }, { status: 410 })
+    }
+
+    console.log('[Share] Step 2: Fetching full output with relations...')
+    // Fetch output with related data
     const { data: output, error } = await supabase
       .from('outputs')
       .select(`
@@ -30,26 +63,18 @@ export async function GET(
         templates(name),
         profiles!outputs_created_by_fkey(full_name, company_name)
       `)
-      .eq('share_token', params.token)
-      .eq('is_public', true)
+      .eq('id', checkOutput.id)
       .single()
 
     if (error || !output) {
-      console.error('[Share] Error fetching shared output:', error)
-      
-      // More specific error message
-      if (checkOutput && !checkOutput.is_public) {
-        return NextResponse.json({ 
-          error: 'This output is not publicly shared',
-          debug: 'Output exists but is_public is false'
-        }, { status: 403 })
-      }
-      
+      console.error('[Share] Error fetching full output:', error)
       return NextResponse.json({ 
-        error: 'Shared output not found or no longer available',
-        debug: checkError ? checkError.message : 'Token not found'
-      }, { status: 404 })
+        error: 'Failed to load output details',
+        debug: error?.message || 'Unknown error'
+      }, { status: 500 })
     }
+
+    console.log('[Share] Step 3: Output fetched successfully')
 
     // Increment view count (non-blocking)
     void (async () => {
