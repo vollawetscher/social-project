@@ -45,17 +45,30 @@ export async function GET(
     }
 
     console.log('[Share] Step 2: Fetching full output with relations...')
-    // Fetch output with related data
+    // Fetch output with related data (skip profiles - get it separately)
     const { data: output, error } = await supabase
       .from('outputs')
       .select(`
         *,
         sessions(id, internal_case_id),
-        templates(name),
-        profiles!outputs_created_by_fkey(full_name, company_name)
+        templates(name)
       `)
       .eq('id', checkOutput.id)
       .single()
+
+    // Fetch profile separately if needed
+    let sharedByName = 'Notissima User'
+    if (output && output.created_by) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, company_name')
+        .eq('id', output.created_by)
+        .maybeSingle()
+      
+      if (profile) {
+        sharedByName = profile.full_name || profile.company_name || 'Notissima User'
+      }
+    }
 
     if (error || !output) {
       console.error('[Share] Error fetching full output:', error)
@@ -86,7 +99,7 @@ export async function GET(
       sessionId: output.session_id,
       sessionFilename: output.sessions?.internal_case_id || `Session ${output.session_id.slice(0, 8)}`,
       templateId: output.template_id,
-      templateName: output.templates?.name || output.title || 'Unknown Template',
+      templateName: output.templates?.name || output.template_name || 'Unknown Template',
       perspective: output.perspective || 'party_a',
       audience: output.audience || 'internal',
       language: output.language || 'en',
@@ -94,7 +107,7 @@ export async function GET(
       format: output.format || 'markdown',
       content: output.content,
       createdAt: output.generated_at || output.created_at,
-      sharedBy: output.profiles?.full_name || output.profiles?.company_name || 'Notissima User',
+      sharedBy: sharedByName,
       viewCount: (output.view_count || 0) + 1, // Include the current view
       sharedAt: output.shared_at,
     }
