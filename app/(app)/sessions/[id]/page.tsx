@@ -50,6 +50,7 @@ export default function SessionDetailPage() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<any>(null)
   const [currentAudioTime, setCurrentAudioTime] = useState(0)
+  const [activeTab, setActiveTab] = useState("transcript")
   const audioPlayerRef = useRef<any>(null)
 
   // Handle seeking to a specific time from transcript click
@@ -265,35 +266,36 @@ export default function SessionDetailPage() {
       <div className="flex-1 flex gap-4 pt-4 min-h-0">
         {/* Left: Secondary Nav Tabs (Desktop) */}
         <div className="hidden md:flex flex-col w-48 shrink-0">
-          <Tabs defaultValue="transcript" orientation="vertical" className="h-full">
-            <TabsList className="flex flex-col h-auto bg-transparent p-0 gap-1">
-              <TabsTrigger
-                value="transcript"
-                className="w-full justify-start gap-2 px-3 data-[state=active]:bg-secondary"
-              >
-                <ScrollText className="h-4 w-4" />
-                Transcript
-              </TabsTrigger>
-              <TabsTrigger
-                value="context"
-                className="w-full justify-start gap-2 px-3 data-[state=active]:bg-secondary"
-              >
-                <Settings2 className="h-4 w-4" />
-                Context
-              </TabsTrigger>
-              <TabsTrigger
-                value="outputs"
-                className="w-full justify-start gap-2 px-3 data-[state=active]:bg-secondary"
-              >
-                <FileText className="h-4 w-4" />
-                Outputs
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-col gap-1">
+            <Button
+              variant={activeTab === "transcript" ? "secondary" : "ghost"}
+              className="w-full justify-start gap-2 px-3"
+              onClick={() => setActiveTab("transcript")}
+            >
+              <ScrollText className="h-4 w-4" />
+              Transcript
+            </Button>
+            <Button
+              variant={activeTab === "context" ? "secondary" : "ghost"}
+              className="w-full justify-start gap-2 px-3"
+              onClick={() => setActiveTab("context")}
+            >
+              <Settings2 className="h-4 w-4" />
+              Context
+            </Button>
+            <Button
+              variant={activeTab === "outputs" ? "secondary" : "ghost"}
+              className="w-full justify-start gap-2 px-3"
+              onClick={() => setActiveTab("outputs")}
+            >
+              <FileText className="h-4 w-4" />
+              Outputs
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Tabs */}
-        <Tabs defaultValue="transcript" className="flex-1 flex flex-col min-h-0 md:hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 md:hidden">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="transcript">Transcript</TabsTrigger>
             <TabsTrigger value="context">Context</TabsTrigger>
@@ -494,7 +496,7 @@ export default function SessionDetailPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Center: Transcript Viewer (Desktop) */}
+        {/* Center: Content Area (Desktop) */}
         <div className="hidden md:flex flex-1 min-h-0 flex-col gap-4">
           {/* Audio Player */}
           {session.audioUrl && (
@@ -505,14 +507,202 @@ export default function SessionDetailPage() {
             />
           )}
           
-          {/* Transcript */}
-          <div className="flex-1 rounded-lg border border-border bg-card overflow-hidden">
-                      <TranscriptViewer 
-                        segments={session.transcript} 
-                        currentTime={currentAudioTime}
-                        onSeek={handleSeekToTime}
-                      />
-          </div>
+          {/* Tab Content */}
+          {activeTab === "transcript" && (
+            <div className="flex-1 rounded-lg border border-border bg-card overflow-hidden">
+              <TranscriptViewer 
+                segments={session.transcript} 
+                currentTime={currentAudioTime}
+                onSeek={handleSeekToTime}
+              />
+            </div>
+          )}
+
+          {activeTab === "context" && (
+            <div className="flex-1 rounded-lg border border-border bg-card overflow-auto p-6">
+              <div className="space-y-6">
+                {/* Recording Type & Domain */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Settings2 className="h-4 w-4" />
+                    Recording Classification
+                  </h3>
+                  <div className="space-y-2">
+                    {session?.recordingType && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                        <span className="text-sm text-muted-foreground">Type</span>
+                        <Badge variant="secondary" className="capitalize">
+                          {session.recordingType.replace(/_/g, ' ')}
+                        </Badge>
+                      </div>
+                    )}
+                    {session?.domain && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                        <span className="text-sm text-muted-foreground">Domain</span>
+                        <Badge variant="secondary" className="capitalize">
+                          {session.domain}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Extracted Context */}
+                {session?.extractedContext && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Extracted Context</h3>
+                    
+                    {session.extractedContext.participants?.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Participants</p>
+                        <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
+                          {session.extractedContext.participants.join(', ')}
+                        </p>
+                      </div>
+                    )}
+
+                    {session.extractedContext.purpose && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Purpose</p>
+                        <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
+                          {session.extractedContext.purpose}
+                        </p>
+                      </div>
+                    )}
+
+                    {session.extractedContext.agenda?.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Agenda</p>
+                        <ul className="text-sm text-foreground p-3 rounded-lg bg-secondary/50 space-y-1">
+                          {session.extractedContext.agenda.map((item, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-muted-foreground">•</span>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {session.extractedContext.venue && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Venue</p>
+                        <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
+                          {session.extractedContext.venue}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* No Context Available */}
+                {!session?.recordingType && !session?.domain && !session?.extractedContext && (
+                  <div className="text-center py-8">
+                    <Settings2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground mb-2">No context extracted yet</p>
+                    <p className="text-xs text-muted-foreground">
+                      Context will appear after AI analysis completes
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "outputs" && (
+            <div className="flex-1 rounded-lg border border-border bg-card overflow-auto p-4">
+              {outputsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading outputs...</p>
+              ) : outputs.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground mb-4">No outputs generated yet.</p>
+                  <Button size="sm" onClick={() => setGenerateModalOpen(true)}>
+                    Generate Your First Output
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {outputs.map((output) => (
+                    <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium truncate">{output.templateName}</h4>
+                          <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>
+                              {new Date(output.createdAt).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            {output.language && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  {output.language === 'en' ? 'English' : output.language === 'de' ? 'German' : output.language}
+                                </span>
+                              </>
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(output.content)
+                                toast.success('Output copied to clipboard')
+                              } catch (err) {
+                                toast.error('Failed to copy to clipboard')
+                              }
+                            }}
+                            title="Copy"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => {
+                              const blob = new Blob([output.content], { type: 'text/markdown' })
+                              const url = window.URL.createObjectURL(blob)
+                              const a = document.createElement('a')
+                              a.href = url
+                              a.download = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}.md`
+                              document.body.appendChild(a)
+                              a.click()
+                              window.URL.revokeObjectURL(url)
+                              document.body.removeChild(a)
+                              toast.success('Output downloaded')
+                            }}
+                            title="Download"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            asChild
+                            title="Open full page"
+                          >
+                            <Link href={`/outputs/${output.id}`}>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{output.content.substring(0, 150)}...</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right: Session Setup Panel (Desktop) */}
