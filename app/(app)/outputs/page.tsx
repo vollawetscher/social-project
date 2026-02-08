@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import React, { useState, useEffect } from "react"
+import Link from "next/link"
 import {
   FileText,
   Filter,
@@ -426,9 +427,11 @@ export default function OutputsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <OutputDetailSheet output={output} />
-                    <Button variant="ghost" size="sm" className="gap-1.5">
-                      <ExternalLink className="h-4 w-4" />
-                      <span className="hidden sm:inline">Open</span>
+                    <Button variant="ghost" size="sm" className="gap-1.5" asChild>
+                      <Link href={`/outputs/${output.id}`}>
+                        <ExternalLink className="h-4 w-4" />
+                        <span className="hidden sm:inline">Open</span>
+                      </Link>
                     </Button>
                   </div>
                 </div>
