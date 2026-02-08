@@ -55,8 +55,8 @@ export default function TemplateWizardPage() {
   const [analysisComplete, setAnalysisComplete] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  // Analysis results (mocked)
-  const analysisResults = {
+  // Analysis results (from AI)
+  const [analysisResults, setAnalysisResults] = useState({
     sections: [
       { name: "Executive Summary", detected: true },
       { name: "Key Findings", detected: true },
@@ -67,7 +67,8 @@ export default function TemplateWizardPage() {
     tone: "Professional / Formal",
     perspective: "Third Person",
     language: "English",
-  }
+    suggestedInstructions: "",
+  })
 
   // Constraints
   const [selectedPerspectives, setSelectedPerspectives] = useState<string[]>(["party_a", "party_b"])
@@ -102,15 +103,44 @@ export default function TemplateWizardPage() {
 
     setIsAnalyzing(true)
     try {
-      // For now, use mock analysis - full AI implementation would require file parsing
-      setTimeout(() => {
-        setIsAnalyzing(false)
-        setAnalysisComplete(true)
-        toast.success('Analysis complete')
-      }, 2000)
+      // Create FormData with files
+      const formData = new FormData()
+      uploadedFileData.forEach(file => {
+        formData.append('files', file)
+      })
+
+      // Call AI analysis API
+      const response = await fetch('/api/templates/analyze-samples', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze samples')
+      }
+
+      const data = await response.json()
+      
+      // Update analysis results with AI response
+      setAnalysisResults({
+        sections: data.analysis.sections || [],
+        tone: data.analysis.tone || 'Professional / Formal',
+        perspective: data.analysis.perspective || 'Third Person',
+        language: data.analysis.language || 'English',
+        suggestedInstructions: data.analysis.suggestedInstructions || '',
+      })
+
+      // Auto-populate required inputs based on AI analysis
+      if (data.analysis.requiredInputs && data.analysis.requiredInputs.length > 0) {
+        setRequiredInputs(data.analysis.requiredInputs)
+      }
+
+      setIsAnalyzing(false)
+      setAnalysisComplete(true)
+      toast.success(`Analysis complete! Analyzed ${data.filesAnalyzed} file(s)`)
     } catch (error) {
       console.error('Analysis failed:', error)
-      toast.error('Failed to analyze samples')
+      toast.error('Failed to analyze samples. Please try again.')
       setIsAnalyzing(false)
     }
   }
@@ -145,7 +175,7 @@ export default function TemplateWizardPage() {
             .map((s, i) => ({
               id: `section_${i}`,
               name: s.name,
-              description: `${s.name} section`,
+              description: (s as any).description || `${s.name} section`,
               isRequired: true,
             })),
           required_inputs: requiredInputs,
@@ -155,6 +185,7 @@ export default function TemplateWizardPage() {
             `Language: ${analysisResults.language}`,
           ],
           suggestion_triggers: [],
+          instructions: analysisResults.suggestedInstructions || `Generate a ${templateName} following the detected structure and style.`,
         }),
       })
 
