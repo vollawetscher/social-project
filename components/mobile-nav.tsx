@@ -8,22 +8,22 @@ import { cn } from "@/lib/utils"
 const navItems = [
   {
     name: "Sessions",
-    href: "/app/sessions",
+    href: "/sessions",
     icon: Mic,
   },
   {
     name: "Outputs",
-    href: "/app/outputs",
+    href: "/outputs",
     icon: FileText,
   },
   {
     name: "Templates",
-    href: "/app/templates",
+    href: "/templates",
     icon: LayoutTemplate,
   },
   {
     name: "Settings",
-    href: "/app/settings",
+    href: "/settings",
     icon: Settings,
   },
 ]
