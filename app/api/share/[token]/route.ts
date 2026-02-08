@@ -21,11 +21,12 @@ export async function GET(
     console.log('[Share] Check error:', checkError)
 
     // Fetch output by share token (no user filter - public access)
+    // Use left join for sessions since anonymous users might not have access
     const { data: output, error } = await supabase
       .from('outputs')
       .select(`
         *,
-        sessions!inner(id, internal_case_id, user_id),
+        sessions(id, internal_case_id),
         templates(name),
         profiles!outputs_created_by_fkey(full_name, company_name)
       `)
