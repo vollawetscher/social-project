@@ -14,6 +14,8 @@ import {
   PanelRight,
   Copy,
   Download,
+  ExternalLink,
+  Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +25,7 @@ import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
 import { GenerateOutputModal } from "@/components/generate-output-modal"
 import { AudioPlayer } from "@/components/audio/AudioPlayer"
+import { toast } from "sonner"
 import {
   mockTemplates,
   getRecordingTypeSuggestions,
@@ -306,8 +309,93 @@ export default function SessionDetailPage() {
             </div>
           </TabsContent>
           <TabsContent value="context" className="flex-1 min-h-0 mt-0">
-            <div className="h-full rounded-lg border border-border bg-card overflow-auto p-4">
-              <p className="text-sm text-muted-foreground">Context settings are available in the side panel.</p>
+            <div className="h-full rounded-lg border border-border bg-card overflow-auto p-6">
+              <div className="space-y-6">
+                {/* Recording Type & Domain */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Settings2 className="h-4 w-4" />
+                    Recording Classification
+                  </h3>
+                  <div className="space-y-2">
+                    {session?.recordingType && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                        <span className="text-sm text-muted-foreground">Type</span>
+                        <Badge variant="secondary" className="capitalize">
+                          {session.recordingType.replace(/_/g, ' ')}
+                        </Badge>
+                      </div>
+                    )}
+                    {session?.domain && (
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                        <span className="text-sm text-muted-foreground">Domain</span>
+                        <Badge variant="secondary" className="capitalize">
+                          {session.domain}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Extracted Context */}
+                {session?.extractedContext && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Extracted Context</h3>
+                    
+                    {session.extractedContext.participants?.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Participants</p>
+                        <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
+                          {session.extractedContext.participants.join(', ')}
+                        </p>
+                      </div>
+                    )}
+
+                    {session.extractedContext.purpose && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Purpose</p>
+                        <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
+                          {session.extractedContext.purpose}
+                        </p>
+                      </div>
+                    )}
+
+                    {session.extractedContext.agenda?.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Agenda</p>
+                        <ul className="text-sm text-foreground p-3 rounded-lg bg-secondary/50 space-y-1">
+                          {session.extractedContext.agenda.map((item, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-muted-foreground">•</span>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {session.extractedContext.venue && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Venue</p>
+                        <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
+                          {session.extractedContext.venue}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* No Context Available */}
+                {!session?.recordingType && !session?.domain && !session?.extractedContext && (
+                  <div className="text-center py-8">
+                    <Settings2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground mb-2">No context extracted yet</p>
+                    <p className="text-xs text-muted-foreground">
+                      Context will appear after AI analysis completes
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
           <TabsContent value="outputs" className="flex-1 min-h-0 mt-0">
