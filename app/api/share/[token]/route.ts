@@ -7,7 +7,18 @@ export async function GET(
   { params }: { params: { token: string } }
 ) {
   try {
+    console.log('[Share] Looking up token:', params.token)
     const supabase = await createClient()
+
+    // First check if output exists with this token (regardless of is_public)
+    const { data: checkOutput, error: checkError } = await supabase
+      .from('outputs')
+      .select('id, is_public, share_token')
+      .eq('share_token', params.token)
+      .maybeSingle()
+
+    console.log('[Share] Found output:', checkOutput ? `${checkOutput.id} (is_public: ${checkOutput.is_public})` : 'not found')
+    console.log('[Share] Check error:', checkError)
 
     // Fetch output by share token (no user filter - public access)
     const { data: output, error } = await supabase
@@ -23,8 +34,20 @@ export async function GET(
       .single()
 
     if (error || !output) {
-      console.error('Error fetching shared output:', error)
-      return NextResponse.json({ error: 'Shared output not found or no longer available' }, { status: 404 })
+      console.error('[Share] Error fetching shared output:', error)
+      
+      // More specific error message
+      if (checkOutput && !checkOutput.is_public) {
+        return NextResponse.json({ 
+          error: 'This output is not publicly shared',
+          debug: 'Output exists but is_public is false'
+        }, { status: 403 })
+      }
+      
+      return NextResponse.json({ 
+        error: 'Shared output not found or no longer available',
+        debug: checkError ? checkError.message : 'Token not found'
+      }, { status: 404 })
     }
 
     // Increment view count (non-blocking)
