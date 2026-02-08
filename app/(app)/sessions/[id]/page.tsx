@@ -268,7 +268,7 @@ export default function SessionDetailPage() {
         <div className="hidden md:flex flex-col w-48 shrink-0">
           <div className="flex flex-col gap-1">
             <Button
-              variant={activeTab === "transcript" ? "secondary" : "ghost"}
+              variant={activeTab === "transcript" ? "default" : "ghost"}
               className="w-full justify-start gap-2 px-3"
               onClick={() => setActiveTab("transcript")}
             >
@@ -276,7 +276,7 @@ export default function SessionDetailPage() {
               Transcript
             </Button>
             <Button
-              variant={activeTab === "context" ? "secondary" : "ghost"}
+              variant={activeTab === "context" ? "default" : "ghost"}
               className="w-full justify-start gap-2 px-3"
               onClick={() => setActiveTab("context")}
             >
@@ -284,7 +284,7 @@ export default function SessionDetailPage() {
               Context
             </Button>
             <Button
-              variant={activeTab === "outputs" ? "secondary" : "ghost"}
+              variant={activeTab === "outputs" ? "default" : "ghost"}
               className="w-full justify-start gap-2 px-3"
               onClick={() => setActiveTab("outputs")}
             >
