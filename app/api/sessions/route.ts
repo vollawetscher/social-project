@@ -12,13 +12,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const format = searchParams.get('format')
 
-    // Fetch sessions with output count
+    // Fetch sessions with output count (filtered by user)
     const { data: sessions, error } = await supabase
       .from('sessions')
       .select(`
         *,
         outputs:outputs(count)
       `)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) {
