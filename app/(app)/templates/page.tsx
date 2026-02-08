@@ -268,7 +268,7 @@ export default function TemplatesPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild className="flex-1 sm:flex-initial bg-transparent">
-            <Link href="/app/templates/new/from-samples">
+            <Link href="/templates/new/from-samples">
               <FileText className="h-4 w-4 mr-2" />
               <span className="hidden xs:inline">Create from</span> Samples
             </Link>
