@@ -266,7 +266,7 @@ export default function OutputDetailPage() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
@@ -308,26 +308,22 @@ export default function OutputDetailPage() {
             onClick={isPublic ? handleCopyShareLink : handleShare}
             disabled={isSharing}
             className="gap-2"
+            title="Share"
           >
             {isSharing ? (
               <>
                 <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-                Sharing...
+                <span className="hidden md:inline">Sharing...</span>
               </>
             ) : copiedShareLink ? (
               <>
                 <Check className="h-4 w-4 text-success" />
-                Copied!
-              </>
-            ) : isPublic ? (
-              <>
-                <LinkIcon className="h-4 w-4" />
-                Share
+                <span className="hidden md:inline">Copied!</span>
               </>
             ) : (
               <>
-                <Share2 className="h-4 w-4" />
-                Share
+                {isPublic ? <LinkIcon className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                <span className="hidden md:inline">Share</span>
               </>
             )}
           </Button>
@@ -336,28 +332,30 @@ export default function OutputDetailPage() {
             size="sm"
             onClick={handleCopyAll}
             className="gap-2"
+            title="Copy"
           >
             <Copy className="h-4 w-4" />
-            Copy
+            <span className="hidden md:inline">Copy</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleDownload}
-            className="h-8 w-8 p-0"
+            className="gap-2"
             title="Download"
           >
             <Download className="h-4 w-4" />
+            <span className="sr-only">Download</span>
           </Button>
           <Button
             variant="outline"
             size="sm"
             asChild
-            className="gap-2"
+            title="Go to Session"
           >
-            <Link href={`/sessions/${output.sessionId}`}>
+            <Link href={`/sessions/${output.sessionId}`} className="gap-2">
               <ExternalLink className="h-4 w-4" />
-              Session
+              <span className="hidden md:inline">Session</span>
             </Link>
           </Button>
         </div>
@@ -442,7 +440,7 @@ export default function OutputDetailPage() {
               </Button>
 
               {/* Rendered Markdown */}
-              <article className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground prose-a:text-primary">
+              <article className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground prose-a:text-primary break-words overflow-wrap-anywhere">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {section.content}
                 </ReactMarkdown>
