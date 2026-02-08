@@ -28,16 +28,17 @@ export async function GET(
     }
 
     // Increment view count (non-blocking)
-    supabase
-      .from('outputs')
-      .update({ view_count: (output.view_count || 0) + 1 })
-      .eq('id', output.id)
-      .then(() => {
+    void (async () => {
+      try {
+        await supabase
+          .from('outputs')
+          .update({ view_count: (output.view_count || 0) + 1 })
+          .eq('id', output.id)
         console.log(`[Share] Incremented view count for output ${output.id}`)
-      })
-      .catch((err: any) => {
+      } catch (err) {
         console.error('[Share] Failed to increment view count:', err)
-      })
+      }
+    })()
 
     // Transform to v0 format
     const v0Output = {
