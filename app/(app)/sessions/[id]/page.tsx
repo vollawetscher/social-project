@@ -323,7 +323,7 @@ export default function SessionDetailPage() {
                     {session?.recordingType && (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                         <span className="text-sm text-muted-foreground">Type</span>
-                        <Badge variant="secondary" className="capitalize">
+                        <Badge variant="outline" className="capitalize">
                           {session.recordingType.replace(/_/g, ' ')}
                         </Badge>
                       </div>
@@ -331,7 +331,7 @@ export default function SessionDetailPage() {
                     {session?.domain && (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                         <span className="text-sm text-muted-foreground">Domain</span>
-                        <Badge variant="secondary" className="capitalize">
+                        <Badge variant="outline" className="capitalize">
                           {session.domain}
                         </Badge>
                       </div>
@@ -531,7 +531,7 @@ export default function SessionDetailPage() {
                     {session?.recordingType && (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                         <span className="text-sm text-muted-foreground">Type</span>
-                        <Badge variant="secondary" className="capitalize">
+                        <Badge variant="outline" className="capitalize">
                           {session.recordingType.replace(/_/g, ' ')}
                         </Badge>
                       </div>
@@ -539,7 +539,7 @@ export default function SessionDetailPage() {
                     {session?.domain && (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                         <span className="text-sm text-muted-foreground">Domain</span>
-                        <Badge variant="secondary" className="capitalize">
+                        <Badge variant="outline" className="capitalize">
                           {session.domain}
                         </Badge>
                       </div>
