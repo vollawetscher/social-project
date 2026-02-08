@@ -99,13 +99,24 @@ export default function OutputDetailPage() {
     
     setIsSharing(true)
     try {
+      console.log('[Share] Calling API for output:', outputId)
       const response = await fetch(`/api/outputs/${outputId}/share`, {
         method: 'POST',
       })
       
-      if (!response.ok) throw new Error('Failed to enable sharing')
+      console.log('[Share] API response status:', response.status)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('[Share] API error:', errorData)
+        throw new Error(errorData.error || 'Failed to enable sharing')
+      }
       
       const data = await response.json()
+      console.log('[Share] API response data:', data)
+      console.log('[Share] Share URL:', data.shareUrl)
+      console.log('[Share] Share Token:', data.shareToken)
+      
       setShareUrl(data.shareUrl)
       setIsPublic(true)
       
@@ -116,8 +127,8 @@ export default function OutputDetailPage() {
       
       toast.success('Share link copied to clipboard!')
     } catch (error) {
-      console.error('Error enabling sharing:', error)
-      toast.error('Failed to enable sharing')
+      console.error('[Share] Error enabling sharing:', error)
+      toast.error('Failed to enable sharing: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setIsSharing(false)
     }
