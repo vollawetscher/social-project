@@ -16,7 +16,7 @@ export async function GET(
     console.log('[Share] Step 1: Checking if output exists...')
     const { data: checkOutput, error: checkError } = await supabase
       .from('outputs')
-      .select('id, is_public, share_token, created_by, share_expires_at')
+      .select('id, is_public, share_token, created_by')
       .eq('share_token', params.token)
       .maybeSingle()
 
@@ -24,7 +24,6 @@ export async function GET(
       found: !!checkOutput,
       id: checkOutput?.id,
       isPublic: checkOutput?.is_public,
-      expiresAt: checkOutput?.share_expires_at,
       error: checkError
     })
 
@@ -32,7 +31,8 @@ export async function GET(
       console.error('[Share] No output found with token:', params.token)
       return NextResponse.json({ 
         error: 'Shared output not found or no longer available',
-        debug: 'No output with this token exists in database'
+        debug: 'No output with this token exists in database',
+        token: params.token
       }, { status: 404 })
     }
 
@@ -42,15 +42,6 @@ export async function GET(
         error: 'This output is not publicly shared',
         debug: 'Output exists but is_public is false'
       }, { status: 403 })
-    }
-
-    // Check expiration
-    if (checkOutput.share_expires_at && new Date(checkOutput.share_expires_at) < new Date()) {
-      console.error('[Share] Output has expired:', checkOutput.share_expires_at)
-      return NextResponse.json({ 
-        error: 'This share link has expired',
-        debug: `Expired on ${checkOutput.share_expires_at}`
-      }, { status: 410 })
     }
 
     console.log('[Share] Step 2: Fetching full output with relations...')
