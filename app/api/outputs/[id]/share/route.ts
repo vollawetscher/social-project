@@ -24,41 +24,59 @@ export async function POST(
       .single()
 
     if (fetchError || !output) {
+      console.error('[Share Enable] Output not found:', fetchError)
       return NextResponse.json({ error: 'Output not found' }, { status: 404 })
     }
+
+    console.log('[Share Enable] Current output state:', {
+      id: output.id,
+      hasToken: !!output.share_token,
+      isPublic: output.is_public
+    })
 
     // Generate share token if needed
     let shareToken = output.share_token
     if (!shareToken) {
-      // Generate new UUID
-      const { data: tokenData } = await supabase.rpc('gen_random_uuid')
-      shareToken = tokenData || crypto.randomUUID()
+      shareToken = crypto.randomUUID()
+      console.log('[Share Enable] Generated new token:', shareToken)
+    } else {
+      console.log('[Share Enable] Using existing token:', shareToken)
     }
 
-    // Enable sharing
+    // Enable sharing with explicit token
+    const updateData = {
+      is_public: true,
+      shared_at: new Date().toISOString(),
+      share_token: shareToken,
+    }
+    
+    console.log('[Share Enable] Updating with:', updateData)
+
     const { data: updated, error: updateError } = await supabase
       .from('outputs')
-      .update({
-        is_public: true,
-        shared_at: new Date().toISOString(),
-        share_token: shareToken,
-      })
+      .update(updateData)
       .eq('id', params.id)
-      .select('share_token')
+      .eq('created_by', user.id)
+      .select('id, share_token, is_public, shared_at')
       .single()
 
     if (updateError) {
-      console.error('Error enabling sharing:', updateError)
-      return NextResponse.json({ error: 'Failed to enable sharing' }, { status: 500 })
+      console.error('[Share Enable] Update error:', updateError)
+      return NextResponse.json({ 
+        error: 'Failed to enable sharing',
+        details: updateError.message 
+      }, { status: 500 })
     }
 
-    const finalToken = updated?.share_token || shareToken
+    console.log('[Share Enable] Update successful:', updated)
+
+    const finalToken = updated.share_token
     
     // Generate share URL
     const origin = request.headers.get('origin') || 'https://notissima.up.railway.app'
     const shareUrl = `${origin}/share/${finalToken}`
 
-    console.log('[Share] Generated share URL:', shareUrl)
+    console.log('[Share Enable] Generated share URL:', shareUrl)
 
     return NextResponse.json({
       success: true,
