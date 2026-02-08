@@ -19,11 +19,11 @@ export async function GET(
       .from('outputs')
       .select(`
         *,
-        session:sessions(id, internal_case_id),
-        template:templates(name)
+        sessions!inner(id, internal_case_id),
+        templates(name)
       `)
       .eq('id', params.id)
-      .eq('user_id', user.id)
+      .eq('created_by', user.id)
       .single()
 
     if (error) {
@@ -39,18 +39,18 @@ export async function GET(
     const v0Output = {
       id: output.id,
       sessionId: output.session_id,
-      sessionFilename: output.session?.internal_case_id || `Session ${output.session_id.slice(0, 8)}`,
+      sessionFilename: output.sessions?.internal_case_id || `Session ${output.session_id.slice(0, 8)}`,
       templateId: output.template_id,
-      templateName: output.template?.name || output.title || 'Unknown Template',
-      perspective: 'party_a', // Default, could be stored in DB
-      audience: 'internal', // Default, could be stored in DB
-      language: 'en', // Default, could be stored in DB
-      tone: 'neutral', // Default, could be stored in DB
-      format: 'markdown',
+      templateName: output.templates?.name || output.title || 'Unknown Template',
+      perspective: output.perspective || 'party_a',
+      audience: output.audience || 'internal',
+      language: output.language || 'en',
+      tone: output.tone || 'neutral',
+      format: output.format || 'markdown',
       content: output.content,
       createdAt: output.generated_at || output.created_at,
-      transcriptVersionHash: output.id.slice(0, 8), // Simplified
-      citeTimestamps: true, // Default
+      transcriptVersionHash: output.transcript_version_hash || output.id.slice(0, 8),
+      citeTimestamps: output.cite_timestamps !== false,
     }
 
     return NextResponse.json(v0Output)
