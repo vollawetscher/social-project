@@ -32,8 +32,12 @@ export async function GET(
       .from('outputs')
       .update({ view_count: (output.view_count || 0) + 1 })
       .eq('id', output.id)
-      .then(() => console.log(`[Share] Incremented view count for output ${output.id}`))
-      .catch((err) => console.error('[Share] Failed to increment view count:', err))
+      .then(() => {
+        console.log(`[Share] Incremented view count for output ${output.id}`)
+      })
+      .catch((err: any) => {
+        console.error('[Share] Failed to increment view count:', err)
+      })
 
     // Transform to v0 format
     const v0Output = {
