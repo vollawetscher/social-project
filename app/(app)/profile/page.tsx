@@ -4,7 +4,8 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle } from "lucide-react"
+import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug } from "lucide-react"
+import { BugReporter } from "@/components/error/BugReporter"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -113,10 +114,13 @@ export default function ProfilePage() {
             View your account information and preferences
           </p>
         </div>
-        <Button onClick={() => router.push('/settings')} variant="outline">
-          <Settings className="h-4 w-4 mr-2" />
-          Edit Settings
-        </Button>
+        <div className="flex items-center gap-2">
+          <BugReporter variant="outline" size="default" />
+          <Button onClick={() => router.push('/settings')} variant="outline">
+            <Settings className="h-4 w-4 mr-2" />
+            Edit Settings
+          </Button>
+        </div>
       </div>
 
       {/* Profile Card */}
@@ -254,6 +258,27 @@ export default function ProfilePage() {
               </span>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Support & Feedback */}
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bug className="h-5 w-5" />
+            Help & Feedback
+          </CardTitle>
+          <CardDescription>
+            Report issues or request new features
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Found a bug or have a feature request? Let us know! Your feedback helps improve Notissima for everyone.
+          </p>
+          <div className="flex gap-2">
+            <BugReporter variant="default" size="default" />
+          </div>
         </CardContent>
       </Card>
     </div>
