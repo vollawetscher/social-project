@@ -769,7 +769,7 @@ export default function SessionsPage() {
                             PII
                           </Badge>
                         )}
-                        {session.outputCount && session.outputCount > 0 && (
+                        {session.outputCount > 0 && (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-info/20 text-info border-info/30">
                             <FileText className="h-3 w-3 mr-1" />
                             {session.outputCount}
@@ -869,7 +869,7 @@ export default function SessionsPage() {
                                 Cached
                               </Badge>
                             )}
-                            {session.outputCount && session.outputCount > 0 && (
+                            {session.outputCount > 0 && (
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-info/20 text-info border-info/30">
                                 <FileText className="h-3 w-3 mr-1" />
                                 {session.outputCount} {session.outputCount === 1 ? 'Output' : 'Outputs'}

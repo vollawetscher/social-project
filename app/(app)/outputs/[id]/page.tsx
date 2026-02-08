@@ -322,12 +322,12 @@ export default function OutputDetailPage() {
             ) : isPublic ? (
               <>
                 <LinkIcon className="h-4 w-4" />
-                Copy Share Link
+                Copy
               </>
             ) : (
               <>
                 <Share2 className="h-4 w-4" />
-                Share (3 Days)
+                Share
               </>
             )}
           </Button>
@@ -337,21 +337,17 @@ export default function OutputDetailPage() {
             onClick={handleCopyAll}
             className="gap-2"
           >
-            {copiedAll ? (
-              <Check className="h-4 w-4 text-success" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-            Copy All
+            <Copy className="h-4 w-4" />
+            Copy
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleDownload}
-            className="gap-2"
+            className="h-8 w-8 p-0"
+            title="Download"
           >
             <Download className="h-4 w-4" />
-            Download
           </Button>
           <Button
             variant="outline"
@@ -361,7 +357,7 @@ export default function OutputDetailPage() {
           >
             <Link href={`/sessions/${output.sessionId}`}>
               <ExternalLink className="h-4 w-4" />
-              View Session
+              Session
             </Link>
           </Button>
         </div>

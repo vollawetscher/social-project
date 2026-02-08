@@ -422,19 +422,19 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
-              {/* Speechmatics */}
+              {/* Transcription Service */}
               <div className="p-4 rounded-lg border border-border bg-secondary/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary">SM</span>
+                    <span className="text-xs font-bold text-primary">TR</span>
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
                     Connected
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Speechmatics</h4>
+                <h4 className="font-medium text-foreground">DSGVO-Compliant Transcription</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  GDPR-compliant speech-to-text
+                  EU-hosted speech-to-text
                 </p>
                 <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
                   <ExternalLink className="h-3 w-3 mr-1" />
@@ -442,19 +442,19 @@ export default function SettingsPage() {
                 </Button>
               </div>
 
-              {/* Anthropic */}
+              {/* LLM */}
               <div className="p-4 rounded-lg border border-border bg-secondary/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary">A</span>
+                    <span className="text-xs font-bold text-primary">AI</span>
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
                     Connected
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Anthropic</h4>
+                <h4 className="font-medium text-foreground">LLM</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Claude Sonnet 4.5 for generation
+                  AI-powered content generation
                 </p>
                 <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
                   <ExternalLink className="h-3 w-3 mr-1" />
@@ -462,19 +462,19 @@ export default function SettingsPage() {
                 </Button>
               </div>
 
-              {/* Supabase */}
+              {/* Database */}
               <div className="p-4 rounded-lg border border-border bg-secondary/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary">SB</span>
+                    <span className="text-xs font-bold text-primary">DB</span>
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
                     Connected
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Supabase</h4>
+                <h4 className="font-medium text-foreground">Database</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Auth, Storage, and Database
+                  Secure data storage & auth
                 </p>
                 <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
                   <ExternalLink className="h-3 w-3 mr-1" />
