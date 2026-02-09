@@ -98,7 +98,13 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Error creating template:', error)
-      return NextResponse.json({ error: 'Failed to create template' }, { status: 500 })
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      return NextResponse.json({ 
+        error: 'Failed to create template',
+        details: error.message,
+        hint: error.hint,
+        code: error.code
+      }, { status: 500 })
     }
 
     // Transform to v0 format

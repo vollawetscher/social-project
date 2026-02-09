@@ -189,14 +189,19 @@ export default function TemplateWizardPage() {
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to create template')
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('Error creating template:', errorData)
+        throw new Error(errorData.details || errorData.error || 'Failed to create template')
+      }
 
       const data = await response.json()
       toast.success(`Template "${templateName}" created`)
       router.push('/templates')
     } catch (error) {
       console.error('Error creating template:', error)
-      toast.error('Failed to create template')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create template'
+      toast.error(errorMessage)
     } finally {
       setIsSaving(false)
     }
