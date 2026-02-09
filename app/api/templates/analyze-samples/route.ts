@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
+import pdfParse from 'pdf-parse-fork'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -46,8 +47,37 @@ export async function POST(request: Request) {
     const documentTexts: string[] = []
     
     for (const file of files) {
-      const text = await file.text()
-      documentTexts.push(text)
+      try {
+        const extension = file.name.split('.').pop()?.toLowerCase()
+        let text = ''
+        
+        if (extension === 'pdf') {
+          // Parse PDF
+          const buffer = Buffer.from(await file.arrayBuffer())
+          const pdfData = await pdfParse(buffer)
+          text = pdfData.text
+          console.log(`[PDF Parse] Extracted ${text.length} characters from ${file.name}`)
+        } else if (extension === 'txt') {
+          // Plain text
+          text = await file.text()
+        } else if (extension === 'docx' || extension === 'doc') {
+          // For now, treat as text (you could add mammoth library for proper DOCX parsing)
+          text = await file.text()
+          console.log(`[DOCX] Warning: Reading ${file.name} as plain text (not parsed)`)
+        } else {
+          // Try reading as text
+          text = await file.text()
+        }
+        
+        if (text.trim().length === 0) {
+          console.warn(`[File Parse] Warning: No text extracted from ${file.name}`)
+        }
+        
+        documentTexts.push(text)
+      } catch (error) {
+        console.error(`[File Parse] Error parsing ${file.name}:`, error)
+        throw new Error(`Failed to parse file: ${file.name}`)
+      }
     }
 
     // Combine all texts for analysis

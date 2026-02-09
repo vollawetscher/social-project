@@ -3,6 +3,8 @@
  * Extracts text content from various document formats
  */
 
+import pdfParse from 'pdf-parse-fork'
+
 interface ParsedDocument {
   text: string
   metadata: {
@@ -36,14 +38,28 @@ export async function parseDocument(
       }
     } else if (extension === 'pdf') {
       format = 'pdf'
-      // For now, we'll handle PDF parsing server-side
-      // This would require pdf-parse library
-      throw new Error('PDF parsing requires server-side processing')
+      // Parse PDF using pdf-parse
+      const buffer = file instanceof File 
+        ? Buffer.from(await file.arrayBuffer())
+        : file
+      
+      const pdfData = await pdfParse(buffer)
+      text = pdfData.text
+      
+      return {
+        text,
+        metadata: {
+          pageCount: pdfData.numpages,
+          wordCount: text.split(/\s+/).filter(w => w.length > 0).length,
+          characterCount: text.length,
+          format: 'pdf',
+        },
+      }
     } else if (extension === 'docx' || extension === 'doc') {
       format = 'docx'
       // For now, we'll handle DOCX parsing server-side
       // This would require mammoth library
-      throw new Error('DOCX parsing requires server-side processing')
+      throw new Error('DOCX parsing requires mammoth library (not yet implemented)')
     } else {
       throw new Error(`Unsupported file format: ${extension}`)
     }
