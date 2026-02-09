@@ -24,11 +24,24 @@ import {
   Link as LinkIcon,
   Eye,
   EyeOff,
+  Trash2,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import type { Output } from "@/lib/types-v0"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
@@ -56,6 +69,7 @@ export default function OutputDetailPage() {
 
   const [output, setOutput] = useState<Output | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
   const [sections, setSections] = useState<CopyableSection[]>([])
   const [copiedAll, setCopiedAll] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
@@ -234,6 +248,29 @@ export default function OutputDetailPage() {
     toast.success('Downloaded output')
   }
 
+  async function handleDelete() {
+    if (!output) return
+    
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/outputs/${outputId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete output')
+      }
+
+      toast.success('Output deleted successfully')
+      router.push('/outputs')
+    } catch (error) {
+      console.error('Error deleting output:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete output')
+      setDeleting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -358,6 +395,46 @@ export default function OutputDetailPage() {
               <span className="hidden md:inline">Session</span>
             </Link>
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                disabled={deleting}
+                title="Delete Output"
+              >
+                {deleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                <span className="hidden md:inline">Delete</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Output?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{output.templateName}"? This action cannot be undone.
+                  {isPublic && (
+                    <span className="block mt-2 text-destructive font-medium">
+                      Warning: This output is publicly shared and will no longer be accessible via its share link.
+                    </span>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 

@@ -221,6 +221,36 @@ Please generate the requested output following all requirements and guidelines.`
     
     console.log('[Generate Output] Output saved successfully:', output.id)
 
+    // Increment template used_count (non-blocking)
+    if (config.templateId) {
+      void (async () => {
+        try {
+          const { error: updateError } = await supabase.rpc('increment_template_used_count', {
+            template_id: config.templateId
+          })
+          if (updateError) {
+            console.error('[Generate Output] Failed to increment template count:', updateError)
+            // Try direct update as fallback
+            const { data: currentTemplate } = await supabase
+              .from('templates')
+              .select('used_count')
+              .eq('id', config.templateId)
+              .single()
+            
+            if (currentTemplate) {
+              await supabase
+                .from('templates')
+                .update({ used_count: (currentTemplate.used_count || 0) + 1 })
+                .eq('id', config.templateId)
+            }
+          }
+          console.log('[Generate Output] Template used_count incremented')
+        } catch (err) {
+          console.error('[Generate Output] Error incrementing template count:', err)
+        }
+      })()
+    }
+
     // Return the generated output
     return NextResponse.json({
       id: output.id,

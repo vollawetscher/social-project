@@ -127,6 +127,11 @@ export interface Output {
   createdAt: string
   transcriptVersionHash: string
   citeTimestamps: boolean
+  // Sharing fields
+  isPublic?: boolean
+  shareToken?: string | null
+  viewCount?: number
+  sharedAt?: string | null
 }
 
 export interface AiSuggestion<T> {

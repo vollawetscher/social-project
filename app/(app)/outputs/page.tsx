@@ -19,6 +19,8 @@ import {
   Search,
   X,
   Globe,
+  Trash2,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -45,8 +47,20 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
+import { toast } from "sonner"
 import type { Output } from "@/lib/types-v0"
 
 function formatDate(dateString: string): string {
@@ -189,6 +203,7 @@ function OutputDetailSheet({ output }: { output: Output }) {
 export default function OutputsPage() {
   const [outputs, setOutputs] = useState<Output[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [templates, setTemplates] = useState<any[]>([])
   const [templateFilter, setTemplateFilter] = useState<string>("all")
   const [audienceFilter, setAudienceFilter] = useState<string>("all")
@@ -272,6 +287,29 @@ export default function OutputsPage() {
     audienceFilter !== "all" || 
     perspectiveFilter !== "all" || 
     searchQuery.trim() !== ""
+
+  const handleDelete = async (outputId: string) => {
+    setDeletingId(outputId)
+    try {
+      const response = await fetch(`/api/outputs/${outputId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete output')
+      }
+
+      // Remove from local state
+      setOutputs(prev => prev.filter(o => o.id !== outputId))
+      toast.success('Output deleted successfully')
+    } catch (error) {
+      console.error('Error deleting output:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete output')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -438,6 +476,44 @@ export default function OutputsPage() {
                         <span className="hidden sm:inline">Open</span>
                       </Link>
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          disabled={deletingId === output.id}
+                        >
+                          {deletingId === output.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Output?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{output.templateName}"? This action cannot be undone.
+                            {output.isPublic && (
+                              <span className="block mt-2 text-destructive font-medium">
+                                Warning: This output is publicly shared and will no longer be accessible via its share link.
+                              </span>
+                            )}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(output.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardContent>

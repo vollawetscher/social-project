@@ -14,11 +14,14 @@ import {
   Sparkles,
   ArrowRight,
   ExternalLink,
+  Clock,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -54,6 +57,22 @@ function formatDate(dateString: string): string {
   })
 }
 
+function calculateDaysUntilExpiration(sharedAt: string): number {
+  const EXPIRATION_DAYS = 30
+  const sharedDate = new Date(sharedAt)
+  const expirationDate = new Date(sharedDate.getTime() + EXPIRATION_DAYS * 24 * 60 * 60 * 1000)
+  const now = new Date()
+  const daysLeft = Math.ceil((expirationDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+  return daysLeft
+}
+
+function getExpirationDate(sharedAt: string): string {
+  const EXPIRATION_DAYS = 30
+  const sharedDate = new Date(sharedAt)
+  const expirationDate = new Date(sharedDate.getTime() + EXPIRATION_DAYS * 24 * 60 * 60 * 1000)
+  return formatDate(expirationDate.toISOString())
+}
+
 export default function SharedOutputPage() {
   const params = useParams()
   const token = params.token as string
@@ -62,6 +81,7 @@ export default function SharedOutputPage() {
   const [loading, setLoading] = useState(true)
   const [sections, setSections] = useState<CopyableSection[]>([])
   const [copiedAll, setCopiedAll] = useState(false)
+  const [daysUntilExpiration, setDaysUntilExpiration] = useState<number | null>(null)
 
   useEffect(() => {
     fetchSharedOutput()
@@ -70,6 +90,9 @@ export default function SharedOutputPage() {
   useEffect(() => {
     if (output) {
       parseContentIntoSections(output.content)
+      if (output.sharedAt) {
+        setDaysUntilExpiration(calculateDaysUntilExpiration(output.sharedAt))
+      }
     }
   }, [output])
 
@@ -233,6 +256,39 @@ export default function SharedOutputPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* Expiration Warning */}
+        {daysUntilExpiration !== null && (
+          <Alert 
+            className={cn(
+              "mb-6",
+              daysUntilExpiration <= 7 ? "border-destructive/50 bg-destructive/10" : 
+              daysUntilExpiration <= 14 ? "border-orange-500/50 bg-orange-500/10" : 
+              "border-muted bg-muted/50"
+            )}
+          >
+            {daysUntilExpiration <= 7 ? (
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            ) : (
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            )}
+            <AlertDescription className={cn(
+              daysUntilExpiration <= 7 ? "text-destructive" : "text-muted-foreground"
+            )}>
+              {daysUntilExpiration <= 0 ? (
+                "This shared link has expired"
+              ) : daysUntilExpiration <= 7 ? (
+                <span>
+                  <strong>Link expires soon:</strong> This shared output will expire in {daysUntilExpiration} {daysUntilExpiration === 1 ? 'day' : 'days'} ({getExpirationDate(output!.sharedAt)})
+                </span>
+              ) : (
+                <span>
+                  This shared link expires on {getExpirationDate(output!.sharedAt)} ({daysUntilExpiration} days remaining)
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Output Header */}
         <div className="space-y-4 mb-8">
           <div className="flex items-start justify-between gap-4">

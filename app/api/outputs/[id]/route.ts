@@ -67,3 +67,41 @@ export async function GET(
     }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient()
+    
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Delete output (only if user owns it)
+    const { error } = await supabase
+      .from('outputs')
+      .delete()
+      .eq('id', params.id)
+      .eq('created_by', user.id)
+
+    if (error) {
+      console.error('Error deleting output:', error)
+      return NextResponse.json({ 
+        error: 'Failed to delete output',
+        details: error.message 
+      }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Error in DELETE /api/outputs/[id]:', error)
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      message: error.message 
+    }, { status: 500 })
+  }
+}
