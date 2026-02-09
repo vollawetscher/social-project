@@ -89,26 +89,30 @@ export default function EditTemplatePage() {
     setSaving(true)
     try {
       const response = await fetch(`/api/templates/${templateId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),
-          intended_perspectives: selectedPerspectives,
-          allowed_audience: selectedAudiences,
-          domain_tags: selectedDomains,
-          style_rules: styleRules.split('\n').filter(r => r.trim()),
-          required_inputs: requiredInputs.split('\n').filter(i => i.trim()),
+          intendedPerspectives: selectedPerspectives,
+          allowedAudience: selectedAudiences,
+          domainTags: selectedDomains,
+          styleRules: styleRules.split('\n').filter(r => r.trim()),
+          requiredInputs: requiredInputs.split('\n').filter(i => i.trim()),
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to update template')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update template')
+      }
 
       toast.success(`Template "${name}" updated`)
       router.push('/templates')
     } catch (error) {
       console.error('Error updating template:', error)
-      toast.error('Failed to update template')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update template'
+      toast.error(errorMessage)
     } finally {
       setSaving(false)
     }
