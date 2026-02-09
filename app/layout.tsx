@@ -1,16 +1,11 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/lib/auth/AuthProvider';
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap',
-  preload: true,
-  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-  adjustFontFallback: true,
-});
+// Temporarily using system fonts for faster, more reliable builds
+// Google Fonts was causing Railway deployment timeouts
+// Will re-enable Inter once deployment is stable
 
 export const metadata: Metadata = {
   title: 'Notissima - Professional Meeting Documentation',
@@ -68,7 +63,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="de">
-      <body className={inter.className}>
+      <body className="font-sans antialiased">
         <AuthProvider>
           {children}
         </AuthProvider>
