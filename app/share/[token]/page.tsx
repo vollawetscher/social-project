@@ -188,7 +188,7 @@ export default function SharedOutputPage() {
               <span className="text-xl font-semibold">Notissima</span>
             </div>
             <Button asChild>
-              <Link href="https://notissima.com">
+              <Link href="/signup">
                 Sign Up Free
               </Link>
             </Button>
@@ -203,7 +203,7 @@ export default function SharedOutputPage() {
               This shared output is no longer available or the link has expired.
             </p>
             <Button asChild size="lg">
-              <Link href="https://notissima.com">
+              <Link href="/signup">
                 <Sparkles className="h-4 w-4 mr-2" />
                 Create Your Own Outputs
               </Link>
@@ -224,7 +224,7 @@ export default function SharedOutputPage() {
             <span className="text-xl font-semibold">Notissima</span>
           </div>
           <Button asChild>
-            <Link href="https://notissima.com">
+            <Link href="/signup">
               Sign Up Free
             </Link>
           </Button>
@@ -340,15 +340,15 @@ export default function SharedOutputPage() {
             </p>
             <div className="flex items-center justify-center gap-3">
               <Button asChild size="lg">
-                <Link href="https://notissima.com/signup">
+                <Link href="/signup">
                   Start Free Trial
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link href="https://notissima.com">
+                <Link href="/login">
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  Learn More
+                  Log In
                 </Link>
               </Button>
             </div>
