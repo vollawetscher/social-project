@@ -58,6 +58,10 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
                        (dbSession as any).language || 
                        'en'
   
+  // Normalize extracted context - ensure participants are valid or fallback to speaker IDs
+  const rawContext = (dbSession as any).ai_extracted_context || {}
+  const extractedContext = normalizeExtractedContext(rawContext, speakers)
+
   return {
     id: dbSession.id,
     filename: additionalData?.filename || dbSession.internal_case_id || `Session ${dbSession.id.slice(0, 8)}`,
@@ -71,8 +75,12 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     transcript: transcriptSegments,
     audioUrl: (dbSession as any).audio_url, // Include audio URL if available
     domain: (dbSession as any).recording_type || 'general',
+    domains: (dbSession as any).suggested_domains || [], // 2-layer domain structure
+    recordingType: (dbSession as any).recording_type,
+    recordingTypeConfidence: (dbSession as any).recording_type_confidence,
     outputCount: (dbSession as any).output_count || 0, // Number of generated outputs
-    extractedContext: (dbSession as any).ai_extracted_context || {}, // AI-extracted rich context
+    extractedContext, // Normalized AI-extracted rich context
+    transcriptCorrections: (dbSession as any).transcript_corrections || {}, // Alias system
   }
 }
 
@@ -108,6 +116,53 @@ function transformTranscriptSegments(dbSegments: any[]): any[] {
     text: segment.text || '',
     isPiiRedacted: false,
   }))
+}
+
+/**
+ * Normalize extracted context to ensure participants are valid
+ * Fallback to speaker IDs (S1, S2, etc.) if AI couldn't detect names
+ */
+function normalizeExtractedContext(rawContext: any, speakers: any[]): any {
+  if (!rawContext || typeof rawContext !== 'object') {
+    return {}
+  }
+
+  // Normalize participants
+  let participants = rawContext.participants || []
+  
+  // If participants is empty or invalid, fallback to speaker IDs
+  if (!Array.isArray(participants) || participants.length === 0) {
+    participants = speakers.map(speaker => ({
+      name: speaker.name, // S1, S2, S3, etc.
+      role: null,
+      isUser: false
+    }))
+  } else {
+    // Ensure all participants are proper objects with name field
+    participants = participants.map((p: any, idx: number) => {
+      if (typeof p === 'string') {
+        return { name: p, role: null, isUser: false }
+      } else if (p && typeof p === 'object' && p.name) {
+        return {
+          name: p.name || speakers[idx]?.name || `Speaker ${idx + 1}`,
+          role: p.role || null,
+          isUser: p.isUser || false
+        }
+      } else {
+        // Invalid participant object - fallback to speaker ID
+        return {
+          name: speakers[idx]?.name || `S${idx + 1}`,
+          role: null,
+          isUser: false
+        }
+      }
+    })
+  }
+
+  return {
+    ...rawContext,
+    participants
+  }
 }
 
 /**
