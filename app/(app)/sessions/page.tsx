@@ -158,19 +158,13 @@ function EditableSessionName({
   return (
     <div className="flex items-center gap-1 group/name">
       <button
-        onClick={(e) => {
-          e.stopPropagation() // Prevent card click
-          setIsEditing(true)
-        }}
+        onClick={() => setIsEditing(true)}
         className="font-medium text-foreground truncate max-w-[180px] hover:underline text-left"
       >
         {session.filename}
       </button>
       <button
-        onClick={(e) => {
-          e.stopPropagation() // Prevent card click
-          setIsEditing(true)
-        }}
+        onClick={() => setIsEditing(true)}
         className="h-5 w-5 p-0 opacity-0 group-hover/name:opacity-100 transition-opacity inline-flex items-center justify-center hover:bg-secondary rounded"
       >
         <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -737,10 +731,21 @@ export default function SessionsPage() {
             filteredSessions.map((session: Session) => {
               const status = statusConfig[session.status as SessionStatus]
               return (
-                <Link
+                <div
                   key={session.id}
-                  href={`/sessions/${session.id}`}
-                  className="block p-3 hover:bg-secondary/50 transition-colors cursor-pointer"
+                  className="p-3 hover:bg-secondary/50 transition-colors cursor-pointer"
+                  onClick={(e) => {
+                    // Only navigate if clicking the card itself, not buttons/interactive elements
+                    const target = e.target as HTMLElement
+                    if (
+                      !target.closest('button') && 
+                      !target.closest('input') &&
+                      !target.closest('[role="menu"]') &&
+                      !target.closest('[role="menuitem"]')
+                    ) {
+                      window.location.href = `/sessions/${session.id}`
+                    }
+                  }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -790,26 +795,19 @@ export default function SessionsPage() {
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0 shrink-0"
-                          onClick={(e) => e.stopPropagation()} // Prevent card click
                         >
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation()
-                          handleDownloadTranscript(session)
-                        }}>
+                        <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
                           <Download className="mr-2 h-4 w-4" />
                           Download
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteSession(session.id)
-                          }}
+                          onClick={() => handleDeleteSession(session.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
@@ -817,7 +815,7 @@ export default function SessionsPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                </Link>
+                </div>
               )
             })
           )}
@@ -857,7 +855,18 @@ export default function SessionsPage() {
                     <TableRow 
                       key={session.id} 
                       className="group cursor-pointer"
-                      onClick={() => window.location.href = `/sessions/${session.id}`}
+                      onClick={(e) => {
+                        // Only navigate if clicking the row itself, not buttons/interactive elements
+                        const target = e.target as HTMLElement
+                        if (
+                          !target.closest('button') && 
+                          !target.closest('input') &&
+                          !target.closest('[role="menu"]') &&
+                          !target.closest('[role="menuitem"]')
+                        ) {
+                          window.location.href = `/sessions/${session.id}`
+                        }
+                      }}
                     >
                       <TableCell>
                         <div className="flex flex-col">
@@ -926,26 +935,19 @@ export default function SessionsPage() {
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => e.stopPropagation()} // Prevent row click
                             >
                               <MoreHorizontal className="h-4 w-4" />
                               <span className="sr-only">Open menu</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation()
-                              handleDownloadTranscript(session)
-                            }}>
+                            <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
                               <Download className="mr-2 h-4 w-4" />
                               Download
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDeleteSession(session.id)
-                              }}
+                              onClick={() => handleDeleteSession(session.id)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
