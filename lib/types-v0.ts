@@ -3,12 +3,17 @@
 export type SessionStatus = 'uploading' | 'transcribing' | 'ready' | 'failed'
 
 export type RecordingType = 
-  | 'meeting' 
-  | 'interview' 
-  | 'legal_deposition' 
-  | 'sales_call' 
-  | 'lecture' 
-  | 'consultation' 
+  | 'meeting'                  // In-person or virtual meeting
+  | 'interview'                // Job, media, or research interview
+  | 'presentation'             // Lecture, webinar, training session
+  | 'consultation'             // Professional advice, client consultation
+  | 'call_inbound'             // Incoming phone call
+  | 'call_outbound'            // Outgoing phone call
+  | 'dictation'                // Voice memo, notes, letter dictation
+  | 'ai_agent_conversation'    // Conversation with AI assistant
+  | 'legal_deposition'         // Legacy: legal deposition
+  | 'sales_call'               // Legacy: sales call
+  | 'lecture'                  // Legacy: lecture
   | 'other'
 
 export type Domain = 
@@ -64,6 +69,19 @@ export interface TranscriptSegment {
   isPiiRedacted?: boolean
 }
 
+export interface DomainDetection {
+  primary: string      // Broad category (Medical, Legal, Sales, etc.)
+  specialty?: string   // Specific field (Cardiology, Tax Law, etc.)
+  confidence: number   // 0-1 confidence score
+  description?: string // Brief description
+  domain?: string      // Fallback for legacy simple domain
+}
+
+export interface TranscriptCorrections {
+  name_corrections?: Record<string, string>  // "Hazard" → "Azat"
+  pii_redactions?: Record<string, string>     // "John Smith" → "[NAME_1]"
+}
+
 export interface Session {
   id: string
   filename: string
@@ -75,17 +93,25 @@ export interface Session {
   isOfflineCached: boolean
   recordingType?: RecordingType
   recordingTypeConfidence?: number
-  domain?: Domain
-  domainConfidence?: number
+  domain?: Domain // Legacy single domain (deprecated)
+  domainConfidence?: number // Legacy confidence (deprecated)
+  domains?: DomainDetection[] // New 2-layer domain structure
   speakers: Speaker[]
   transcript: TranscriptSegment[]
   extractedContext?: ExtractedContext
   audioUrl?: string // Optional audio file URL
   outputCount?: number // Number of generated outputs for this session
+  transcriptCorrections?: TranscriptCorrections // Alias system for corrections & PII
+}
+
+export interface ParticipantInfo {
+  name: string
+  role?: string
+  isUser?: boolean
 }
 
 export interface ExtractedContext {
-  participants: string[]
+  participants: (string | ParticipantInfo)[] // Can be string (legacy) or ParticipantInfo object
   purpose: string
   agenda: string[]
   venue: string

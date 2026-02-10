@@ -29,6 +29,16 @@ export async function POST(
     }
     console.log('[Analyze API] User authenticated:', user.id)
 
+    // Fetch user profile for name comparison
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, company_name, after_transcript_action, preferred_report_language')
+      .eq('id', user.id)
+      .single()
+
+    const userName = profile?.full_name || profile?.company_name || ''
+    console.log('[Analyze API] User name for identification:', userName)
+
     // Fetch session and transcript
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
@@ -64,15 +74,18 @@ export async function POST(
     
     console.log('[Analyze API] Sample length:', sample.length, 'characters')
 
-    // Check if context is locked (user has overridden)
-    if (session.context_locked) {
-      console.log('[Analyze API] Context is locked by user, skipping AI analysis')
+    // Check if already analyzed (skip re-analysis unless user wants to correct)
+    const alreadyAnalyzed = session.recording_type && session.suggested_domains && session.ai_extracted_context
+    
+    if (session.context_locked || alreadyAnalyzed) {
+      console.log('[Analyze API] Using cached analysis (locked or already analyzed)')
       return NextResponse.json({
         recordingType: session.user_recording_type || session.recording_type,
         recordingTypeConfidence: session.recording_type_confidence || 1.0,
         domains: session.user_domains || session.suggested_domains || [],
         extractedContext: session.ai_extracted_context || {},
-        locked: true
+        locked: session.context_locked || false,
+        cached: true
       })
     }
 
@@ -86,49 +99,76 @@ export async function POST(
           role: 'user',
           content: `Analyze this conversation transcript comprehensively and extract:
 
-1. **Recording Type** (choose ONE): meeting, interview, presentation, consultation, lecture, dictation, other
-2. **Domains** (choose up to 3): legal, sales, hr, medical, education, consulting, general
+1. **Recording Type** (choose ONE): 
+   - meeting (in-person or virtual meeting)
+   - interview (job interview, media interview, research interview)
+   - presentation (lecture, webinar, training session)
+   - consultation (professional advice, client consultation)
+   - call_inbound (incoming phone call)
+   - call_outbound (outgoing phone call)
+   - dictation (voice memo, notes, letter dictation)
+   - ai_agent_conversation (conversation with AI assistant)
+   - other
+
+2. **Domains** (2-layer structure):
+   - Primary Domain: broad category (Medical, Legal, Sales, Education, Finance, etc.)
+   - Specialty: specific field (e.g., "Cardiology", "Tax Law", "B2B Sales", "Higher Education")
+   - Detect up to 2 domain combinations with confidence scores
+   - Use free-form text - be specific and accurate
+
 3. **Rich Context** to help understand and document this session
+4. **User Identification**: The recording was made by "${userName || 'unknown user'}". Try to identify which participant is this user.
 
 Transcript sample:
 ${sample}
 
 Respond in this exact JSON format:
 {
-  "recordingType": "meeting",
-  "recordingTypeConfidence": 0.90,
+  "recordingType": "consultation",
+  "recordingTypeConfidence": 0.92,
   "domains": [
-    {"domain": "sales", "confidence": 0.85},
-    {"domain": "consulting", "confidence": 0.70}
+    {
+      "primary": "Medical",
+      "specialty": "Cardiology",
+      "confidence": 0.88,
+      "description": "Medical consultation focused on heart health"
+    },
+    {
+      "primary": "Insurance",
+      "specialty": "Health Insurance",
+      "confidence": 0.65,
+      "description": "Discussion about coverage options"
+    }
   ],
   "extractedContext": {
     "participants": [
-      {"name": "Dr. Schmidt", "role": "consultant"},
-      {"name": "Frau Meyer", "role": "client"}
+      {"name": "Dr. Schmidt", "role": "cardiologist", "isUser": false},
+      {"name": "${userName || 'User'}", "role": "patient", "isUser": true}
     ],
-    "purpose": "Initial consultation about tax planning",
-    "topics": ["tax optimization", "retirement planning"],
-    "agenda": ["Review current situation", "Discuss options", "Plan next steps"],
-    "venue": "Office Berlin (or unknown if not mentioned)",
-    "keyDates": ["2026-03-01"],
-    "decisions": ["Schedule follow-up meeting"],
+    "purpose": "Annual cardiology checkup and medication review",
+    "topics": ["blood pressure", "medication dosage", "lifestyle recommendations"],
+    "agenda": ["Review test results", "Adjust medication", "Schedule follow-up"],
+    "venue": "Cardiology Clinic Berlin (or unknown if not mentioned)",
+    "keyDates": ["2026-03-15"],
+    "decisions": ["Increase medication dosage", "Schedule stress test"],
     "actionItems": [
-      {"task": "Send tax forms", "owner": "Dr. Schmidt", "deadline": "2026-02-15"}
+      {"task": "Schedule stress test", "owner": "Clinic", "deadline": "2026-03-15"}
     ],
-    "mood": "professional, collaborative",
+    "mood": "professional, reassuring",
     "outcome": "positive"
   }
 }
 
-**Instructions:**
-- Extract participant names if mentioned (or use "Speaker 1", "Speaker 2" if unknown)
-- Infer roles from conversation (client, consultant, doctor, patient, manager, employee, etc.)
-- Identify the main purpose/goal of the conversation
-- List key topics discussed
-- Extract any mentioned locations, dates, decisions, or action items
-- Assess overall mood and outcome
-- If information isn't available, use empty arrays [] or "unknown"
-- Be accurate and concise`
+**CRITICAL Instructions:**
+- For participants: Try to identify which participant matches "${userName}". Set their "isUser": true
+  - Compare names intelligently (handle variations like "Dr. Meyer" vs "Meyer", "Anna Schmidt" vs "Schmidt")
+  - If unclear, mark the speaker who seems to be receiving service/advice as isUser: true
+- Extract exact participant names from transcript (spell them correctly!)
+- Infer specific roles from conversation content
+- Be specific with domains - use actual field names (e.g., "Tax Law" not just "Legal")
+- Use 2-layer domain structure: primary (broad) + specialty (specific)
+- If information isn't clearly available, use empty arrays [] or "unknown"
+- Be accurate and preserve correct spelling from transcript`
         }
       ]
     })
@@ -172,14 +212,7 @@ Respond in this exact JSON format:
       console.log('[Analyze API] Session updated successfully')
     }
 
-    // Check user's auto-generation preference
-    console.log('[Analyze API] Checking user auto-generation preferences...')
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('after_transcript_action, preferred_report_language')
-      .eq('id', user.id)
-      .single()
-
+    // Check user's auto-generation preference (profile already fetched above)
     let autoGeneratedOutput = null
     if (profile?.after_transcript_action && profile.after_transcript_action !== 'nothing') {
       console.log('[Analyze API] Auto-generation enabled:', profile.after_transcript_action)

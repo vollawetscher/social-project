@@ -2,12 +2,14 @@
 
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { TranscriptSegment } from '@/lib/types-v0'
+import type { TranscriptSegment, TranscriptCorrections } from '@/lib/types-v0'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface TranscriptViewerProps {
   segments: TranscriptSegment[]
   currentTime?: number // Current audio playback time for highlighting
   onSeek?: (time: number) => void // Callback when user clicks on a timestamp
+  corrections?: TranscriptCorrections // Alias system for name corrections and PII redaction
 }
 
 // Speaker colors for visual distinction
@@ -20,7 +22,7 @@ const SPEAKER_COLORS = [
   'bg-cyan-500/20 text-cyan-700 border-cyan-500/30 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30',
 ]
 
-export function TranscriptViewer({ segments, currentTime = 0, onSeek }: TranscriptViewerProps) {
+export function TranscriptViewer({ segments, currentTime = 0, onSeek, corrections }: TranscriptViewerProps) {
   if (!segments || segments.length === 0) {
     return (
       <div className="flex items-center justify-center h-full p-8">
@@ -29,77 +31,168 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek }: Transcri
     )
   }
 
-  // Group speakers for consistent coloring
-  const speakers = Array.from(new Set(segments.map(s => s.speakerName)))
+  // Combine all corrections (name corrections + PII redactions)
+  const allCorrections: Record<string, string> = {
+    ...(corrections?.name_corrections || {}),
+    ...(corrections?.pii_redactions || {})
+  }
+
+  // Apply corrections to text
+  const applyCorrections = (text: string): { text: string; hasCorrections: boolean; original: string[] } => {
+    let correctedText = text
+    const originalTerms: string[] = []
+    let hasCorrections = false
+
+    Object.entries(allCorrections).forEach(([original, replacement]) => {
+      if (correctedText.includes(original)) {
+        correctedText = correctedText.replace(new RegExp(original, 'g'), replacement)
+        originalTerms.push(original)
+        hasCorrections = true
+      }
+    })
+
+    return { text: correctedText, hasCorrections, original: originalTerms }
+  }
+
+  // Group speakers for consistent coloring (apply corrections to speaker names)
+  const speakers = Array.from(new Set(segments.map(s => allCorrections[s.speakerName] || s.speakerName)))
   const getSpeakerColor = (speaker: string) => {
     const index = speakers.indexOf(speaker)
     return SPEAKER_COLORS[index % SPEAKER_COLORS.length]
   }
 
+  // Count total corrections
+  const correctionCount = Object.keys(allCorrections).length
+  const hasPiiRedactions = corrections?.pii_redactions && Object.keys(corrections.pii_redactions).length > 0
+
   return (
-    <div className="h-full overflow-auto flex flex-col">
-      {/* Header with Speaker Legend */}
-      <div className="sticky top-0 bg-card border-b border-border px-4 py-3 z-10">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-medium text-muted-foreground">Speakers:</span>
-          {speakers.map((speaker) => (
-            <Badge 
-              key={speaker} 
-              variant="outline" 
-              className={cn("text-xs font-medium", getSpeakerColor(speaker))}
-            >
-              {speaker}
-            </Badge>
-          ))}
+    <TooltipProvider>
+      <div className="h-full overflow-auto flex flex-col">
+        {/* Header with Speaker Legend */}
+        <div className="sticky top-0 bg-card border-b border-border px-4 py-3 z-10">
+          <div className="flex items-center gap-2 flex-wrap justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-muted-foreground">Speakers:</span>
+              {speakers.map((speaker) => (
+                <Badge 
+                  key={speaker} 
+                  variant="outline" 
+                  className={cn("text-xs font-medium", getSpeakerColor(speaker))}
+                >
+                  {speaker}
+                </Badge>
+              ))}
+            </div>
+            {correctionCount > 0 && (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge variant="secondary" className="text-xs">
+                    ✏️ {correctionCount} correction{correctionCount > 1 ? 's' : ''}
+                    {hasPiiRedactions && ' + PII'}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-xs space-y-1">
+                    {corrections?.name_corrections && Object.keys(corrections.name_corrections).length > 0 && (
+                      <p><strong>Name corrections:</strong> {Object.keys(corrections.name_corrections).length}</p>
+                    )}
+                    {corrections?.pii_redactions && Object.keys(corrections.pii_redactions).length > 0 && (
+                      <p><strong>PII redactions:</strong> {Object.keys(corrections.pii_redactions).length}</p>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+
+        {/* Transcript Content */}
+        <div className="flex-1 p-4 space-y-4">
+          {segments.map((segment, index) => {
+            const isActive = currentTime >= segment.startTime && 
+                            (index === segments.length - 1 || currentTime < segments[index + 1].startTime)
+            
+            // Apply corrections to speaker name and text
+            const correctedSpeaker = allCorrections[segment.speakerName] || segment.speakerName
+            const { text: correctedText, hasCorrections, original } = applyCorrections(segment.text)
+            
+            return (
+              <div 
+                key={index} 
+                className={cn(
+                  "flex gap-3 group hover:bg-muted/50 -mx-2 px-2 py-2 rounded-md transition-colors",
+                  isActive && "bg-primary/10 border-l-2 border-primary",
+                  onSeek && "cursor-pointer"
+                )}
+                onClick={() => onSeek && onSeek(segment.startTime)}
+                role={onSeek ? "button" : undefined}
+                tabIndex={onSeek ? 0 : undefined}
+              >
+                {/* Timestamp */}
+                <div className={cn(
+                  "text-xs text-muted-foreground font-mono pt-1 min-w-[60px] shrink-0 tabular-nums",
+                  onSeek && "group-hover:text-primary transition-colors"
+                )}>
+                  {formatTimestamp(segment.startTime)}
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  {/* Speaker Badge */}
+                  {allCorrections[segment.speakerName] ? (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Badge 
+                          variant="outline" 
+                          className={cn("text-xs font-medium", getSpeakerColor(correctedSpeaker))}
+                        >
+                          {correctedSpeaker} <span className="ml-1 text-[10px]">✏️</span>
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Original: {segment.speakerName}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Badge 
+                      variant="outline" 
+                      className={cn("text-xs font-medium", getSpeakerColor(segment.speakerName))}
+                    >
+                      {segment.speakerName}
+                    </Badge>
+                  )}
+                  
+                  {/* Text */}
+                  {hasCorrections ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <p className="text-sm leading-relaxed text-foreground cursor-help">
+                          {correctedText}
+                        </p>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">
+                          <strong>Corrections applied:</strong>
+                          {original.map((term, i) => (
+                            <span key={i} className="block">
+                              {term} → {allCorrections[term]}
+                            </span>
+                          ))}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <p className="text-sm leading-relaxed text-foreground">
+                      {segment.text}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
-
-      {/* Transcript Content */}
-      <div className="flex-1 p-4 space-y-4">
-        {segments.map((segment, index) => {
-          const isActive = currentTime >= segment.startTime && 
-                          (index === segments.length - 1 || currentTime < segments[index + 1].startTime)
-          
-          return (
-            <div 
-              key={index} 
-              className={cn(
-                "flex gap-3 group hover:bg-muted/50 -mx-2 px-2 py-2 rounded-md transition-colors",
-                isActive && "bg-primary/10 border-l-2 border-primary",
-                onSeek && "cursor-pointer"
-              )}
-              onClick={() => onSeek && onSeek(segment.startTime)}
-              role={onSeek ? "button" : undefined}
-              tabIndex={onSeek ? 0 : undefined}
-            >
-              {/* Timestamp */}
-              <div className={cn(
-                "text-xs text-muted-foreground font-mono pt-1 min-w-[60px] shrink-0 tabular-nums",
-                onSeek && "group-hover:text-primary transition-colors"
-              )}>
-                {formatTimestamp(segment.startTime)}
-              </div>
-              
-              {/* Content */}
-              <div className="flex-1 min-w-0 space-y-1.5">
-                {/* Speaker Badge */}
-                <Badge 
-                  variant="outline" 
-                  className={cn("text-xs font-medium", getSpeakerColor(segment.speakerName))}
-                >
-                  {segment.speakerName}
-                </Badge>
-                
-                {/* Text */}
-                <p className="text-sm leading-relaxed text-foreground">
-                  {segment.text}
-                </p>
-              </div>
-            </div>
-          )
-        })}
-        </div>
-    </div>
+    </TooltipProvider>
   )
 }
 

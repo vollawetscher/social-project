@@ -16,11 +16,17 @@ import {
   Download,
   ExternalLink,
   Check,
+  Edit2,
+  Save,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
 import { GenerateOutputModal } from "@/components/generate-output-modal"
@@ -52,12 +58,90 @@ export default function SessionDetailPage() {
   const [currentAudioTime, setCurrentAudioTime] = useState(0)
   const [activeTab, setActiveTab] = useState("transcript")
   const audioPlayerRef = useRef<any>(null)
+  
+  // Participant editing state
+  const [editingParticipants, setEditingParticipants] = useState(false)
+  const [editedParticipants, setEditedParticipants] = useState<any[]>([])
+  const [applyToTranscript, setApplyToTranscript] = useState(true)
+  const [savingCorrections, setSavingCorrections] = useState(false)
 
   // Handle seeking to a specific time from transcript click
   const handleSeekToTime = (time: number) => {
     if (audioPlayerRef.current) {
       audioPlayerRef.current.seekTo(time)
     }
+  }
+
+  // Handle participant editing
+  const handleEditParticipants = () => {
+    setEditedParticipants(session?.extractedContext?.participants || [])
+    setEditingParticipants(true)
+  }
+
+  const handleSaveParticipants = async () => {
+    if (!session || !editingParticipants) return
+
+    setSavingCorrections(true)
+    try {
+      // Build corrections mapping
+      const corrections: Record<string, string> = {}
+      const originalParticipants = session.extractedContext?.participants || []
+      
+      editedParticipants.forEach((edited: any, idx: number) => {
+        const original = originalParticipants[idx]
+        const originalName = typeof original === 'string' ? original : original.name
+        const editedName = typeof edited === 'string' ? edited : edited.name
+        
+        if (originalName !== editedName && applyToTranscript) {
+          corrections[originalName] = editedName
+        }
+      })
+
+      // Save corrections to API
+      if (Object.keys(corrections).length > 0) {
+        const response = await fetch(`/api/sessions/${sessionId}/corrections`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            corrections, 
+            type: 'name_corrections' 
+          })
+        })
+
+        if (!response.ok) throw new Error('Failed to save corrections')
+
+        const data = await response.json()
+        
+        // Update session with new corrections
+        setSession(prev => prev ? {
+          ...prev,
+          transcriptCorrections: data.corrections
+        } : null)
+
+        toast.success('Corrections saved successfully')
+      }
+
+      // Update participants in session
+      setSession(prev => prev ? {
+        ...prev,
+        extractedContext: {
+          ...prev.extractedContext!,
+          participants: editedParticipants
+        }
+      } : null)
+
+      setEditingParticipants(false)
+    } catch (error) {
+      console.error('Failed to save corrections:', error)
+      toast.error('Failed to save corrections')
+    } finally {
+      setSavingCorrections(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingParticipants(false)
+    setEditedParticipants([])
   }
 
   // Fetch real session data
@@ -307,6 +391,7 @@ export default function SessionDetailPage() {
                 segments={session.transcript}
                 currentTime={currentAudioTime}
                 onSeek={handleSeekToTime}
+                corrections={session.transcriptCorrections}
               />
             </div>
           </TabsContent>
@@ -328,12 +413,23 @@ export default function SessionDetailPage() {
                         </Badge>
                       </div>
                     )}
-                    {session?.domain && (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                        <span className="text-sm text-muted-foreground">Domain</span>
-                        <Badge variant="outline" className="capitalize">
-                          {session.domain}
-                        </Badge>
+                    {session?.domains && session.domains.length > 0 && (
+                      <div className="space-y-2">
+                        {session.domains.map((domain: any, idx: number) => (
+                          <div key={idx} className="p-3 rounded-lg bg-secondary/50">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline" className="capitalize">
+                                {domain.primary || domain.domain}
+                              </Badge>
+                              {domain.specialty && (
+                                <span className="text-xs text-muted-foreground">→ {domain.specialty}</span>
+                              )}
+                            </div>
+                            {domain.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{domain.description}</p>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -347,9 +443,21 @@ export default function SessionDetailPage() {
                     {session.extractedContext.participants?.length > 0 && (
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Participants</p>
-                        <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
-                          {session.extractedContext.participants.join(', ')}
-                        </p>
+                        <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
+                          {session.extractedContext.participants.map((participant: any, idx: number) => {
+                            const name = typeof participant === 'string' ? participant : participant.name
+                            const role = typeof participant === 'object' && participant.role ? participant.role : null
+                            const isUser = participant.isUser || false
+                            
+                            return (
+                              <div key={idx} className="flex items-center gap-2 flex-wrap">
+                                <span className="text-foreground font-medium">{name}</span>
+                                {isUser && <Badge variant="default" className="text-xs px-2 py-0">You</Badge>}
+                                {role && <span className="text-xs text-muted-foreground">• {role}</span>}
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
 
@@ -514,6 +622,7 @@ export default function SessionDetailPage() {
                 segments={session.transcript} 
                 currentTime={currentAudioTime}
                 onSeek={handleSeekToTime}
+                corrections={session.transcriptCorrections}
               />
             </div>
           )}
@@ -536,12 +645,24 @@ export default function SessionDetailPage() {
                         </Badge>
                       </div>
                     )}
-                    {session?.domain && (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                        <span className="text-sm text-muted-foreground">Domain</span>
-                        <Badge variant="outline" className="capitalize">
-                          {session.domain}
-                        </Badge>
+                    {session?.domains && session.domains.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-medium text-muted-foreground mb-2 block">Domains</span>
+                        {session.domains.map((domain: any, idx: number) => (
+                          <div key={idx} className="p-3 rounded-lg bg-secondary/50">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline" className="capitalize">
+                                {domain.primary || domain.domain}
+                              </Badge>
+                              {domain.specialty && (
+                                <span className="text-xs text-muted-foreground">→ {domain.specialty}</span>
+                              )}
+                            </div>
+                            {domain.description && (
+                              <p className="text-xs text-muted-foreground mt-1">{domain.description}</p>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -555,9 +676,21 @@ export default function SessionDetailPage() {
                     {session.extractedContext.participants?.length > 0 && (
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Participants</p>
-                        <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
-                          {session.extractedContext.participants.join(', ')}
-                        </p>
+                        <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
+                          {session.extractedContext.participants.map((participant: any, idx: number) => {
+                            const name = typeof participant === 'string' ? participant : participant.name
+                            const role = typeof participant === 'object' && participant.role ? participant.role : null
+                            const isUser = participant.isUser || false
+                            
+                            return (
+                              <div key={idx} className="flex items-center gap-2 flex-wrap">
+                                <span className="text-foreground font-medium">{name}</span>
+                                {isUser && <Badge variant="default" className="text-xs px-2 py-0">You</Badge>}
+                                {role && <span className="text-xs text-muted-foreground">• {role}</span>}
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
 

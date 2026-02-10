@@ -56,10 +56,15 @@ interface SessionSetupPanelProps {
 const recordingTypeLabels: Record<RecordingType, string> = {
   meeting: "Meeting",
   interview: "Interview",
+  presentation: "Presentation",
+  consultation: "Consultation",
+  call_inbound: "Incoming Call",
+  call_outbound: "Outgoing Call",
+  dictation: "Dictation",
+  ai_agent_conversation: "AI Agent Conversation",
   legal_deposition: "Legal Deposition",
   sales_call: "Sales Call",
   lecture: "Lecture",
-  consultation: "Consultation",
   other: "Other",
 }
 
