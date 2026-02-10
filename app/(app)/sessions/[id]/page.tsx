@@ -204,16 +204,21 @@ export default function SessionDetailPage() {
         if (response.ok) {
           const data = await response.json()
           console.log('[AI Analysis] Success! Data:', data)
+          console.log('[AI Analysis] Participants received:', data.extractedContext?.participants)
           setAnalysis(data)
           
           // Update session with fresh AI data
-          setSession(prev => prev ? {
-            ...prev,
-            recordingType: data.recordingType,
-            recordingTypeConfidence: data.recordingTypeConfidence,
-            domains: data.domains,
-            extractedContext: data.extractedContext || {}
-          } : null)
+          setSession(prev => {
+            const updated = prev ? {
+              ...prev,
+              recordingType: data.recordingType,
+              recordingTypeConfidence: data.recordingTypeConfidence,
+              domains: data.domains,
+              extractedContext: data.extractedContext || {}
+            } : null
+            console.log('[AI Analysis] Updated session.extractedContext:', updated?.extractedContext)
+            return updated
+          })
         } else if (response.status === 400) {
           // Transcript not ready yet, skip silently
           console.log('[AI Analysis] Transcript not ready for analysis yet (400)')
