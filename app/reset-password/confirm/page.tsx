@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/ui/logo'
 
 export default function ResetPasswordConfirmPage() {
   const router = useRouter()
@@ -162,11 +163,27 @@ export default function ResetPasswordConfirmPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Set New Password</CardTitle>
-          <CardDescription className="text-center">
-            Enter your new password below
-          </CardDescription>
+        <CardHeader className="space-y-6">
+          {/* Logo and Branding */}
+          <div className="flex flex-col items-center space-y-3">
+            <Logo className="h-10" />
+            <div className="text-center space-y-1">
+              <p className="text-lg font-medium text-foreground">
+                When words carry weight.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Made in Germany
+              </p>
+            </div>
+          </div>
+          
+          {/* Set New Password Header */}
+          <div className="text-center space-y-1 pt-2">
+            <CardTitle className="text-2xl font-bold">Set New Password</CardTitle>
+            <CardDescription>
+              Enter your new password below
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handlePasswordReset} className="space-y-4">

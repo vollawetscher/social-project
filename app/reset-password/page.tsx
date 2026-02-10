@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, ArrowLeft, CheckCircle2, Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Logo } from '@/components/ui/logo'
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('')
@@ -90,11 +91,27 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Reset Password</CardTitle>
-          <CardDescription className="text-center">
-            Enter your email and we'll send you a link to reset your password
-          </CardDescription>
+        <CardHeader className="space-y-6">
+          {/* Logo and Branding */}
+          <div className="flex flex-col items-center space-y-3">
+            <Logo className="h-10" />
+            <div className="text-center space-y-1">
+              <p className="text-lg font-medium text-foreground">
+                When words carry weight.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Made in Germany
+              </p>
+            </div>
+          </div>
+          
+          {/* Reset Password Header */}
+          <div className="text-center space-y-1 pt-2">
+            <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
+            <CardDescription>
+              Enter your email and we'll send you a link to reset your password
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleResetRequest} className="space-y-4">

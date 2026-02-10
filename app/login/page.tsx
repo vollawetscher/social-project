@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { createClient } from '@/lib/supabase/client';
+import { Logo } from '@/components/ui/logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -67,13 +68,26 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Gesprächsbericht
-          </CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your account
-          </CardDescription>
+        <CardHeader className="space-y-6">
+          {/* Logo and Branding */}
+          <div className="flex flex-col items-center space-y-3">
+            <Logo className="h-10" />
+            <div className="text-center space-y-1">
+              <p className="text-lg font-medium text-foreground">
+                When words carry weight.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Made in Germany
+              </p>
+            </div>
+          </div>
+          
+          {/* Sign In Header */}
+          <div className="text-center space-y-1 pt-2">
+            <CardTitle className="text-2xl font-bold">
+              Sign in to your account
+            </CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
