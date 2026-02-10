@@ -37,7 +37,8 @@ export async function POST(
       .single()
 
     const userName = profile?.full_name || profile?.company_name || ''
-    console.log('[Analyze API] User name for identification:', userName)
+    console.log('[Analyze API] Profile data:', { full_name: profile?.full_name, company_name: profile?.company_name })
+    console.log('[Analyze API] User name for AI identification:', userName)
 
     // Fetch session and transcript
     const { data: session, error: sessionError } = await supabase
@@ -192,6 +193,7 @@ Respond in this exact JSON format:
     console.log('[Analyze API] Extracted JSON:', jsonText.substring(0, 200))
     const analysis = JSON.parse(jsonText)
     console.log('[Analyze API] Parsed analysis:', JSON.stringify(analysis).substring(0, 300))
+    console.log('[Analyze API] AI identified participants:', JSON.stringify(analysis.extractedContext?.participants, null, 2))
 
     // Update session with AI suggestions and extracted context
     console.log('[Analyze API] Updating session in database...')
