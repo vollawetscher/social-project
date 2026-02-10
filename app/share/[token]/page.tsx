@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -183,10 +184,7 @@ export default function SharedOutputPage() {
         {/* Header */}
         <header className="border-b border-border bg-card">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
-              <span className="text-xl font-semibold">Notissima</span>
-            </div>
+            <Logo />
           </div>
         </header>
 
@@ -206,10 +204,7 @@ export default function SharedOutputPage() {
         {/* Header */}
         <header className="border-b border-border bg-card">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
-              <span className="text-xl font-semibold">Notissima</span>
-            </div>
+            <Logo />
             <Button asChild>
               <Link href="/signup">
                 Sign Up Free
@@ -242,10 +237,7 @@ export default function SharedOutputPage() {
       {/* Header with Branding & CTA */}
       <header className="border-b border-border bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
-            <span className="text-xl font-semibold">Notissima</span>
-          </div>
+          <Logo />
           <Button asChild>
             <Link href="/signup">
               Sign Up Free
