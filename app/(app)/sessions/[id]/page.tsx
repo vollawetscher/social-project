@@ -205,6 +205,15 @@ export default function SessionDetailPage() {
           const data = await response.json()
           console.log('[AI Analysis] Success! Data:', data)
           setAnalysis(data)
+          
+          // Update session with fresh AI data
+          setSession(prev => prev ? {
+            ...prev,
+            recordingType: data.recordingType,
+            recordingTypeConfidence: data.recordingTypeConfidence,
+            domains: data.domains,
+            extractedContext: data.extractedContext || {}
+          } : null)
         } else if (response.status === 400) {
           // Transcript not ready yet, skip silently
           console.log('[AI Analysis] Transcript not ready for analysis yet (400)')
