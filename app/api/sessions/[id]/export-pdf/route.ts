@@ -100,7 +100,9 @@ export async function GET(
         `Date: ${data.metadata.date}`,
         `Duration: ${data.metadata.duration}`,
         `Setting: ${data.metadata.setting}`,
-        `Participants: ${data.metadata.participants.join(', ')}`,
+        `Participants: ${Array.isArray(data.metadata.participants) 
+          ? data.metadata.participants.map((p: any) => typeof p === 'string' ? p : p?.name || 'Unknown').join(', ')
+          : 'Unknown'}`,
         ...(data.metadata.topic ? [`Topic: ${data.metadata.topic}`] : [])
       ])
 
