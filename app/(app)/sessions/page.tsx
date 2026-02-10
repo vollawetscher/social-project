@@ -157,15 +157,18 @@ function EditableSessionName({
 
   return (
     <div className="flex items-center gap-1 group/name">
-      <Link
-        href={`/sessions/${session.id}`}
-        className="font-medium text-foreground truncate max-w-[180px] hover:underline"
-      >
-        {session.filename}
-      </Link>
       <button
         onClick={(e) => {
-          e.preventDefault()
+          e.stopPropagation() // Prevent card click
+          setIsEditing(true)
+        }}
+        className="font-medium text-foreground truncate max-w-[180px] hover:underline text-left"
+      >
+        {session.filename}
+      </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation() // Prevent card click
           setIsEditing(true)
         }}
         className="h-5 w-5 p-0 opacity-0 group-hover/name:opacity-100 transition-opacity inline-flex items-center justify-center hover:bg-secondary rounded"
@@ -734,9 +737,10 @@ export default function SessionsPage() {
             filteredSessions.map((session: Session) => {
               const status = statusConfig[session.status as SessionStatus]
               return (
-                <div
+                <Link
                   key={session.id}
-                  className="p-3 hover:bg-secondary/50 transition-colors"
+                  href={`/sessions/${session.id}`}
+                  className="block p-3 hover:bg-secondary/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -786,25 +790,26 @@ export default function SessionsPage() {
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0 shrink-0"
+                          onClick={(e) => e.stopPropagation()} // Prevent card click
                         >
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/sessions/${session.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation()
+                          handleDownloadTranscript(session)
+                        }}>
                           <Download className="mr-2 h-4 w-4" />
                           Download
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive"
-                          onClick={() => handleDeleteSession(session.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteSession(session.id)
+                          }}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
@@ -812,7 +817,7 @@ export default function SessionsPage() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                </div>
+                </Link>
               )
             })
           )}
@@ -849,7 +854,11 @@ export default function SessionsPage() {
                 filteredSessions.map((session: Session) => {
                   const status = statusConfig[session.status as SessionStatus]
                   return (
-                    <TableRow key={session.id} className="group">
+                    <TableRow 
+                      key={session.id} 
+                      className="group cursor-pointer"
+                      onClick={() => window.location.href = `/sessions/${session.id}`}
+                    >
                       <TableCell>
                         <div className="flex flex-col">
                           <EditableSessionName 
@@ -917,29 +926,30 @@ export default function SessionsPage() {
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()} // Prevent row click
                             >
                               <MoreHorizontal className="h-4 w-4" />
                               <span className="sr-only">Open menu</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/sessions/${session.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                              </Link>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              handleDownloadTranscript(session)
+                            }}>
+                              <Download className="mr-2 h-4 w-4" />
+                              Download
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDeleteSession(session.id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteSession(session.id)
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
