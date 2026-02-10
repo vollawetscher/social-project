@@ -425,6 +425,17 @@ export default function SessionDetailPage() {
 
         {/* Mobile Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 md:hidden">
+          {/* Mobile Audio Player - Sticky at top */}
+          {session.audioUrl && (
+            <div className="mb-4">
+              <AudioPlayer
+                ref={audioPlayerRef}
+                audioUrl={session.audioUrl}
+                onTimeUpdate={setCurrentAudioTime}
+              />
+            </div>
+          )}
+          
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="transcript">Transcript</TabsTrigger>
             <TabsTrigger value="context">Context</TabsTrigger>
