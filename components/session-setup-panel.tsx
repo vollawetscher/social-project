@@ -54,6 +54,15 @@ interface SessionSetupPanelProps {
   onContextSaved?: () => void // Callback to refresh parent session data
 }
 
+// Helper to get speaker IDs from transcript
+function getSpeakerIds(session: Session): string[] {
+  const speakers = new Set<string>()
+  session.transcript.forEach(segment => {
+    speakers.add(segment.speakerName)
+  })
+  return Array.from(speakers).sort()
+}
+
 const recordingTypeLabels: Record<RecordingType, string> = {
   meeting: "Meeting",
   interview: "Interview",
@@ -126,7 +135,21 @@ export function SessionSetupPanel({
   const [hasChanges, setHasChanges] = useState(false)
   
   // Track if user wants to apply corrections to transcript
-  const [applyToTranscript, setApplyToTranscript] = useState(true)
+  // Default to false if participants are placeholders (S1, S2, Unknown)
+  const hasPlaceholderNames = session.extractedContext?.participants?.every((p: any) => {
+    const name = typeof p === 'string' ? p : p?.name || ''
+    return name.match(/^(S\d+|Unknown|Speaker \d+)$/i)
+  })
+  const [applyToTranscript, setApplyToTranscript] = useState(!hasPlaceholderNames)
+  
+  // Track which speaker/participant is the user
+  const [userIdentity, setUserIdentity] = useState<string>(() => {
+    // Try to find which participant has isUser: true
+    const userParticipant = session.extractedContext?.participants?.find((p: any) => 
+      typeof p === 'object' && p.isUser
+    )
+    return userParticipant ? (typeof userParticipant === 'string' ? userParticipant : userParticipant.name) : 'none'
+  })
   const [isSaving, setIsSaving] = useState(false)
 
   // Initial values for comparison
@@ -177,6 +200,24 @@ export function SessionSetupPanel({
   const handleSaveContext = async () => {
     setIsSaving(true)
     try {
+      // Build participant objects with isUser flag
+      const participantNames = participants.split(',').map(p => p.trim()).filter(Boolean)
+      const speakerIds = getSpeakerIds(session)
+      
+      const participantObjects = participantNames.map((name, idx) => {
+        const speakerId = speakerIds[idx]
+        const isUser = userIdentity === speakerId || 
+                       (userIdentity !== 'none' && userIdentity !== 'listener' && name.toLowerCase().includes(userIdentity.toLowerCase()))
+        
+        return {
+          name,
+          role: null, // User can add roles later if needed
+          isUser
+        }
+      })
+
+      console.log('[Save Context] Built participant objects:', participantObjects)
+
       // Save context first
       const response = await fetch(`/api/sessions/${session.id}/context`, {
         method: 'PATCH',
@@ -185,7 +226,7 @@ export function SessionSetupPanel({
           recordingType: selectedRecordingType,
           domains: selectedDomain ? [{ domain: selectedDomain, confidence: 1.0 }] : [],
           extractedContext: {
-            participants: participants.split(',').map(p => p.trim()).filter(Boolean),
+            participants: participantObjects,
             purpose,
             agenda: agenda.split('\n').filter(Boolean),
             venue
@@ -200,17 +241,19 @@ export function SessionSetupPanel({
 
       // Apply transcript corrections if checkbox is checked
       if (applyToTranscript) {
-        const oldParticipants = initialValues.participants.split(',').map(p => p.trim()).filter(Boolean)
-        const newParticipants = participants.split(',').map(p => p.trim()).filter(Boolean)
+        const newParticipantNames = participants.split(',').map(p => p.trim()).filter(Boolean)
+        const speakerIds = getSpeakerIds(session)
         
-        // Build corrections mapping (old name -> new name)
+        // Map speaker IDs to participant names (S1 -> Christian, S2 -> Azat)
         const corrections: Record<string, string> = {}
-        oldParticipants.forEach((oldName, idx) => {
-          const newName = newParticipants[idx]
-          if (newName && oldName !== newName) {
-            corrections[oldName] = newName
+        speakerIds.forEach((speakerId, idx) => {
+          const participantName = newParticipantNames[idx]
+          if (participantName && speakerId !== participantName) {
+            corrections[speakerId] = participantName
           }
         })
+
+        console.log('[Save Context] Creating corrections mapping:', corrections)
 
         // Save corrections if any changes
         if (Object.keys(corrections).length > 0) {
@@ -225,6 +268,8 @@ export function SessionSetupPanel({
 
           if (!correctionsResponse.ok) {
             console.warn('Failed to save corrections, but context was saved')
+          } else {
+            console.log('[Save Context] Corrections saved successfully')
           }
         }
       }
@@ -407,20 +452,43 @@ export function SessionSetupPanel({
                     placeholder="Enter participant names..."
                     className="bg-secondary border-border text-sm"
                   />
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="checkbox"
-                      id="apply-to-transcript-slide"
-                      checked={applyToTranscript}
-                      onChange={(e) => setApplyToTranscript(e.target.checked)}
-                      className="h-3 w-3 rounded border-border"
-                    />
-                    <Label 
-                      htmlFor="apply-to-transcript-slide" 
-                      className="text-xs text-muted-foreground cursor-pointer font-normal"
-                    >
-                      Apply name corrections to transcript
-                    </Label>
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="apply-to-transcript-slide"
+                        checked={applyToTranscript}
+                        onChange={(e) => setApplyToTranscript(e.target.checked)}
+                        className="h-3 w-3 rounded border-border"
+                      />
+                      <Label 
+                        htmlFor="apply-to-transcript-slide" 
+                        className="text-xs text-muted-foreground cursor-pointer font-normal"
+                      >
+                        Apply name corrections to transcript
+                      </Label>
+                    </div>
+                    
+                    {/* User Identity Selection */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Which participant are you?
+                      </Label>
+                      <Select value={userIdentity} onValueChange={setUserIdentity}>
+                        <SelectTrigger className="h-8 text-xs bg-secondary border-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Not in conversation</SelectItem>
+                          <SelectItem value="listener">Listener only</SelectItem>
+                          {getSpeakerIds(session).map((speaker) => (
+                            <SelectItem key={speaker} value={speaker}>
+                              {speaker}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-2">
