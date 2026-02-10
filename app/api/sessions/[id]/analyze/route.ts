@@ -164,10 +164,15 @@ Respond in this exact JSON format:
   }
 }
 
-**CRITICAL Instructions:**
-- For participants: Try to identify which participant matches "${userName}". Set their "isUser": true
-  - Compare names intelligently (handle variations like "Dr. Meyer" vs "Meyer", "Anna Schmidt" vs "Schmidt")
-  - If unclear, mark the speaker who seems to be receiving service/advice as isUser: true
+**CRITICAL Instructions for Participant Identification:**
+- The recording was made BY: "${userName}"
+- Look for speaker patterns to identify which SPEAKER is "${userName}":
+  * If Speaker A says "Hey ${userName}" or addresses "${userName}", then the person who RESPONDS is likely "${userName}"
+  * Don't assume the speaker who MENTIONS a name IS that person - they might be addressing them
+  * Compare speaker IDs (S1, S2, etc.) with mentioned names in context
+  * Example: If S1 says "Hey Christian" and S2 responds, then S2 is Christian
+- Set "isUser": true for the speaker who matches "${userName}"
+- If uncertain, mark the speaker who seems to be receiving service/advice as isUser: true
 - Extract exact participant names from transcript (spell them correctly!)
 - Infer specific roles from conversation content
 - Be specific with domains - use actual field names (e.g., "Tax Law" not just "Legal")
