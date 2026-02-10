@@ -307,28 +307,10 @@ export function SessionSetupPanel({
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col gap-4 p-4 h-full overflow-auto">
-        {/* Save Button - Visible when changes detected */}
-        {hasChanges && (
-          <Button 
-            onClick={handleSaveContext}
-            disabled={isSaving}
-            className="w-full sticky top-0 z-10 shadow-md"
-            size="sm"
-          >
-            {isSaving ? (
-              <>
-                <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-3.5 w-3.5 mr-2" />
-                Save Context & Lock AI Suggestions
-              </>
-            )}
-          </Button>
-        )}
+      <div className="flex flex-col h-full">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto pb-24">
+          <div className="flex flex-col gap-4 p-4">
 
         {/* AI Suggestions */}
         <Card className="border-border">
@@ -634,6 +616,32 @@ export function SessionSetupPanel({
             ))}
           </CardContent>
         </Card>
+          </div>
+        </div>
+
+        {/* Sticky Footer - Save Button */}
+        {hasChanges && (
+          <div className="sticky bottom-0 left-0 right-0 p-4 bg-background border-t border-border shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
+            <Button 
+              onClick={handleSaveContext}
+              disabled={isSaving}
+              className="w-full"
+              size="sm"
+            >
+              {isSaving ? (
+                <>
+                  <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-3.5 w-3.5 mr-2" />
+                  Save Context
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </TooltipProvider>
   )
