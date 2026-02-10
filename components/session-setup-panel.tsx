@@ -112,7 +112,9 @@ export function SessionSetupPanel({
   const [citeTimestamps, setCiteTimestamps] = useState(true)
 
   const [participants, setParticipants] = useState(
-    session.extractedContext?.participants?.join(", ") || ""
+    session.extractedContext?.participants
+      ?.map((p: any) => typeof p === 'string' ? p : p?.name || 'Unknown')
+      .join(", ") || ""
   )
   const [purpose, setPurpose] = useState(session.extractedContext?.purpose || "")
   const [agenda, setAgenda] = useState(session.extractedContext?.agenda?.join("\n") || "")
@@ -137,12 +139,16 @@ export function SessionSetupPanel({
     setInitialValues({
       recordingType: session.recordingType,
       domain: session.domain,
-      participants: session.extractedContext?.participants?.join(", ") || "",
+      participants: session.extractedContext?.participants
+        ?.map((p: any) => typeof p === 'string' ? p : p?.name || 'Unknown')
+        .join(", ") || "",
       purpose: session.extractedContext?.purpose || "",
       agenda: session.extractedContext?.agenda?.join("\n") || "",
       venue: session.extractedContext?.venue || ""
     })
-    setParticipants(session.extractedContext?.participants?.join(", ") || "")
+    setParticipants(session.extractedContext?.participants
+      ?.map((p: any) => typeof p === 'string' ? p : p?.name || 'Unknown')
+      .join(", ") || "")
     setPurpose(session.extractedContext?.purpose || "")
     setAgenda(session.extractedContext?.agenda?.join("\n") || "")
     setVenue(session.extractedContext?.venue || "")
