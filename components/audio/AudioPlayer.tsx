@@ -15,6 +15,7 @@ import {
 interface AudioPlayerProps {
   audioUrl: string
   onTimeUpdate?: (currentTime: number) => void
+  onPlayStateChange?: (isPlaying: boolean) => void
   className?: string
 }
 
@@ -25,7 +26,7 @@ export interface AudioPlayerHandle {
 }
 
 export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>(
-  ({ audioUrl, onTimeUpdate, className = '' }, ref) => {
+  ({ audioUrl, onTimeUpdate, onPlayStateChange, className = '' }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null)
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
@@ -45,6 +46,9 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
         if (!isPlaying) {
           audio.play()
           setIsPlaying(true)
+          if (onPlayStateChange) {
+            onPlayStateChange(true)
+          }
         }
       },
       play: () => {
@@ -52,14 +56,20 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
         if (!audio) return
         audio.play()
         setIsPlaying(true)
+        if (onPlayStateChange) {
+          onPlayStateChange(true)
+        }
       },
       pause: () => {
         const audio = audioRef.current
         if (!audio) return
         audio.pause()
         setIsPlaying(false)
+        if (onPlayStateChange) {
+          onPlayStateChange(false)
+        }
       }
-    }))
+    }), [isPlaying, onPlayStateChange])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -78,18 +88,39 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
 
     const handleEnded = () => {
       setIsPlaying(false)
+      if (onPlayStateChange) {
+        onPlayStateChange(false)
+      }
+    }
+
+    const handlePlay = () => {
+      setIsPlaying(true)
+      if (onPlayStateChange) {
+        onPlayStateChange(true)
+      }
+    }
+
+    const handlePause = () => {
+      setIsPlaying(false)
+      if (onPlayStateChange) {
+        onPlayStateChange(false)
+      }
     }
 
     audio.addEventListener('timeupdate', updateTime)
     audio.addEventListener('loadedmetadata', updateDuration)
     audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('pause', handlePause)
 
     return () => {
       audio.removeEventListener('timeupdate', updateTime)
       audio.removeEventListener('loadedmetadata', updateDuration)
       audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('pause', handlePause)
     }
-  }, [onTimeUpdate])
+  }, [onTimeUpdate, onPlayStateChange])
 
   const togglePlay = () => {
     const audio = audioRef.current

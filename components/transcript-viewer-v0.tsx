@@ -10,6 +10,8 @@ interface TranscriptViewerProps {
   currentTime?: number // Current audio playback time for highlighting
   onSeek?: (time: number) => void // Callback when user clicks on a timestamp
   corrections?: TranscriptCorrections // Alias system for name corrections and PII redaction
+  onTogglePlayback?: () => void // Callback to toggle play/pause
+  isPlaying?: boolean // Current playback state
 }
 
 // Speaker colors for visual distinction
@@ -22,7 +24,7 @@ const SPEAKER_COLORS = [
   'bg-cyan-500/20 text-cyan-700 border-cyan-500/30 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30',
 ]
 
-export function TranscriptViewer({ segments, currentTime = 0, onSeek, corrections }: TranscriptViewerProps) {
+export function TranscriptViewer({ segments, currentTime = 0, onSeek, corrections, onTogglePlayback, isPlaying = false }: TranscriptViewerProps) {
   if (!segments || segments.length === 0) {
     return (
       <div className="flex items-center justify-center h-full p-8">
@@ -124,7 +126,15 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                   isActive && "bg-primary/10 border-l-2 border-primary",
                   onSeek && "cursor-pointer"
                 )}
-                onClick={() => onSeek && onSeek(segment.startTime)}
+                onClick={() => {
+                  // If clicking the currently active segment and audio is playing, pause
+                  if (isActive && isPlaying && onTogglePlayback) {
+                    onTogglePlayback()
+                  } else if (onSeek) {
+                    // Otherwise, seek to this segment
+                    onSeek(segment.startTime)
+                  }
+                }}
                 role={onSeek ? "button" : undefined}
                 tabIndex={onSeek ? 0 : undefined}
               >

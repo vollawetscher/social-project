@@ -57,6 +57,7 @@ export default function SessionDetailPage() {
   const [analysis, setAnalysis] = useState<any>(null)
   const [currentAudioTime, setCurrentAudioTime] = useState(0)
   const [activeTab, setActiveTab] = useState("transcript")
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const audioPlayerRef = useRef<any>(null)
   
   // Participant editing state
@@ -69,6 +70,20 @@ export default function SessionDetailPage() {
   const handleSeekToTime = (time: number) => {
     if (audioPlayerRef.current) {
       audioPlayerRef.current.seekTo(time)
+      setIsAudioPlaying(true)
+    }
+  }
+
+  // Handle toggle play/pause
+  const handleTogglePlayback = () => {
+    if (audioPlayerRef.current) {
+      if (isAudioPlaying) {
+        audioPlayerRef.current.pause()
+        setIsAudioPlaying(false)
+      } else {
+        audioPlayerRef.current.play()
+        setIsAudioPlaying(true)
+      }
     }
   }
 
@@ -425,17 +440,6 @@ export default function SessionDetailPage() {
 
         {/* Mobile Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 md:hidden">
-          {/* Mobile Audio Player - Sticky at top */}
-          {session.audioUrl && (
-            <div className="mb-4">
-              <AudioPlayer
-                ref={audioPlayerRef}
-                audioUrl={session.audioUrl}
-                onTimeUpdate={setCurrentAudioTime}
-              />
-            </div>
-          )}
-          
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="transcript">Transcript</TabsTrigger>
             <TabsTrigger value="context">Context</TabsTrigger>
@@ -448,6 +452,8 @@ export default function SessionDetailPage() {
                 currentTime={currentAudioTime}
                 onSeek={handleSeekToTime}
                 corrections={session.transcriptCorrections}
+                onTogglePlayback={handleTogglePlayback}
+                isPlaying={isAudioPlaying}
               />
             </div>
           </TabsContent>
@@ -668,6 +674,7 @@ export default function SessionDetailPage() {
               ref={audioPlayerRef}
               audioUrl={session.audioUrl}
               onTimeUpdate={setCurrentAudioTime}
+              onPlayStateChange={setIsAudioPlaying}
             />
           )}
           
@@ -679,6 +686,8 @@ export default function SessionDetailPage() {
                 currentTime={currentAudioTime}
                 onSeek={handleSeekToTime}
                 corrections={session.transcriptCorrections}
+                onTogglePlayback={handleTogglePlayback}
+                isPlaying={isAudioPlaying}
               />
             </div>
           )}
