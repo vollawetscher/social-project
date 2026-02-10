@@ -171,8 +171,10 @@ Respond in this exact JSON format:
   * Don't assume the speaker who MENTIONS a name IS that person - they might be addressing them
   * Compare speaker IDs (S1, S2, etc.) with mentioned names in context
   * Example: If S1 says "Hey Christian" and S2 responds, then S2 is Christian
-- Set "isUser": true for the speaker who matches "${userName}"
-- If uncertain, mark the speaker who seems to be receiving service/advice as isUser: true
+- Set "isUser": true ONLY if you have strong evidence that speaker matches "${userName}"
+- **IMPORTANT**: If you cannot find "${userName}" mentioned or inferred in the conversation, DO NOT mark anyone as isUser: true
+- Better to mark NO ONE as the user than to guess wrong
+- Only use fallback logic (mark service receiver as user) if the context clearly suggests "${userName}" is present but unidentified
 - Extract exact participant names from transcript (spell them correctly!)
 - Infer specific roles from conversation content
 - Be specific with domains - use actual field names (e.g., "Tax Law" not just "Legal")
