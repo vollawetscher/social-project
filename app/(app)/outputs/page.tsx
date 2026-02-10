@@ -104,10 +104,10 @@ function OutputDetailSheet({ output }: { output: Output }) {
       <SheetTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-1.5">
           <Eye className="h-4 w-4" />
-          View
+          <span className="hidden sm:inline">View</span>
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-[500px] sm:w-[600px] overflow-y-auto">
+      <SheetContent className="w-full sm:w-[600px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{output.templateName}</SheetTitle>
           <SheetDescription>
@@ -434,41 +434,42 @@ export default function OutputsPage() {
         ) : (
           filteredOutputs.map((output: Output) => (
             <Card key={output.id} className="border-border group hover:border-muted-foreground/50 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-foreground truncate">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <h3 className="font-medium text-foreground truncate text-sm sm:text-base">
                         {output.templateName}
                       </h3>
                       <Badge
                         variant={output.audience === "internal" ? "secondary" : "outline"}
-                        className="shrink-0"
+                        className="shrink-0 text-xs"
                       >
                         {output.audience === "internal" ? "Internal" : "External"}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
-                      <FileText className="h-3.5 w-3.5" />
-                      {output.sessionFilename}
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mb-2">
+                      <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
+                      <span className="truncate">{output.sessionFilename}</span>
                     </p>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {participantRoleLabels[output.perspective]}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 whitespace-nowrap">
+                        <User className="h-3 w-3 shrink-0" />
+                        <span className="hidden sm:inline">{participantRoleLabels[output.perspective]}</span>
+                        <span className="sm:hidden">{participantRoleLabels[output.perspective].split(' ')[0]}</span>
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {formatDate(output.createdAt)}
+                      <span className="flex items-center gap-1 whitespace-nowrap">
+                        <Calendar className="h-3 w-3 shrink-0" />
+                        <span className="hidden sm:inline">{formatDate(output.createdAt)}</span>
+                        <span className="sm:hidden">{new Date(output.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Globe className="h-3 w-3" />
-                        {output.language === 'en' ? 'English' : output.language === 'de' ? 'German' : output.language}
+                      <span className="flex items-center gap-1 whitespace-nowrap">
+                        <Globe className="h-3 w-3 shrink-0" />
+                        {output.language === 'en' ? 'EN' : output.language === 'de' ? 'DE' : output.language.toUpperCase()}
                       </span>
-                      <span className="capitalize">{output.tone} tone</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 self-end sm:self-start">
                     <OutputDetailSheet output={output} />
                     <Button variant="ghost" size="sm" className="gap-1.5" asChild>
                       <Link href={`/outputs/${output.id}`}>
