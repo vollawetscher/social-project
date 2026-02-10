@@ -29,6 +29,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const lastChunkCountRef = useRef<number>(0)
   const lastHealthCheckRef = useRef<number>(0)
   const isPageVisibleRef = useRef<boolean>(true)
+  const isPausedRef = useRef<boolean>(false)
+  const wakeLockRef = useRef<any>(null)
 
   useEffect(() => {
     return () => {
@@ -43,12 +45,50 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       }
       // Release microphone on unmount
       microphoneManager.releaseMicrophone('audio-recorder')
+      // Release wake lock
+      releaseWakeLock()
     }
   }, [audioURL])
 
+  // Request Wake Lock to keep recording active when screen is off
+  const requestWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen')
+        console.log('[AudioRecorder] Wake Lock acquired - recording will continue with screen off')
+        
+        // Re-acquire wake lock if it's released (e.g., user turns screen off then on)
+        wakeLockRef.current.addEventListener('release', () => {
+          console.log('[AudioRecorder] Wake Lock released')
+          if (isRecording) {
+            console.log('[AudioRecorder] Re-acquiring Wake Lock...')
+            requestWakeLock()
+          }
+        })
+      } else {
+        console.warn('[AudioRecorder] Wake Lock API not supported - recording may stop when screen turns off')
+        toast.info('⚠️ For best results, keep screen on during recording', { duration: 5000 })
+      }
+    } catch (error) {
+      console.error('[AudioRecorder] Failed to acquire Wake Lock:', error)
+    }
+  }
+
+  const releaseWakeLock = () => {
+    if (wakeLockRef.current) {
+      try {
+        wakeLockRef.current.release()
+        wakeLockRef.current = null
+        console.log('[AudioRecorder] Wake Lock released manually')
+      } catch (error) {
+        console.error('[AudioRecorder] Failed to release Wake Lock:', error)
+      }
+    }
+  }
+
   // Power-saving: Pause UI timer when screen is off, but keep health monitoring active
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       const isVisible = document.visibilityState === 'visible'
       isPageVisibleRef.current = isVisible
       
@@ -60,8 +100,9 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             timerRef.current = null
           }
           console.log('[AudioRecorder] Screen off - paused UI timer (health monitoring still active)')
+          // Wake Lock should keep recording active
         } else {
-          // Screen on - resume UI timer
+          // Screen on - resume UI timer and re-acquire wake lock if needed
           if (!timerRef.current) {
             timerRef.current = setInterval(() => {
               const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
@@ -70,6 +111,10 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
             // Update immediately
             const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
             setRecordingTime(elapsed)
+          }
+          // Re-acquire wake lock if needed
+          if (!wakeLockRef.current) {
+            await requestWakeLock()
           }
           console.log('[AudioRecorder] Screen on - resumed UI timer')
         }
@@ -149,7 +194,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       const timeSinceLastCheck = Date.now() - lastHealthCheckRef.current
       
       // If we're recording and haven't received any chunks in 5+ seconds, alert
-      if (currentChunkCount === lastChunkCountRef.current && timeSinceLastCheck > 5000 && !isPaused) {
+      // Use ref instead of state to avoid timing issues with React state updates
+      if (currentChunkCount === lastChunkCountRef.current && timeSinceLastCheck > 5000 && !isPausedRef.current) {
         console.error('[AudioRecorder] HEALTH CHECK FAILED - No data received in 5 seconds!')
         playErrorAlert() // Audio alert works even with screen off
         toast.error('⚠️ WARNING: Recording not receiving data! Please stop and restart recording.', {
@@ -239,6 +285,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
       mediaRecorder.onstop = async () => {
         stopHealthMonitoring()
+        releaseWakeLock() // Release wake lock when recording stops
+        
         // Wait for any pending dataavailable events to fire
         await new Promise(resolve => setTimeout(resolve, 200))
         
@@ -301,6 +349,9 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       // CRITICAL: This runs even with screen off
       startHealthMonitoring()
 
+      // Request wake lock to keep recording active with screen off
+      await requestWakeLock()
+
       toast.success('Recording started')
     } catch (error: any) {
       console.error('[AudioRecorder] Start error:', error)
@@ -322,10 +373,11 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     if (mediaRecorderRef.current && isRecording) {
       if (isPaused) {
         // Resuming
+        isPausedRef.current = false // Update ref first
+        setIsPaused(false)
         mediaRecorderRef.current.resume()
         const pauseDuration = Date.now() - pausedTimeRef.current
         totalPausedTimeRef.current += pauseDuration
-        setIsPaused(false)
         
         // Restart UI timer if page is visible
         if (document.visibilityState === 'visible' && !timerRef.current) {
@@ -337,7 +389,11 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         
         toast.info('Recording resumed')
       } else {
-        // Pausing - request data before pausing to ensure nothing is lost
+        // Pausing - update ref FIRST to prevent false health check warning
+        isPausedRef.current = true
+        setIsPaused(true)
+        
+        // Request data before pausing to ensure nothing is lost
         if (mediaRecorderRef.current.state === 'recording') {
           try {
             mediaRecorderRef.current.requestData()
@@ -347,7 +403,6 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         }
         mediaRecorderRef.current.pause()
         pausedTimeRef.current = Date.now()
-        setIsPaused(true)
         toast.info('Recording paused')
       }
     }
@@ -360,6 +415,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       }
       
       stopHealthMonitoring()
+      releaseWakeLock() // Release wake lock when stopping
       
       // Force final buffer flush before stopping
       // This ensures the last chunk of data is captured
@@ -380,6 +436,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         }
       }, 100)
       
+      isPausedRef.current = false // Reset ref
       setIsRecording(false)
       setIsPaused(false)
       toast.success('Recording stopped')
@@ -388,6 +445,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
   const discardRecording = () => {
     stopHealthMonitoring()
+    releaseWakeLock() // Release wake lock when discarding
     if (audioURL) {
       URL.revokeObjectURL(audioURL)
     }
@@ -395,6 +453,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     setDuration(0)
     setRecordingTime(0)
     chunksRef.current = []
+    isPausedRef.current = false // Reset ref
     // Ensure microphone is released
     microphoneManager.releaseMicrophone('audio-recorder')
   }
