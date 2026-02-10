@@ -258,17 +258,20 @@ export default function SessionDetailPage() {
   const recordingTypeSuggestions = analysis?.recordingType 
     ? [{ 
         value: analysis.recordingType, 
-        label: analysis.recordingType.charAt(0).toUpperCase() + analysis.recordingType.slice(1),
+        label: analysis.recordingType ? analysis.recordingType.charAt(0).toUpperCase() + analysis.recordingType.slice(1) : 'Unknown',
         confidence: analysis.recordingTypeConfidence 
       }]
     : getRecordingTypeSuggestions(session.id)
-  
+
   const domainSuggestions = analysis?.domains?.length > 0
-    ? analysis.domains.map((d: any) => ({
-        value: d.domain,
-        label: d.domain.charAt(0).toUpperCase() + d.domain.slice(1),
-        confidence: d.confidence
-      }))
+    ? analysis.domains.map((d: any) => {
+        const domainValue = d.primary || d.domain || 'Unknown'
+        return {
+          value: domainValue,
+          label: domainValue.charAt(0).toUpperCase() + domainValue.slice(1),
+          confidence: d.confidence
+        }
+      })
     : getDomainSuggestions(session.id)
   
   // Debug log
