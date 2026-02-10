@@ -51,6 +51,7 @@ interface SessionSetupPanelProps {
   domainSuggestions: AiSuggestion<Domain>[]
   suggestedTemplates: Template[]
   onGenerateOutput: (templateId: string) => void
+  onContextSaved?: () => void // Callback to refresh parent session data
 }
 
 const recordingTypeLabels: Record<RecordingType, string> = {
@@ -102,6 +103,7 @@ export function SessionSetupPanel({
   domainSuggestions,
   suggestedTemplates,
   onGenerateOutput,
+  onContextSaved,
 }: SessionSetupPanelProps) {
   const [isContextOpen, setIsContextOpen] = useState(true)
   const [selectedRecordingType, setSelectedRecordingType] = useState<RecordingType | undefined>(
@@ -243,6 +245,11 @@ export function SessionSetupPanel({
           ? 'Corrections applied to transcript' 
           : 'Your selections won\'t be overwritten by AI analysis'
       })
+      
+      // Notify parent to refresh session data
+      if (onContextSaved) {
+        onContextSaved()
+      }
     } catch (error) {
       console.error('Error saving context:', error)
       toast.error('Failed to save context', {

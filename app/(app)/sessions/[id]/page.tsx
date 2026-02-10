@@ -300,6 +300,33 @@ export default function SessionDetailPage() {
     setGenerateModalOpen(true)
   }
 
+  // Handle context saved - refresh session data
+  const handleContextSaved = async () => {
+    try {
+      console.log('[Context Saved] Refreshing session data...')
+      // Re-fetch session data
+      const sessionRes = await fetch(`/api/sessions/${sessionId}`)
+      if (!sessionRes.ok) throw new Error('Failed to fetch session')
+      const sessionData = await sessionRes.json()
+
+      // Fetch transcript
+      const transcriptRes = await fetch(`/api/sessions/${sessionId}/transcript`)
+      const transcriptData = transcriptRes.ok ? await transcriptRes.json() : null
+
+      // Convert to v0 format
+      const v0Session = toV0Session(sessionData, {
+        filename: sessionData.internal_case_id,
+        transcript: transcriptData,
+        files: sessionData.files
+      })
+
+      setSession(v0Session)
+      console.log('[Context Saved] Session refreshed successfully')
+    } catch (error) {
+      console.error('[Context Saved] Error refreshing session:', error)
+    }
+  }
+
   const selectedTemplate = mockTemplates.find((t) => t.id === selectedTemplateId)
 
   return (
@@ -357,6 +384,7 @@ export default function SessionDetailPage() {
                 domainSuggestions={domainSuggestions}
                 suggestedTemplates={suggestedTemplates}
                 onGenerateOutput={handleGenerateOutput}
+                onContextSaved={handleContextSaved}
               />
             </SheetContent>
           </Sheet>
