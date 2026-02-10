@@ -32,12 +32,16 @@ export async function POST(
     // Fetch user profile for name comparison
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, company_name, after_transcript_action, preferred_report_language')
+      .select('full_name, company_name, display_name, after_transcript_action, preferred_report_language')
       .eq('id', user.id)
       .single()
 
-    const userName = profile?.full_name || profile?.company_name || ''
-    console.log('[Analyze API] Profile data:', { full_name: profile?.full_name, company_name: profile?.company_name })
+    const userName = profile?.display_name || profile?.full_name || profile?.company_name || ''
+    console.log('[Analyze API] Profile data:', { 
+      display_name: profile?.display_name, 
+      full_name: profile?.full_name, 
+      company_name: profile?.company_name 
+    })
     console.log('[Analyze API] User name for AI identification:', userName)
 
     // Fetch session and transcript
