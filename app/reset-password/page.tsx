@@ -97,7 +97,7 @@ export default function ResetPasswordPage() {
             <Logo className="h-10" />
             <div className="text-center space-y-1">
               <p className="text-lg font-medium text-foreground">
-                When words carry weight.
+                When words carry weight
               </p>
               <p className="text-xs text-muted-foreground">
                 Made in Germany
