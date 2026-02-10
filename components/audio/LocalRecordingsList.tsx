@@ -16,6 +16,7 @@ export function LocalRecordingsList({ onFileSelected }: LocalRecordingsListProps
   const [recordings, setRecordings] = useState<LocalRecording[]>([])
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     loadRecordings()
@@ -33,19 +34,34 @@ export function LocalRecordingsList({ onFileSelected }: LocalRecordingsListProps
 
   const handlePlay = async (id: string) => {
     try {
-      const recording = await localStorageService.getRecording(id)
-      if (!recording) return
-
-      if (playingId === id) {
+      // Toggle: If already playing this recording, stop it
+      if (playingId === id && currentAudio) {
+        currentAudio.pause()
+        currentAudio.currentTime = 0
         setPlayingId(null)
+        setCurrentAudio(null)
         return
       }
+
+      // Stop any currently playing audio
+      if (currentAudio) {
+        currentAudio.pause()
+        currentAudio.currentTime = 0
+      }
+
+      // Start playing new recording
+      const recording = await localStorageService.getRecording(id)
+      if (!recording) return
 
       const audio = new Audio(URL.createObjectURL(recording.blob))
       audio.play()
       setPlayingId(id)
+      setCurrentAudio(audio)
 
-      audio.onended = () => setPlayingId(null)
+      audio.onended = () => {
+        setPlayingId(null)
+        setCurrentAudio(null)
+      }
     } catch (error) {
       console.error('Failed to play recording:', error)
       toast.error('Wiedergabe fehlgeschlagen')
