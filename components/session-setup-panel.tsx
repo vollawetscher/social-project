@@ -122,6 +122,9 @@ export function SessionSetupPanel({
 
   // Track if changes have been made
   const [hasChanges, setHasChanges] = useState(false)
+  
+  // Track if user wants to apply corrections to transcript
+  const [applyToTranscript, setApplyToTranscript] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
   // Initial values for comparison
@@ -172,6 +175,7 @@ export function SessionSetupPanel({
   const handleSaveContext = async () => {
     setIsSaving(true)
     try {
+      // Save context first
       const response = await fetch(`/api/sessions/${session.id}/context`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -192,7 +196,36 @@ export function SessionSetupPanel({
         throw new Error('Failed to save context')
       }
 
-      const data = await response.json()
+      // Apply transcript corrections if checkbox is checked
+      if (applyToTranscript) {
+        const oldParticipants = initialValues.participants.split(',').map(p => p.trim()).filter(Boolean)
+        const newParticipants = participants.split(',').map(p => p.trim()).filter(Boolean)
+        
+        // Build corrections mapping (old name -> new name)
+        const corrections: Record<string, string> = {}
+        oldParticipants.forEach((oldName, idx) => {
+          const newName = newParticipants[idx]
+          if (newName && oldName !== newName) {
+            corrections[oldName] = newName
+          }
+        })
+
+        // Save corrections if any changes
+        if (Object.keys(corrections).length > 0) {
+          const correctionsResponse = await fetch(`/api/sessions/${session.id}/corrections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              corrections,
+              type: 'name_corrections'
+            })
+          })
+
+          if (!correctionsResponse.ok) {
+            console.warn('Failed to save corrections, but context was saved')
+          }
+        }
+      }
       
       // Update initial values to reflect saved state
       setInitialValues({
@@ -206,7 +239,9 @@ export function SessionSetupPanel({
       setHasChanges(false)
       
       toast.success('Context saved successfully', {
-        description: 'Your selections won\'t be overwritten by AI analysis'
+        description: applyToTranscript 
+          ? 'Corrections applied to transcript' 
+          : 'Your selections won\'t be overwritten by AI analysis'
       })
     } catch (error) {
       console.error('Error saving context:', error)
@@ -365,6 +400,21 @@ export function SessionSetupPanel({
                     placeholder="Enter participant names..."
                     className="bg-secondary border-border text-sm"
                   />
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="checkbox"
+                      id="apply-to-transcript-slide"
+                      checked={applyToTranscript}
+                      onChange={(e) => setApplyToTranscript(e.target.checked)}
+                      className="h-3 w-3 rounded border-border"
+                    />
+                    <Label 
+                      htmlFor="apply-to-transcript-slide" 
+                      className="text-xs text-muted-foreground cursor-pointer font-normal"
+                    >
+                      Apply name corrections to transcript
+                    </Label>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground flex items-center gap-1">
