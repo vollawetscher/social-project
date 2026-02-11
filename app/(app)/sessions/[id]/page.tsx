@@ -200,7 +200,7 @@ export default function SessionDetailPage() {
             templateName: suggestion.title,
             perspective: 'observer',
             audience: 'internal',
-            language: 'en',
+            language: session.languageCode || 'en',
             tone: 'neutral',
             format: 'markdown',
             doInstructions: suggestion.generationInstructions,
@@ -316,6 +316,32 @@ export default function SessionDetailPage() {
       setTimeout(() => analyzeSession(), 1000)
     })
   }, [sessionId, fetchOutputs])
+
+  // Poll when transcribing so badge updates when transcript is ready
+  useEffect(() => {
+    if (!session || !['transcribing', 'uploading', 'summarizing'].includes(session.status)) return
+    const interval = setInterval(async () => {
+      try {
+        const sessionRes = await fetch(`/api/sessions/${sessionId}`)
+        if (!sessionRes.ok) return
+        const sessionData = await sessionRes.json()
+        const transcriptRes = await fetch(`/api/sessions/${sessionId}/transcript`)
+        const transcriptData = transcriptRes.ok ? await transcriptRes.json() : null
+        const v0Session = toV0Session(sessionData, {
+          filename: sessionData.internal_case_id,
+          transcript: transcriptData,
+          files: sessionData.files
+        })
+        setSession(v0Session)
+        if (v0Session.status === 'ready') {
+          fetchOutputs()
+        }
+      } catch {
+        // ignore
+      }
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [sessionId, session?.status])
 
   if (loading) {
     return (
@@ -690,7 +716,14 @@ export default function SessionDetailPage() {
               {outputsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading outputs...</p>
               ) : outputs.length === 0 ? (
-                null
+                <div className="flex flex-col items-center justify-center py-8 gap-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    No outputs yet. Generate from suggestions above or choose a template.
+                  </p>
+                  <Button size="sm" onClick={() => { setSelectedTemplateId(null); setGenerateModalOpen(true) }}>
+                    Generate Output
+                  </Button>
+                </div>
               ) : (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
@@ -986,7 +1019,14 @@ export default function SessionDetailPage() {
               {outputsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading outputs...</p>
               ) : outputs.length === 0 ? (
-                null
+                <div className="flex flex-col items-center justify-center py-8 gap-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    No outputs yet. Generate from suggestions above or choose a template.
+                  </p>
+                  <Button size="sm" onClick={() => { setSelectedTemplateId(null); setGenerateModalOpen(true) }}>
+                    Generate Output
+                  </Button>
+                </div>
               ) : (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>

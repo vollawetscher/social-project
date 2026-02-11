@@ -87,6 +87,7 @@ export interface Session {
   filename: string
   duration: number
   language: string
+  languageCode?: string  // ISO code (en, de, etc) for API calls
   createdAt: string
   status: SessionStatus
   piiRedactionEnabled: boolean

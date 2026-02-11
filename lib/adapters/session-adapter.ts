@@ -67,6 +67,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     filename: additionalData?.filename || dbSession.internal_case_id || `Session ${dbSession.id.slice(0, 8)}`,
     duration: dbSession.duration_sec || 0,
     language: getLanguageDisplay(languageCode),
+    languageCode: typeof languageCode === 'string' ? languageCode.slice(0, 2).toLowerCase() : 'en',
     createdAt: dbSession.created_at,
     status: mapStatus(dbSession.status),
     piiRedactionEnabled: false, // TODO: Get from user preferences or session metadata

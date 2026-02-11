@@ -222,6 +222,16 @@ export default function SessionsPage() {
     fetchUserPreferences()
   }, [user])
 
+  // Poll when any session is transcribing so badges update when ready
+  const hasInProgress = sessions.some(s =>
+    s.status === 'transcribing' || s.status === 'uploading'
+  )
+  useEffect(() => {
+    if (!hasInProgress) return
+    const interval = setInterval(fetchSessions, 5000)
+    return () => clearInterval(interval)
+  }, [hasInProgress])
+
   // Recording timer effect
   useEffect(() => {
     if (isRecording) {
