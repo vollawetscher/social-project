@@ -26,7 +26,7 @@ import {
   EyeOff,
   Trash2,
   Loader2,
-  Languages,
+  Globe,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -153,12 +153,16 @@ export default function OutputDetailPage() {
       setShareUrl(data.shareUrl)
       setIsPublic(true)
       
-      // Auto-copy link
-      await navigator.clipboard.writeText(data.shareUrl)
-      setCopiedShareLink(true)
-      setTimeout(() => setCopiedShareLink(false), 2000)
-      
-      toast.success('Share link copied to clipboard!')
+      // Auto-copy link (can fail on first user gesture in some browsers)
+      try {
+        await navigator.clipboard.writeText(data.shareUrl)
+        setCopiedShareLink(true)
+        setTimeout(() => setCopiedShareLink(false), 2000)
+        toast.success('Share link copied to clipboard!')
+      } catch {
+        // Clipboard may fail (permissions, focus); link is ready - user can click again
+        toast.success('Share link created – click Share again to copy', { duration: 4000 })
+      }
     } catch (error) {
       console.error('[Share] Error enabling sharing:', error)
       toast.error('Failed to enable sharing: ' + (error instanceof Error ? error.message : 'Unknown error'))
@@ -337,7 +341,7 @@ export default function OutputDetailPage() {
           <Button asChild>
             <Link href="/outputs">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Outputs
+              Back
             </Link>
           </Button>
         </div>
@@ -358,7 +362,7 @@ export default function OutputDetailPage() {
           >
             <Link href="/outputs">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Outputs
+              Back
             </Link>
           </Button>
           
@@ -451,7 +455,7 @@ export default function OutputDetailPage() {
                   {translating ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Languages className="h-4 w-4" />
+                    <Globe className="h-4 w-4" />
                   )}
                   <span className="hidden md:inline">Translate</span>
                 </Button>

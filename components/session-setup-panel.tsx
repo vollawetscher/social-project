@@ -43,14 +43,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import type { Session, Template, AiSuggestion, RecordingType, Domain } from "@/lib/types-v0"
+import type { Session, AiSuggestion, RecordingType, Domain } from "@/lib/types-v0"
 
 interface SessionSetupPanelProps {
   session: Session
   recordingTypeSuggestions: AiSuggestion<RecordingType>[]
   domainSuggestions: AiSuggestion<Domain>[]
-  suggestedTemplates: Template[]
-  onGenerateOutput: (templateId: string) => void
   onContextSaved?: () => void // Callback to refresh parent session data
 }
 
@@ -110,8 +108,6 @@ export function SessionSetupPanel({
   session,
   recordingTypeSuggestions,
   domainSuggestions,
-  suggestedTemplates,
-  onGenerateOutput,
   onContextSaved,
 }: SessionSetupPanelProps) {
   const [isContextOpen, setIsContextOpen] = useState(true)
@@ -588,57 +584,6 @@ export function SessionSetupPanel({
           </CardContent>
         </Card>
 
-        {/* Suggested Outputs */}
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-info" />
-              Suggested Outputs
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {suggestedTemplates.map((template) => (
-              <div
-                key={template.id}
-                className="p-3 rounded-lg border border-border bg-secondary/30 space-y-2"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground">
-                      {template.name}
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {template.description}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {template.sections.slice(0, 3).map((section) => (
-                    <Badge
-                      key={section.id}
-                      variant="outline"
-                      className="text-[10px]"
-                    >
-                      {section.name}
-                    </Badge>
-                  ))}
-                  {template.sections.length > 3 && (
-                    <Badge variant="outline" className="text-[10px]">
-                      +{template.sections.length - 3} more
-                    </Badge>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  className="w-full mt-2"
-                  onClick={() => onGenerateOutput(template.id)}
-                >
-                  Generate
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
           </div>
         </div>
 

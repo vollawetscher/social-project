@@ -426,13 +426,6 @@ export default function SessionDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleGenerateOutput(suggestedTemplates[0]?.id || "tmpl_1")}
-          >
-            Generate Output
-          </Button>
           {/* Desktop toggle for right panel */}
           <Button
             variant="ghost"
@@ -458,8 +451,6 @@ export default function SessionDetailPage() {
                 session={session}
                 recordingTypeSuggestions={recordingTypeSuggestions}
                 domainSuggestions={domainSuggestions}
-                suggestedTemplates={suggestedTemplates}
-                onGenerateOutput={handleGenerateOutput}
                 onContextSaved={handleContextSaved}
               />
             </SheetContent>
@@ -699,12 +690,7 @@ export default function SessionDetailPage() {
               {outputsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading outputs...</p>
               ) : outputs.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground mb-4">No outputs generated yet.</p>
-                  <Button size="sm" onClick={() => setGenerateModalOpen(true)}>
-                    Generate Your First Output
-                  </Button>
-                </div>
+                null
               ) : (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
@@ -1000,12 +986,7 @@ export default function SessionDetailPage() {
               {outputsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading outputs...</p>
               ) : outputs.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground mb-4">No outputs generated yet.</p>
-                  <Button size="sm" onClick={() => setGenerateModalOpen(true)}>
-                    Generate Your First Output
-                  </Button>
-                </div>
+                null
               ) : (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
@@ -1104,8 +1085,7 @@ export default function SessionDetailPage() {
               session={session}
               recordingTypeSuggestions={recordingTypeSuggestions}
               domainSuggestions={domainSuggestions}
-              suggestedTemplates={suggestedTemplates}
-              onGenerateOutput={handleGenerateOutput}
+              onContextSaved={handleContextSaved}
             />
           </div>
         </div>
