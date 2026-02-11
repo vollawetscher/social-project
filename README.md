@@ -77,6 +77,9 @@ ANTHROPIC_API_KEY=sk-ant-xxx  # console.anthropic.com
 
 # App URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Optional: For auto-generation after transcription (when user has "After transcript" template set)
+INTERNAL_API_SECRET=your-random-secret  # Used by transcribe job to trigger analyze + auto-generate
 ```
 
 ### Installation

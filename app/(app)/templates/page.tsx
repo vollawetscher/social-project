@@ -392,6 +392,13 @@ export default function TemplatesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setSampleTemplate(template)}
+                        className="cursor-pointer"
+                      >
+                        <FileOutput className="mr-2 h-4 w-4" />
+                        View Sample
+                      </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href={`/templates/${template.id}/edit`} className="cursor-pointer">
                           <Pencil className="mr-2 h-4 w-4" />

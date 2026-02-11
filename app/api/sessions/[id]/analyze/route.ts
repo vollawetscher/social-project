@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
@@ -19,22 +19,37 @@ export async function POST(
       console.error('[Analyze API] ANTHROPIC_API_KEY is not set!')
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
     }
-    
-    const supabase = await createClient()
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      console.error('[Analyze API] Auth error:', authError)
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Internal call from transcribe job (no user session/cookies)
+    const internalSecret = request.headers.get('x-internal-secret')
+    const internalUserId = request.headers.get('x-internal-user-id')
+    const isInternalCall = !!process.env.INTERNAL_API_SECRET &&
+      internalSecret === process.env.INTERNAL_API_SECRET &&
+      internalUserId
+
+    let supabase: Awaited<ReturnType<typeof createClient>>
+    let userId: string
+
+    if (isInternalCall) {
+      supabase = createServiceRoleClient()
+      userId = internalUserId
+      console.log('[Analyze API] Internal call mode, userId:', userId)
+    } else {
+      supabase = await createClient()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        console.error('[Analyze API] Auth error:', authError)
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = user.id
+      console.log('[Analyze API] User authenticated:', userId)
     }
-    console.log('[Analyze API] User authenticated:', user.id)
 
     // Fetch user profile for name comparison
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, company_name, display_name, after_transcript_action, after_transcript_template_id, preferred_report_language')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     const userName = profile?.display_name || profile?.full_name || profile?.company_name || ''
@@ -45,13 +60,14 @@ export async function POST(
     })
     console.log('[Analyze API] User name for AI identification:', userName)
 
-    // Fetch session and transcript
-    const { data: session, error: sessionError } = await supabase
+    // Fetch session and transcript (internal calls use service role, no user filter needed)
+    const sessionQuery = supabase
       .from('sessions')
       .select('*, transcripts(*)')
       .eq('id', params.id)
-      .eq('user_id', user.id)
-      .single()
+    const { data: session, error: sessionError } = isInternalCall
+      ? await sessionQuery.single()
+      : await sessionQuery.eq('user_id', userId).single()
 
     if (sessionError) {
       console.error('[Analyze API] Session error:', sessionError)
@@ -202,7 +218,7 @@ Respond in this exact JSON format:
     // Record AI token usage for beta cost tracking
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
     if (usage?.input_tokens != null || usage?.output_tokens != null) {
-      recordAiTokens(supabase, user.id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+      recordAiTokens(supabase, userId, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
         sessionId: params.id,
         endpoint: 'sessions/analyze',
       })
@@ -262,13 +278,18 @@ Respond in this exact JSON format:
       console.log('[Analyze API] Auto-generation enabled:', templateId ? `template ${templateId}` : legacyAction)
       
       // Trigger auto-generation asynchronously (don't wait)
+      const autoGenHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(request.headers.get('Authorization') && { Authorization: request.headers.get('Authorization')! }),
+        ...(request.headers.get('Cookie') && { Cookie: request.headers.get('Cookie')! }),
+      }
+      if (isInternalCall && process.env.INTERNAL_API_SECRET) {
+        autoGenHeaders['x-internal-secret'] = process.env.INTERNAL_API_SECRET
+        autoGenHeaders['x-internal-user-id'] = userId
+      }
       fetch(`${request.url.split('/analyze')[0]}/auto-generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': request.headers.get('Authorization') || '',
-          'Cookie': request.headers.get('Cookie') || ''
-        },
+        headers: autoGenHeaders,
         body: JSON.stringify({
           templateId: templateId || undefined,
           action: legacyAction ? profile?.after_transcript_action : undefined,

@@ -158,19 +158,42 @@ async function processTranscriptionJob(sessionId: string) {
       recordTranscriptionMinutesFromJob(userId, sessionDuration / 60, { sessionId })
     }
 
-    // Get user's report generation preference
+    // Get user's report generation preferences (legacy + new template-based)
     const { data: userProfile } = await supabase
       .from('profiles')
-      .select('auto_generate_reports')
+      .select('auto_generate_reports, after_transcript_template_id, after_transcript_action')
       .eq('id', userId)
       .single()
 
     const autoGenerateReports = userProfile?.auto_generate_reports || false
+    const afterTranscriptTemplateId = (userProfile as any)?.after_transcript_template_id
+    const legacyAction = userProfile?.after_transcript_action && userProfile.after_transcript_action !== 'nothing'
 
     // Check if any of the transcribed files were "meeting" type
     const hasMeetingRecording = files.some(f => f.file_purpose === 'meeting')
 
-    // NEW WORKFLOW: Only auto-generate if user has enabled it in settings
+    // NEW: If user has "After transcript: use template X" in Settings, trigger analyze + auto-generate
+    if (afterTranscriptTemplateId || legacyAction) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+        || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+        || 'http://localhost:3000'
+      const secret = process.env.INTERNAL_API_SECRET
+      if (secret) {
+        console.log('[Transcribe] Triggering post-transcribe (analyze + auto-generate)...')
+        fetch(`${baseUrl}/api/internal/post-transcribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-secret': secret,
+          },
+          body: JSON.stringify({ sessionId }),
+        }).catch(err => console.error('[Transcribe] Post-transcribe trigger failed:', err))
+      } else {
+        console.warn('[Transcribe] INTERNAL_API_SECRET not set - skipping post-transcribe')
+      }
+    }
+
+    // LEGACY: Only auto-generate report if user has old auto_generate_reports enabled
     // AND it's a meeting recording with meaningful duration (30+ seconds)
     const shouldGenerateReport = 
       autoGenerateReports && 

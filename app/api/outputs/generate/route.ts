@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import type { GenerateOutputConfig } from '@/lib/types-v0'
@@ -10,11 +10,25 @@ const anthropic = new Anthropic({
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const internalSecret = request.headers.get('x-internal-secret')
+    const internalUserId = request.headers.get('x-internal-user-id')
+    const isInternalCall = !!process.env.INTERNAL_API_SECRET &&
+      internalSecret === process.env.INTERNAL_API_SECRET &&
+      internalUserId
+
+    let supabase: Awaited<ReturnType<typeof createClient>>
+    let userId: string
+
+    if (isInternalCall) {
+      supabase = createServiceRoleClient()
+      userId = internalUserId!
+    } else {
+      supabase = await createClient()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = user.id
     }
 
     const body = await request.json()
@@ -30,13 +44,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Fetch session and transcript
+    // Fetch session (internal: verify user_id matches; normal: enforced by query)
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .select('*')
       .eq('id', sessionId)
-      .eq('user_id', user.id)
       .single()
+
+    if (sessionError || !session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+    if (session.user_id !== userId) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
 
     if (sessionError || !session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
@@ -60,7 +80,7 @@ export async function POST(request: Request) {
         .from('templates')
         .select('*')
         .eq('id', config.templateId)
-        .or(`is_system.eq.true,created_by.eq.${user.id}`)
+        .or(`is_system.eq.true,created_by.eq.${userId}`)
         .single()
       
       template = templateData
@@ -201,7 +221,7 @@ Please generate the requested output following all requirements and guidelines.`
       tone: config.tone,
       format: config.format,
       content_length: generatedContent.length,
-      created_by: user.id,
+      created_by: userId,
     })
     
     const { data: output, error: insertError } = await supabase
@@ -218,7 +238,7 @@ Please generate the requested output following all requirements and guidelines.`
         content: generatedContent,
         transcript_version_hash: transcript.id, // Using transcript ID as version
         cite_timestamps: config.citeTimestamps || false,
-        created_by: user.id,
+        created_by: userId,
       })
       .select()
       .single()
@@ -238,7 +258,7 @@ Please generate the requested output following all requirements and guidelines.`
 
     // Record AI token usage for beta cost tracking
     if (usage?.input_tokens != null || usage?.output_tokens != null) {
-      recordAiTokens(supabase, user.id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+      recordAiTokens(supabase, userId, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
         sessionId,
         outputId: output.id,
         endpoint: 'outputs/generate',
@@ -300,7 +320,7 @@ Please generate the requested output following all requirements and guidelines.`
           required_inputs: [],
           style_rules: styleRules.length > 0 ? styleRules : [`Generate ${templateName} with professional tone and clear structure.`],
           instructions,
-          created_by: user.id,
+          created_by: userId,
           is_system: false,
         })
         .select('id')

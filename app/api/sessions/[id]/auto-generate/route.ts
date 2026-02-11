@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 // Legacy action-to-template-name mapping (for backward compat when template_id not set)
@@ -15,11 +15,27 @@ export async function POST(
 ) {
   try {
     console.log('[Auto-Generate API] Starting for session:', params.id)
-    
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const internalSecret = request.headers.get('x-internal-secret')
+    const internalUserId = request.headers.get('x-internal-user-id')
+    const isInternalCall = !!process.env.INTERNAL_API_SECRET &&
+      internalSecret === process.env.INTERNAL_API_SECRET &&
+      internalUserId
+
+    let supabase: Awaited<ReturnType<typeof createClient>>
+    let userId: string
+
+    if (isInternalCall) {
+      supabase = createServiceRoleClient()
+      userId = internalUserId
+      console.log('[Auto-Generate API] Internal call mode, userId:', userId)
+    } else {
+      supabase = await createClient()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = user.id
     }
 
     const body = await request.json()
@@ -33,7 +49,7 @@ export async function POST(
         .from('templates')
         .select('id, name')
         .eq('id', templateId)
-        .or(`is_system.eq.true,created_by.eq.${user.id}`)
+        .or(`is_system.eq.true,created_by.eq.${userId}`)
         .single()
 
       if (error || !data) {
@@ -62,17 +78,18 @@ export async function POST(
     const baseUrl = new URL(request.url).origin
     const languageCode = typeof language === 'string' ? language.slice(0, 2) : 'de'
     
+    const genHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(request.headers.get('Authorization') && { Authorization: request.headers.get('Authorization')! }),
+      ...(request.headers.get('Cookie') && { Cookie: request.headers.get('Cookie')! }),
+    }
+    if (isInternalCall && process.env.INTERNAL_API_SECRET) {
+      genHeaders['x-internal-secret'] = process.env.INTERNAL_API_SECRET
+      genHeaders['x-internal-user-id'] = userId
+    }
     const generateResponse = await fetch(`${baseUrl}/api/outputs/generate`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(request.headers.get('Authorization') && {
-          Authorization: request.headers.get('Authorization')!,
-        }),
-        ...(request.headers.get('Cookie') && {
-          Cookie: request.headers.get('Cookie')!,
-        }),
-      },
+      headers: genHeaders,
       body: JSON.stringify({
         sessionId: params.id,
         config: {

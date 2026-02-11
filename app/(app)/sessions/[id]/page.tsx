@@ -258,11 +258,12 @@ export default function SessionDetailPage() {
       }
     }
 
-    async function analyzeSession() {
+    async function analyzeSession(retryCount = 0) {
       // Skip if already analyzing
       if (analyzing) return
 
       setAnalyzing(true)
+      let retrying = false
       try {
         console.log('[AI Analysis] Starting analysis for session:', sessionId)
         const response = await fetch(`/api/sessions/${sessionId}/analyze`, {
@@ -289,9 +290,14 @@ export default function SessionDetailPage() {
             console.log('[AI Analysis] Updated session.extractedContext:', updated?.extractedContext)
             return updated
           })
+        } else if (response.status === 400 && retryCount < 3) {
+          // Transcript not ready yet - retry (transcription may still be in progress)
+          retrying = true
+          const delay = [2000, 4000, 6000][retryCount]
+          console.log(`[AI Analysis] Transcript not ready (400), retrying in ${delay}ms (attempt ${retryCount + 2}/4)`)
+          setTimeout(() => analyzeSession(retryCount + 1), delay)
         } else if (response.status === 400) {
-          // Transcript not ready yet, skip silently
-          console.log('[AI Analysis] Transcript not ready for analysis yet (400)')
+          console.log('[AI Analysis] Transcript not ready after retries')
         } else {
           const errorData = await response.json().catch(() => ({}))
           console.warn('[AI Analysis] Failed with status:', response.status, errorData)
@@ -299,7 +305,7 @@ export default function SessionDetailPage() {
       } catch (error) {
         console.error('[AI Analysis] Error analyzing session:', error)
       } finally {
-        setAnalyzing(false)
+        if (!retrying) setAnalyzing(false)
       }
     }
     
