@@ -45,6 +45,7 @@ export async function PATCH(request: Request) {
       'preferred_report_language',
       'timezone',
       'after_transcript_action',
+      'after_transcript_template_id',
       'auto_generate_reports'
     ]
     

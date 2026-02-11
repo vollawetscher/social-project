@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
-import { recordAiTokens } from '@/lib/services/usage-tracker'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
+// Legacy action-to-template-name mapping (for backward compat when template_id not set)
+const LEGACY_ACTION_TO_TEMPLATE: Record<string, string> = {
+  short_summary: 'Meeting Minutes',
+  long_summary: 'Meeting Summary',
+  full_report: 'Meeting Summary',
+  action_items: 'Action Items & Next Steps',
+}
 
 export async function POST(
   request: Request,
@@ -21,118 +23,95 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { action, language = 'de' } = body
+    const { templateId, action, language = 'de' } = body
 
-    // Map action to template type
-    const actionToTemplateMap: Record<string, string> = {
-      'short_summary': 'Meeting Minutes',
-      'long_summary': 'Detailed Meeting Summary',
-      'action_items': 'Action Items List',
-      // Add more mappings as needed
+    let template: { id: string; name: string } | null = null
+
+    if (templateId) {
+      // Template-based: fetch by ID (user's or system)
+      const { data, error } = await supabase
+        .from('templates')
+        .select('id, name')
+        .eq('id', templateId)
+        .or(`is_system.eq.true,created_by.eq.${user.id}`)
+        .single()
+
+      if (error || !data) {
+        console.log('[Auto-Generate API] Template not found:', templateId)
+        return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+      }
+      template = data
+    } else if (action && LEGACY_ACTION_TO_TEMPLATE[action]) {
+      // Legacy: look up by name
+      const templateName = LEGACY_ACTION_TO_TEMPLATE[action]
+      const { data } = await supabase
+        .from('templates')
+        .select('id, name')
+        .eq('name', templateName)
+        .eq('is_system', true)
+        .single()
+      template = data
     }
-
-    const templateName = actionToTemplateMap[action]
-    if (!templateName) {
-      console.log('[Auto-Generate API] No template mapping for action:', action)
-      return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-    }
-
-    // Find matching template
-    const { data: template } = await supabase
-      .from('templates')
-      .select('*')
-      .eq('name', templateName)
-      .eq('is_system', true)
-      .single()
 
     if (!template) {
-      console.log('[Auto-Generate API] Template not found:', templateName)
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+      console.log('[Auto-Generate API] No template (templateId or valid action required)')
+      return NextResponse.json({ error: 'No template selected for auto-generation' }, { status: 400 })
     }
 
-    // Fetch session and transcript
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('*, transcripts(*)')
-      .eq('id', params.id)
-      .eq('user_id', user.id)
-      .single()
-
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
-    }
-
-    const transcript = session.transcripts?.[0]
-    if (!transcript) {
-      return NextResponse.json({ error: 'No transcript available' }, { status: 400 })
-    }
-
-    // Build prompt
-    const transcriptText = transcript.raw_text || transcript.redacted_text || ''
-    const segments = transcript.raw_json as any[]
-    const uniqueSpeakers = Array.from(new Set(segments.map((s: any) => s.speaker).filter(Boolean)))
-
-    const prompt = `Generate a ${templateName} in ${language === 'de' ? 'German' : 'English'}.
-
-Transcript:
-${transcriptText}
-
-Speakers: ${uniqueSpeakers.join(', ')}
-
-Instructions:
-${template.instructions || 'Create a comprehensive summary.'}
-
-Format the output clearly and professionally.`
-
-    console.log('[Auto-Generate API] Calling Claude to generate output...')
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }]
+    // Call the outputs/generate API with proper config
+    const baseUrl = new URL(request.url).origin
+    const languageCode = typeof language === 'string' ? language.slice(0, 2) : 'de'
+    
+    const generateResponse = await fetch(`${baseUrl}/api/outputs/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(request.headers.get('Authorization') && {
+          Authorization: request.headers.get('Authorization')!,
+        }),
+        ...(request.headers.get('Cookie') && {
+          Cookie: request.headers.get('Cookie')!,
+        }),
+      },
+      body: JSON.stringify({
+        sessionId: params.id,
+        config: {
+          templateId: template.id,
+          templateName: template.name,
+          perspective: 'observer',
+          audience: 'internal',
+          language: languageCode,
+          tone: 'neutral',
+          format: 'markdown',
+          doInstructions: '',
+          dontInstructions: '',
+          createTemplateFromConfig: false,
+          citeTimestamps: false,
+        },
+      }),
     })
 
-    const content = message.content[0].type === 'text' ? message.content[0].text : ''
-    const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    const result = await generateResponse.json()
 
-    // Save output
-    const { data: output, error: insertError } = await supabase
-      .from('outputs')
-      .insert({
-        session_id: params.id,
-        template_id: template.id,
-        user_id: user.id,
-        title: `${templateName} (Auto-generated)`,
-        content,
-        generated_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('[Auto-Generate API] Error saving output:', insertError)
-      return NextResponse.json({ error: 'Failed to save output', details: insertError }, { status: 500 })
+    if (!generateResponse.ok) {
+      console.error('[Auto-Generate API] Generate failed:', result)
+      return NextResponse.json(
+        { error: result.error || 'Failed to generate output' },
+        { status: generateResponse.status }
+      )
     }
 
-    // Record AI token usage for beta cost tracking
-    if (usage?.input_tokens != null || usage?.output_tokens != null) {
-      recordAiTokens(supabase, user.id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
-        sessionId: params.id,
-        outputId: output.id,
-        endpoint: 'sessions/auto-generate',
-      })
-    }
-
-    console.log('[Auto-Generate API] Output generated successfully:', output.id)
-    return NextResponse.json({ 
-      success: true, 
-      outputId: output.id,
-      title: output.title
+    console.log('[Auto-Generate API] Output generated successfully:', result.id)
+    return NextResponse.json({
+      success: true,
+      outputId: result.id,
+      templateName: result.templateName || template.name,
     })
   } catch (error: any) {
     console.error('[Auto-Generate API] Error:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to auto-generate output',
-      message: error?.message 
+      message: error?.message,
     }, { status: 500 })
   }
 }

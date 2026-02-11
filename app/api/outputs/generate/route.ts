@@ -209,7 +209,7 @@ Please generate the requested output following all requirements and guidelines.`
       .insert({
         session_id: sessionId,
         template_id: config.templateId || null,
-        template_name: template?.name || 'Custom Output',
+        template_name: template?.name || config.templateName || 'Custom Output',
         perspective: config.perspective || 'observer',
         audience: config.audience || 'internal',
         language: config.language || 'en',

@@ -19,6 +19,8 @@ import {
   Edit2,
   Save,
   X,
+  Loader2,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -39,7 +41,7 @@ import {
   getSuggestedTemplates,
 } from "@/lib/mock/data"
 import { toV0Session } from "@/lib/adapters/session-adapter"
-import type { Session } from "@/lib/types-v0"
+import type { Session, SuggestedOutputFormat } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
 export default function SessionDetailPage() {
@@ -65,6 +67,7 @@ export default function SessionDetailPage() {
   const [editedParticipants, setEditedParticipants] = useState<any[]>([])
   const [applyToTranscript, setApplyToTranscript] = useState(true)
   const [savingCorrections, setSavingCorrections] = useState(false)
+  const [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
 
   // Handle seeking to a specific time from transcript click
   const handleSeekToTime = (time: number) => {
@@ -181,6 +184,44 @@ export default function SessionDetailPage() {
     setActiveTab('outputs')
   }, [fetchOutputs])
 
+  // Generate output from AI suggestion (quick one-click)
+  const handleGenerateFromSuggestion = async (suggestion: SuggestedOutputFormat, index: number) => {
+    if (!session) return
+    setGeneratingSuggestionIndex(index)
+    try {
+      const response = await fetch('/api/outputs/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: session.id,
+          config: {
+            templateId: null,
+            templateName: suggestion.title,
+            perspective: 'observer',
+            audience: 'internal',
+            language: 'en',
+            tone: 'neutral',
+            format: 'markdown',
+            doInstructions: suggestion.generationInstructions,
+            dontInstructions: '',
+            createTemplateFromConfig: false,
+            citeTimestamps: false,
+          },
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Generation failed')
+      toast.success(`Generated: ${suggestion.title}`)
+      fetchOutputs()
+      setActiveTab('outputs')
+    } catch (error) {
+      console.error('Generate from suggestion error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to generate output')
+    } finally {
+      setGeneratingSuggestionIndex(null)
+    }
+  }
+
   // Fetch real session data
   useEffect(() => {
     async function fetchSession() {
@@ -237,7 +278,8 @@ export default function SessionDetailPage() {
               recordingType: data.recordingType,
               recordingTypeConfidence: data.recordingTypeConfidence,
               domains: data.domains,
-              extractedContext: data.extractedContext || {}
+              extractedContext: data.extractedContext || {},
+              suggestedOutputFormats: data.suggestedOutputFormats || []
             } : null
             console.log('[AI Analysis] Updated session.extractedContext:', updated?.extractedContext)
             return updated
@@ -468,6 +510,14 @@ export default function SessionDetailPage() {
           <TabsContent value="context" className="flex-1 min-h-0 mt-0">
             <div className="h-full rounded-lg border border-border bg-card overflow-auto p-6">
               <div className="space-y-6">
+                {/* In-context AI analysis indicator */}
+                {analyzing && (
+                  <div className="flex items-center gap-2 p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                    <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
+                    <p className="text-xs text-muted-foreground">Extracting participants, purpose, and context</p>
+                  </div>
+                )}
                 {/* Recording Type & Domain */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -566,7 +616,7 @@ export default function SessionDetailPage() {
                 )}
 
                 {/* No Context Available */}
-                {!session?.recordingType && !session?.domain && !session?.extractedContext && (
+                {!analyzing && !session?.recordingType && !session?.domain && !session?.extractedContext && (
                   <div className="text-center py-8">
                     <Settings2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-2">No context extracted yet</p>
@@ -579,7 +629,46 @@ export default function SessionDetailPage() {
             </div>
           </TabsContent>
           <TabsContent value="outputs" className="flex-1 min-h-0 mt-0">
-            <div className="h-full rounded-lg border border-border bg-card overflow-auto p-4">
+            <div className="h-full rounded-lg border border-border bg-card overflow-auto p-4 space-y-6">
+              {/* Suggested for this session */}
+              {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Suggested for this session
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Based on this conversation&apos;s topic and domain</p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {session.suggestedOutputFormats.map((suggestion, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2"
+                      >
+                        <h4 className="text-sm font-medium text-foreground">{suggestion.title}</h4>
+                        <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
+                          {suggestion.description}
+                        </p>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleGenerateFromSuggestion(suggestion, idx)}
+                          disabled={generatingSuggestionIndex !== null}
+                        >
+                          {generatingSuggestionIndex === idx ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                              Generating...
+                            </>
+                          ) : (
+                            'Generate'
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Your outputs */}
               {outputsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading outputs...</p>
               ) : outputs.length === 0 ? (
@@ -591,6 +680,7 @@ export default function SessionDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
                   {outputs.map((output) => (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
@@ -703,6 +793,14 @@ export default function SessionDetailPage() {
           {activeTab === "context" && (
             <div className="flex-1 rounded-lg border border-border bg-card overflow-auto p-6">
               <div className="space-y-6">
+                {/* In-context AI analysis indicator */}
+                {analyzing && (
+                  <div className="flex items-center gap-2 p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                    <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
+                    <p className="text-xs text-muted-foreground">Extracting participants, purpose, and context</p>
+                  </div>
+                )}
                 {/* Recording Type & Domain */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -802,7 +900,7 @@ export default function SessionDetailPage() {
                 )}
 
                 {/* No Context Available */}
-                {!session?.recordingType && !session?.domain && !session?.extractedContext && (
+                {!analyzing && !session?.recordingType && !session?.domain && !session?.extractedContext && (
                   <div className="text-center py-8">
                     <Settings2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-2">No context extracted yet</p>
@@ -816,7 +914,46 @@ export default function SessionDetailPage() {
           )}
 
           {activeTab === "outputs" && (
-            <div className="flex-1 rounded-lg border border-border bg-card overflow-auto p-4">
+            <div className="flex-1 rounded-lg border border-border bg-card overflow-auto p-4 space-y-6">
+              {/* Suggested for this session */}
+              {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    Suggested for this session
+                  </h3>
+                  <p className="text-xs text-muted-foreground">Based on this conversation&apos;s topic and domain</p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {session.suggestedOutputFormats.map((suggestion, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2"
+                      >
+                        <h4 className="text-sm font-medium text-foreground">{suggestion.title}</h4>
+                        <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
+                          {suggestion.description}
+                        </p>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleGenerateFromSuggestion(suggestion, idx)}
+                          disabled={generatingSuggestionIndex !== null}
+                        >
+                          {generatingSuggestionIndex === idx ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                              Generating...
+                            </>
+                          ) : (
+                            'Generate'
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Your outputs */}
               {outputsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading outputs...</p>
               ) : outputs.length === 0 ? (
@@ -828,6 +965,7 @@ export default function SessionDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
                   {outputs.map((output) => (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">

@@ -12,6 +12,7 @@ export interface UserProfile {
   
   // Workflow preferences
   after_transcript_action: 'nothing' | 'short_summary' | 'long_summary' | 'full_report'
+  after_transcript_template_id: string | null // Template for auto-gen after transcription (preferred over action)
   auto_generate_reports: boolean
   
   // Additional fields

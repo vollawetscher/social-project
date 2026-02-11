@@ -44,7 +44,8 @@ import {
 } from "@/components/ui/alert"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth/AuthProvider"
-import { UserProfile, SUPPORTED_LANGUAGES, TIMEZONES, AFTER_TRANSCRIPT_ACTIONS } from "@/lib/types/profile"
+import Link from "next/link"
+import { UserProfile, SUPPORTED_LANGUAGES, TIMEZONES } from "@/lib/types/profile"
 
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth()
@@ -56,11 +57,12 @@ export default function SettingsPage() {
   const [defaultRecordingLanguage, setDefaultRecordingLanguage] = useState("de")
   const [preferredReportLanguage, setPreferredReportLanguage] = useState("de")
   const [timezone, setTimezone] = useState("Europe/Berlin")
-  const [afterTranscriptAction, setAfterTranscriptAction] = useState<string>("nothing")
+  const [afterTranscriptTemplateId, setAfterTranscriptTemplateId] = useState<string>("")
+  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [sessionTimeout, setSessionTimeout] = useState(true)
   const [retentionPolicy, setRetentionPolicy] = useState("90")
 
-  // Fetch user profile on mount
+  // Fetch user profile and templates on mount
   useEffect(() => {
     async function fetchProfile() {
       if (!user) {
@@ -69,17 +71,24 @@ export default function SettingsPage() {
       }
 
       try {
-        const response = await fetch('/api/profile')
-        if (!response.ok) throw new Error('Failed to fetch profile')
+        const [profileRes, templatesRes] = await Promise.all([
+          fetch('/api/profile'),
+          fetch('/api/templates'),
+        ])
+        if (!profileRes.ok) throw new Error('Failed to fetch profile')
+        if (templatesRes.ok) {
+          const templatesData = await templatesRes.json()
+          setTemplates(templatesData.map((t: { id: string; name: string }) => ({ id: t.id, name: t.name })))
+        }
         
-        const data: UserProfile = await response.json()
+        const data: UserProfile = await profileRes.json()
         setProfile(data)
         
         // Populate form with profile data
         setDefaultRecordingLanguage(data.default_recording_language || 'de')
         setPreferredReportLanguage(data.preferred_report_language || 'de')
         setTimezone(data.timezone || 'Europe/Berlin')
-        setAfterTranscriptAction(data.after_transcript_action || 'nothing')
+        setAfterTranscriptTemplateId(data.after_transcript_template_id || '')
       } catch (error) {
         console.error('Error fetching profile:', error)
         toast.error('Failed to load settings')
@@ -106,7 +115,7 @@ export default function SettingsPage() {
           default_recording_language: defaultRecordingLanguage,
           preferred_report_language: preferredReportLanguage,
           timezone: timezone,
-          after_transcript_action: afterTranscriptAction,
+          after_transcript_template_id: afterTranscriptTemplateId || null,
         })
       })
 
@@ -266,43 +275,46 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* After Transcript Action */}
+            {/* After Transcript - Template Selector */}
             <div className="space-y-3">
               <Label htmlFor="after-transcript" className="font-medium">
                 After Transcript Completes
               </Label>
               <p className="text-sm text-muted-foreground mb-3">
-                Choose what happens automatically after a recording is transcribed
+                Automatically generate an output with the chosen template when a recording is transcribed
               </p>
-              <div className="space-y-2">
-                {AFTER_TRANSCRIPT_ACTIONS.map((action) => (
-                  <div
-                    key={action.value}
-                    onClick={() => setAfterTranscriptAction(action.value)}
-                    className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                      afterTranscriptAction === action.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
-                        afterTranscriptAction === action.value
-                          ? 'border-primary'
-                          : 'border-muted-foreground'
-                      }`}>
-                        {afterTranscriptAction === action.value && (
-                          <div className="h-2 w-2 rounded-full bg-primary" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-foreground">{action.label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{action.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Select
+                value={afterTranscriptTemplateId || 'nothing'}
+                onValueChange={(v) => setAfterTranscriptTemplateId(v === 'nothing' ? '' : v)}
+              >
+                <SelectTrigger id="after-transcript" className="w-full">
+                  <SelectValue placeholder="Do nothing (manual only)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nothing">Do nothing — generate manually</SelectItem>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                Create a template
+                <Link
+                  href="/templates/new/from-samples"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  from samples
+                </Link>
+                or use the
+                <Link
+                  href="/templates"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  Templates page
+                </Link>
+              </p>
             </div>
 
             <Alert className="border-info/30 bg-info/10">

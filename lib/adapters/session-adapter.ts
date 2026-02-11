@@ -81,6 +81,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     outputCount: (dbSession as any).output_count || 0, // Number of generated outputs
     extractedContext, // Normalized AI-extracted rich context
     transcriptCorrections: (dbSession as any).transcript_corrections || {}, // Alias system
+    suggestedOutputFormats: (dbSession as any).suggested_output_formats || [],
   }
 }
 

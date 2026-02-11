@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS usage_events (
 
 CREATE INDEX idx_usage_events_user_created ON usage_events(user_id, created_at DESC);
 CREATE INDEX idx_usage_events_type_created ON usage_events(event_type, created_at DESC);
-CREATE INDEX idx_usage_events_user_type_month ON usage_events(user_id, event_type, (date_trunc('month', created_at)));
 
 COMMENT ON TABLE usage_events IS 'Beta: Usage tracking for transcription minutes and AI tokens. Used for cost calculation and subscription modeling.';
 

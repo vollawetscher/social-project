@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -27,11 +28,17 @@ export default function ProfilePage() {
       }
 
       try {
-        const response = await fetch('/api/profile')
-        if (!response.ok) throw new Error('Failed to fetch profile')
-        
-        const data: UserProfile = await response.json()
+        const [profileRes, templatesRes] = await Promise.all([
+          fetch('/api/profile'),
+          fetch('/api/templates'),
+        ])
+        if (!profileRes.ok) throw new Error('Failed to fetch profile')
+        const data: UserProfile = await profileRes.json()
         setProfile(data)
+        if (templatesRes.ok) {
+          const t = await templatesRes.json()
+          setTemplates(t.map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })))
+        }
       } catch (error) {
         console.error('Error fetching profile:', error)
       } finally {
@@ -94,14 +101,20 @@ export default function ProfilePage() {
     return languages[code] || code.toUpperCase()
   }
 
-  const getAfterTranscriptLabel = (action: string) => {
+  const getAfterTranscriptLabel = () => {
+    const templateId = (profile as any)?.after_transcript_template_id
+    if (templateId) {
+      const t = templates.find((x) => x.id === templateId)
+      return t?.name || 'Custom template'
+    }
+    const action = profile?.after_transcript_action
     const actions: Record<string, string> = {
-      nothing: 'Do Nothing',
+      nothing: 'Do nothing',
       short_summary: 'Short Summary',
       long_summary: 'Long Summary',
       full_report: 'Full Report',
     }
-    return actions[action] || action
+    return actions[action || 'nothing'] || 'Do nothing'
   }
 
   return (
@@ -247,7 +260,7 @@ export default function ProfilePage() {
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">After Transcript Completes</p>
             <p className="text-sm text-foreground">
-              {getAfterTranscriptLabel(profile.after_transcript_action)}
+              {getAfterTranscriptLabel()}
             </p>
           </div>
           {profile.auto_generate_reports && (

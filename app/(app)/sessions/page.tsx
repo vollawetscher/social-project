@@ -50,7 +50,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { Progress } from "@/components/ui/progress"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
@@ -785,9 +784,6 @@ export default function SessionsPage() {
                           </Badge>
                         )}
                       </div>
-                      {(session.status === "uploading" || session.status === "transcribing") && (
-                        <Progress value={session.status === "uploading" ? 65 : 40} className="h-1 w-full mt-2" />
-                      )}
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -917,12 +913,6 @@ export default function SessionsPage() {
                             {status.animated && <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-ping" />}
                             {status.label}
                           </Badge>
-                          {session.status === "uploading" && (
-                            <Progress value={65} className="h-1 w-20" />
-                          )}
-                          {session.status === "transcribing" && (
-                            <Progress value={40} className="h-1 w-20" />
-                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">

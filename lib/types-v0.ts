@@ -102,6 +102,7 @@ export interface Session {
   audioUrl?: string // Optional audio file URL
   outputCount?: number // Number of generated outputs for this session
   transcriptCorrections?: TranscriptCorrections // Alias system for corrections & PII
+  suggestedOutputFormats?: SuggestedOutputFormat[] // AI-suggested output formats for this session (domain-aware)
 }
 
 export interface ParticipantInfo {
@@ -115,6 +116,12 @@ export interface ExtractedContext {
   purpose: string
   agenda: string[]
   venue: string
+}
+
+export interface SuggestedOutputFormat {
+  title: string
+  description: string
+  generationInstructions: string
 }
 
 export interface TemplateSection {
@@ -167,7 +174,8 @@ export interface AiSuggestion<T> {
 }
 
 export interface GenerateOutputConfig {
-  templateId: string
+  templateId?: string | null // Optional - when generating from AI suggestion, can be empty
+  templateName?: string // Custom name when no template (e.g. suggestion title)
   perspective: ParticipantRole | null // From whose perspective to generate
   audience: Audience | null
   language: string

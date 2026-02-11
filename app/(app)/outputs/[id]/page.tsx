@@ -26,6 +26,7 @@ import {
   EyeOff,
   Trash2,
   Loader2,
+  Languages,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -42,6 +43,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import type { Output } from "@/lib/types-v0"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
@@ -62,6 +69,17 @@ interface CopyableSection {
   copied: boolean
 }
 
+const TRANSLATE_LANGUAGES: { code: string; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'de', label: 'German' },
+  { code: 'fr', label: 'French' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'it', label: 'Italian' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'nl', label: 'Dutch' },
+  { code: 'pl', label: 'Polish' },
+]
+
 export default function OutputDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -70,6 +88,7 @@ export default function OutputDetailPage() {
   const [output, setOutput] = useState<Output | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
+  const [translating, setTranslating] = useState(false)
   const [sections, setSections] = useState<CopyableSection[]>([])
   const [copiedAll, setCopiedAll] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
@@ -271,6 +290,30 @@ export default function OutputDetailPage() {
     }
   }
 
+  async function handleTranslate(targetLanguage: string) {
+    if (!output) return
+    setTranslating(true)
+    try {
+      const response = await fetch(`/api/outputs/${outputId}/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetLanguage }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Translation failed')
+      toast.success(`Translated to ${TRANSLATE_LANGUAGES.find(l => l.code === targetLanguage)?.label || targetLanguage}`)
+      router.push(`/outputs/${data.id}`)
+    } catch (error) {
+      console.error('Translate error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to translate output')
+    } finally {
+      setTranslating(false)
+    }
+  }
+
+  const currentLangCode = output?.language || 'en'
+  const otherLanguages = TRANSLATE_LANGUAGES.filter(l => l.code !== currentLangCode)
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -395,6 +438,37 @@ export default function OutputDetailPage() {
               <span className="hidden md:inline">Session</span>
             </Link>
           </Button>
+          {otherLanguages.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={translating}
+                  className="gap-2"
+                  title="Duplicate & translate to another language"
+                >
+                  {translating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Languages className="h-4 w-4" />
+                  )}
+                  <span className="hidden md:inline">Translate</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {otherLanguages.map(({ code, label }) => (
+                  <DropdownMenuItem
+                    key={code}
+                    onClick={() => handleTranslate(code)}
+                    disabled={translating}
+                  >
+                    Translate to {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
