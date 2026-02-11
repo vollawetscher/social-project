@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import type { GenerateOutputConfig } from '@/lib/types-v0'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -182,6 +183,8 @@ Please generate the requested output following all requirements and guidelines.`
       ? message.content[0].text 
       : ''
 
+    const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+
     if (!generatedContent) {
       return NextResponse.json({ error: 'Failed to generate output' }, { status: 500 })
     }
@@ -232,6 +235,15 @@ Please generate the requested output following all requirements and guidelines.`
     }
     
     console.log('[Generate Output] Output saved successfully:', output.id)
+
+    // Record AI token usage for beta cost tracking
+    if (usage?.input_tokens != null || usage?.output_tokens != null) {
+      recordAiTokens(supabase, user.id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+        sessionId,
+        outputId: output.id,
+        endpoint: 'outputs/generate',
+      })
+    }
 
     // Increment template used_count (non-blocking)
     if (config.templateId) {

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { createSpeechmaticsService } from '@/lib/services/speechmatics'
+import { recordTranscriptionMinutesFromJob } from '@/lib/services/usage-tracker'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
 import { generateReport } from '@/lib/services/report-generator'
@@ -151,6 +152,11 @@ async function processTranscriptionJob(sessionId: string) {
 
     const sessionDuration = sessionData?.duration_sec || 0
     const userId = sessionData?.user_id
+
+    // Record transcription minutes for usage tracking (beta cost calculation)
+    if (sessionDuration > 0) {
+      recordTranscriptionMinutesFromJob(userId, sessionDuration / 60, { sessionId })
+    }
 
     // Get user's report generation preference
     const { data: userProfile } = await supabase

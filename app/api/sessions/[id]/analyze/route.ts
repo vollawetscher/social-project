@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -185,6 +186,15 @@ Respond in this exact JSON format:
       ]
     })
     console.log('[Analyze API] Claude responded successfully')
+
+    // Record AI token usage for beta cost tracking
+    const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (usage?.input_tokens != null || usage?.output_tokens != null) {
+      recordAiTokens(supabase, user.id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+        sessionId: params.id,
+        endpoint: 'sessions/analyze',
+      })
+    }
 
     // Parse Claude's response
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''

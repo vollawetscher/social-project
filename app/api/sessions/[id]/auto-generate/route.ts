@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -91,6 +92,7 @@ Format the output clearly and professionally.`
     })
 
     const content = message.content[0].type === 'text' ? message.content[0].text : ''
+    const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
 
     // Save output
     const { data: output, error: insertError } = await supabase
@@ -109,6 +111,15 @@ Format the output clearly and professionally.`
     if (insertError) {
       console.error('[Auto-Generate API] Error saving output:', insertError)
       return NextResponse.json({ error: 'Failed to save output', details: insertError }, { status: 500 })
+    }
+
+    // Record AI token usage for beta cost tracking
+    if (usage?.input_tokens != null || usage?.output_tokens != null) {
+      recordAiTokens(supabase, user.id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+        sessionId: params.id,
+        outputId: output.id,
+        endpoint: 'sessions/auto-generate',
+      })
     }
 
     console.log('[Auto-Generate API] Output generated successfully:', output.id)
