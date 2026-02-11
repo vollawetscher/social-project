@@ -35,6 +35,13 @@ export const changelog: ChangelogVersion[] = [
         version: '1.5.0',
         date: 'February 11, 2026',
         category: 'feature',
+        title: 'Save AI Suggestions as Templates',
+        description: 'When generating from one of the 3 AI-suggested formats, check "Save as template" to turn that suggestion into a reusable template. Same option in the Generate Output modal lets you save any custom configuration for future use.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
+        category: 'feature',
         title: 'Duplicate & Translate Outputs',
         description: 'Create a translated copy of any output in another language. Use the "Translate" button on an output to duplicate it into English, German, French, Spanish, Italian, Portuguese, Dutch, or Polish - perfect for multilingual teams.',
       },

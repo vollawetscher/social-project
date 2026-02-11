@@ -68,6 +68,7 @@ export default function SessionDetailPage() {
   const [applyToTranscript, setApplyToTranscript] = useState(true)
   const [savingCorrections, setSavingCorrections] = useState(false)
   const [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
+  const [suggestionsSaveAsTemplate, setSuggestionsSaveAsTemplate] = useState<Record<number, boolean>>({})
 
   // Handle seeking to a specific time from transcript click
   const handleSeekToTime = (time: number) => {
@@ -204,14 +205,18 @@ export default function SessionDetailPage() {
             format: 'markdown',
             doInstructions: suggestion.generationInstructions,
             dontInstructions: '',
-            createTemplateFromConfig: false,
+            createTemplateFromConfig: suggestionsSaveAsTemplate[index] ?? false,
             citeTimestamps: false,
           },
         }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Generation failed')
-      toast.success(`Generated: ${suggestion.title}`)
+      toast.success(
+        data.createdTemplateId
+          ? `${suggestion.title} generated and saved as template`
+          : `Generated: ${suggestion.title}`
+      )
       fetchOutputs()
       setActiveTab('outputs')
     } catch (error) {
@@ -648,6 +653,22 @@ export default function SessionDetailPage() {
                         <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
                           {suggestion.description}
                         </p>
+                        <div className="flex items-center space-x-2 pt-1">
+                          <Checkbox
+                            id={`save-template-${idx}`}
+                            checked={suggestionsSaveAsTemplate[idx] ?? false}
+                            onCheckedChange={(checked) =>
+                              setSuggestionsSaveAsTemplate((prev) => ({ ...prev, [idx]: !!checked }))
+                            }
+                            disabled={generatingSuggestionIndex !== null}
+                          />
+                          <Label
+                            htmlFor={`save-template-${idx}`}
+                            className="text-xs text-muted-foreground cursor-pointer select-none"
+                          >
+                            Save as template
+                          </Label>
+                        </div>
                         <Button
                           size="sm"
                           className="w-full"
@@ -933,6 +954,22 @@ export default function SessionDetailPage() {
                         <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
                           {suggestion.description}
                         </p>
+                        <div className="flex items-center space-x-2 pt-1">
+                          <Checkbox
+                            id={`save-template-panel-${idx}`}
+                            checked={suggestionsSaveAsTemplate[idx] ?? false}
+                            onCheckedChange={(checked) =>
+                              setSuggestionsSaveAsTemplate((prev) => ({ ...prev, [idx]: !!checked }))
+                            }
+                            disabled={generatingSuggestionIndex !== null}
+                          />
+                          <Label
+                            htmlFor={`save-template-panel-${idx}`}
+                            className="text-xs text-muted-foreground cursor-pointer select-none"
+                          >
+                            Save as template
+                          </Label>
+                        </div>
                         <Button
                           size="sm"
                           className="w-full"

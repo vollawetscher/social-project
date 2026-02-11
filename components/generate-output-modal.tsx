@@ -179,7 +179,8 @@ export function GenerateOutputModal({
         body: JSON.stringify({
           sessionId: session.id,
           config: {
-            templateId: selectedTemplate,
+            templateId: selectedTemplate || null,
+            templateName: templates.find((t) => t.id === selectedTemplate)?.name || 'Custom Output',
             perspective: selectedPerspective,
             audience: selectedAudience,
             language: languageToConfig[selectedLanguage]?.code ?? 'en',
@@ -198,13 +199,17 @@ export function GenerateOutputModal({
         throw new Error(error.error || 'Failed to generate output')
       }
       
-      await response.json()
+      const data = await response.json()
       
       // Success! Refresh outputs list and close modal
       onSuccess?.()
       onOpenChange(false)
       
-      toast.success('Output generated! View it in the Outputs tab.')
+      toast.success(
+        data.createdTemplateId
+          ? 'Output generated and saved as template! View both in their tabs.'
+          : 'Output generated! View it in the Outputs tab.'
+      )
       
       // Optional: Navigate to outputs page
       // window.location.href = '/outputs'

@@ -275,6 +275,44 @@ Please generate the requested output following all requirements and guidelines.`
       })()
     }
 
+    // Create template from config when requested (e.g. from AI suggestion or modal checkbox)
+    let createdTemplateId: string | null = null
+    if (config.createTemplateFromConfig) {
+      const templateName = config.templateName || output.template_name || 'Custom Output'
+      const description = config.doInstructions
+        ? config.doInstructions.slice(0, 200) + (config.doInstructions.length > 200 ? '...' : '')
+        : `Custom output format: ${templateName}`
+      const styleRules: string[] = []
+      if (config.tone) styleRules.push(`Tone: ${config.tone}`)
+      if (config.format) styleRules.push(`Format: ${config.format}`)
+      const instructions = config.doInstructions
+        ? `Generate a ${templateName}. ${config.doInstructions}`
+        : `Generate a ${templateName} following the defined style.`
+      const { data: newTemplate, error: templateError } = await supabase
+        .from('templates')
+        .insert({
+          name: templateName,
+          description,
+          intended_perspectives: [config.perspective || 'observer'],
+          allowed_audience: [config.audience || 'internal'],
+          domain_tags: ['general'],
+          sections: [],
+          required_inputs: [],
+          style_rules: styleRules.length > 0 ? styleRules : [`Generate ${templateName} with professional tone and clear structure.`],
+          instructions,
+          created_by: user.id,
+          is_system: false,
+        })
+        .select('id')
+        .single()
+      if (templateError) {
+        console.error('[Generate Output] Failed to create template from config:', templateError)
+      } else if (newTemplate) {
+        createdTemplateId = newTemplate.id
+        console.log('[Generate Output] Template created from config:', newTemplate.id)
+      }
+    }
+
     // Return the generated output
     return NextResponse.json({
       id: output.id,
@@ -282,6 +320,7 @@ Please generate the requested output following all requirements and guidelines.`
       sessionFilename: session.internal_case_id || 'Unknown',
       templateId: output.template_id || '',
       templateName: output.template_name,
+      createdTemplateId: createdTemplateId || undefined,
       perspective: output.perspective,
       audience: output.audience,
       language: output.language,
