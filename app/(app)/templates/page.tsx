@@ -18,6 +18,7 @@ import {
   Copy,
   Trash2,
   MoreHorizontal,
+  FileOutput,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -44,6 +45,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { participantRoleLabels } from "@/lib/mock/data"
 import type { Template } from "@/lib/types-v0"
 
@@ -58,6 +61,56 @@ const domainColors: Record<string, string> = {
 }
 
 const roleLabels = participantRoleLabels;
+
+// Generate mock sample content for a template (for preview)
+function generateMockSample(template: Template): string {
+  const sections = template.sections?.length
+    ? template.sections
+    : [
+        { name: "Overview", description: "Summary" },
+        { name: "Key Points", description: "Main findings" },
+        { name: "Action Items", description: "Next steps" },
+      ]
+  const now = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+  let md = `# ${template.name}\n\n`
+  md += `*Sample output · ${now} · Generated from template structure*\n\n---\n\n`
+  sections.forEach((s: any) => {
+    md += `## ${s.name}\n\n`
+    md += `*${typeof s.description === "string" ? s.description : "Content section"}*\n\n`
+    if (s.name.toLowerCase().includes("action") || s.name.toLowerCase().includes("next")) {
+      md += `- [ ] Task 1 — Owner: TBD\n`
+      md += `- [ ] Task 2 — Owner: TBD\n`
+      md += `- [ ] Task 3 — Owner: TBD\n\n`
+    } else if (s.name.toLowerCase().includes("overview") || s.name.toLowerCase().includes("summary")) {
+      md += `This section would contain a brief overview of the conversation or meeting outcomes.\n\n`
+    } else {
+      md += `Lorem ipsum placeholder for ${s.name}. In a real output, this would be filled with AI-generated content based on the transcript.\n\n`
+    }
+  })
+  return md
+}
+
+function TemplateSampleSheet({ template, open, onOpenChange }: { template: Template; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const sample = generateMockSample(template)
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <FileOutput className="h-5 w-5" />
+            Sample: {template.name}
+          </SheetTitle>
+          <SheetDescription>
+            Preview with mock data — shows how an output would look using this template
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-6 prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{sample}</ReactMarkdown>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
 
 function TemplateDetailSheet({ template }: { template: Template }) {
   return (
@@ -185,6 +238,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
+  const [sampleTemplate, setSampleTemplate] = useState<Template | null>(null)
 
   useEffect(() => {
     fetchTemplates()
@@ -258,6 +312,13 @@ export default function TemplatesPage() {
 
   return (
     <div className="space-y-6">
+      {sampleTemplate && (
+        <TemplateSampleSheet
+          template={sampleTemplate}
+          open={!!sampleTemplate}
+          onOpenChange={(open) => !open && setSampleTemplate(null)}
+        />
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -443,6 +504,13 @@ export default function TemplatesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => setSampleTemplate(template)}
+                          className="cursor-pointer"
+                        >
+                          <FileOutput className="mr-2 h-4 w-4" />
+                          View Sample
+                        </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link href={`/templates/${template.id}/edit`} className="cursor-pointer">
                             <Pencil className="mr-2 h-4 w-4" />
