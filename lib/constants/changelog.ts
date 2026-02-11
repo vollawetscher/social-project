@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.5.0',
+    date: 'February 11, 2026',
+    entries: [
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
+        category: 'fix',
+        title: 'Outputs Tab Updates Immediately',
+        description: 'After generating an output (e.g. meeting minutes), the Outputs tab now refreshes automatically and switches to show your new output - no page refresh needed.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
+        category: 'fix',
+        title: 'Output Language (Polish, French, etc.)',
+        description: 'Fixed output generation for all selected languages. Polish, French, Spanish, Italian, Portuguese, and Dutch now generate correctly instead of defaulting to German.',
+      },
+    ],
+  },
+  {
     version: '1.4.0',
     date: 'January 24, 2026',
     entries: [

@@ -42,6 +42,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import type { Template, Session, ParticipantRole, Audience, OutputTone, OutputFormat } from "@/lib/types-v0"
 import { participantRoleLabels, semanticRoleLabels, audienceLabels, languages, mockTemplates } from "@/lib/mock/data"
 
@@ -50,6 +51,19 @@ interface GenerateOutputModalProps {
   onOpenChange: (open: boolean) => void
   template?: Template | null
   session: Session
+  onSuccess?: () => void // Called after output generated - use to refresh outputs list
+}
+
+// Map display language name to ISO code and AI instruction
+const languageToConfig: Record<string, { code: string; instruction: string }> = {
+  English: { code: 'en', instruction: 'English' },
+  German: { code: 'de', instruction: 'German' },
+  French: { code: 'fr', instruction: 'French' },
+  Spanish: { code: 'es', instruction: 'Spanish' },
+  Italian: { code: 'it', instruction: 'Italian' },
+  Portuguese: { code: 'pt', instruction: 'Portuguese' },
+  Dutch: { code: 'nl', instruction: 'Dutch' },
+  Polish: { code: 'pl', instruction: 'Polish' },
 }
 
 export function GenerateOutputModal({
@@ -57,6 +71,7 @@ export function GenerateOutputModal({
   onOpenChange,
   template,
   session,
+  onSuccess,
 }: GenerateOutputModalProps) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
@@ -167,7 +182,7 @@ export function GenerateOutputModal({
             templateId: selectedTemplate,
             perspective: selectedPerspective,
             audience: selectedAudience,
-            language: selectedLanguage === 'English' ? 'en' : 'de',
+            language: languageToConfig[selectedLanguage]?.code ?? 'en',
             tone,
             format,
             doInstructions,
@@ -183,20 +198,20 @@ export function GenerateOutputModal({
         throw new Error(error.error || 'Failed to generate output')
       }
       
-      const output = await response.json()
+      await response.json()
       
-      // Success! Close modal and optionally navigate to outputs
+      // Success! Refresh outputs list and close modal
+      onSuccess?.()
       onOpenChange(false)
       
-      // Show success message
-      alert(`Output generated successfully! View it in the Outputs page.`)
+      toast.success('Output generated! View it in the Outputs tab.')
       
       // Optional: Navigate to outputs page
       // window.location.href = '/outputs'
       
     } catch (error) {
       console.error('Error generating output:', error)
-      alert('Failed to generate output: ' + (error as Error).message)
+      toast.error('Failed to generate output: ' + (error as Error).message)
     } finally {
       setGenerating(false)
     }

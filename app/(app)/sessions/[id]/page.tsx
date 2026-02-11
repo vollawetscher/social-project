@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -159,6 +159,28 @@ export default function SessionDetailPage() {
     setEditedParticipants([])
   }
 
+  // Fetch outputs - reusable for initial load and after generation
+  const fetchOutputs = useCallback(async () => {
+    try {
+      setOutputsLoading(true)
+      const response = await fetch(`/api/outputs?sessionId=${sessionId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setOutputs(data)
+      }
+    } catch (error) {
+      console.error('Error fetching outputs:', error)
+    } finally {
+      setOutputsLoading(false)
+    }
+  }, [sessionId])
+
+  // Called when output is generated - refresh list and switch to Outputs tab
+  const handleOutputGenerated = useCallback(() => {
+    fetchOutputs()
+    setActiveTab('outputs')
+  }, [fetchOutputs])
+
   // Fetch real session data
   useEffect(() => {
     async function fetchSession() {
@@ -187,20 +209,6 @@ export default function SessionDetailPage() {
         console.error('Error fetching session:', error)
       } finally {
         setLoading(false)
-      }
-    }
-
-    async function fetchOutputs() {
-      try {
-        const response = await fetch(`/api/outputs?sessionId=${sessionId}`)
-        if (response.ok) {
-          const data = await response.json()
-          setOutputs(data)
-        }
-      } catch (error) {
-        console.error('Error fetching outputs:', error)
-      } finally {
-        setOutputsLoading(false)
       }
     }
 
@@ -254,7 +262,7 @@ export default function SessionDetailPage() {
       // Wait a bit to see if transcript exists
       setTimeout(() => analyzeSession(), 1000)
     })
-  }, [sessionId])
+  }, [sessionId, fetchOutputs])
 
   if (loading) {
     return (
@@ -928,6 +936,7 @@ export default function SessionDetailPage() {
         onOpenChange={setGenerateModalOpen}
         template={selectedTemplate}
         session={session}
+        onSuccess={handleOutputGenerated}
       />
     </div>
   )

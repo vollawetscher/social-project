@@ -100,6 +100,18 @@ export async function POST(request: Request) {
       technical: 'technical and detailed'
     }
 
+    const languageMap: Record<string, string> = {
+      en: 'English',
+      de: 'German',
+      pl: 'Polish',
+      fr: 'French',
+      es: 'Spanish',
+      it: 'Italian',
+      pt: 'Portuguese',
+      nl: 'Dutch',
+    }
+    const outputLanguage = languageMap[config.language || 'en'] || 'English'
+
     const formatMap: Record<string, string> = {
       email: 'an email',
       report: 'a formal report',
@@ -115,7 +127,7 @@ Key requirements:
 - Perspective: Write from the viewpoint of ${perspectiveMap[config.perspective || 'observer'] || 'a neutral observer'}
 - Audience: The output is intended for ${audienceMap[config.audience || 'internal'] || 'internal use'}
 - Tone: Use a ${toneMap[config.tone] || 'professional'} tone
-- Language: Generate the output in ${config.language === 'de' ? 'German' : 'English'}
+- Language: Generate the output in ${outputLanguage}
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
     if (template) {
