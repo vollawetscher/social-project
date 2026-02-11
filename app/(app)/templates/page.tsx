@@ -266,15 +266,21 @@ export default function TemplatesPage() {
             Manage generation recipes for your outputs
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild className="flex-1 sm:flex-initial bg-transparent">
             <Link href="/templates/new/from-samples">
               <FileText className="h-4 w-4 mr-2" />
               <span className="hidden xs:inline">Create from</span> Samples
             </Link>
           </Button>
-          <Button className="flex-1 sm:flex-initial">
-            <Plus className="h-4 w-4 mr-2" />
+          <Button asChild className="flex-1 sm:flex-initial">
+            <Link href="/templates/new/scratch">
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden xs:inline">Create from</span> Scratch
+            </Link>
+          </Button>
+          <Button variant="outline" className="flex-1 sm:flex-initial" disabled title="Coming soon">
+            <FileText className="h-4 w-4 mr-2" />
             <span className="hidden xs:inline">Create from</span> Output
           </Button>
         </div>
