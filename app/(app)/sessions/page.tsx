@@ -193,7 +193,14 @@ export default function SessionsPage() {
   const transcriptInputRef = useRef<HTMLInputElement>(null)
   const [isDraggingAudio, setIsDraggingAudio] = useState(false)
   const [isDraggingFile, setIsDraggingFile] = useState(false)
+  const [isDraggingHeader, setIsDraggingHeader] = useState(false)
   const supabase = createClient()
+
+  const isTranscriptFile = (f: File) =>
+    /\.(txt|srt|vtt)$/i.test(f.name) ||
+    f.type === 'text/plain' ||
+    f.type === 'text/vtt' ||
+    f.type === 'application/x-subrip'
 
   // Fetch user profile to get default language
   const fetchUserPreferences = async () => {
@@ -319,9 +326,7 @@ export default function SessionsPage() {
     const files = e.target.files
     e.target.value = ''
     if (!files || files.length === 0) return
-    const transcriptFiles = Array.from(files).filter(f =>
-      /\.(txt|srt|vtt)$/i.test(f.name)
-    )
+    const transcriptFiles = Array.from(files).filter(isTranscriptFile)
     const skipped = files.length - transcriptFiles.length
     if (transcriptFiles.length === 0) {
       toast.error('Please select TXT, SRT, or VTT files')
@@ -349,9 +354,7 @@ export default function SessionsPage() {
   const handleFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDraggingFile(false)
-    const files = Array.from(e.dataTransfer.files).filter(f =>
-      /\.(txt|srt|vtt)$/i.test(f.name)
-    )
+    const files = Array.from(e.dataTransfer.files).filter(isTranscriptFile)
     if (files.length === 0) {
       toast.error('Please drop TXT, SRT, or VTT files')
       return
@@ -372,6 +375,53 @@ export default function SessionsPage() {
         await fetchSessions()
       }
     })()
+  }, [processTranscriptFile, fetchSessions])
+
+  const handleHeaderDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.types.includes('Files')) setIsDraggingHeader(true)
+  }, [])
+
+  const handleHeaderDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDraggingHeader(false)
+  }, [])
+
+  const handleHeaderDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingHeader(false)
+    const files = Array.from(e.dataTransfer.files)
+    const transcriptFiles = files.filter(isTranscriptFile)
+    const audioFiles = files.filter(f =>
+      f.type.startsWith('audio/') || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(f.name)
+    )
+    if (transcriptFiles.length > 0) {
+      setIsUploadOpen(true)
+      setUploadingTranscript(true)
+      ;(async () => {
+        let success = 0
+        for (const file of transcriptFiles) {
+          try {
+            if (await processTranscriptFile(file)) success++
+          } catch (err: any) {
+            toast.error(`${file.name}: ${err?.message || 'Import failed'}`)
+          }
+        }
+        setUploadingTranscript(false)
+        if (success > 0) {
+          toast.success(`${success} transcript(s) imported`)
+          await fetchSessions()
+        }
+      })()
+    } else if (audioFiles.length > 0) {
+      setIsUploadOpen(true)
+      setPreviewFiles(audioFiles)
+      setPreviewOpen(true)
+    } else {
+      toast.error('Please drop transcript files (TXT, SRT, VTT) or audio files (MP3, WAV)')
+    }
   }, [processTranscriptFile, fetchSessions])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -706,8 +756,12 @@ export default function SessionsPage() {
                 "flex items-center justify-between gap-3 px-4 py-3 rounded-lg border cursor-pointer transition-colors",
                 isUploadOpen 
                   ? "bg-secondary border-primary" 
-                  : "bg-card border-border hover:border-muted-foreground"
+                  : "bg-card border-border hover:border-muted-foreground",
+                isDraggingHeader && "border-primary bg-primary/5"
               )}
+              onDragOver={handleHeaderDragOver}
+              onDragLeave={handleHeaderDragLeave}
+              onDrop={handleHeaderDrop}
             >
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
@@ -808,7 +862,7 @@ export default function SessionsPage() {
                   <input
                     ref={transcriptInputRef}
                     type="file"
-                    accept=".txt,.srt,.vtt"
+                    accept=".txt,.srt,.vtt,text/plain"
                     multiple
                     onChange={handleTranscriptFileSelect}
                     className="hidden"
