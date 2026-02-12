@@ -54,7 +54,7 @@ Build using:
 
 ```
 /login                          - Simple auth (email/password)
-/signup                         - Phone or email signup
+/signup                         - Email signup
 /record                         - PWA entry point (quick record)
 /dashboard                      - Cases + standalone sessions
 /cases/[id]                     - Case detail with sessions

@@ -52,6 +52,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
+import { parseTranscriptFile } from "@/lib/utils/transcript-parser"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
@@ -186,6 +187,7 @@ export default function SessionsPage() {
   const [language, setLanguage] = useState<string>('de') // Default to German
   const [previewFiles, setPreviewFiles] = useState<File[]>([])
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [uploadingTranscript, setUploadingTranscript] = useState(false)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const transcriptInputRef = useRef<HTMLInputElement>(null)
@@ -210,7 +212,7 @@ export default function SessionsPage() {
   }
 
   // Fetch real sessions from API
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       const response = await fetch('/api/sessions?format=v0')
       if (!response.ok) throw new Error('Failed to fetch sessions')
@@ -221,12 +223,12 @@ export default function SessionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchSessions()
     fetchUserPreferences()
-  }, [user])
+  }, [user, fetchSessions])
 
   // Poll when any session is transcribing so badges update when ready
   const hasInProgress = sessions.some(s =>
@@ -236,7 +238,7 @@ export default function SessionsPage() {
     if (!hasInProgress) return
     const interval = setInterval(fetchSessions, 5000)
     return () => clearInterval(interval)
-  }, [hasInProgress])
+  }, [hasInProgress, fetchSessions])
 
   // Recording timer effect
   useEffect(() => {
@@ -288,30 +290,89 @@ export default function SessionsPage() {
     setIsDraggingFile(false)
   }, [])
 
-  const handleTranscriptFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files && files.length > 0) {
-      toast.info('Transcript import coming soon', {
-        description: 'Upload of TXT, SRT, VTT files will be available in a future update.'
-      })
-      e.target.value = ''
+  const processTranscriptFile = useCallback(async (file: File): Promise<boolean> => {
+    const text = await file.text()
+    const { segments, rawText } = parseTranscriptFile(text, file.name)
+    if (segments.length === 0) {
+      toast.error(`No content in ${file.name}. Please add transcript text.`)
+      return false
     }
-  }, [])
+    const sessionName = file.name.replace(/\.[^/.]+$/, '') || file.name
+    const res = await fetch('/api/sessions/import-transcript', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language,
+        sessionName,
+        segments,
+        rawText,
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || 'Import failed')
+    }
+    return true
+  }, [language])
+
+  const handleTranscriptFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    e.target.value = ''
+    if (!files || files.length === 0) return
+    const transcriptFiles = Array.from(files).filter(f =>
+      /\.(txt|srt|vtt)$/i.test(f.name)
+    )
+    const skipped = files.length - transcriptFiles.length
+    if (transcriptFiles.length === 0) {
+      toast.error('Please select TXT, SRT, or VTT files')
+      return
+    }
+    if (skipped > 0) {
+      toast.info(`Skipped ${skipped} non-transcript file(s)`)
+    }
+    setUploadingTranscript(true)
+    let success = 0
+    for (const file of transcriptFiles) {
+      try {
+        if (await processTranscriptFile(file)) success++
+      } catch (err: any) {
+        toast.error(`${file.name}: ${err.message}`)
+      }
+    }
+    setUploadingTranscript(false)
+    if (success > 0) {
+      toast.success(`${success} transcript(s) imported`)
+      await fetchSessions()
+    }
+  }, [processTranscriptFile, fetchSessions])
 
   const handleFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDraggingFile(false)
-    const files = Array.from(e.dataTransfer.files).filter(file =>
-      /\.(txt|srt|vtt|docx)$/i.test(file.name)
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      /\.(txt|srt|vtt)$/i.test(f.name)
     )
-    if (files.length > 0) {
-      toast.info('Transcript import coming soon', {
-        description: 'Upload of TXT, SRT, VTT files will be available in a future update.'
-      })
-    } else {
-      toast.error('Please drop transcript files (TXT, SRT, VTT)')
+    if (files.length === 0) {
+      toast.error('Please drop TXT, SRT, or VTT files')
+      return
     }
-  }, [])
+    setUploadingTranscript(true)
+    ;(async () => {
+      let success = 0
+      for (const file of files) {
+        try {
+          if (await processTranscriptFile(file)) success++
+        } catch (err: any) {
+          toast.error(`${file.name}: ${err.message}`)
+        }
+      }
+      setUploadingTranscript(false)
+      if (success > 0) {
+        toast.success(`${success} transcript(s) imported`)
+        await fetchSessions()
+      }
+    })()
+  }, [processTranscriptFile, fetchSessions])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -736,27 +797,37 @@ export default function SessionsPage() {
                     "border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer",
                     isDraggingFile
                       ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground"
+                      : "border-border hover:border-muted-foreground",
+                    uploadingTranscript && "opacity-50 pointer-events-none"
                   )}
                   onDragOver={handleFileDragOver}
                   onDragLeave={handleFileDragLeave}
                   onDrop={handleFileDrop}
-                  onClick={() => transcriptInputRef.current?.click()}
+                  onClick={() => !uploadingTranscript && transcriptInputRef.current?.click()}
                 >
                   <input
                     ref={transcriptInputRef}
                     type="file"
-                    accept=".txt,.srt,.vtt,.docx"
+                    accept=".txt,.srt,.vtt"
                     multiple
                     onChange={handleTranscriptFileSelect}
                     className="hidden"
                   />
                   <div className="flex flex-col items-center text-center">
-                    <FileText className="h-7 w-7 text-muted-foreground mb-2" />
-                    <p className="text-sm font-medium text-foreground">Upload file</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      TXT, SRT, VTT
-                    </p>
+                    {uploadingTranscript ? (
+                      <>
+                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mb-2"></div>
+                        <p className="text-xs font-medium text-foreground">Importing...</p>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-7 w-7 text-muted-foreground mb-2" />
+                        <p className="text-sm font-medium text-foreground">Upload file</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          TXT, SRT, VTT
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

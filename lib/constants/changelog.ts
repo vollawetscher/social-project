@@ -20,6 +20,20 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.5.0',
         date: 'February 11, 2026',
+        category: 'feature',
+        title: 'Upload Transcript Files',
+        description: 'Import existing transcripts from TXT, SRT, or VTT files. Upload in the same area as audio—your transcript becomes a session instantly, with AI analysis and output generation available right away.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
+        category: 'improvement',
+        title: 'Email-Only Sign In',
+        description: 'Phone/OTP sign-in is no longer available. Please use email (magic link or password) to sign in.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
         category: 'improvement',
         title: 'Generate Output Without Suggestions',
         description: 'A Generate Output button now appears next to Your outputs so you can choose any template and generate—even when AI suggestions are available or you already have outputs.',

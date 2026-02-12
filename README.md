@@ -24,7 +24,7 @@ Multi-domain, multi-language transcription and report generation system with aut
 - **Structured Output**: Consistent JSON format with metadata, quotes, observations, next steps
 
 ### Security
-- **Authentication**: Phone OTP + Email (Magic Link & Password)
+- **Authentication**: Email (Magic Link & Password)
 - **Row Level Security**: PostgreSQL RLS on all tables
 - **GDPR Ready**: Data retention policies, audit trails
 - **Role-Based Access**: User vs Admin permissions
