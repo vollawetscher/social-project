@@ -342,12 +342,8 @@ export default function TemplatesPage() {
           <Button asChild className="flex-1 sm:flex-initial">
             <Link href="/templates/new/scratch">
               <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden xs:inline">Create from</span> Scratch
+              <span className="hidden xs:inline">Create from</span> New
             </Link>
-          </Button>
-          <Button variant="outline" className="flex-1 sm:flex-initial" disabled title="Coming soon">
-            <FileText className="h-4 w-4 mr-2" />
-            <span className="hidden xs:inline">Create from</span> Output
           </Button>
         </div>
       </div>

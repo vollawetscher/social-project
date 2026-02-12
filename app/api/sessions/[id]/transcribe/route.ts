@@ -143,6 +143,34 @@ async function processTranscriptionJob(sessionId: string) {
 
     console.log('[Transcribe] All files processed successfully')
 
+    // Update session language from detected transcript (fixes wrong language in sessions list)
+    const { data: firstTranscript } = await supabase
+      .from('transcripts')
+      .select('language')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    const detectedLanguage = firstTranscript?.language
+    if (detectedLanguage && typeof detectedLanguage === 'string' && detectedLanguage.length >= 2) {
+      const { data: sessionBefore } = await supabase
+        .from('sessions')
+        .select('language')
+        .eq('id', sessionId)
+        .single()
+
+      const userSelectedLang = (sessionBefore as any)?.language
+      if (userSelectedLang && userSelectedLang.toLowerCase() !== detectedLanguage.toLowerCase()) {
+        console.log(`[Transcribe] Language mismatch: user selected ${userSelectedLang}, detected ${detectedLanguage} - updating session`)
+      }
+      await supabase
+        .from('sessions')
+        .update({ language: detectedLanguage.slice(0, 2).toLowerCase() })
+        .eq('id', sessionId)
+      console.log(`[Transcribe] Session language updated to: ${detectedLanguage}`)
+    }
+
     // Get session info and user preferences
     const { data: sessionData } = await supabase
       .from('sessions')

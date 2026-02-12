@@ -50,6 +50,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
@@ -174,7 +175,7 @@ function EditableSessionName({
 
 export default function SessionsPage() {
   const { user } = useAuth()
-  const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const [isUploadOpen, setIsUploadOpen] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [sessions, setSessions] = useState<Session[]>([])
@@ -183,6 +184,8 @@ export default function SessionsPage() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [language, setLanguage] = useState<string>('de') // Default to German
+  const [previewFiles, setPreviewFiles] = useState<File[]>([])
+  const [previewOpen, setPreviewOpen] = useState(false)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -275,160 +278,147 @@ export default function SessionsPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
-      handleFiles(Array.from(files))
+      const audioFiles = Array.from(files).filter(file =>
+        file.type.startsWith('audio/') || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
+      )
+      if (audioFiles.length === 0) {
+        toast.error('Please select audio files (MP3, WAV, WebM, M4A)')
+        return
+      }
+      setPreviewFiles(audioFiles)
+      setPreviewOpen(true)
+      e.target.value = ''
     }
   }
 
-  const handleFiles = async (files: File[]) => {
-    const audioFiles = files.filter(file => 
-      file.type.startsWith('audio/') || 
-      /\.(mp3|wav|webm|m4a)$/i.test(file.name)
-    )
-
-    if (audioFiles.length === 0) {
-      toast.error('Please select audio files (MP3, WAV, WebM, M4A)')
-      return
-    }
-
+  const handleUploadConfirm = async (groups: File[][]) => {
     setUploadingFiles(true)
     let successCount = 0
     let errorCount = 0
-
-    for (const file of audioFiles) {
+    for (const group of groups) {
       try {
-        // Create session
-        const timestamp = new Date().toLocaleString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-        const sessionName = file.name.replace(/\.[^/.]+$/, '') || `Upload ${timestamp}`
-        
-        // Check if user is authenticated
-        if (!user?.id) {
-          throw new Error('You must be logged in to upload files')
-        }
-
-        const { data: session, error: sessionError } = await supabase
-          .from('sessions')
-          .insert({
-            internal_case_id: sessionName,
-            user_id: user.id,
-            status: 'uploading',
-            language: language,
-          })
-          .select()
-          .single()
-
-        if (sessionError) {
-          console.error('Session creation error:', sessionError)
-          throw new Error(`Failed to create session: ${sessionError.message}`)
-        }
-
-        // Upload file to storage
-        const extension = file.name.split('.').pop() || 'mp3'
-        const fileName = `${session.id}_${Date.now()}.${extension}`
-        
-        const { error: uploadError } = await supabase.storage
-          .from('rohbericht-audio')
-          .upload(fileName, file, {
-            contentType: file.type || 'audio/mpeg',
-            upsert: false
-          })
-
-        if (uploadError) {
-          console.error('Storage upload error:', uploadError)
-          throw new Error(`Failed to upload file: ${uploadError.message}`)
-        }
-
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('rohbericht-audio')
-          .getPublicUrl(fileName)
-
-        // Update session with audio URL and duration
-        const audioDuration = await getAudioDuration(file)
-        const { error: updateError } = await supabase
-          .from('sessions')
-          .update({ 
-            audio_url: publicUrl,
-            duration_sec: audioDuration 
-          })
-          .eq('id', session.id)
-
-        if (updateError) {
-          console.error('Session update error:', updateError)
-          throw new Error(`Failed to update session: ${updateError.message}`)
-        }
-
-        // Create file record (required for transcription)
-        // file_purpose enum values: 'context', 'meeting', 'dictation', 'instruction', 'addition'
-        const { error: fileError } = await supabase
-          .from('files')
-          .insert({
-            session_id: session.id,
-            storage_path: fileName,
-            original_filename: file.name,
-            mime_type: file.type || 'audio/mpeg',
-            size_bytes: file.size,
-            file_purpose: 'meeting', // Use valid enum value
-            upload_status: 'completed',
-          })
-
-        if (fileError) {
-          console.error('File record creation error:', fileError)
-          throw new Error(`Failed to create file record: ${fileError.message}`)
-        }
-
-        // Trigger transcription
-        try {
-          const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              storage_path: fileName,
-              language: language,
-            }),
-          })
-          if (!transcribeRes.ok) {
-            console.error('Transcription trigger failed:', await transcribeRes.text())
-          }
-        } catch (error) {
-          console.error('Failed to trigger transcription:', error)
-          // Don't fail the upload if transcription trigger fails
-        }
-
+        await uploadGroup(group)
         successCount++
       } catch (error: any) {
-        console.error('Upload failed for', file.name, ':', error)
-        toast.error(`Failed to upload ${file.name}: ${error.message || 'Unknown error'}`)
+        console.error('Upload failed for group:', error)
+        toast.error(`Failed: ${error.message || 'Unknown error'}`)
         errorCount++
       }
     }
-
     setUploadingFiles(false)
-    setIsUploadOpen(false)
-
+    setPreviewOpen(false)
+    setPreviewFiles([])
     if (successCount > 0) {
-      toast.success(`${successCount} file(s) uploaded successfully`)
-      // Refresh sessions list
+      toast.success(`${successCount} session(s) uploaded successfully`)
       await fetchSessions()
     }
-
     if (errorCount > 0 && successCount === 0) {
-      toast.error(`All uploads failed. Please check console for details.`)
+      toast.error('All uploads failed')
     }
   }
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
+  const uploadGroup = async (files: File[]) => {
+    if (!user?.id) throw new Error('You must be logged in to upload files')
+    if (files.length === 0) return
+
+    const timestamp = new Date().toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+    const sessionName = files.length === 1
+      ? (files[0].name.replace(/\.[^/.]+$/, '') || `Upload ${timestamp}`)
+      : `Session ${timestamp} (${files.length} files)`
+
+    const { data: session, error: sessionError } = await supabase
+      .from('sessions')
+      .insert({
+        internal_case_id: sessionName,
+        user_id: user.id,
+        status: 'uploading',
+        language: language,
+      })
+      .select()
+      .single()
+
+    if (sessionError) throw new Error(`Failed to create session: ${sessionError.message}`)
+
+    let totalDuration = 0
+    let firstPublicUrl = ''
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const extension = file.name.split('.').pop() || 'mp3'
+      const fileName = `${session.id}_${Date.now()}_${i}.${extension}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('rohbericht-audio')
+        .upload(fileName, file, {
+          contentType: file.type || 'audio/mpeg',
+          upsert: false
+        })
+
+      if (uploadError) throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`)
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('rohbericht-audio')
+        .getPublicUrl(fileName)
+
+      if (i === 0) firstPublicUrl = publicUrl
+
+      const audioDuration = await getAudioDuration(file)
+      totalDuration += audioDuration
+
+      const { error: fileError } = await supabase
+        .from('files')
+        .insert({
+          session_id: session.id,
+          storage_path: fileName,
+          original_filename: file.name,
+          mime_type: file.type || 'audio/mpeg',
+          size_bytes: file.size,
+          file_purpose: 'meeting',
+          upload_status: 'completed',
+        })
+
+      if (fileError) throw new Error(`Failed to create file record: ${fileError.message}`)
+    }
+
+    const { error: updateError } = await supabase
+      .from('sessions')
+      .update({
+        audio_url: firstPublicUrl,
+        duration_sec: totalDuration
+      })
+      .eq('id', session.id)
+
+    if (updateError) throw new Error(`Failed to update session: ${updateError.message}`)
+
+    const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language: language }),
+    })
+    if (!transcribeRes.ok) {
+      console.error('Transcription trigger failed:', await transcribeRes.text())
+    }
+  }
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    
-    const files = Array.from(e.dataTransfer.files)
-    handleFiles(files)
-  }, [language])
+    const files = Array.from(e.dataTransfer.files).filter(file =>
+      file.type.startsWith('audio/') || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
+    )
+    if (files.length === 0) {
+      toast.error('Please drop audio files (MP3, WAV, WebM, M4A)')
+      return
+    }
+    setPreviewFiles(files)
+    setPreviewOpen(true)
+  }, [])
 
   const handleRenameSession = async (id: string, newName: string) => {
     try {
@@ -625,8 +615,8 @@ export default function SessionsPage() {
                   <Upload className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">Upload File</p>
-                  <p className="text-xs text-muted-foreground">MP3, WAV, WebM, M4A</p>
+                  <p className="text-sm font-medium text-foreground">Upload Files</p>
+                  <p className="text-xs text-muted-foreground">Multiple files • Group into one session</p>
                 </div>
               </div>
               <ChevronRight className={cn(
@@ -695,7 +685,7 @@ export default function SessionsPage() {
                         Drag and drop or click to browse
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        MP3, WAV, WebM, M4A • Max 500MB
+                        MP3, WAV, WebM, M4A • Max 500MB • Select multiple to group
                       </p>
                     </>
                   )}
@@ -963,6 +953,14 @@ export default function SessionsPage() {
           </Table>
         </div>
       </Card>
+
+      <UploadPreviewSheet
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        files={previewFiles}
+        onConfirm={handleUploadConfirm}
+        loading={uploadingFiles}
+      />
     </div>
   )
 }

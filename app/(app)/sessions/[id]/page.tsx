@@ -466,12 +466,14 @@ export default function SessionDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Desktop toggle for right panel */}
+          {/* Desktop toggle for right panel - disabled during analysis so user sees indicator in Context tab */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
             className="hidden lg:flex"
+            disabled={analyzing}
+            title={analyzing ? "Context available after analysis completes" : undefined}
           >
             {rightPanelOpen ? (
               <PanelRightClose className="h-4 w-4" />
@@ -479,10 +481,10 @@ export default function SessionDetailPage() {
               <PanelRight className="h-4 w-4" />
             )}
           </Button>
-          {/* Mobile sheet trigger */}
+          {/* Mobile sheet trigger - disabled during analysis */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="lg:hidden">
+              <Button variant="ghost" size="sm" className="lg:hidden" disabled={analyzing} title={analyzing ? "Context available after analysis completes" : undefined}>
                 <Settings2 className="h-4 w-4" />
               </Button>
             </SheetTrigger>
@@ -492,6 +494,7 @@ export default function SessionDetailPage() {
                 recordingTypeSuggestions={recordingTypeSuggestions}
                 domainSuggestions={domainSuggestions}
                 onContextSaved={handleContextSaved}
+                analyzing={analyzing}
               />
             </SheetContent>
           </Sheet>
@@ -1136,6 +1139,7 @@ export default function SessionDetailPage() {
               recordingTypeSuggestions={recordingTypeSuggestions}
               domainSuggestions={domainSuggestions}
               onContextSaved={handleContextSaved}
+              analyzing={analyzing}
             />
           </div>
         </div>

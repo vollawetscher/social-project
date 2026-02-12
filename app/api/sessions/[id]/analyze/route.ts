@@ -79,15 +79,33 @@ export async function POST(
     }
     console.log('[Analyze API] Session found, transcripts count:', session.transcripts?.length || 0)
 
-    const transcript = session.transcripts?.[0]
-    if (!transcript || !transcript.raw_json) {
+    const transcripts = (session.transcripts || []).sort((a: any, b: any) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+    if (transcripts.length === 0 || !transcripts[0]?.raw_json) {
       console.log('[Analyze API] No transcript or raw_json found')
       return NextResponse.json({ error: 'No transcript found' }, { status: 400 })
     }
-    console.log('[Analyze API] Transcript found, segments count:', (transcript.raw_json as any[]).length)
+
+    // Merge multiple transcripts (grouped sessions) with time offset
+    let timeOffset = 0
+    const allSegments: any[] = []
+    for (const t of transcripts) {
+      const segs = (t.raw_json || []) as { start_ms?: number; end_ms?: number; [k: string]: any }[]
+      for (const seg of segs) {
+        allSegments.push({
+          ...seg,
+          start_ms: (seg.start_ms ?? 0) + timeOffset,
+          end_ms: (seg.end_ms ?? 0) + timeOffset,
+        })
+      }
+      const last = segs[segs.length - 1]
+      timeOffset += last?.end_ms ?? 0
+    }
+    console.log('[Analyze API] Transcript found, segments count:', allSegments.length)
 
     // Build conversation sample (first 5 minutes or 2000 characters)
-    const segments = transcript.raw_json as any[]
+    const segments = allSegments
     const sample = segments
       .slice(0, Math.min(segments.length, 20))
       .map((seg: any) => `${seg.speaker}: ${seg.text}`)
