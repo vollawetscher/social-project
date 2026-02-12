@@ -38,6 +38,8 @@ export async function POST(
         required_inputs: originalTemplate.required_inputs,
         style_rules: originalTemplate.style_rules,
         suggestion_triggers: originalTemplate.suggestion_triggers,
+        instructions: originalTemplate.instructions,
+        sample_content: originalTemplate.sample_content,
         created_by: user.id,
         is_system: false, // User copies are never system templates
       })

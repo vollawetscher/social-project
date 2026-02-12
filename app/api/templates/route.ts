@@ -38,6 +38,7 @@ export async function GET() {
       requiredInputs: t.required_inputs || [],
       styleRules: t.style_rules || [],
       suggestionTriggers: t.suggestion_triggers || [],
+      sampleContent: t.sample_content || null,
     }))
 
     return NextResponse.json(formattedTemplates)
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
       requiredInputs: template.required_inputs || [],
       styleRules: template.style_rules || [],
       suggestionTriggers: template.suggestion_triggers || [],
+      sampleContent: template.sample_content || null,
     }
 
     return NextResponse.json(formattedTemplate, { status: 201 })

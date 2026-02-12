@@ -21,14 +21,13 @@ import {
   X,
   Loader2,
   Sparkles,
+  LayoutTemplate,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
 import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
 import { GenerateOutputModal } from "@/components/generate-output-modal"
@@ -67,8 +66,8 @@ export default function SessionDetailPage() {
   const [editedParticipants, setEditedParticipants] = useState<any[]>([])
   const [applyToTranscript, setApplyToTranscript] = useState(true)
   const [savingCorrections, setSavingCorrections] = useState(false)
-  const [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
-  const [suggestionsSaveAsTemplate, setSuggestionsSaveAsTemplate] = useState<Record<number, boolean>>({})
+  const   [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
+  const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
 
   // Handle seeking to a specific time from transcript click
   const handleSeekToTime = (time: number) => {
@@ -205,18 +204,14 @@ export default function SessionDetailPage() {
             format: 'markdown',
             doInstructions: suggestion.generationInstructions,
             dontInstructions: '',
-            createTemplateFromConfig: suggestionsSaveAsTemplate[index] ?? false,
+            createTemplateFromConfig: false,
             citeTimestamps: false,
           },
         }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Generation failed')
-      toast.success(
-        data.createdTemplateId
-          ? `${suggestion.title} generated and saved as template`
-          : `Generated: ${suggestion.title}`
-      )
+      toast.success(`Generated: ${suggestion.title}`)
       fetchOutputs()
       setActiveTab('outputs')
     } catch (error) {
@@ -224,6 +219,25 @@ export default function SessionDetailPage() {
       toast.error(error instanceof Error ? error.message : 'Failed to generate output')
     } finally {
       setGeneratingSuggestionIndex(null)
+    }
+  }
+
+  const handleSaveOutputAsTemplate = async (outputId: string) => {
+    setSavingOutputAsTemplate(outputId)
+    try {
+      const response = await fetch('/api/templates/from-output', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outputId }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to save template')
+      toast.success(`Saved as template: ${data.name}`)
+    } catch (error) {
+      console.error('Save as template error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to save as template')
+    } finally {
+      setSavingOutputAsTemplate(null)
     }
   }
 
@@ -676,22 +690,6 @@ export default function SessionDetailPage() {
                         <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
                           {suggestion.description}
                         </p>
-                        <div className="flex items-center space-x-2 pt-1">
-                          <Checkbox
-                            id={`save-template-${idx}`}
-                            checked={suggestionsSaveAsTemplate[idx] ?? false}
-                            onCheckedChange={(checked) =>
-                              setSuggestionsSaveAsTemplate((prev) => ({ ...prev, [idx]: !!checked }))
-                            }
-                            disabled={generatingSuggestionIndex !== null}
-                          />
-                          <Label
-                            htmlFor={`save-template-${idx}`}
-                            className="text-xs text-muted-foreground cursor-pointer select-none"
-                          >
-                            Save as template
-                          </Label>
-                        </div>
                         <Button
                           size="sm"
                           className="w-full"
@@ -752,6 +750,20 @@ export default function SessionDetailPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => handleSaveOutputAsTemplate(output.id)}
+                            disabled={savingOutputAsTemplate === output.id}
+                            title="Save as template"
+                          >
+                            {savingOutputAsTemplate === output.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <LayoutTemplate className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -979,22 +991,6 @@ export default function SessionDetailPage() {
                         <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
                           {suggestion.description}
                         </p>
-                        <div className="flex items-center space-x-2 pt-1">
-                          <Checkbox
-                            id={`save-template-panel-${idx}`}
-                            checked={suggestionsSaveAsTemplate[idx] ?? false}
-                            onCheckedChange={(checked) =>
-                              setSuggestionsSaveAsTemplate((prev) => ({ ...prev, [idx]: !!checked }))
-                            }
-                            disabled={generatingSuggestionIndex !== null}
-                          />
-                          <Label
-                            htmlFor={`save-template-panel-${idx}`}
-                            className="text-xs text-muted-foreground cursor-pointer select-none"
-                          >
-                            Save as template
-                          </Label>
-                        </div>
                         <Button
                           size="sm"
                           className="w-full"
@@ -1055,6 +1051,20 @@ export default function SessionDetailPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => handleSaveOutputAsTemplate(output.id)}
+                            disabled={savingOutputAsTemplate === output.id}
+                            title="Save as template"
+                          >
+                            {savingOutputAsTemplate === output.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <LayoutTemplate className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

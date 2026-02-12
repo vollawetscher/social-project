@@ -144,6 +144,7 @@ export interface Template {
   requiredInputs: string[]
   styleRules: string[]
   suggestionTriggers: string[]
+  sampleContent?: string | null // Shortened sample from first output when saving from output
 }
 
 export interface Output {

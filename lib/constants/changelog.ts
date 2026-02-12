@@ -34,9 +34,9 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.5.0',
         date: 'February 11, 2026',
-        category: 'feature',
-        title: 'Save AI Suggestions as Templates',
-        description: 'When generating from one of the 3 AI-suggested formats, check "Save as template" to turn that suggestion into a reusable template. Same option in the Generate Output modal lets you save any custom configuration for future use.',
+        category: 'improvement',
+        title: 'Save as Template After Seeing the Result',
+        description: 'Save any output you like as a reusable template—only after you\'ve seen the result. A "Save as template" button now appears on each generated output. The first output\'s structure (headings, bullets) becomes the template\'s preview sample so you know exactly what format you\'re saving.',
       },
       {
         version: '1.5.0',

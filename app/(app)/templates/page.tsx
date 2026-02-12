@@ -62,8 +62,11 @@ const domainColors: Record<string, string> = {
 
 const roleLabels = participantRoleLabels;
 
-// Generate mock sample content for a template (for preview)
-function generateMockSample(template: Template): string {
+// Generate sample content for template preview
+function getTemplateSample(template: Template): string {
+  if (template.sampleContent && template.sampleContent.trim()) {
+    return template.sampleContent
+  }
   const sections = template.sections?.length
     ? template.sections
     : [
@@ -91,7 +94,7 @@ function generateMockSample(template: Template): string {
 }
 
 function TemplateSampleSheet({ template, open, onOpenChange }: { template: Template; open: boolean; onOpenChange: (open: boolean) => void }) {
-  const sample = generateMockSample(template)
+  const sample = getTemplateSample(template)
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
@@ -101,7 +104,9 @@ function TemplateSampleSheet({ template, open, onOpenChange }: { template: Templ
             Sample: {template.name}
           </SheetTitle>
           <SheetDescription>
-            Preview with mock data — shows how an output would look using this template
+            {template.sampleContent
+              ? "Sample from a saved output — shows structure and format"
+              : "Preview with mock data — shows how an output would look using this template"}
           </SheetDescription>
         </SheetHeader>
         <div className="mt-6 prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground">

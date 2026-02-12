@@ -38,6 +38,7 @@ export async function GET(
       requiredInputs: template.required_inputs || [],
       styleRules: template.style_rules || [],
       suggestionTriggers: template.suggestion_triggers || [],
+      sampleContent: template.sample_content || null,
     }
 
     return NextResponse.json(formattedTemplate)
@@ -108,6 +109,7 @@ export async function PUT(
       requiredInputs: template.required_inputs || [],
       styleRules: template.style_rules || [],
       suggestionTriggers: template.suggestion_triggers || [],
+      sampleContent: template.sample_content || null,
     }
 
     return NextResponse.json(formattedTemplate)
