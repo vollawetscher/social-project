@@ -29,9 +29,30 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
   files?: any[]
 }): V0Session {
   // Extract speakers from transcript if available
-  const speakers = additionalData?.transcript?.raw_json 
+  let speakers = additionalData?.transcript?.raw_json 
     ? extractSpeakers(additionalData.transcript.raw_json)
     : []
+
+  // Apply name corrections so S1/S2 show as real names (Christian, Azat, etc.)
+  const nameCorrections = (dbSession as any).transcript_corrections?.name_corrections as Record<string, string> | undefined
+  if (nameCorrections && Object.keys(nameCorrections).length > 0) {
+    speakers = speakers.map(s => ({
+      ...s,
+      name: nameCorrections[s.name] || nameCorrections[s.id] || s.name,
+    }))
+  }
+
+  // Fallback: use extractedContext participants if no name_corrections (match by order)
+  const rawContext = (dbSession as any).ai_extracted_context || {}
+  const participantNames = Array.isArray(rawContext.participants)
+    ? rawContext.participants.map((p: any) => typeof p === 'string' ? p : p?.name).filter(Boolean)
+    : []
+  if (participantNames.length >= speakers.length && speakers.some(s => /^S\d+$/i.test(s.name))) {
+    speakers = speakers.map((s, idx) => ({
+      ...s,
+      name: participantNames[idx] || s.name,
+    }))
+  }
 
   // Transform transcript segments
   const transcriptSegments = additionalData?.transcript?.raw_json
@@ -59,7 +80,6 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
                        'en'
   
   // Normalize extracted context - ensure participants are valid or fallback to speaker IDs
-  const rawContext = (dbSession as any).ai_extracted_context || {}
   const extractedContext = normalizeExtractedContext(rawContext, speakers)
 
   return {
@@ -87,22 +107,28 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
 }
 
 /**
- * Extract unique speakers from transcript
+ * Extract unique speakers from transcript (preserves order from first appearance).
+ * Assigns party_a to first speaker, party_b to second, observer to rest.
  */
 function extractSpeakers(transcriptSegments: any[]): any[] {
-  const speakerMap = new Map()
-  
+  const speakerMap = new Map<string, { id: string; name: string; participantRole: 'party_a' | 'party_b' | 'observer' }>()
+  const order: string[] = []
+
   transcriptSegments.forEach((segment: any) => {
     if (segment.speaker && !speakerMap.has(segment.speaker)) {
+      order.push(segment.speaker)
+      const idx = order.length - 1
+      const role: 'party_a' | 'party_b' | 'observer' =
+        idx === 0 ? 'party_a' : idx === 1 ? 'party_b' : 'observer'
       speakerMap.set(segment.speaker, {
         id: segment.speaker,
         name: segment.speaker,
-        participantRole: 'party_a', // Default, could be enhanced
+        participantRole: role,
       })
     }
   })
-  
-  return Array.from(speakerMap.values())
+
+  return order.map(id => speakerMap.get(id)!)
 }
 
 /**

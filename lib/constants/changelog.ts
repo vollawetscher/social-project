@@ -20,6 +20,20 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.5.0',
         date: 'February 11, 2026',
+        category: 'improvement',
+        title: 'Generate Output Without Suggestions',
+        description: 'A Generate Output button now appears next to Your outputs so you can choose any template and generate—even when AI suggestions are available or you already have outputs.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
+        category: 'fix',
+        title: 'Correct Speaker Names in Output Modal',
+        description: 'The output perspective dropdown now shows real names (e.g. Christian, Azat) instead of S1/S2 when you\'ve added participant names or name corrections in the Context panel.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
         category: 'feature',
         title: 'Word Corrections for Transcripts',
         description: 'Fix misheard words in transcripts (e.g. SPQR → speaker, Maître Spet → Mattress Bed). Add corrections in the Context panel—they apply to the transcript view and to all AI-generated outputs.',
@@ -50,7 +64,7 @@ export const changelog: ChangelogVersion[] = [
         date: 'February 11, 2026',
         category: 'feature',
         title: 'Duplicate & Translate Outputs',
-        description: 'Create a translated copy of any output in another language. Use the "Translate" button on an output to duplicate it into English, German, French, Spanish, Italian, Portuguese, Dutch, or Polish - perfect for multilingual teams.',
+        description: 'Create a translated copy of any output in another language. Use the "Translate" button on an output to duplicate it into English, German, French, Spanish, Italian, Portuguese, Dutch, Polish, or Thai - perfect for multilingual teams.',
       },
       {
         version: '1.5.0',

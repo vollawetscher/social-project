@@ -727,7 +727,13 @@ export default function SessionDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
+                    <Button size="sm" variant="outline" onClick={() => { setSelectedTemplateId(null); setGenerateModalOpen(true) }}>
+                      <LayoutTemplate className="h-3.5 w-3.5 mr-1.5" />
+                      Generate Output
+                    </Button>
+                  </div>
                   {outputs.map((output) => (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
@@ -1028,7 +1034,13 @@ export default function SessionDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
+                    <Button size="sm" variant="outline" onClick={() => { setSelectedTemplateId(null); setGenerateModalOpen(true) }}>
+                      <LayoutTemplate className="h-3.5 w-3.5 mr-1.5" />
+                      Generate Output
+                    </Button>
+                  </div>
                   {outputs.map((output) => (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">

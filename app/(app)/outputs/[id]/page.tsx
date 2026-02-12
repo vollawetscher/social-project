@@ -78,6 +78,7 @@ const TRANSLATE_LANGUAGES: { code: string; label: string }[] = [
   { code: 'pt', label: 'Portuguese' },
   { code: 'nl', label: 'Dutch' },
   { code: 'pl', label: 'Polish' },
+  { code: 'th', label: 'Thai' },
 ]
 
 export default function OutputDetailPage() {

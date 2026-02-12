@@ -16,6 +16,7 @@ const languageNames: Record<string, string> = {
   pt: 'Portuguese',
   nl: 'Dutch',
   pl: 'Polish',
+  th: 'Thai',
 }
 
 export async function POST(

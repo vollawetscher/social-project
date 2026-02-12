@@ -26,6 +26,7 @@ import {
   X,
   Pencil,
   FileText,
+  FileAudio,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -176,7 +177,6 @@ function EditableSessionName({
 export default function SessionsPage() {
   const { user } = useAuth()
   const [isUploadOpen, setIsUploadOpen] = useState(true)
-  const [isDragging, setIsDragging] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
@@ -188,6 +188,9 @@ export default function SessionsPage() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const transcriptInputRef = useRef<HTMLInputElement>(null)
+  const [isDraggingAudio, setIsDraggingAudio] = useState(false)
+  const [isDraggingFile, setIsDraggingFile] = useState(false)
   const supabase = createClient()
 
   // Fetch user profile to get default language
@@ -265,14 +268,49 @@ export default function SessionsPage() {
     setIsRecording(false)
   }
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleAudioDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
-    setIsDragging(true)
+    setIsDraggingAudio(true)
   }, [])
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleAudioDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
-    setIsDragging(false)
+    setIsDraggingAudio(false)
+  }, [])
+
+  const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDraggingFile(true)
+  }, [])
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDraggingFile(false)
+  }, [])
+
+  const handleTranscriptFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      toast.info('Transcript import coming soon', {
+        description: 'Upload of TXT, SRT, VTT files will be available in a future update.'
+      })
+      e.target.value = ''
+    }
+  }, [])
+
+  const handleFileDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDraggingFile(false)
+    const files = Array.from(e.dataTransfer.files).filter(file =>
+      /\.(txt|srt|vtt|docx)$/i.test(file.name)
+    )
+    if (files.length > 0) {
+      toast.info('Transcript import coming soon', {
+        description: 'Upload of TXT, SRT, VTT files will be available in a future update.'
+      })
+    } else {
+      toast.error('Please drop transcript files (TXT, SRT, VTT)')
+    }
   }, [])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -408,7 +446,7 @@ export default function SessionsPage() {
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
-    setIsDragging(false)
+    setIsDraggingAudio(false)
     const files = Array.from(e.dataTransfer.files).filter(file =>
       file.type.startsWith('audio/') || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
     )
@@ -615,8 +653,8 @@ export default function SessionsPage() {
                   <Upload className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">Upload Files</p>
-                  <p className="text-xs text-muted-foreground">Multiple files • Group into one session</p>
+                  <p className="text-sm font-medium text-foreground">Upload</p>
+                  <p className="text-xs text-muted-foreground">Audio or transcript files</p>
                 </div>
               </div>
               <ChevronRight className={cn(
@@ -650,45 +688,76 @@ export default function SessionsPage() {
                 </select>
               </div>
 
-              {/* Upload Area */}
-              <div
-                className={cn(
-                  "border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer",
-                  isDragging
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground",
-                  uploadingFiles && "opacity-50 pointer-events-none"
-                )}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="audio/*,.mp3,.wav,.webm,.m4a"
-                  multiple
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-                <div className="flex flex-col items-center text-center">
-                  {uploadingFiles ? (
-                    <>
-                      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent mb-3"></div>
-                      <p className="text-sm font-medium text-foreground">Uploading...</p>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-8 w-8 text-muted-foreground mb-3" />
-                      <p className="text-sm font-medium text-foreground mb-1">
-                        Drag and drop or click to browse
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        MP3, WAV, WebM, M4A • Max 500MB • Select multiple to group
-                      </p>
-                    </>
+              {/* Upload Areas - Split */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Upload Audio */}
+                <div
+                  className={cn(
+                    "border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer",
+                    isDraggingAudio
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground",
+                    uploadingFiles && "opacity-50 pointer-events-none"
                   )}
+                  onDragOver={handleAudioDragOver}
+                  onDragLeave={handleAudioDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => !uploadingFiles && fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="audio/*,.mp3,.wav,.webm,.m4a"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <div className="flex flex-col items-center text-center">
+                    {uploadingFiles ? (
+                      <>
+                        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mb-2"></div>
+                        <p className="text-xs font-medium text-foreground">Uploading...</p>
+                      </>
+                    ) : (
+                      <>
+                        <FileAudio className="h-7 w-7 text-muted-foreground mb-2" />
+                        <p className="text-sm font-medium text-foreground">Upload audio</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          MP3, WAV, WebM, M4A
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Upload file (transcript) */}
+                <div
+                  className={cn(
+                    "border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer",
+                    isDraggingFile
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground"
+                  )}
+                  onDragOver={handleFileDragOver}
+                  onDragLeave={handleFileDragLeave}
+                  onDrop={handleFileDrop}
+                  onClick={() => transcriptInputRef.current?.click()}
+                >
+                  <input
+                    ref={transcriptInputRef}
+                    type="file"
+                    accept=".txt,.srt,.vtt,.docx"
+                    multiple
+                    onChange={handleTranscriptFileSelect}
+                    className="hidden"
+                  />
+                  <div className="flex flex-col items-center text-center">
+                    <FileText className="h-7 w-7 text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium text-foreground">Upload file</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      TXT, SRT, VTT
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

@@ -134,15 +134,30 @@ export function GenerateOutputModal({
   const isAudienceValid = selectedAudience !== "" && audienceConfirmed
   const canGenerate = selectedTemplate && isPerspectiveValid && isAudienceValid
 
-  // Get label for a perspective based on session speakers
+  // Get label for a perspective: prefer real name over S1/S2
+  const getDisplayName = (speaker: { id: string; name: string }) => {
+    const corrected = session.transcriptCorrections?.name_corrections?.[speaker.name] 
+      || session.transcriptCorrections?.name_corrections?.[speaker.id]
+    if (corrected) return corrected
+    // Fallback: use extractedContext participants by order (S1=first, S2=second)
+    if (/^S\d+$/i.test(speaker.name)) {
+      const participants = session.extractedContext?.participants || []
+      const idx = session.speakers.findIndex(s => s.id === speaker.id)
+      const p = participants[idx]
+      if (p) return typeof p === 'string' ? p : p.name
+    }
+    return speaker.name
+  }
+
   const getPerspectiveLabel = (role: ParticipantRole): string => {
     const speaker = session.speakers.find(s => s.participantRole === role)
     if (speaker) {
+      const displayName = getDisplayName(speaker)
       const semanticLabel = speaker.semanticRole ? semanticRoleLabels[speaker.semanticRole] : null
       if (semanticLabel) {
-        return `${speaker.name} (${semanticLabel})`
+        return `${displayName} (${semanticLabel})`
       }
-      return `${speaker.name} (${participantRoleLabels[role]})`
+      return `${displayName} (${participantRoleLabels[role]})`
     }
     return participantRoleLabels[role]
   }
@@ -304,7 +319,7 @@ export function GenerateOutputModal({
                         variant="outline"
                         className="text-[10px]"
                       >
-                        {speaker.name}
+                        {getDisplayName(speaker)}
                         {speaker.semanticRole && (
                           <span className="text-muted-foreground ml-1">
                             ({semanticRoleLabels[speaker.semanticRole]})
