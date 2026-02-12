@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { applyTranscriptCorrections } from '@/lib/utils/transcript-corrections'
 import type { TranscriptSegment, TranscriptCorrections } from '@/lib/types-v0'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -33,27 +34,25 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
     )
   }
 
-  // Combine all corrections (name corrections + PII redactions)
+  // Combine all corrections (name corrections + PII redactions + word corrections)
   const allCorrections: Record<string, string> = {
     ...(corrections?.name_corrections || {}),
-    ...(corrections?.pii_redactions || {})
+    ...(corrections?.pii_redactions || {}),
+    ...(corrections?.word_corrections || {})
   }
 
-  // Apply corrections to text
+  // Apply corrections to text (uses utility for correct ordering: longer phrases first)
   const applyCorrections = (text: string): { text: string; hasCorrections: boolean; original: string[] } => {
-    let correctedText = text
     const originalTerms: string[] = []
-    let hasCorrections = false
-
-    Object.entries(allCorrections).forEach(([original, replacement]) => {
-      if (correctedText.includes(original)) {
-        correctedText = correctedText.replace(new RegExp(original, 'g'), replacement)
-        originalTerms.push(original)
-        hasCorrections = true
-      }
+    Object.keys(allCorrections).forEach((original) => {
+      if (text.includes(original)) originalTerms.push(original)
     })
-
-    return { text: correctedText, hasCorrections, original: originalTerms }
+    const correctedText = applyTranscriptCorrections(text, allCorrections)
+    return {
+      text: correctedText,
+      hasCorrections: originalTerms.length > 0,
+      original: originalTerms
+    }
   }
 
   // Group speakers for consistent coloring (apply corrections to speaker names)
@@ -100,6 +99,9 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                     )}
                     {corrections?.pii_redactions && Object.keys(corrections.pii_redactions).length > 0 && (
                       <p><strong>PII redactions:</strong> {Object.keys(corrections.pii_redactions).length}</p>
+                    )}
+                    {corrections?.word_corrections && Object.keys(corrections.word_corrections).length > 0 && (
+                      <p><strong>Word corrections:</strong> {Object.keys(corrections.word_corrections).length}</p>
                     )}
                   </div>
                 </TooltipContent>

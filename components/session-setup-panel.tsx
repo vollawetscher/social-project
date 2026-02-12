@@ -16,6 +16,10 @@ import {
   MapPin,
   Save,
   Check,
+  Loader2,
+  Edit3,
+  Trash2,
+  Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +54,7 @@ interface SessionSetupPanelProps {
   recordingTypeSuggestions: AiSuggestion<RecordingType>[]
   domainSuggestions: AiSuggestion<Domain>[]
   onContextSaved?: () => void // Callback to refresh parent session data
+  analyzing?: boolean // AI analysis in progress - show indicator
 }
 
 // Helper to get speaker IDs from transcript
@@ -109,6 +114,7 @@ export function SessionSetupPanel({
   recordingTypeSuggestions,
   domainSuggestions,
   onContextSaved,
+  analyzing = false,
 }: SessionSetupPanelProps) {
   const [isContextOpen, setIsContextOpen] = useState(true)
   const [selectedRecordingType, setSelectedRecordingType] = useState<RecordingType | undefined>(
@@ -148,6 +154,14 @@ export function SessionSetupPanel({
   })
   const [isSaving, setIsSaving] = useState(false)
 
+  // Word corrections: original (misheard) → corrected
+  const [wordCorrections, setWordCorrections] = useState<Record<string, string>>(
+    () => session.transcriptCorrections?.word_corrections || {}
+  )
+  const [newOriginal, setNewOriginal] = useState('')
+  const [newCorrected, setNewCorrected] = useState('')
+  const [savingWordCorrections, setSavingWordCorrections] = useState(false)
+
   // Initial values for comparison
   const [initialValues, setInitialValues] = useState({
     recordingType: session.recordingType,
@@ -178,6 +192,7 @@ export function SessionSetupPanel({
     setVenue(session.extractedContext?.venue || "")
     setSelectedRecordingType(session.recordingType)
     setSelectedDomain(session.domain)
+    setWordCorrections(session.transcriptCorrections?.word_corrections || {})
   }, [session])
 
   // Check for changes
@@ -301,6 +316,44 @@ export function SessionSetupPanel({
     }
   }
 
+  // Save word corrections (replace: true = full replace for add/remove support)
+  const handleSaveWordCorrections = async (updates: Record<string, string>) => {
+    setSavingWordCorrections(true)
+    try {
+      const response = await fetch(`/api/sessions/${session.id}/corrections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ corrections: updates, type: 'word_corrections', replace: true })
+      })
+      if (!response.ok) throw new Error('Failed to save corrections')
+      const data = await response.json()
+      setWordCorrections(data.corrections.word_corrections || {})
+      toast.success('Word corrections saved')
+      onContextSaved?.()
+    } catch (error) {
+      toast.error('Failed to save word corrections')
+    } finally {
+      setSavingWordCorrections(false)
+    }
+  }
+
+  const handleAddWordCorrection = () => {
+    const orig = newOriginal.trim()
+    const corr = newCorrected.trim()
+    if (!orig || !corr) return
+    const updated = { ...wordCorrections, [orig]: corr }
+    setWordCorrections(updated)
+    setNewOriginal('')
+    setNewCorrected('')
+    handleSaveWordCorrections(updated)
+  }
+
+  const handleRemoveWordCorrection = (original: string) => {
+    const { [original]: _, ...rest } = wordCorrections
+    setWordCorrections(rest)
+    handleSaveWordCorrections(rest)
+  }
+
   return (
     <TooltipProvider>
       <div className="flex flex-col h-full">
@@ -330,6 +383,14 @@ export function SessionSetupPanel({
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto pb-24">
           <div className="flex flex-col gap-4 p-4">
+            {/* Analyzing indicator - shown when AI is processing transcript */}
+            {analyzing && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
+                <p className="text-xs text-muted-foreground">Participants and context will appear shortly</p>
+              </div>
+            )}
 
         {/* AI Suggestions */}
         <Card className="border-border">
@@ -532,6 +593,71 @@ export function SessionSetupPanel({
             </CollapsibleContent>
           </Card>
         </Collapsible>
+
+        {/* Word corrections */}
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Edit3 className="h-4 w-4 text-muted-foreground" />
+              Word Corrections
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[220px]">
+                  Fix misheard words in the transcript (e.g. SPQR → speaker). Changes apply to display and AI output.
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={newOriginal}
+                onChange={(e) => setNewOriginal(e.target.value)}
+                placeholder="Misheard (e.g. SPQR)"
+                className="bg-secondary border-border text-sm flex-1"
+              />
+              <span className="text-muted-foreground self-center text-xs">→</span>
+              <Input
+                value={newCorrected}
+                onChange={(e) => setNewCorrected(e.target.value)}
+                placeholder="Correct (e.g. speaker)"
+                className="bg-secondary border-border text-sm flex-1"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAddWordCorrection}
+                disabled={!newOriginal.trim() || !newCorrected.trim() || savingWordCorrections}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            {Object.entries(wordCorrections).length > 0 && (
+              <ul className="space-y-1.5 text-sm">
+                {Object.entries(wordCorrections).map(([orig, corr]) => (
+                  <li
+                    key={orig}
+                    className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-secondary/50"
+                  >
+                    <span className="text-muted-foreground truncate">{orig}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="truncate flex-1 min-w-0">{corr}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      onClick={() => handleRemoveWordCorrection(orig)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Controls */}
         <Card className="border-border">

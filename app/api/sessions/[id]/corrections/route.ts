@@ -15,7 +15,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { corrections, type } = body // type: 'name_corrections' or 'pii_redactions'
+    const { corrections, type, replace } = body // type: 'name_corrections' | 'pii_redactions' | 'word_corrections'; replace: full replace for type
 
     if (!corrections || typeof corrections !== 'object') {
       return NextResponse.json({ error: 'Invalid corrections format' }, { status: 400 })
@@ -33,14 +33,15 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    // Merge new corrections with existing ones
     const existingCorrections = session.transcript_corrections || {}
     const updatedCorrections = {
       ...existingCorrections,
-      [type]: {
-        ...(existingCorrections[type as keyof typeof existingCorrections] || {}),
-        ...corrections
-      }
+      [type]: replace
+        ? corrections
+        : {
+            ...(existingCorrections[type as keyof typeof existingCorrections] || {}),
+            ...corrections
+          }
     }
 
     // Update session with merged corrections

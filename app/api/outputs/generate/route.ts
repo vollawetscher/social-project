@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import type { GenerateOutputConfig } from '@/lib/types-v0'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { applyTranscriptCorrections } from '@/lib/utils/transcript-corrections'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -86,13 +87,25 @@ export async function POST(request: Request) {
       template = templateData
     }
 
-    // Build the generation prompt
-    const transcriptText = transcript.raw_text || transcript.redacted_text || ''
+    // Build the generation prompt - apply corrections so output reflects fixed transcript
+    let transcriptText = transcript.raw_text || transcript.redacted_text || ''
+    const corrections = (session as any).transcript_corrections || {}
+    const allCorrections: Record<string, string> = {
+      ...(corrections.name_corrections || {}),
+      ...(corrections.pii_redactions || {}),
+      ...(corrections.word_corrections || {}),
+    }
+    if (Object.keys(allCorrections).length > 0) {
+      transcriptText = applyTranscriptCorrections(transcriptText, allCorrections)
+    }
     console.log('[Generate Output] Transcript text length:', transcriptText.length)
     
-    // Extract speakers from raw_json segments
+    // Extract speakers from raw_json segments (apply name corrections)
     const segments = transcript.raw_json as any[]
-    const uniqueSpeakers = Array.from(new Set(segments.map((s: any) => s.speaker).filter(Boolean)))
+    const nameCorrections = corrections.name_corrections || {}
+    const uniqueSpeakers = Array.from(
+      new Set(segments.map((s: any) => nameCorrections[s.speaker] || s.speaker).filter(Boolean))
+    )
     
     let speakersText = ''
     if (uniqueSpeakers.length > 0) {
