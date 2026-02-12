@@ -466,14 +466,13 @@ export default function SessionDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Desktop toggle for right panel - disabled during analysis so user sees indicator in Context tab */}
+          {/* Context panel toggle - floating sheet, transcript stays full width */}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setRightPanelOpen(!rightPanelOpen)}
-            className="hidden lg:flex"
+            onClick={() => !analyzing && setRightPanelOpen(!rightPanelOpen)}
             disabled={analyzing}
-            title={analyzing ? "Context available after analysis completes" : undefined}
+            title={analyzing ? "Context available after analysis completes" : "Context & corrections"}
           >
             {rightPanelOpen ? (
               <PanelRightClose className="h-4 w-4" />
@@ -481,14 +480,8 @@ export default function SessionDetailPage() {
               <PanelRight className="h-4 w-4" />
             )}
           </Button>
-          {/* Mobile sheet trigger - disabled during analysis */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="lg:hidden" disabled={analyzing} title={analyzing ? "Context available after analysis completes" : undefined}>
-                <Settings2 className="h-4 w-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[340px] p-0">
+          <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen} modal={false}>
+            <SheetContent side="right" className="w-[340px] sm:w-[380px] p-0 max-h-[95vh] overflow-hidden flex flex-col" overlayLight>
               <SessionSetupPanel
                 session={session}
                 recordingTypeSuggestions={recordingTypeSuggestions}
@@ -1138,23 +1131,6 @@ export default function SessionDetailPage() {
           )}
         </div>
 
-        {/* Right: Session Setup Panel (Desktop) */}
-        <div
-          className={cn(
-            "hidden lg:block w-80 shrink-0 transition-all duration-300 overflow-hidden",
-            !rightPanelOpen && "w-0"
-          )}
-        >
-          <div className="h-full rounded-lg border border-border bg-card overflow-hidden">
-            <SessionSetupPanel
-              session={session}
-              recordingTypeSuggestions={recordingTypeSuggestions}
-              domainSuggestions={domainSuggestions}
-              onContextSaved={handleContextSaved}
-              analyzing={analyzing}
-            />
-          </div>
-        </div>
       </div>
 
       {/* Generate Output Modal */}

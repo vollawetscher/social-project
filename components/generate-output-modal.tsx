@@ -65,6 +65,9 @@ const languageToConfig: Record<string, { code: string; instruction: string }> = 
   Dutch: { code: 'nl', instruction: 'Dutch' },
   Polish: { code: 'pl', instruction: 'Polish' },
 }
+const codeToLanguage = Object.fromEntries(
+  Object.entries(languageToConfig).map(([name, { code }]) => [code, name])
+)
 
 export function GenerateOutputModal({
   open,
@@ -79,6 +82,14 @@ export function GenerateOutputModal({
   const [selectedPerspective, setSelectedPerspective] = useState<ParticipantRole | "">("")
   const [selectedAudience, setSelectedAudience] = useState<Audience | "">("")
   const [selectedLanguage, setSelectedLanguage] = useState("English")
+
+  // Default output language from session (e.g. German upload → German output)
+  useEffect(() => {
+    const code = session?.languageCode || session?.language?.slice(0, 2)?.toLowerCase()
+    if (code && codeToLanguage[code]) {
+      setSelectedLanguage(codeToLanguage[code])
+    }
+  }, [session?.id, session?.languageCode, session?.language])
   const [tone, setTone] = useState<OutputTone>("neutral")
   const [format, setFormat] = useState<OutputFormat>("markdown")
   const [doInstructions, setDoInstructions] = useState("")

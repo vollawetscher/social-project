@@ -27,6 +27,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.5.0',
         date: 'February 11, 2026',
+        category: 'improvement',
+        title: 'Floating Context Panel',
+        description: 'The Context & corrections panel now floats over the transcript instead of narrowing it. Scroll long transcripts while keeping the panel open—the overlay is subtle so you can interact with both.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
         category: 'fix',
         title: 'Correct Speaker Names in Output Modal',
         description: 'The output perspective dropdown now shows real names (e.g. Christian, Azat) instead of S1/S2 when you\'ve added participant names or name corrections in the Context panel.',

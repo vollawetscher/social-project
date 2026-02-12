@@ -176,7 +176,7 @@ function EditableSessionName({
 
 export default function SessionsPage() {
   const { user } = useAuth()
-  const [isUploadOpen, setIsUploadOpen] = useState(true)
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
