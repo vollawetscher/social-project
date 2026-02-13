@@ -28,6 +28,13 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { exportOutput } from "@/lib/utils/output-export"
 import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
 import { GenerateOutputModal } from "@/components/generate-output-modal"
@@ -811,26 +818,24 @@ export default function SessionDetailPage() {
                           >
                             <Copy className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              const blob = new Blob([output.content], { type: 'text/markdown' })
-                              const url = window.URL.createObjectURL(blob)
-                              const a = document.createElement('a')
-                              a.href = url
-                              a.download = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}.md`
-                              document.body.appendChild(a)
-                              a.click()
-                              window.URL.revokeObjectURL(url)
-                              document.body.removeChild(a)
-                              toast.success('Output downloaded')
-                            }}
-                            title="Download"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Download">
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'md').then(() => toast.success('Output downloaded')); }}>
+                                MD
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'pdf').then(() => toast.success('Output downloaded')); }}>
+                                PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'docx').then(() => toast.success('Output downloaded')); }}>
+                                DOCX
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1118,26 +1123,24 @@ export default function SessionDetailPage() {
                           >
                             <Copy className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => {
-                              const blob = new Blob([output.content], { type: 'text/markdown' })
-                              const url = window.URL.createObjectURL(blob)
-                              const a = document.createElement('a')
-                              a.href = url
-                              a.download = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}.md`
-                              document.body.appendChild(a)
-                              a.click()
-                              window.URL.revokeObjectURL(url)
-                              document.body.removeChild(a)
-                              toast.success('Output downloaded')
-                            }}
-                            title="Download"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Download">
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'md').then(() => toast.success('Output downloaded')); }}>
+                                MD
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'pdf').then(() => toast.success('Output downloaded')); }}>
+                                PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'docx').then(() => toast.success('Output downloaded')); }}>
+                                DOCX
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Button
                             variant="ghost"
                             size="icon"

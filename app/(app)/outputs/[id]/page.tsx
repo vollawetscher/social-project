@@ -50,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { exportOutput } from "@/lib/utils/output-export"
 import type { Output } from "@/lib/types-v0"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
 
@@ -257,18 +258,10 @@ export default function OutputDetailPage() {
     }
   }
 
-  function handleDownload() {
+  async function handleDownload(format: 'md' | 'pdf' | 'docx') {
     if (!output) return
-
-    const blob = new Blob([output.content], { type: 'text/markdown' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}-${new Date(output.createdAt).getTime()}.md`
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
+    const name = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}-${new Date(output.createdAt).getTime()}`
+    await exportOutput(output.content, name, format)
     toast.success('Downloaded output')
   }
 
@@ -422,16 +415,24 @@ export default function OutputDetailPage() {
             <Copy className="h-4 w-4" />
             <span className="hidden md:inline">Copy</span>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownload}
-            className="gap-2"
-            title="Download"
-          >
-            <Download className="h-4 w-4" />
-            <span className="sr-only">Download</span>
-          </Button>
+          <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  title="Download"
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden md:inline">Download</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleDownload('md')}>MD</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload('pdf')}>PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload('docx')}>DOCX</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           <Button
             variant="outline"
             size="sm"

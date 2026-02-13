@@ -1036,7 +1036,7 @@ export default function SessionsPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
                           <Download className="mr-2 h-4 w-4" />
-                          Download
+                          Transcript
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive"
@@ -1178,7 +1178,7 @@ export default function SessionsPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
                               <Download className="mr-2 h-4 w-4" />
-                              Download
+                              Transcript
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive"

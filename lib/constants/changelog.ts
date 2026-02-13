@@ -41,6 +41,27 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.5.0',
         date: 'February 11, 2026',
+        category: 'improvement',
+        title: 'Back from Recording Without Saving',
+        description: 'A Back button lets you return to the previous screen when you open recording from the app—no need to record or cancel to leave.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
+        category: 'improvement',
+        title: 'Download Output as MD, PDF, or DOCX',
+        description: 'When downloading an output, you can choose the format: Markdown (.md), PDF, or Word (.docx).',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
+        category: 'improvement',
+        title: 'Sessions: Transcript Action Label',
+        description: "The session actions menu now says 'Transcript' instead of 'Download' for clearer intent.",
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
         category: 'fix',
         title: 'Re-upload Recordings Saved as MP4',
         description: 'Audio recorded in the app (iOS) or downloaded from a session can now be re-uploaded even when the file is detected as MP4/video—the app now accepts both audio/mp4 and video/mp4 formats.',

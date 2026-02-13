@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Mic, Upload, Trash2, Play, Pause, Clock, HardDrive, LogIn } from 'lucide-react'
+import { Mic, Upload, Trash2, Play, Pause, Clock, HardDrive, LogIn, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
@@ -152,11 +152,22 @@ export default function QuickRecordPage() {
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-primary">Quick Record</h1>
-            <p className="text-sm text-muted-foreground">
-              Record without login • Upload later
-            </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.back()}
+              className="shrink-0"
+              title="Back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-primary">Quick Record</h1>
+              <p className="text-sm text-muted-foreground">
+                Record without login • Upload later
+              </p>
+            </div>
           </div>
           {!loading && !user && (
             <Button variant="outline" size="sm" onClick={() => router.push('/login')}>
