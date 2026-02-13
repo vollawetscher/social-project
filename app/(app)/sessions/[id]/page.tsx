@@ -68,6 +68,7 @@ export default function SessionDetailPage() {
   const [savingCorrections, setSavingCorrections] = useState(false)
   const   [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
+  const [retryingTranscribe, setRetryingTranscribe] = useState(false)
 
   // Handle seeking to a specific time from transcript click
   const handleSeekToTime = (time: number) => {
@@ -443,9 +444,6 @@ export default function SessionDetailPage() {
     }
   }
 
-  const selectedTemplate = mockTemplates.find((t) => t.id === selectedTemplateId)
-
-  const [retryingTranscribe, setRetryingTranscribe] = useState(false)
   const handleRetryTranscription = async () => {
     setRetryingTranscribe(true)
     try {
@@ -456,14 +454,15 @@ export default function SessionDetailPage() {
       })
       if (!res.ok) throw new Error((await res.json()).error || 'Retry failed')
       toast.success('Transcription started. This may take a few minutes.')
-      // Optimistically show transcribing
-      setSession(s => s ? { ...s, status: 'transcribing' as const, lastError: undefined } : s)
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to retry transcription')
+      setSession((s) => (s ? { ...s, status: 'transcribing', lastError: undefined } : s))
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to retry transcription')
     } finally {
       setRetryingTranscribe(false)
     }
   }
+
+  const selectedTemplate = mockTemplates.find((t) => t.id === selectedTemplateId)
 
   return (
     <div className="min-h-[calc(100vh-3.5rem-4rem)] md:min-h-[calc(100vh-3.5rem-3rem)] flex flex-col">
@@ -485,26 +484,16 @@ export default function SessionDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-col gap-2 items-end">
-          {session.status === 'failed' && session.lastError && (
-            <div className="flex items-center gap-2 w-full max-w-md rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
-              <span className="text-destructive flex-1 truncate">{session.lastError}</span>
-              {session.audioUrl && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleRetryTranscription}
-                  disabled={retryingTranscribe}
-                >
-                  {retryingTranscribe ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Retry transcription'
-                  )}
-                </Button>
-              )}
-            </div>
-          )}
+        {session.status === 'failed' && session.lastError ? (
+          <div className="flex items-center gap-2 w-full max-w-md rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
+            <span className="text-destructive flex-1 truncate">{session.lastError}</span>
+            {session.audioUrl ? (
+              <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
+                {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry transcription'}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex items-center gap-2">
           {/* Context panel toggle - floating sheet, transcript stays full width */}
           <Button
