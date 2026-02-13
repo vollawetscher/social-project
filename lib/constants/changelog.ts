@@ -50,7 +50,7 @@ export const changelog: ChangelogVersion[] = [
         date: 'February 11, 2026',
         category: 'improvement',
         title: 'Download Output as MD, PDF, or DOCX',
-        description: 'When downloading an output, you can choose the format: Markdown (.md), PDF, or Word (.docx).',
+        description: 'When downloading an output, you can choose the format: Markdown (.md), PDF, or Word (.docx). Headings, bold, italic, lists, and blockquotes are properly converted—no more raw markdown syntax in PDF or Word.',
       },
       {
         version: '1.5.0',
