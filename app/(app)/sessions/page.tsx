@@ -412,7 +412,7 @@ export default function SessionsPage() {
     const files = Array.from(e.dataTransfer.files)
     const transcriptFiles = files.filter(isTranscriptFile)
     const audioFiles = files.filter(f =>
-      f.type.startsWith('audio/') || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(f.name)
+      f.type.startsWith('audio/') || f.type === 'video/mp4' || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(f.name)
     )
     if (transcriptFiles.length > 0) {
       setIsUploadOpen(true)
@@ -437,7 +437,7 @@ export default function SessionsPage() {
       setPreviewFiles(audioFiles)
       setPreviewOpen(true)
     } else {
-      toast.error('Please drop transcript files (TXT, SRT, VTT) or audio files (MP3, WAV)')
+      toast.error('Please drop transcript files (TXT, SRT, VTT) or audio files (MP3, WAV, MP4, M4A)')
     }
   }, [processTranscriptFile, fetchSessions])
 
@@ -445,10 +445,10 @@ export default function SessionsPage() {
     const files = e.target.files
     if (files) {
       const audioFiles = Array.from(files).filter(file =>
-        file.type.startsWith('audio/') || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
+        file.type.startsWith('audio/') || file.type === 'video/mp4' || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
       )
       if (audioFiles.length === 0) {
-        toast.error('Please select audio files (MP3, WAV, WebM, M4A)')
+        toast.error('Please select audio files (MP3, WAV, MP4, M4A)')
         return
       }
       setPreviewFiles(audioFiles)
@@ -576,10 +576,10 @@ export default function SessionsPage() {
     e.preventDefault()
     setIsDraggingAudio(false)
     const files = Array.from(e.dataTransfer.files).filter(file =>
-      file.type.startsWith('audio/') || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
+      file.type.startsWith('audio/') || file.type === 'video/mp4' || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
     )
     if (files.length === 0) {
-      toast.error('Please drop audio files (MP3, WAV, WebM, M4A)')
+      toast.error('Please drop audio files (MP3, WAV, MP4, M4A)')
       return
     }
     setPreviewFiles(files)
@@ -840,7 +840,7 @@ export default function SessionsPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="audio/*,.mp3,.wav,.webm,.m4a"
+                    accept="audio/*,.mp3,.wav,.webm,.m4a,.mp4,video/mp4"
                     multiple
                     onChange={handleFileSelect}
                     className="hidden"
@@ -856,7 +856,7 @@ export default function SessionsPage() {
                         <FileAudio className="h-7 w-7 text-muted-foreground mb-2" />
                         <p className="text-sm font-medium text-foreground">Upload audio</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          MP3, WAV, WebM, M4A
+                          MP3, WAV, MP4, M4A
                         </p>
                       </>
                     )}

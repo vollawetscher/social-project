@@ -22,6 +22,7 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
     'audio/mp3',
     'audio/wav',
     'audio/mp4',
+    'video/mp4',
     'audio/m4a',
     'audio/x-m4a',
     'audio/ogg',

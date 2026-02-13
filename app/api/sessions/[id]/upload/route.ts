@@ -56,8 +56,10 @@ export async function POST(
     // See: https://docs.speechmatics.com/introduction/supported-languages
     // Supported: wav, mp3, aac, ogg, mpeg, amr, m4a, mp4, flac
     // NOT supported: webm
+    // video/mp4: iOS recordings and downloaded .mp4 files often report this (same container as audio/mp4)
     const supportedMimeTypes = [
       'audio/mp4',
+      'video/mp4',
       'audio/mpeg',
       'audio/mp3',
       'audio/wav',

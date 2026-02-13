@@ -154,6 +154,7 @@ export class SpeechmaticsService {
       'audio/webm': 'webm',
       'audio/ogg': 'ogg',
       'audio/mp4': 'm4a',
+      'video/mp4': 'm4a',
       'audio/x-m4a': 'm4a',
       'audio/aac': 'aac',
       'audio/flac': 'flac',

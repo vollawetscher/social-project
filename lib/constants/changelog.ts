@@ -41,6 +41,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.5.0',
         date: 'February 11, 2026',
+        category: 'fix',
+        title: 'Re-upload Recordings Saved as MP4',
+        description: 'Audio recorded in the app (iOS) or downloaded from a session can now be re-uploaded even when the file is detected as MP4/video—the app now accepts both audio/mp4 and video/mp4 formats.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
         category: 'improvement',
         title: 'Generate Output Without Suggestions',
         description: 'A Generate Output button now appears next to Your outputs so you can choose any template and generate—even when AI suggestions are available or you already have outputs.',
