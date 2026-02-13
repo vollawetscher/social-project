@@ -1,5 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireSessionAccess } from '@/lib/auth/helpers'
 
 export async function POST(
   request: Request,
@@ -14,6 +15,16 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    await requireSessionAccess(params.id, user.id)
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const isAdmin = profile?.role === 'admin'
+    const db = isAdmin ? createServiceRoleClient() : supabase
+
     const body = await request.json()
     const { corrections, type, replace } = body // type: 'name_corrections' | 'pii_redactions' | 'word_corrections'; replace: full replace for type
 
@@ -22,12 +33,10 @@ export async function POST(
     }
 
     // Fetch current session to merge corrections
-    const { data: session, error: fetchError } = await supabase
-      .from('sessions')
-      .select('transcript_corrections')
-      .eq('id', params.id)
-      .eq('user_id', user.id)
-      .single()
+    const sessionQuery = db.from('sessions').select('transcript_corrections').eq('id', params.id)
+    const { data: session, error: fetchError } = isAdmin
+      ? await sessionQuery.single()
+      : await sessionQuery.eq('user_id', user.id).single()
 
     if (fetchError || !session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
@@ -45,11 +54,10 @@ export async function POST(
     }
 
     // Update session with merged corrections
-    const { error: updateError } = await supabase
-      .from('sessions')
-      .update({ transcript_corrections: updatedCorrections })
-      .eq('id', params.id)
-      .eq('user_id', user.id)
+    const updateQuery = db.from('sessions').update({ transcript_corrections: updatedCorrections }).eq('id', params.id)
+    const { error: updateError } = isAdmin
+      ? await updateQuery
+      : await updateQuery.eq('user_id', user.id)
 
     if (updateError) {
       console.error('[Corrections API] Update error:', updateError)
@@ -85,12 +93,20 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: session, error } = await supabase
-      .from('sessions')
-      .select('transcript_corrections')
-      .eq('id', params.id)
-      .eq('user_id', user.id)
+    await requireSessionAccess(params.id, user.id)
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
       .single()
+    const isAdmin = profile?.role === 'admin'
+    const db = isAdmin ? createServiceRoleClient() : supabase
+
+    const sessionQuery = db.from('sessions').select('transcript_corrections').eq('id', params.id)
+    const { data: session, error } = isAdmin
+      ? await sessionQuery.single()
+      : await sessionQuery.eq('user_id', user.id).single()
 
     if (error || !session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
+import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { logError } from '@/lib/services/error-logger'
 
 export async function GET(
@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
 
     const { data: report, error } = await supabase
@@ -71,7 +71,7 @@ export async function DELETE(
 ) {
   try {
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     
     // Use service role to delete report (bypass RLS)
     const supabase = createServiceRoleClient()

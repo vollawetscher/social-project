@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createSpeechmaticsService } from '@/lib/services/speechmatics'
 import { recordTranscriptionMinutesFromJob } from '@/lib/services/usage-tracker'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
-import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
+import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { generateReport } from '@/lib/services/report-generator'
 import { createErrorLogger } from '@/lib/services/error-logger'
 
@@ -320,7 +320,7 @@ export async function POST(
 ) {
   try {
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
     const errorLogger = await createErrorLogger(supabase)
 

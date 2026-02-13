@@ -1,5 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { requireSessionAccess } from '@/lib/auth/helpers'
 
 export async function PATCH(
   request: Request,
@@ -13,6 +14,16 @@ export async function PATCH(
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    await requireSessionAccess(params.id, user.id)
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const isAdmin = profile?.role === 'admin'
+    const db = isAdmin ? createServiceRoleClient() : supabase
 
     const body = await request.json()
     const { 
@@ -44,11 +55,10 @@ export async function PATCH(
 
     if (extractedContext) {
       // Merge with existing AI-extracted context, preserving user edits
-      const { data: existingSession } = await supabase
-        .from('sessions')
-        .select('ai_extracted_context')
-        .eq('id', params.id)
-        .single()
+      const existingQuery = db.from('sessions').select('ai_extracted_context').eq('id', params.id)
+      const { data: existingSession } = isAdmin
+        ? await existingQuery.single()
+        : await existingQuery.eq('user_id', user.id).single()
 
       updates.ai_extracted_context = {
         ...(existingSession?.ai_extracted_context || {}),
@@ -61,13 +71,10 @@ export async function PATCH(
     console.log('[Context API] Updating session with:', Object.keys(updates))
 
     // Update session
-    const { data: session, error: updateError } = await supabase
-      .from('sessions')
-      .update(updates)
-      .eq('id', params.id)
-      .eq('user_id', user.id)
-      .select()
-      .single()
+    const updateQuery = db.from('sessions').update(updates).eq('id', params.id)
+    const { data: session, error: updateError } = isAdmin
+      ? await updateQuery.select().single()
+      : await updateQuery.eq('user_id', user.id).select().single()
 
     if (updateError) {
       console.error('[Context API] Error updating session:', updateError)

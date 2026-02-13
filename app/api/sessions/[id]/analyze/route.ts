@@ -2,6 +2,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { requireSessionAccess } from '@/lib/auth/helpers'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -35,22 +36,26 @@ export async function POST(
       userId = internalUserId
       console.log('[Analyze API] Internal call mode, userId:', userId)
     } else {
-      supabase = await createClient()
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      const authSupabase = await createClient()
+      const { data: { user }, error: authError } = await authSupabase.auth.getUser()
       if (authError || !user) {
         console.error('[Analyze API] Auth error:', authError)
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
       userId = user.id
+      await requireSessionAccess(params.id, userId)
+      supabase = authSupabase
       console.log('[Analyze API] User authenticated:', userId)
     }
 
-    // Fetch user profile for name comparison
+    // Fetch user profile for name comparison (and admin check for session fetch)
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, company_name, display_name, after_transcript_action, after_transcript_template_id, preferred_report_language')
+      .select('full_name, company_name, display_name, role, after_transcript_action, after_transcript_template_id, preferred_report_language')
       .eq('id', userId)
       .single()
+
+    const isAdmin = profile?.role === 'admin'
 
     const userName = profile?.display_name || profile?.full_name || profile?.company_name || ''
     console.log('[Analyze API] Profile data:', { 
@@ -60,14 +65,15 @@ export async function POST(
     })
     console.log('[Analyze API] User name for AI identification:', userName)
 
-    // Fetch session and transcript (internal calls use service role, no user filter needed)
-    const sessionQuery = supabase
+    // Fetch session and transcript (internal/admin use service role to bypass RLS)
+    const sessionClient = isInternalCall || isAdmin ? createServiceRoleClient() : supabase
+    const sessionFetchQuery = sessionClient
       .from('sessions')
       .select('*, transcripts(*)')
       .eq('id', params.id)
-    const { data: session, error: sessionError } = isInternalCall
-      ? await sessionQuery.single()
-      : await sessionQuery.eq('user_id', userId).single()
+    const { data: session, error: sessionError } = isInternalCall || isAdmin
+      ? await sessionFetchQuery.single()
+      : await sessionFetchQuery.eq('user_id', userId).single()
 
     if (sessionError) {
       console.error('[Analyze API] Session error:', sessionError)

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
+import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { logError } from '@/lib/services/error-logger'
 
 export async function POST(
@@ -9,7 +9,7 @@ export async function POST(
 ) {
   try {
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
 
     const { data: session, error: sessionError } = await supabase

@@ -56,11 +56,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
     if (session.user_id !== userId) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
-    }
-
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single()
+      if (profile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      }
     }
 
     // Fetch transcript

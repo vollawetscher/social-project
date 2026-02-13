@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
+import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 
 export async function GET(
   request: Request,
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
 
     const { data: session, error } = await supabase
@@ -47,7 +47,7 @@ export async function PATCH(
 ) {
   try {
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
     const body = await request.json()
 
@@ -78,7 +78,7 @@ export async function DELETE(
 ) {
   try {
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
 
     const { data: files } = await supabase

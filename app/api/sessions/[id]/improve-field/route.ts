@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClaudeService } from '@/lib/services/claude'
-import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
+import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 
 /**
  * POST /api/sessions/[id]/improve-field
@@ -13,7 +13,7 @@ export async function POST(
 ) {
   try {
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
 
     const body = await request.json()

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth, requireSessionOwnership, handleAuthError } from '@/lib/auth/helpers'
+import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { generateReport } from '@/lib/services/report-generator'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
@@ -63,7 +63,7 @@ export async function POST(
   try {
     console.log('[Summarize] Received request for session:', params.id)
     const user = await requireAuth()
-    await requireSessionOwnership(params.id, user.id)
+    await requireSessionAccess(params.id, user.id)
     
     // Parse optional request body
     let options: { recordingIds?: string[]; language?: string } | undefined
