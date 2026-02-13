@@ -105,6 +105,7 @@ export interface Session {
   outputCount?: number // Number of generated outputs for this session
   transcriptCorrections?: TranscriptCorrections // Alias system for corrections & PII
   suggestedOutputFormats?: SuggestedOutputFormat[] // AI-suggested output formats for this session (domain-aware)
+  ownerEmail?: string // Admin view: session owner email
 }
 
 export interface ParticipantInfo {

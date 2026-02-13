@@ -27,6 +27,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.5.0',
         date: 'February 11, 2026',
+        category: 'feature',
+        title: 'AI Structuring for Messy Transcripts',
+        description: 'When you upload a file that mixes chat logs, summaries, and call excerpts, the app detects it and uses AI to reorganize it into a proper conversation transcript before analysis—cleaner results without running AI on every file.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
         category: 'improvement',
         title: 'Email-Only Sign In',
         description: 'Phone/OTP sign-in is no longer available. Please use email (magic link or password) to sign in.',

@@ -2,12 +2,14 @@
  * POST /api/sessions/import-transcript
  *
  * Create a session from uploaded transcript text (TXT, SRT, VTT).
- * Skips audio/transcription; inserts transcript directly and triggers analyze + auto-generate if configured.
+ * Peek heuristics detect messy content (chat, summaries); AI structuring runs only when needed.
  */
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
+import { needsStructureHeuristic } from '@/lib/utils/transcript-structure-check'
+import { structureTranscript } from '@/lib/services/transcript-structurer'
 
 interface ParsedSegment {
   start_ms: number
@@ -25,16 +27,52 @@ export async function POST(request: Request) {
     const {
       language = 'de',
       sessionName,
-      segments,
-      rawText,
+      segments: incomingSegments,
+      rawText: incomingRawText,
+      rawFileContent,
+      filename,
     }: {
       language?: string
       sessionName?: string
       segments: ParsedSegment[]
       rawText: string
+      rawFileContent?: string
+      filename?: string
     } = body
 
-    if (!segments || !Array.isArray(segments) || segments.length === 0) {
+    let segments: ParsedSegment[]
+    let rawText: string
+
+    // Peek: only run AI structuring when content looks messy (chat, summaries, mixed)
+    const needsStructure =
+      typeof rawFileContent === 'string' &&
+      rawFileContent.length > 0 &&
+      needsStructureHeuristic(rawFileContent, filename || sessionName || 'file.txt')
+
+    if (needsStructure) {
+      try {
+        const structured = await structureTranscript(rawFileContent!, language)
+        segments = structured.segments
+        rawText = structured.rawText
+      } catch (err: any) {
+        console.error('[Import Transcript] AI structuring failed:', err?.message)
+        return NextResponse.json(
+          {
+            error: 'Failed to structure transcript. Try a cleaner format or use TXT with plain paragraphs.',
+          },
+          { status: 500 }
+        )
+      }
+    } else if (
+      incomingSegments &&
+      Array.isArray(incomingSegments) &&
+      incomingSegments.length > 0
+    ) {
+      segments = incomingSegments
+      rawText =
+        incomingRawText ||
+        segments.map((s: ParsedSegment) => s.text).join(' ')
+    } else {
       return NextResponse.json(
         { error: 'Segments required and must not be empty' },
         { status: 400 }

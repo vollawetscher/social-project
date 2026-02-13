@@ -103,6 +103,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     extractedContext, // Normalized AI-extracted rich context
     transcriptCorrections: (dbSession as any).transcript_corrections || {}, // Alias system
     suggestedOutputFormats: (dbSession as any).suggested_output_formats || [],
+    ownerEmail: (dbSession as any).owner_email, // Admin view: session owner email
   }
 }
 

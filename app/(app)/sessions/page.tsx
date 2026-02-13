@@ -51,6 +51,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
 import { parseTranscriptFile } from "@/lib/utils/transcript-parser"
 import type { SessionStatus, Session } from "@/lib/types-v0"
@@ -194,6 +196,8 @@ export default function SessionsPage() {
   const [isDraggingAudio, setIsDraggingAudio] = useState(false)
   const [isDraggingFile, setIsDraggingFile] = useState(false)
   const [isDraggingHeader, setIsDraggingHeader] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminView, setAdminView] = useState(false)
   const supabase = createClient()
 
   const isTranscriptFile = (f: File) =>
@@ -202,7 +206,7 @@ export default function SessionsPage() {
     f.type === 'text/vtt' ||
     f.type === 'application/x-subrip'
 
-  // Fetch user profile to get default language
+  // Fetch user profile to get default language and admin status
   const fetchUserPreferences = async () => {
     if (!user) return
     
@@ -211,17 +215,18 @@ export default function SessionsPage() {
       if (response.ok) {
         const profile = await response.json()
         setLanguage(profile.default_recording_language || 'de')
+        setIsAdmin(profile.role === 'admin')
       }
     } catch (error) {
       console.error('Error fetching user preferences:', error)
-      // Keep default 'de' if fetch fails
     }
   }
 
   // Fetch real sessions from API
   const fetchSessions = useCallback(async () => {
     try {
-      const response = await fetch('/api/sessions?format=v0')
+      const url = adminView ? '/api/sessions?format=v0&adminView=true' : '/api/sessions?format=v0'
+      const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch sessions')
       const data = await response.json()
       setSessions(data)
@@ -230,12 +235,22 @@ export default function SessionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [adminView])
 
   useEffect(() => {
-    fetchSessions()
     fetchUserPreferences()
-  }, [user, fetchSessions])
+  }, [user])
+
+  useEffect(() => {
+    if (user) fetchSessions()
+  }, [user, adminView, fetchSessions])
+
+  // Open upload section by default on touch devices (mobile) so file picker is reachable without drag-and-drop
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'ontouchstart' in window) {
+      setIsUploadOpen(true)
+    }
+  }, [])
 
   // Poll when any session is transcribing so badges update when ready
   const hasInProgress = sessions.some(s =>
@@ -298,8 +313,8 @@ export default function SessionsPage() {
   }, [])
 
   const processTranscriptFile = useCallback(async (file: File): Promise<boolean> => {
-    const text = await file.text()
-    const { segments, rawText } = parseTranscriptFile(text, file.name)
+    const rawFileContent = await file.text()
+    const { segments, rawText } = parseTranscriptFile(rawFileContent, file.name)
     if (segments.length === 0) {
       toast.error(`No content in ${file.name}. Please add transcript text.`)
       return false
@@ -313,6 +328,8 @@ export default function SessionsPage() {
         sessionName,
         segments,
         rawText,
+        rawFileContent,
+        filename: file.name,
       }),
     })
     if (!res.ok) {
@@ -685,7 +702,8 @@ export default function SessionsPage() {
   const filteredSessions = sessions.filter(session => 
     searchQuery === "" || 
     session.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    session.language.toLowerCase().includes(searchQuery.toLowerCase())
+    session.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (adminView && session.ownerEmail?.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   return (
@@ -845,13 +863,13 @@ export default function SessionsPage() {
                   </div>
                 </div>
 
-                {/* Upload file (transcript) */}
+                {/* Upload file (transcript) - tap/click opens file picker (works on mobile where drag-drop doesn't) */}
                 <div
                   className={cn(
-                    "border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer",
+                    "border-2 border-dashed rounded-lg p-4 min-h-[88px] flex items-center justify-center transition-colors cursor-pointer touch-manipulation",
                     isDraggingFile
                       ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground",
+                      : "border-border hover:border-muted-foreground active:bg-muted/50",
                     uploadingTranscript && "opacity-50 pointer-events-none"
                   )}
                   onDragOver={handleFileDragOver}
@@ -866,8 +884,9 @@ export default function SessionsPage() {
                     multiple
                     onChange={handleTranscriptFileSelect}
                     className="hidden"
+                    id="transcript-file-input"
                   />
-                  <div className="flex flex-col items-center text-center">
+                  <div className="flex flex-col items-center text-center pointer-events-none">
                     {uploadingTranscript ? (
                       <>
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mb-2"></div>
@@ -879,6 +898,9 @@ export default function SessionsPage() {
                         <p className="text-sm font-medium text-foreground">Upload file</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           TXT, SRT, VTT
+                        </p>
+                        <p className="text-xs text-primary font-medium mt-1">
+                          Tap to choose file
                         </p>
                       </>
                     )}
@@ -892,11 +914,27 @@ export default function SessionsPage() {
 
       {/* Sessions List */}
       <Card className="border-border">
-        {/* Compact Header with Search */}
+        {/* Compact Header with Search + Admin Toggle */}
         <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border">
-          <h2 className="text-sm font-medium text-foreground whitespace-nowrap">
-            Recent Sessions
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-medium text-foreground whitespace-nowrap">
+              Recent Sessions
+            </h2>
+            {isAdmin && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="admin-view"
+                  checked={adminView}
+                  onCheckedChange={(checked) => {
+                    setAdminView(checked)
+                  }}
+                />
+                <Label htmlFor="admin-view" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+                  All users
+                </Label>
+              </div>
+            )}
+          </div>
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -957,6 +995,11 @@ export default function SessionsPage() {
                         </span>
                         <span>{formatDate(session.createdAt)}</span>
                       </div>
+                      {adminView && session.ownerEmail && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                          {session.ownerEmail}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2 mt-2">
                         <Badge 
                           variant={status.variant}
@@ -1017,6 +1060,9 @@ export default function SessionsPage() {
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-muted-foreground">Name</TableHead>
+                {adminView && (
+                  <TableHead className="text-muted-foreground">Owner</TableHead>
+                )}
                 <TableHead className="text-muted-foreground">Duration</TableHead>
                 <TableHead className="text-muted-foreground">Language</TableHead>
                 <TableHead className="text-muted-foreground">Status</TableHead>
@@ -1027,14 +1073,14 @@ export default function SessionsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={adminView ? 7 : 6} className="text-center py-8">
                     <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
                     <p className="mt-2 text-sm text-muted-foreground">Loading sessions...</p>
                   </TableCell>
                 </TableRow>
               ) : filteredSessions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={adminView ? 7 : 6} className="text-center text-sm text-muted-foreground py-8">
                     No sessions found
                   </TableCell>
                 </TableRow>
@@ -1086,6 +1132,11 @@ export default function SessionsPage() {
                           </div>
                         </div>
                       </TableCell>
+                      {adminView && (
+                        <TableCell className="text-sm text-muted-foreground">
+                          {session.ownerEmail || '—'}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <Clock className="h-3.5 w-3.5" />

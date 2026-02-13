@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { toV0Sessions } from '@/lib/adapters/session-adapter'
@@ -8,43 +8,83 @@ export async function GET(request: Request) {
     const user = await requireAuth()
     const supabase = await createClient()
 
-    // Check if v0 format is requested
     const { searchParams } = new URL(request.url)
     const format = searchParams.get('format')
+    const adminView = searchParams.get('adminView') === 'true'
 
-    // Fetch sessions with output count (filtered by user)
-    const { data: sessions, error } = await supabase
-      .from('sessions')
-      .select(`
-        *,
-        outputs:outputs(count)
-      `)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    let sessions: any[] | null
+    let ownerEmails: Record<string, string> = {}
 
-    if (error) {
-      console.error('Database error:', error)
-      return NextResponse.json({ error: error.message, details: error }, { status: 500 })
+    if (adminView) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+      }
+
+      const adminSupabase = createServiceRoleClient()
+      const { data: adminSessions, error: adminError } = await adminSupabase
+        .from('sessions')
+        .select(`
+          *,
+          outputs:outputs(count)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (adminError) {
+        console.error('Database error (admin):', adminError)
+        return NextResponse.json({ error: adminError.message, details: adminError }, { status: 500 })
+      }
+
+      sessions = adminSessions
+
+      const userIds = Array.from(new Set((sessions || []).map((s: any) => s.user_id).filter(Boolean)))
+      if (userIds.length > 0) {
+        const { data: profiles } = await adminSupabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', userIds)
+        ownerEmails = (profiles || []).reduce((acc: Record<string, string>, p: any) => {
+          acc[p.id] = p.email || '—'
+          return acc
+        }, {})
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select(`
+          *,
+          outputs:outputs(count)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Database error:', error)
+        return NextResponse.json({ error: error.message, details: error }, { status: 500 })
+      }
+      sessions = data
     }
 
-    // Transform to include output_count
-    const sessionsWithCount = sessions?.map(session => {
+    const sessionsWithCount = sessions?.map((session: any) => {
       const outputCount = session.outputs?.[0]?.count || 0
       const { outputs, ...rest } = session
-      return {
-        ...rest,
-        output_count: outputCount
+      const out = { ...rest, output_count: outputCount }
+      if (adminView && session.user_id && ownerEmails[session.user_id]) {
+        (out as any).owner_email = ownerEmails[session.user_id]
       }
-    })
+      return out
+    }) || []
 
-    console.log('Found sessions:', sessionsWithCount?.length || 0)
-    
-    // Return v0 format if requested
-    if (format === 'v0' && sessionsWithCount) {
+    if (format === 'v0' && sessionsWithCount.length > 0) {
       return NextResponse.json(toV0Sessions(sessionsWithCount))
     }
-    
-    return NextResponse.json(sessionsWithCount || [])
+
+    return NextResponse.json(sessionsWithCount)
   } catch (error) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)
