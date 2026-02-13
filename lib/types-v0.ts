@@ -106,6 +106,7 @@ export interface Session {
   transcriptCorrections?: TranscriptCorrections // Alias system for corrections & PII
   suggestedOutputFormats?: SuggestedOutputFormat[] // AI-suggested output formats for this session (domain-aware)
   ownerEmail?: string // Admin view: session owner email
+  lastError?: string // Transcription or processing error message
 }
 
 export interface ParticipantInfo {

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { createSpeechmaticsService } from '@/lib/services/speechmatics'
 import { recordTranscriptionMinutesFromJob } from '@/lib/services/usage-tracker'
@@ -8,8 +8,9 @@ import { generateReport } from '@/lib/services/report-generator'
 import { createErrorLogger } from '@/lib/services/error-logger'
 
 // Background job processor - runs independently of HTTP request
+// Uses service role to avoid RLS/auth context issues in serverless (no request scope after 202 response)
 async function processTranscriptionJob(sessionId: string) {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const errorLogger = await createErrorLogger(supabase)
   
   try {
@@ -279,7 +280,7 @@ async function processTranscriptionJob(sessionId: string) {
     console.error('[Transcribe] Error message:', error.message)
     console.error('[Transcribe] Error stack:', error.stack)
 
-    const supabase = await createClient()
+    const supabase = createServiceRoleClient()
     
     // Get case_id for error logging
     const { data: session } = await supabase
