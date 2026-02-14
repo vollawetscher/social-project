@@ -339,6 +339,34 @@ export default function SessionsPage() {
     return true
   }, [language])
 
+  const processPastedTranscript = useCallback(async (rawContent: string): Promise<boolean> => {
+    const trimmed = rawContent.trim()
+    if (!trimmed || trimmed.length < 10) {
+      toast.error('Pasted content is empty or too short')
+      return false
+    }
+    const { segments, rawText } = parseTranscriptFile(trimmed, 'pasted.txt')
+    const timestamp = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/[/,]/g, '-')
+    const sessionName = `Pasted ${timestamp}`
+    const res = await fetch('/api/sessions/import-transcript', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language,
+        sessionName,
+        segments: segments.length > 0 ? segments : undefined,
+        rawText: rawText || trimmed,
+        rawFileContent: trimmed,
+        filename: 'pasted.txt',
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error || 'Import failed')
+    }
+    return true
+  }, [language])
+
   const handleTranscriptFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     e.target.value = ''
@@ -367,6 +395,46 @@ export default function SessionsPage() {
       await fetchSessions()
     }
   }, [processTranscriptFile, fetchSessions])
+
+  const handlePasteTranscript = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (!text?.trim()) {
+        toast.error('Clipboard is empty')
+        return
+      }
+      setUploadingTranscript(true)
+      if (await processPastedTranscript(text)) {
+        toast.success('Pasted transcript imported')
+        await fetchSessions()
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to paste'
+      toast.error(msg)
+    } finally {
+      setUploadingTranscript(false)
+    }
+  }, [processPastedTranscript, fetchSessions])
+
+  const handleTranscriptPaste = useCallback((e: React.ClipboardEvent) => {
+    if (uploadingTranscript) return
+    const text = e.clipboardData?.getData('text/plain')
+    if (!text?.trim()) return
+    e.preventDefault()
+    setUploadingTranscript(true)
+    ;(async () => {
+      try {
+        if (await processPastedTranscript(text)) {
+          toast.success('Pasted transcript imported')
+          await fetchSessions()
+        }
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Paste failed')
+      } finally {
+        setUploadingTranscript(false)
+      }
+    })()
+  }, [processPastedTranscript, fetchSessions, uploadingTranscript])
 
   const handleFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -863,10 +931,12 @@ export default function SessionsPage() {
                   </div>
                 </div>
 
-                {/* Upload file (transcript) - tap/click opens file picker (works on mobile where drag-drop doesn't) */}
+                {/* Upload file (transcript) - tap/click opens file picker, paste supported */}
                 <div
+                  role="button"
+                  tabIndex={0}
                   className={cn(
-                    "border-2 border-dashed rounded-lg p-4 min-h-[88px] flex items-center justify-center transition-colors cursor-pointer touch-manipulation",
+                    "border-2 border-dashed rounded-lg p-4 min-h-[88px] flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer touch-manipulation outline-none focus:ring-2 focus:ring-primary/30",
                     isDraggingFile
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-muted-foreground active:bg-muted/50",
@@ -875,6 +945,13 @@ export default function SessionsPage() {
                   onDragOver={handleFileDragOver}
                   onDragLeave={handleFileDragLeave}
                   onDrop={handleFileDrop}
+                  onPaste={handleTranscriptPaste}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      if (!uploadingTranscript) transcriptInputRef.current?.click()
+                    }
+                  }}
                   onClick={() => !uploadingTranscript && transcriptInputRef.current?.click()}
                 >
                   <input
@@ -897,14 +974,28 @@ export default function SessionsPage() {
                         <FileText className="h-7 w-7 text-muted-foreground mb-2" />
                         <p className="text-sm font-medium text-foreground">Upload file</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          TXT, SRT, VTT
+                          TXT, SRT, VTT • or paste chat
                         </p>
                         <p className="text-xs text-primary font-medium mt-1">
-                          Tap to choose file
+                          Tap to choose • or paste (⌘V)
                         </p>
                       </>
                     )}
                   </div>
+                  {!uploadingTranscript && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="pointer-events-auto"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handlePasteTranscript()
+                      }}
+                    >
+                      Paste from clipboard
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

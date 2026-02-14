@@ -48,6 +48,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.5.0',
         date: 'February 11, 2026',
+        category: 'feature',
+        title: 'Paste Transcript from Clipboard',
+        description: 'Copy a chat or transcript from anywhere, then paste (⌘V) into the transcript upload area—or click "Paste from clipboard." Chat-style content is structured automatically.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
         category: 'improvement',
         title: 'Download Output as MD, PDF, or DOCX',
         description: 'When downloading an output, you can choose the format: Markdown (.md), PDF, or Word (.docx). Headings, bold, italic, lists, and blockquotes are properly converted—no more raw markdown syntax in PDF or Word.',
