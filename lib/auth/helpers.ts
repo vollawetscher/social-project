@@ -34,13 +34,35 @@ export async function requireSessionOwnership(sessionId: string, userId: string)
 export async function requireSessionAccess(sessionId: string, userId: string): Promise<void> {
   const supabase = await createClient()
 
-  const { data: session, error } = await supabase
+  const { data: session, error: fetchError } = await supabase
     .from('sessions')
     .select('user_id')
     .eq('id', sessionId)
     .maybeSingle()
 
-  if (error || !session) {
+  if (fetchError) {
+    throw new Error('Session not found')
+  }
+
+  // RLS may hide the session from non-owners; if null, check if user is admin and verify session exists
+  if (!session) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+
+    if (profile?.role === 'admin') {
+      const { createServiceRoleClient } = await import('@/lib/supabase/server')
+      const serviceClient = createServiceRoleClient()
+      const { data: adminSession } = await serviceClient
+        .from('sessions')
+        .select('id')
+        .eq('id', sessionId)
+        .maybeSingle()
+
+      if (adminSession) return
+    }
     throw new Error('Session not found')
   }
 

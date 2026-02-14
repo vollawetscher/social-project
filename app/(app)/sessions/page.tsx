@@ -673,8 +673,9 @@ export default function SessionsPage() {
       }
     } catch (error) {
       console.error('Error renaming session:', error)
-      // Revert optimistic update on error
-      const response = await fetch('/api/sessions?format=v0')
+      // Revert optimistic update on error (preserve adminView)
+      const url = adminView ? '/api/sessions?format=v0&adminView=true' : '/api/sessions?format=v0'
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setSessions(data)
@@ -698,10 +699,13 @@ export default function SessionsPage() {
       if (!response.ok) {
         throw new Error('Failed to delete session')
       }
+      toast.success('Session deleted')
     } catch (error) {
       console.error('Error deleting session:', error)
-      // Revert optimistic update on error
-      const response = await fetch('/api/sessions?format=v0')
+      toast.error('Failed to delete session')
+      // Revert optimistic update on error (preserve adminView)
+      const url = adminView ? '/api/sessions?format=v0&adminView=true' : '/api/sessions?format=v0'
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setSessions(data)

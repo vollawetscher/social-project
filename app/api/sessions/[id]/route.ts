@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 
@@ -79,25 +79,40 @@ export async function DELETE(
   try {
     const user = await requireAuth()
     await requireSessionAccess(params.id, user.id)
-    const supabase = await createClient()
 
-    const { data: files } = await supabase
+    const supabase = await createClient()
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const isAdmin = profile?.role === 'admin'
+    // Use service role when admin deletes another user's session (bypasses RLS)
+    const db = isAdmin ? createServiceRoleClient() : supabase
+
+    const { data: files } = await db
       .from('files')
       .select('storage_path')
       .eq('session_id', params.id)
 
     if (files && files.length > 0) {
       const paths = files.map((f) => f.storage_path)
-      await supabase.storage.from('rohbericht-audio').remove(paths)
+      await db.storage.from('rohbericht-audio').remove(paths)
     }
 
-    const { error } = await supabase
+    const { data: deleted, error } = await db
       .from('sessions')
       .delete()
       .eq('id', params.id)
+      .select('id')
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!deleted || deleted.length === 0) {
+      return NextResponse.json({ error: 'Session not found or could not be deleted' }, { status: 404 })
     }
 
     return NextResponse.json({ success: true })
