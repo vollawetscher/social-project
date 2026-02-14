@@ -41,10 +41,8 @@ import { GenerateOutputModal } from "@/components/generate-output-modal"
 import { AudioPlayer } from "@/components/audio/AudioPlayer"
 import { toast } from "sonner"
 import {
-  mockTemplates,
   getRecordingTypeSuggestions,
   getDomainSuggestions,
-  getSuggestedTemplates,
 } from "@/lib/mock/data"
 import { toV0Session } from "@/lib/adapters/session-adapter"
 import type { Session, SuggestedOutputFormat } from "@/lib/types-v0"
@@ -417,8 +415,6 @@ export default function SessionDetailPage() {
   console.log('[Session Detail] Recording type suggestions:', recordingTypeSuggestions)
   console.log('[Session Detail] Domain suggestions:', domainSuggestions)
   
-  const suggestedTemplates = getSuggestedTemplates(session.domain)
-
   const handleGenerateOutput = (templateId: string) => {
     setSelectedTemplateId(templateId)
     setGenerateModalOpen(true)
@@ -468,8 +464,6 @@ export default function SessionDetailPage() {
       setRetryingTranscribe(false)
     }
   }
-
-  const selectedTemplate = mockTemplates.find((t) => t.id === selectedTemplateId)
 
   return (
     <div className="min-h-[calc(100vh-3.5rem-4rem)] md:min-h-[calc(100vh-3.5rem-3rem)] flex flex-col">
@@ -1169,7 +1163,7 @@ export default function SessionDetailPage() {
       <GenerateOutputModal
         open={generateModalOpen}
         onOpenChange={setGenerateModalOpen}
-        template={selectedTemplate}
+        initialTemplateId={selectedTemplateId}
         session={session}
         onSuccess={handleOutputGenerated}
       />

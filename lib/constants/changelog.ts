@@ -56,6 +56,13 @@ export const changelog: ChangelogVersion[] = [
         version: '1.5.0',
         date: 'February 11, 2026',
         category: 'improvement',
+        title: 'Smarter Template Suggestions',
+        description: 'Your custom templates are now suggested based on the session—domain, transcript content, and recording type. Legal, medical, sales, and other templates appear when they match the conversation instead of defaulting to General.',
+      },
+      {
+        version: '1.5.0',
+        date: 'February 11, 2026',
+        category: 'improvement',
         title: 'Download Output as MD, PDF, or DOCX',
         description: 'When downloading an output, you can choose the format: Markdown (.md), PDF, or Word (.docx). Headings, bold, italic, lists, and blockquotes are properly converted—no more raw markdown syntax in PDF or Word.',
       },

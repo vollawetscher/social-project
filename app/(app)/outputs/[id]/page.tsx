@@ -54,6 +54,21 @@ import { exportOutput } from "@/lib/utils/output-export"
 import type { Output } from "@/lib/types-v0"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
 
+function extractOutputHeadline(content: string): string | undefined {
+  if (!content?.trim()) return undefined
+  const match = content.match(/^#+\s+(.+)$/m)
+  return match ? match[1].trim() : undefined
+}
+
+function formatShareLinkForCopy(url: string, headline?: string, createdAt?: string): string {
+  const title = headline || 'Shared output'
+  const dateStr = createdAt
+    ? new Date(createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+    : ''
+  const prefix = dateStr ? `${title} ${dateStr}.` : title
+  return `${prefix} ${url}`
+}
+
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-US", {
     month: "long",
@@ -155,9 +170,11 @@ export default function OutputDetailPage() {
       setShareUrl(data.shareUrl)
       setIsPublic(true)
       
-      // Auto-copy link (can fail on first user gesture in some browsers)
+      // Auto-copy link with header (can fail on first user gesture in some browsers)
+      const headline = extractOutputHeadline(output.content) || output.templateName
+      const shareText = formatShareLinkForCopy(data.shareUrl, headline, output.createdAt)
       try {
-        await navigator.clipboard.writeText(data.shareUrl)
+        await navigator.clipboard.writeText(shareText)
         setCopiedShareLink(true)
         setTimeout(() => setCopiedShareLink(false), 2000)
         toast.success('Share link copied to clipboard!')
@@ -176,8 +193,12 @@ export default function OutputDetailPage() {
   async function handleCopyShareLink() {
     if (!shareUrl) return
     
+    const headline = output
+      ? (extractOutputHeadline(output.content) || output.templateName)
+      : undefined
+    const shareText = formatShareLinkForCopy(shareUrl, headline, output?.createdAt)
     try {
-      await navigator.clipboard.writeText(shareUrl)
+      await navigator.clipboard.writeText(shareText)
       setCopiedShareLink(true)
       setTimeout(() => setCopiedShareLink(false), 2000)
       toast.success('Share link copied!')

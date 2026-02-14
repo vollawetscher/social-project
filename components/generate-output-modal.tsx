@@ -50,6 +50,8 @@ interface GenerateOutputModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   template?: Template | null
+  /** When template is not provided, use this ID to pre-select (works for user templates) */
+  initialTemplateId?: string | null
   session: Session
   onSuccess?: () => void // Called after output generated - use to refresh outputs list
 }
@@ -73,12 +75,13 @@ export function GenerateOutputModal({
   open,
   onOpenChange,
   template,
+  initialTemplateId,
   session,
   onSuccess,
 }: GenerateOutputModalProps) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(template?.id || "")
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(template?.id || initialTemplateId || "")
   const [selectedPerspective, setSelectedPerspective] = useState<ParticipantRole | "">("")
   const [selectedAudience, setSelectedAudience] = useState<Audience | "">("")
   const [selectedLanguage, setSelectedLanguage] = useState("English")
@@ -100,18 +103,28 @@ export function GenerateOutputModal({
   const [audienceConfirmed, setAudienceConfirmed] = useState(false)
   const [generating, setGenerating] = useState(false)
 
-  // Fetch real templates from API
+  // Fetch templates: use suggested order for this session when available
   useEffect(() => {
     async function fetchTemplates() {
       try {
-        const response = await fetch('/api/templates')
-        if (response.ok) {
-          const data = await response.json()
-          // Use real templates if available, otherwise fall back to mock
-          setTemplates(data.length > 0 ? data : mockTemplates)
+        const allRes = await fetch('/api/templates')
+        const allData = allRes.ok ? await allRes.json() : []
+        const allTemplates = allData.length > 0 ? allData : mockTemplates
+
+        if (session?.id) {
+          const suggestedRes = await fetch(`/api/templates/suggested?sessionId=${session.id}`)
+          if (suggestedRes.ok) {
+            const suggested = await suggestedRes.json()
+            const suggestedIdsOrdered = suggested.map((t: Template) => t.id)
+            const byId = new Map(allTemplates.map((t: Template) => [t.id, t]))
+            const ordered = suggestedIdsOrdered.map((id: string) => byId.get(id)).filter(Boolean)
+            const rest = allTemplates.filter((t: Template) => !suggestedIdsOrdered.includes(t.id))
+            setTemplates([...ordered, ...rest])
+          } else {
+            setTemplates(allTemplates)
+          }
         } else {
-          // Fallback to mock if API fails
-          setTemplates(mockTemplates)
+          setTemplates(allTemplates)
         }
       } catch (error) {
         console.error('Error fetching templates:', error)
@@ -121,7 +134,7 @@ export function GenerateOutputModal({
       }
     }
     fetchTemplates()
-  }, [])
+  }, [session?.id])
 
   // Get speakers with their roles for perspective selection
   const sessionSpeakers = session.speakers.filter(s => s.participantRole !== 'observer')
@@ -132,12 +145,15 @@ export function GenerateOutputModal({
   const aiSuggestedAudience: Audience | null = session.domain === "sales" ? "internal" : null
   const aiAudienceConfidence = 0.72
 
-  // Update selected template when prop changes
+  // Update selected template when prop changes or when templates load with initialTemplateId
   useEffect(() => {
     if (template) {
       setSelectedTemplate(template.id)
+    } else if (initialTemplateId && templates.length > 0) {
+      const exists = templates.some((t) => t.id === initialTemplateId)
+      if (exists) setSelectedTemplate(initialTemplateId)
     }
-  }, [template])
+  }, [template, initialTemplateId, templates])
 
   const currentTemplate = templates.find((t) => t.id === selectedTemplate)
 

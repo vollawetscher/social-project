@@ -4,6 +4,45 @@
 
 import { Session as DbSession, SessionStatus as DbStatus } from '@/lib/types/database'
 import { Session as V0Session, SessionStatus as V0Status } from '@/lib/types-v0'
+import type { Domain } from '@/lib/types-v0'
+
+const PRIMARY_TO_DOMAIN: Record<string, Domain> = {
+  medical: 'medical',
+  legal: 'legal',
+  law: 'legal',
+  sales: 'sales',
+  hr: 'hr',
+  'human resources': 'hr',
+  education: 'education',
+  consulting: 'consulting',
+  finance: 'consulting',
+  insurance: 'consulting',
+  general: 'general',
+}
+
+const RECORDING_TYPE_TO_DOMAIN: Record<string, Domain> = {
+  sales_call: 'sales',
+  legal_deposition: 'legal',
+  meeting: 'general',
+  interview: 'hr',
+  consultation: 'general',
+  lecture: 'education',
+  other: 'general',
+}
+
+function deriveDomain(dbSession: any): Domain {
+  const domains = dbSession.suggested_domains as Array<{ primary?: string; specialty?: string; domain?: string }> | undefined
+  if (domains && domains.length > 0) {
+    const primary = (domains[0].primary || domains[0].domain || '').toLowerCase().trim()
+    if (primary && PRIMARY_TO_DOMAIN[primary]) return PRIMARY_TO_DOMAIN[primary]
+    for (const [key, tag] of Object.entries(PRIMARY_TO_DOMAIN)) {
+      if (primary.includes(key)) return tag
+    }
+  }
+  const rt = dbSession.recording_type as string | undefined
+  if (rt && RECORDING_TYPE_TO_DOMAIN[rt]) return RECORDING_TYPE_TO_DOMAIN[rt]
+  return 'general'
+}
 
 /**
  * Map database session status to v0 UI status
@@ -95,7 +134,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     speakers,
     transcript: transcriptSegments,
     audioUrl: (dbSession as any).audio_url, // Include audio URL if available
-    domain: (dbSession as any).recording_type || 'general',
+    domain: deriveDomain(dbSession),
     domains: (dbSession as any).suggested_domains || [], // 2-layer domain structure
     recordingType: (dbSession as any).recording_type,
     recordingTypeConfidence: (dbSession as any).recording_type_confidence,
