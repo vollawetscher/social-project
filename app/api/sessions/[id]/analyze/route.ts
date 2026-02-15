@@ -110,15 +110,21 @@ export async function POST(
     }
     console.log('[Analyze API] Transcript found, segments count:', allSegments.length)
 
-    // Build conversation sample (first 5 minutes or 2000 characters)
+    // Sample from start, 25%, 50%, 75%, end to avoid misleading analysis of long transcripts
     const segments = allSegments
-    const sample = segments
-      .slice(0, Math.min(segments.length, 20))
-      .map((seg: any) => `${seg.speaker}: ${seg.text}`)
-      .join('\n')
-      .substring(0, 2000)
-    
-    console.log('[Analyze API] Sample length:', sample.length, 'characters')
+    const formatSegment = (seg: any) => `${seg.speaker || 'S1'}: ${seg.text}`
+    const n = segments.length
+    const segsPerChunk = Math.max(1, Math.floor(n / 20))
+    const positions = n <= 10
+      ? [0]
+      : [0, Math.floor(n * 0.25), Math.floor(n * 0.5), Math.floor(n * 0.75), Math.max(0, n - segsPerChunk)]
+    const sampled: string[] = []
+    for (const pos of positions) {
+      const chunk = segments.slice(pos, Math.min(pos + segsPerChunk, n))
+      if (chunk.length) sampled.push(chunk.map(formatSegment).join('\n'))
+    }
+    const sample = sampled.join('\n\n---\n\n').substring(0, 3500)
+    console.log('[Analyze API] Sampled', positions.length, 'sections,', sample.length, 'chars')
 
     // Check if already analyzed (skip re-analysis unless user wants to correct)
     const alreadyAnalyzed = session.recording_type && session.suggested_domains && session.ai_extracted_context

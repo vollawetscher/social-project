@@ -66,7 +66,7 @@ function formatDate(dateString: string): string {
 }
 
 function calculateDaysUntilExpiration(sharedAt: string): number {
-  const EXPIRATION_DAYS = 30
+  const EXPIRATION_DAYS = 3  // Must match DB trigger (share_expires_at = shared_at + 3 days)
   const sharedDate = new Date(sharedAt)
   const expirationDate = new Date(sharedDate.getTime() + EXPIRATION_DAYS * 24 * 60 * 60 * 1000)
   const now = new Date()
@@ -75,7 +75,7 @@ function calculateDaysUntilExpiration(sharedAt: string): number {
 }
 
 function getExpirationDate(sharedAt: string): string {
-  const EXPIRATION_DAYS = 30
+  const EXPIRATION_DAYS = 3
   const sharedDate = new Date(sharedAt)
   const expirationDate = new Date(sharedDate.getTime() + EXPIRATION_DAYS * 24 * 60 * 60 * 1000)
   return formatDate(expirationDate.toISOString())

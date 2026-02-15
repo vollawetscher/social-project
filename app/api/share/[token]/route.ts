@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 // Get shared output by token (public access, no auth required)
@@ -8,15 +8,13 @@ export async function GET(
 ) {
   try {
     console.log('[Share] Looking up token:', params.token)
-    
-    // Create Supabase client with service role to bypass RLS for debugging
-    const supabase = await createClient()
+    const supabase = createServiceRoleClient()
 
-    // First check if output exists with this token (regardless of is_public)
+    // First check if output exists with this token (service role bypasses RLS)
     console.log('[Share] Step 1: Checking if output exists...')
     const { data: checkOutput, error: checkError } = await supabase
       .from('outputs')
-      .select('id, is_public, share_token, created_by')
+      .select('id, is_public, share_token, share_expires_at, created_by')
       .eq('share_token', params.token)
       .maybeSingle()
 
@@ -42,6 +40,13 @@ export async function GET(
         error: 'This output is not publicly shared',
         debug: 'Output exists but is_public is false'
       }, { status: 403 })
+    }
+
+    if (checkOutput.share_expires_at && new Date(checkOutput.share_expires_at) <= new Date()) {
+      console.error('[Share] Link has expired:', checkOutput.share_expires_at)
+      return NextResponse.json({ 
+        error: 'This shared link has expired'
+      }, { status: 410 })
     }
 
     console.log('[Share] Step 2: Fetching full output with relations...')

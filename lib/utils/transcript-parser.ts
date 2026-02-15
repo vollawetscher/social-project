@@ -60,17 +60,34 @@ function parseSRT(content: string): ParseResult {
 
     const text = textLines.join(' ').trim()
     if (text) {
+      const { speaker, text: cleanText } = extractSpeakerFromText(text)
       segments.push({
         start_ms: startMs,
         end_ms: endMs,
-        speaker: 'S1',
-        text,
+        speaker,
+        text: cleanText || text,
       })
     }
   }
 
   const rawText = segments.map(s => s.text).join(' ')
   return { segments, rawText }
+}
+
+/** Extract speaker label (S1, S2, Speaker 1, etc.) from start of text if present */
+function extractSpeakerFromText(text: string): { speaker: string; text: string } {
+  const trimmed = text.trim()
+  // S1:, S2:, Speaker 1:, Speaker 2:, SPEAKER_00:, Speaker_1:
+  const match = trimmed.match(
+    /^(S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:?\s*(.*)$/i
+  )
+  if (match) {
+    const label = match[1]
+    const num = label.replace(/\D/g, '') || '1'
+    const speaker = `S${num}`
+    return { speaker, text: (match[2] || '').trim() }
+  }
+  return { speaker: 'S1', text: trimmed }
 }
 
 /**
@@ -117,11 +134,12 @@ function parseVTT(content: string): ParseResult {
 
     const text = textLines.join(' ').trim()
     if (text) {
+      const { speaker, text: cleanText } = extractSpeakerFromText(text)
       segments.push({
         start_ms: startMs,
         end_ms: endMs,
-        speaker: 'S1',
-        text,
+        speaker,
+        text: cleanText || text,
       })
     }
   }
@@ -161,11 +179,12 @@ function parseTXT(content: string): ParseResult {
   for (const para of paragraphs) {
     const words = para.split(/\s+/).filter(Boolean)
     const durationMs = Math.max(1000, words.length * msPerWord)
+    const { speaker, text } = extractSpeakerFromText(para)
     segments.push({
       start_ms: currentMs,
       end_ms: currentMs + durationMs,
-      speaker: 'S1',
-      text: para,
+      speaker,
+      text: text || para,
     })
     currentMs += durationMs
   }

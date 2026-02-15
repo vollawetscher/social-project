@@ -603,69 +603,87 @@ export default function SessionsPage() {
       .select()
       .single()
 
-    if (sessionError) throw new Error(`Failed to create session: ${sessionError.message}`)
-
-    let totalDuration = 0
-    let firstPublicUrl = ''
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const extension = file.name.split('.').pop() || 'mp3'
-      const fileName = `${session.id}_${Date.now()}_${i}.${extension}`
-      // Supabase bucket allows audio/mp4 but not video/mp4 - normalize for storage
-      const storageContentType =
-        file.type === 'video/mp4' ? 'audio/mp4' : (file.type || 'audio/mpeg')
-
-      const { error: uploadError } = await supabase.storage
-        .from('rohbericht-audio')
-        .upload(fileName, file, {
-          contentType: storageContentType,
-          upsert: false
-        })
-
-      if (uploadError) throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`)
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('rohbericht-audio')
-        .getPublicUrl(fileName)
-
-      if (i === 0) firstPublicUrl = publicUrl
-
-      const audioDuration = await getAudioDuration(file)
-      totalDuration += audioDuration
-
-      const { error: fileError } = await supabase
-        .from('files')
-        .insert({
-          session_id: session.id,
-          storage_path: fileName,
-          original_filename: file.name,
-          mime_type: file.type || 'audio/mpeg',
-          size_bytes: file.size,
-          file_purpose: 'meeting',
-          upload_status: 'completed',
-        })
-
-      if (fileError) throw new Error(`Failed to create file record: ${fileError.message}`)
+    if (sessionError) {
+      throw new Error(`Failed to create session: ${sessionError.message}`)
     }
 
-    const { error: updateError } = await supabase
-      .from('sessions')
-      .update({
-        audio_url: firstPublicUrl,
-        duration_sec: totalDuration
+    try {
+      let totalDuration = 0
+      let firstPublicUrl = ''
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const extension = file.name.split('.').pop() || 'mp3'
+        const fileName = `${session.id}_${Date.now()}_${i}.${extension}`
+        // Supabase bucket allows audio/mp4 but not video/mp4 - normalize for storage
+        const storageContentType =
+          file.type === 'video/mp4' ? 'audio/mp4' : (file.type || 'audio/mpeg')
+
+        const { error: uploadError } = await supabase.storage
+          .from('rohbericht-audio')
+          .upload(fileName, file, {
+            contentType: storageContentType,
+            upsert: false
+          })
+
+        if (uploadError) {
+          const errMsg = `Failed to upload ${file.name}: ${uploadError.message}`
+          await supabase
+            .from('sessions')
+            .update({ status: 'error', last_error: errMsg })
+            .eq('id', session.id)
+          throw new Error(errMsg)
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('rohbericht-audio')
+          .getPublicUrl(fileName)
+
+        if (i === 0) firstPublicUrl = publicUrl
+
+        const audioDuration = await getAudioDuration(file)
+        totalDuration += audioDuration
+
+        const { error: fileError } = await supabase
+          .from('files')
+          .insert({
+            session_id: session.id,
+            storage_path: fileName,
+            original_filename: file.name,
+            mime_type: file.type || 'audio/mpeg',
+            size_bytes: file.size,
+            file_purpose: 'meeting',
+            upload_status: 'completed',
+          })
+
+        if (fileError) throw new Error(`Failed to create file record: ${fileError.message}`)
+      }
+
+      const { error: updateError } = await supabase
+        .from('sessions')
+        .update({
+          audio_url: firstPublicUrl,
+          duration_sec: totalDuration
+        })
+        .eq('id', session.id)
+
+      if (updateError) throw new Error(`Failed to update session: ${updateError.message}`)
+
+      const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: language }),
       })
-      .eq('id', session.id)
-
-    if (updateError) throw new Error(`Failed to update session: ${updateError.message}`)
-
-    const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ language: language }),
-    })
-    if (!transcribeRes.ok) {
-      console.error('Transcription trigger failed:', await transcribeRes.text())
+      if (!transcribeRes.ok) {
+        console.error('Transcription trigger failed:', await transcribeRes.text())
+      }
+    } catch (err: any) {
+      // Ensure session is marked error on any failure (upload/storage/DB)
+      await supabase
+        .from('sessions')
+        .update({ status: 'error', last_error: err?.message || 'Upload failed' })
+        .eq('id', session.id)
+      throw err
     }
   }
 

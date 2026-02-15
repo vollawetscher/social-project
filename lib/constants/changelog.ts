@@ -14,6 +14,40 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.5.1',
+    date: 'February 15, 2026',
+    entries: [
+      {
+        version: '1.5.1',
+        date: 'February 15, 2026',
+        category: 'improvement',
+        title: 'Speaker Labels in Imported Transcripts',
+        description: 'When you import TXT, SRT, or VTT files with speaker labels (S1, S2, Speaker 1, etc.), they are now detected and preserved—your transcript shows who said what.',
+      },
+      {
+        version: '1.5.1',
+        date: 'February 15, 2026',
+        category: 'improvement',
+        title: 'Better Domain & Topic Detection',
+        description: 'Domain and topic analysis now samples from the start, middle, and end of long transcripts instead of only the beginning—more accurate for meetings where the main subject appears later.',
+      },
+      {
+        version: '1.5.1',
+        date: 'February 15, 2026',
+        category: 'fix',
+        title: 'Failed Uploads No Longer Stuck',
+        description: 'When an upload fails (e.g. file too large), the session now shows as failed with an error message instead of staying in "uploading" indefinitely.',
+      },
+      {
+        version: '1.5.1',
+        date: 'February 15, 2026',
+        category: 'fix',
+        title: 'Share Links Load Correctly',
+        description: 'Share links now load reliably. The share page also shows the correct expiration (3 days) instead of 30.',
+      },
+    ],
+  },
+  {
     version: '1.5.0',
     date: 'February 11, 2026',
     entries: [
