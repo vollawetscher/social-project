@@ -895,27 +895,28 @@ export default function SessionsPage() {
 
               {/* Upload Areas - Split */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Upload Audio */}
-                <div
+                {/* Upload Audio - label makes tap work on mobile without drag-drop */}
+                <label
+                  htmlFor="audio-file-input"
                   className={cn(
-                    "border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer",
+                    "border-2 border-dashed rounded-lg p-4 min-h-[88px] flex flex-col items-center justify-center transition-colors cursor-pointer touch-manipulation block",
                     isDraggingAudio
                       ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground",
+                      : "border-border hover:border-muted-foreground active:bg-muted/50",
                     uploadingFiles && "opacity-50 pointer-events-none"
                   )}
                   onDragOver={handleAudioDragOver}
                   onDragLeave={handleAudioDragLeave}
                   onDrop={handleDrop}
-                  onClick={() => !uploadingFiles && fileInputRef.current?.click()}
                 >
                   <input
                     ref={fileInputRef}
+                    id="audio-file-input"
                     type="file"
                     accept="audio/*,.mp3,.wav,.webm,.m4a,.mp4,video/mp4"
                     multiple
                     onChange={handleFileSelect}
-                    className="hidden"
+                    className="sr-only"
                   />
                   <div className="flex flex-col items-center text-center">
                     {uploadingFiles ? (
@@ -930,44 +931,41 @@ export default function SessionsPage() {
                         <p className="text-xs text-muted-foreground mt-0.5">
                           MP3, WAV, MP4, M4A
                         </p>
+                        <p className="text-xs text-primary font-medium mt-1">
+                          Tap to choose
+                        </p>
                       </>
                     )}
                   </div>
-                </div>
+                </label>
 
-                {/* Upload file (transcript) - tap/click opens file picker, paste supported */}
+                {/* Upload Transcript - label for tap; paste button separate for mobile */}
                 <div
-                  role="button"
-                  tabIndex={0}
                   className={cn(
-                    "border-2 border-dashed rounded-lg p-4 min-h-[88px] flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer touch-manipulation outline-none focus:ring-2 focus:ring-primary/30",
+                    "border-2 border-dashed rounded-lg p-4 min-h-[88px] flex flex-col items-center justify-center gap-2 transition-colors touch-manipulation",
                     isDraggingFile
                       ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground active:bg-muted/50",
+                      : "border-border hover:border-muted-foreground",
                     uploadingTranscript && "opacity-50 pointer-events-none"
                   )}
                   onDragOver={handleFileDragOver}
                   onDragLeave={handleFileDragLeave}
                   onDrop={handleFileDrop}
                   onPaste={handleTranscriptPaste}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      if (!uploadingTranscript) transcriptInputRef.current?.click()
-                    }
-                  }}
-                  onClick={() => !uploadingTranscript && transcriptInputRef.current?.click()}
                 >
-                  <input
-                    ref={transcriptInputRef}
-                    type="file"
-                    accept=".txt,.srt,.vtt,text/plain"
-                    multiple
-                    onChange={handleTranscriptFileSelect}
-                    className="hidden"
-                    id="transcript-file-input"
-                  />
-                  <div className="flex flex-col items-center text-center pointer-events-none">
+                  <label
+                    htmlFor="transcript-file-input"
+                    className="flex flex-col items-center justify-center cursor-pointer touch-manipulation flex-1 min-h-0"
+                  >
+                    <input
+                      ref={transcriptInputRef}
+                      id="transcript-file-input"
+                      type="file"
+                      accept=".txt,.srt,.vtt,text/plain"
+                      multiple
+                      onChange={handleTranscriptFileSelect}
+                      className="sr-only"
+                    />
                     {uploadingTranscript ? (
                       <>
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mb-2"></div>
@@ -985,17 +983,13 @@ export default function SessionsPage() {
                         </p>
                       </>
                     )}
-                  </div>
+                  </label>
                   {!uploadingTranscript && (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="pointer-events-auto"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handlePasteTranscript()
-                      }}
+                      onClick={handlePasteTranscript}
                     >
                       Paste from clipboard
                     </Button>
@@ -1125,7 +1119,7 @@ export default function SessionsPage() {
                           className="h-8 w-8 p-0 shrink-0"
                         >
                           <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
+                          <span className="hidden">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -1267,7 +1261,7 @@ export default function SessionsPage() {
                               className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
+                              <span className="hidden">Open menu</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">

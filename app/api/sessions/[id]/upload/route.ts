@@ -234,11 +234,16 @@ export async function POST(
       )
     }
 
+    const { data: { publicUrl } } = supabase.storage
+      .from('rohbericht-audio')
+      .getPublicUrl(storagePath)
+
     await supabase
       .from('sessions')
       .update({
         status: 'created',
-        duration_sec: duration
+        duration_sec: duration,
+        audio_url: publicUrl,
       })
       .eq('id', params.id)
 

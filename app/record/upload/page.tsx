@@ -11,8 +11,6 @@ import { Upload, Loader2, Clock, Check, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import { createClient } from '@/lib/supabase/client'
-
 interface UploadStatus {
   id: string
   status: 'pending' | 'uploading' | 'success' | 'error'
@@ -28,7 +26,6 @@ export default function UploadRecordingsPage() {
   const [language, setLanguage] = useState<string>('de') // Default to German
   const router = useRouter()
   const { user, loading } = useAuth()
-  const supabase = createClient()
 
   useEffect(() => {
     if (!loading && !user) {
@@ -83,7 +80,6 @@ export default function UploadRecordingsPage() {
   }
 
   const uploadRecording = async (recording: LocalRecording, language: string = 'en'): Promise<string> => {
-    // Create session with a default name
     const timestamp = new Date(recording.timestamp).toLocaleString('en-US', {
       month: '2-digit',
       day: '2-digit',
@@ -92,86 +88,51 @@ export default function UploadRecordingsPage() {
       minute: '2-digit'
     })
     const sessionName = `Recording ${timestamp}`
-    
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .insert({
-        internal_case_id: sessionName,
-        user_id: user?.id,
-        status: 'uploading',
-        language: language,
-      })
-      .select()
-      .single()
-
-    if (sessionError) throw sessionError
-
-    // Upload audio file to Supabase Storage
     const extension = recording.mimeType.split('/')[1] || 'webm'
-    const fileName = `${session.id}_${Date.now()}.${extension}`
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('rohbericht-audio')
-      .upload(fileName, recording.blob, {
-        contentType: recording.mimeType,
-        upsert: false
-      })
+    const filename = `recording_${timestamp.replace(/[/,]/g, '-')}.${extension}`
 
-    if (uploadError) throw uploadError
+    // 1. Create session via API (avoids client-side RLS issues)
+    const createRes = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        internal_case_id: sessionName,
+        language: language,
+      }),
+    })
+    if (!createRes.ok) {
+      const err = await createRes.json().catch(() => ({}))
+      throw new Error(err.error || 'Failed to create session')
+    }
+    const session = await createRes.json()
 
-    // Get public URL for the audio file
-    const { data: { publicUrl } } = supabase.storage
-      .from('rohbericht-audio')
-      .getPublicUrl(fileName)
+    // 2. Upload via API (server-side storage - reliable, no client storage RLS)
+    const formData = new FormData()
+    formData.append('file', new File([recording.blob], filename, { type: recording.mimeType }))
+    formData.append('duration', String(Math.round(recording.duration)))
+    formData.append('purpose', 'meeting')
 
-    // Update session with audio URL, duration and status
-    const { error: updateError } = await supabase
-      .from('sessions')
-      .update({ 
-        audio_url: publicUrl,
-        duration_sec: recording.duration,
-        status: 'uploading'
-      })
-      .eq('id', session.id)
-
-    if (updateError) throw updateError
-
-    // Create file record (required for transcription)
-    // file_purpose enum values: 'context', 'meeting', 'dictation', 'instruction', 'addition'
-    const { error: fileError } = await supabase
-      .from('files')
-      .insert({
-        session_id: session.id,
-        storage_path: fileName,
-        original_filename: `recording_${timestamp}.${extension}`,
-        mime_type: recording.mimeType,
-        size_bytes: recording.size,
-        file_purpose: 'meeting', // Use valid enum value
-        upload_status: 'completed',
-      })
-
-    if (fileError) {
-      console.error('File record creation error:', fileError)
-      throw fileError
+    const uploadRes = await fetch(`/api/sessions/${session.id}/upload`, {
+      method: 'POST',
+      body: formData,
+    })
+    if (!uploadRes.ok) {
+      const errData = await uploadRes.json().catch(() => ({}))
+      const msg = errData.error || 'Upload failed'
+      // Delete the orphan session on upload failure
+      await fetch(`/api/sessions/${session.id}`, { method: 'DELETE' }).catch(() => {})
+      throw new Error(msg)
     }
 
-    // Trigger transcription
-    try {
-      const transcribeResponse = await fetch(`/api/sessions/${session.id}/transcribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          storage_path: fileName,
-          language: language,
-        }),
-      })
-      
-      if (!transcribeResponse.ok) {
-        console.error('Failed to trigger transcription')
-      }
-    } catch (error) {
-      console.error('Error triggering transcription:', error)
-      // Don't throw - session is created, transcription can be retried
+    // 3. Trigger transcription
+    const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language }),
+    })
+    if (!transcribeRes.ok) {
+      console.error('Transcription trigger failed:', await transcribeRes.text())
+      // Session and audio exist - user can retry transcription from session page
     }
 
     return session.id
