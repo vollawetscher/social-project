@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Mic, Upload, Trash2, Play, Pause, Clock, HardDrive, LogIn, ArrowLeft } from 'lucide-react'
+import { Mic, Upload, Trash2, Play, Pause, Clock, HardDrive, LogIn, ArrowLeft, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
@@ -82,6 +82,39 @@ export default function QuickRecordPage() {
     
     // Navigate to upload page with recordings
     router.push('/record/upload')
+  }
+
+  const handleDownload = async (rec: LocalRecording) => {
+    try {
+      const ext = rec.mimeType?.split('/')[1]?.replace(/;.*/, '') || 'webm'
+      const date = new Date(rec.timestamp).toLocaleString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).replace(/[/,]/g, '-')
+      const filename = `Recording ${date}.${ext}`
+      const file = new File([rec.blob], filename, { type: rec.mimeType })
+
+      if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
+        await navigator.share({
+          files: [file],
+          title: filename,
+        })
+        toast.success('Share sheet opened – save to Files or another app')
+      } else {
+        const url = URL.createObjectURL(rec.blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        a.click()
+        URL.revokeObjectURL(url)
+        toast.success('Download started')
+      }
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
+      toast.error('Failed to save file')
+    }
   }
 
   const handlePlay = async (id: string) => {
@@ -247,6 +280,7 @@ export default function QuickRecordPage() {
                       variant="ghost"
                       onClick={() => handlePlay(rec.id)}
                       className="h-8 w-8"
+                      title="Play"
                     >
                       {playingId === rec.id ? (
                         <Pause className="h-4 w-4" />
@@ -257,8 +291,18 @@ export default function QuickRecordPage() {
                     <Button
                       size="icon"
                       variant="ghost"
+                      onClick={() => handleDownload(rec)}
+                      className="h-8 w-8"
+                      title="Save to device"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
                       onClick={() => handleDelete(rec.id)}
                       className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                      title="Delete"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
