@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { Upload, Loader2, Clock, Check, AlertCircle } from 'lucide-react'
+import { Upload, Loader2, Clock, Check, AlertCircle, Download, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
 import { useAuth } from '@/lib/auth/AuthProvider'
@@ -219,6 +219,39 @@ export default function UploadRecordingsPage() {
     return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
   }
 
+  const handleSaveToDevice = async (rec: LocalRecording) => {
+    try {
+      const ext = rec.mimeType?.split('/')[1]?.replace(/;.*/, '') || 'webm'
+      const date = new Date(rec.timestamp).toLocaleString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).replace(/[/,]/g, '-')
+      const filename = `Recording ${date}.${ext}`
+      const file = new File([rec.blob], filename, { type: rec.mimeType })
+
+      if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
+        await navigator.share({
+          files: [file],
+          title: filename,
+        })
+        toast.success('Share sheet opened – save to Files or another app')
+      } else {
+        const url = URL.createObjectURL(rec.blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        a.click()
+        URL.revokeObjectURL(url)
+        toast.success('Download started')
+      }
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
+      toast.error('Failed to save file')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -230,11 +263,16 @@ export default function UploadRecordingsPage() {
   return (
     <div className="min-h-screen bg-slate-50 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Upload Recordings</h1>
-          <p className="text-sm text-slate-600">
-            Select recordings to upload and create new sessions
-          </p>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/record')} aria-label="Back">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Upload Recordings</h1>
+            <p className="text-sm text-slate-600">
+              Select recordings to upload and create new sessions
+            </p>
+          </div>
         </div>
 
         {/* Language Selection */}
@@ -282,19 +320,32 @@ export default function UploadRecordingsPage() {
                       </div>
                       <p className="text-xs text-slate-500">{formatDate(rec.timestamp)}</p>
                     </div>
-                    {status && (
-                      <div className="flex items-center gap-2">
-                        {status.status === 'uploading' && (
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                        )}
-                        {status.status === 'success' && (
-                          <Check className="h-5 w-5 text-green-500" />
-                        )}
-                        {status.status === 'error' && (
-                          <AlertCircle className="h-5 w-5 text-red-500" />
-                        )}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleSaveToDevice(rec)}
+                        disabled={uploading}
+                        className="h-8 w-8 shrink-0"
+                        title="Save to device"
+                        aria-label="Save to device"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      {status && (
+                        <>
+                          {status.status === 'uploading' && (
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                          )}
+                          {status.status === 'success' && (
+                            <Check className="h-5 w-5 text-green-500" />
+                          )}
+                          {status.status === 'error' && (
+                            <AlertCircle className="h-5 w-5 text-red-500" />
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </Card>
               )
