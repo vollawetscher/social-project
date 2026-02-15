@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.5.2',
+    date: 'February 15, 2026',
+    entries: [
+      {
+        version: '1.5.2',
+        date: 'February 15, 2026',
+        category: 'improvement',
+        title: 'Chat Exports Preserve Both Sides',
+        description: 'When you paste a chat from ChatGPT, Claude, or similar (You said / ChatGPT said format), both your messages and the AI replies are now imported—not just your prompts.',
+      },
+      {
+        version: '1.5.2',
+        date: 'February 15, 2026',
+        category: 'fix',
+        title: 'Share Link Extends When You Copy Again',
+        description: 'If you shared an output days ago and the link expired, clicking Share and copying the link again now extends it for 3 more days. Same link, fresh expiration—recipients can open it.',
+      },
+    ],
+  },
+  {
     version: '1.5.1',
     date: 'February 15, 2026',
     entries: [

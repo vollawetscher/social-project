@@ -15,6 +15,9 @@ export function needsStructureHeuristic(rawFileContent: string, filename: string
   const ext = filename.split('.').pop()?.toLowerCase() || ''
   const lower = trimmed.toLowerCase()
 
+  // Chat export format (ChatGPT "You said"/"ChatGPT said", User/Assistant) - parsed by transcript-parser
+  if (/(?:^|\n)\s*(You said|ChatGPT said|User|Assistant)\s*:?\s*\n/i.test(trimmed)) return false
+
   // SRT/VTT: timed subtitle format = already structured, skip AI
   if (ext === 'srt' || ext === 'vtt') return false
   if (trimmed.includes('-->') && /\d{2}:\d{2}:\d{2}[.,]\d{3}/.test(trimmed)) return false

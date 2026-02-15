@@ -149,6 +149,68 @@ function parseVTT(content: string): ParseResult {
 }
 
 /**
+ * Parse chat exports (ChatGPT "You said:" / "ChatGPT said:", User/Assistant, etc.).
+ * Preserves BOTH sides of the conversation.
+ */
+function parseChatFormat(content: string): ParseResult | null {
+  const trimmed = content.trim()
+  if (!trimmed || trimmed.length < 20) return null
+
+  // Patterns: "You said:", "ChatGPT said:", "User:", "Assistant:", "Human:", "AI said:", "Claude said:", etc.
+  const speakerPattern = /(?:^|\n)\s*((?:You|User|Human)\s+said|(?:ChatGPT|Assistant|AI|Bot|Claude|Bard|Gemini)\s+said|User|Assistant|Human)\s*:?\s*\n/gi
+  const blocks: { speaker: string; text: string }[] = []
+
+  // Reset regex state for global match
+  speakerPattern.lastIndex = 0
+  const firstMatch = speakerPattern.exec(trimmed)
+  if (!firstMatch) return null
+
+  // We need at least 2 blocks (user + reply) to consider it a chat
+  const allMatches: { index: number; label: string }[] = []
+  speakerPattern.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = speakerPattern.exec(trimmed)) !== null) {
+    allMatches.push({ index: m.index, label: m[1].toLowerCase() })
+  }
+  if (allMatches.length < 2) return null
+
+  for (let i = 0; i < allMatches.length; i++) {
+    const start = allMatches[i].index
+    const end = i + 1 < allMatches.length ? allMatches[i + 1].index : trimmed.length
+    const rawBlock = trimmed.slice(start, end)
+    const labelMatch = rawBlock.match(/\s*((?:You|User|Human)\s+said|(?:ChatGPT|Assistant|AI|Bot|Claude|Bard|Gemini)\s+said|User|Assistant|Human)\s*:?\s*\n/i)
+    if (!labelMatch) continue
+    const label = labelMatch[1].toLowerCase()
+    const textStart = (labelMatch.index || 0) + labelMatch[0].length
+    const text = rawBlock.slice(textStart).trim()
+
+    if (!text) continue
+    const isUser = /^(you said|user said|human said|user|human)$/.test(label)
+    const speaker = isUser ? 'S1' : 'S2'
+    blocks.push({ speaker, text })
+  }
+
+  if (blocks.length === 0) return null
+
+  const segments: ParsedSegment[] = []
+  let currentMs = 0
+  const msPerWord = 400
+  for (const b of blocks) {
+    const words = b.text.split(/\s+/).filter(Boolean)
+    const durationMs = Math.max(1000, words.length * msPerWord)
+    segments.push({
+      start_ms: currentMs,
+      end_ms: currentMs + durationMs,
+      speaker: b.speaker,
+      text: b.text,
+    })
+    currentMs += durationMs
+  }
+  const rawText = segments.map((s) => s.text).join('\n\n')
+  return { segments, rawText }
+}
+
+/**
  * Parse plain TXT: split by double newlines (paragraphs) or single newlines.
  * Assign sequential timestamps (~150 words/min ≈ 2.5 words/sec).
  */
@@ -195,6 +257,7 @@ function parseTXT(content: string): ParseResult {
 
 /**
  * Parse transcript file content by extension.
+ * For TXT/pasted content, tries chat format first (You said/ChatGPT said, User/Assistant).
  */
 export function parseTranscriptFile(
   content: string,
@@ -203,7 +266,10 @@ export function parseTranscriptFile(
   const ext = filename.split('.').pop()?.toLowerCase() || ''
   if (ext === 'srt') return parseSRT(content)
   if (ext === 'vtt') return parseVTT(content)
-  if (ext === 'txt') return parseTXT(content)
-  // Default to TXT for unknown text files
+  if (ext === 'txt' || ext === '') {
+    const chatResult = parseChatFormat(content)
+    if (chatResult) return chatResult
+    return parseTXT(content)
+  }
   return parseTXT(content)
 }

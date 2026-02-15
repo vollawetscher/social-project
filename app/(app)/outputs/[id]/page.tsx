@@ -191,17 +191,31 @@ export default function OutputDetailPage() {
   }
 
   async function handleCopyShareLink() {
-    if (!shareUrl) return
-    
-    const headline = output
-      ? (extractOutputHeadline(output.content) || output.templateName)
-      : undefined
-    const shareText = formatShareLinkForCopy(shareUrl, headline, output?.createdAt)
+    if (!output) return
+
+    let urlToCopy = shareUrl || (output.shareToken ? `${window.location.origin}/share/${output.shareToken}` : null)
+    // Refresh expiration when copying (extends by 3 days; same link, now valid again)
+    try {
+      const res = await fetch(`/api/outputs/${outputId}/share`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        urlToCopy = data.shareUrl || urlToCopy
+        setShareUrl(data.shareUrl)
+        setIsPublic(true)
+      }
+    } catch {
+      // Continue to copy even if refresh fails
+    }
+
+    if (!urlToCopy) return
+
+    const headline = extractOutputHeadline(output.content) || output.templateName
+    const shareText = formatShareLinkForCopy(urlToCopy, headline, output?.createdAt)
     try {
       await navigator.clipboard.writeText(shareText)
       setCopiedShareLink(true)
       setTimeout(() => setCopiedShareLink(false), 2000)
-      toast.success('Share link copied!')
+      toast.success('Link copied – valid for 3 more days')
     } catch (error) {
       toast.error('Failed to copy link')
     }
