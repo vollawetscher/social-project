@@ -143,13 +143,18 @@ export async function POST(
     const fileName = `${Date.now()}.${fileExt}`
     const storagePath = `sessions/${params.id}/${fileName}`
 
+    // Supabase bucket allows audio/mp4 but not video/mp4 - use audio/mp4 for storage
+    // (same container; iOS/downloaded .mp4 often report as video/mp4)
+    const storageContentType =
+      normalizedFileType === 'video/mp4' ? 'audio/mp4' : file.type
+
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
     const { error: uploadError } = await supabase.storage
       .from('rohbericht-audio')
       .upload(storagePath, buffer, {
-        contentType: file.type,
+        contentType: storageContentType,
         upsert: false,
       })
 

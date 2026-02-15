@@ -221,7 +221,11 @@ export default function UploadRecordingsPage() {
 
   const handleSaveToDevice = async (rec: LocalRecording) => {
     try {
-      const ext = rec.mimeType?.split('/')[1]?.replace(/;.*/, '') || 'webm'
+      // Use .weba for audio-only WebM so it shows as audio, not video
+      const isAudio = rec.mimeType?.startsWith('audio/')
+      const ext = isAudio && rec.mimeType?.includes('webm')
+        ? 'weba'
+        : rec.mimeType?.split('/')[1]?.replace(/;.*/, '') || 'webm'
       const date = new Date(rec.timestamp).toLocaleString('en-US', {
         month: '2-digit',
         day: '2-digit',
@@ -236,7 +240,7 @@ export default function UploadRecordingsPage() {
           files: [file],
           title: filename,
         })
-        toast.success('Share sheet opened – save to Files or another app')
+        toast.success("Choose 'Save to Files' to pick a folder, or share to another app", { duration: 5000 })
       } else {
         const url = URL.createObjectURL(rec.blob)
         const a = document.createElement('a')
@@ -244,7 +248,7 @@ export default function UploadRecordingsPage() {
         a.download = filename
         a.click()
         URL.revokeObjectURL(url)
-        toast.success('Download started')
+        toast.success('Saved to your Downloads folder')
       }
     } catch (err) {
       if ((err as Error)?.name === 'AbortError') return

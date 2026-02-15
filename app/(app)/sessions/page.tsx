@@ -586,11 +586,14 @@ export default function SessionsPage() {
       const file = files[i]
       const extension = file.name.split('.').pop() || 'mp3'
       const fileName = `${session.id}_${Date.now()}_${i}.${extension}`
+      // Supabase bucket allows audio/mp4 but not video/mp4 - normalize for storage
+      const storageContentType =
+        file.type === 'video/mp4' ? 'audio/mp4' : (file.type || 'audio/mpeg')
 
       const { error: uploadError } = await supabase.storage
         .from('rohbericht-audio')
         .upload(fileName, file, {
-          contentType: file.type || 'audio/mpeg',
+          contentType: storageContentType,
           upsert: false
         })
 
