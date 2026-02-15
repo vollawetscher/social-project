@@ -53,9 +53,9 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
       }
     }
 
-    const maxSize = 100 * 1024 * 1024
+    const maxSize = 200 * 1024 * 1024
     if (file.size > maxSize) {
-      toast.error('Datei ist zu groß. Maximale Größe: 100MB')
+      toast.error('Datei ist zu groß. Maximale Größe: 200MB')
       return false
     }
 
@@ -151,7 +151,7 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
             </p>
 
             <p className="text-xs text-slate-500">
-              Unterstützte Formate: MP3, WAV, M4A, MP4, OGG, AAC, FLAC (max. 100MB)
+              Unterstützte Formate: MP3, WAV, M4A, MP4, OGG, AAC, FLAC (max. 200MB)
             </p>
 
             <Button type="button" className="mt-4">

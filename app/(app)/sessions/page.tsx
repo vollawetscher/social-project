@@ -479,9 +479,15 @@ export default function SessionsPage() {
     setIsDraggingHeader(false)
     const files = Array.from(e.dataTransfer.files)
     const transcriptFiles = files.filter(isTranscriptFile)
-    const audioFiles = files.filter(f =>
-      f.type.startsWith('audio/') || f.type === 'video/mp4' || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(f.name)
-    )
+    const isWebm = (f: File) =>
+      f.type === 'audio/webm' || f.type?.startsWith('audio/webm') || /\.(webm|weba)$/i.test(f.name)
+    const audioFiles = files.filter(f => {
+      if (isWebm(f)) return false
+      return f.type.startsWith('audio/') || f.type === 'video/mp4' || /\.(mp3|wav|m4a|m4v|mp4|ogg|aac|flac)$/i.test(f.name)
+    })
+    if (files.some(isWebm)) {
+      toast.error('WebM/WebA format cannot be transcribed. Convert to MP3 or MP4 first (e.g. cloudconvert.com).')
+    }
     if (transcriptFiles.length > 0) {
       setIsUploadOpen(true)
       setUploadingTranscript(true)
@@ -505,19 +511,26 @@ export default function SessionsPage() {
       setPreviewFiles(audioFiles)
       setPreviewOpen(true)
     } else {
-      toast.error('Please drop transcript files (TXT, SRT, VTT) or audio files (MP3, WAV, MP4, M4A)')
+      toast.error('Please drop transcript files (TXT, SRT, VTT) or audio files (MP3, WAV, MP4, M4A). WebM is not supported.')
     }
   }, [processTranscriptFile, fetchSessions])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
-      const audioFiles = Array.from(files).filter(file =>
-        file.type.startsWith('audio/') || file.type === 'video/mp4' || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
+      const isWebm = (f: File) =>
+        f.type === 'audio/webm' || f.type?.startsWith('audio/webm') || /\.(webm|weba)$/i.test(f.name)
+      const audioFiles = Array.from(files).filter(
+        file => !isWebm(file) && (file.type.startsWith('audio/') || file.type === 'video/mp4' || /\.(mp3|wav|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name))
       )
       if (audioFiles.length === 0) {
-        toast.error('Please select audio files (MP3, WAV, MP4, M4A)')
+        toast.error(files.length > 0 && Array.from(files).some(isWebm)
+          ? 'WebM/WebA format cannot be transcribed. Convert to MP3 or MP4 first (e.g. cloudconvert.com).'
+          : 'Please select audio files (MP3, WAV, MP4, M4A)')
         return
+      }
+      if (Array.from(files).some(isWebm)) {
+        toast.error('WebM/WebA files were excluded. Convert to MP3 or MP4 first.')
       }
       setPreviewFiles(audioFiles)
       setPreviewOpen(true)
@@ -551,9 +564,22 @@ export default function SessionsPage() {
     }
   }
 
+  // Speechmatics does NOT support WebM/Opus - supported: wav, mp3, aac, ogg, mpeg, amr, m4a, mp4, flac
+  const isWebM = (f: File) =>
+    f.type === 'audio/webm' ||
+    f.type?.startsWith('audio/webm') ||
+    /\.(webm|weba)$/i.test(f.name)
+
   const uploadGroup = async (files: File[]) => {
     if (!user?.id) throw new Error('You must be logged in to upload files')
     if (files.length === 0) return
+
+    const webmFiles = files.filter(isWebM)
+    if (webmFiles.length > 0) {
+      throw new Error(
+        `WebM format is not supported for transcription. Please convert to MP3 or MP4 first (e.g. cloudconvert.com). Or record on iPhone Safari which uses MP4.`
+      )
+    }
 
     const timestamp = new Date().toLocaleString('en-US', {
       month: '2-digit',
@@ -646,12 +672,19 @@ export default function SessionsPage() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDraggingAudio(false)
-    const files = Array.from(e.dataTransfer.files).filter(file =>
-      file.type.startsWith('audio/') || file.type === 'video/mp4' || /\.(mp3|wav|webm|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name)
+    const isWebm = (f: File) =>
+      f.type === 'audio/webm' || f.type?.startsWith('audio/webm') || /\.(webm|weba)$/i.test(f.name)
+    const files = Array.from(e.dataTransfer.files).filter(
+      file => !isWebm(file) && (file.type.startsWith('audio/') || file.type === 'video/mp4' || /\.(mp3|wav|m4a|m4v|mp4|ogg|aac|flac)$/i.test(file.name))
     )
     if (files.length === 0) {
-      toast.error('Please drop audio files (MP3, WAV, MP4, M4A)')
+      toast.error(Array.from(e.dataTransfer.files).some(isWebm)
+        ? 'WebM/WebA format cannot be transcribed. Convert to MP3 or MP4 first (e.g. cloudconvert.com).'
+        : 'Please drop audio files (MP3, WAV, MP4, M4A)')
       return
+    }
+    if (Array.from(e.dataTransfer.files).some(isWebm)) {
+      toast.error('WebM/WebA files were excluded. Convert to MP3 or MP4 first.')
     }
     setPreviewFiles(files)
     setPreviewOpen(true)
@@ -916,7 +949,7 @@ export default function SessionsPage() {
                     ref={fileInputRef}
                     id="audio-file-input"
                     type="file"
-                    accept="audio/*,.mp3,.wav,.webm,.m4a,.mp4,video/mp4"
+                    accept="audio/*,.mp3,.wav,.m4a,.mp4,.ogg,.aac,.flac,video/mp4"
                     multiple
                     onChange={handleFileSelect}
                     className="sr-only"

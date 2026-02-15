@@ -34,6 +34,20 @@ async function processTranscriptionJob(sessionId: string) {
 
     console.log(`[Transcribe] Found ${files.length} file(s) to transcribe`)
 
+    // Speechmatics does NOT support WebM/Opus - supported: wav, mp3, aac, ogg, mpeg, amr, m4a, mp4, flac
+    const webmFiles = files.filter(f => 
+      f.mime_type === 'audio/webm' || f.mime_type?.startsWith('audio/webm')
+    )
+    if (webmFiles.length > 0) {
+      const msg = 'WebM format cannot be transcribed. Please convert to MP3 or MP4 first (e.g. cloudconvert.com), or record on iPhone Safari which uses MP4.'
+      console.error('[Transcribe] WebM rejected:', webmFiles.map(f => f.storage_path))
+      await supabase
+        .from('sessions')
+        .update({ status: 'error', last_error: msg })
+        .eq('id', sessionId)
+      return
+    }
+
     // Process each file
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
