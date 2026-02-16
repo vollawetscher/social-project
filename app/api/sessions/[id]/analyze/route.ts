@@ -172,7 +172,9 @@ export async function POST(
 3. **Rich Context** to help understand and document this session
 4. **User-Indicated Content Hint**: The user selected this before upload (use to guide recording type/domain if relevant): ${(session as { input_hint?: string }).input_hint || 'none'}
 5. **User Identification**: The recording was made by "${userName || 'unknown user'}". Try to identify which participant is this user.
-6. **Suggested Output Formats**: Based on the conversation type and domain, suggest exactly 3 different output formats that would be useful. Examples:
+6. **Transcription Consent**: At the START of the conversation, was consent to record/transcribe mentioned? The initiator (caller/recorder) implicitly consents. Look for: "This call may be recorded", "Do you consent?", "Okay to record?", affirmative replies. Extract: discussed (boolean), participantsConsented (array of speaker IDs who consented, e.g. ["S1","S2"]), summary (one-line description of how consent was obtained, or null if not discussed).
+7. **Spoken Commands**: Detect voice commands directed at "Notissima" (the assistant). Use FUZZY matching—transcription/ASR often misspells proper nouns. Match variations such as: Notissima, Notisima, Notissma, Natissima, Notessima; with or without punctuation (Notissima:, Notissima,); after "Hey", "Ok", "So" etc. If a phrase looks like a command to an assistant (create X, send link, summarize) and the wake word is phonetically similar to Notissima, treat it as a match. Extract the exact phrase as spoken in transcript, speaker, and brief intent summary.
+8. **Suggested Output Formats**: Based on the conversation type and domain, suggest exactly 3 different output formats that would be useful. Examples:
    - Sales call: meeting minutes, internal sales call analysis (what worked, what was missed, buying signals), short team update
    - Legal: deposition summary, client status memo, billing timeline notes
    - Medical: consultation notes, referral summary, patient-facing summary
@@ -215,7 +217,15 @@ Respond in this exact JSON format:
       {"task": "Schedule stress test", "owner": "Clinic", "deadline": "2026-03-15"}
     ],
     "mood": "professional, reassuring",
-    "outcome": "positive"
+    "outcome": "positive",
+    "consent": {
+      "discussed": true,
+      "participantsConsented": ["S1", "S2"],
+      "summary": "S1 asked if recording was okay; S2 agreed"
+    },
+    "spokenCommands": [
+      {"phrase": "Notissima: Create sales opportunity analysis and send me link", "speaker": "S1", "intentSummary": "create_output, send_link"}
+    ]
   },
   "suggestedOutputFormats": [
     {"title": "...", "description": "...", "generationInstructions": "..."},
@@ -240,7 +250,9 @@ Respond in this exact JSON format:
 - Be specific with domains - use actual field names (e.g., "Tax Law" not just "Legal")
 - Use 2-layer domain structure: primary (broad) + specialty (specific)
 - If information isn't clearly available, use empty arrays [] or "unknown"
-- Be accurate and preserve correct spelling from transcript`
+- Be accurate and preserve correct spelling from transcript
+- For consent: focus on the first 1-2 minutes of the conversation. If nothing found, use discussed: false, participantsConsented: [], summary: null
+- For spokenCommands: use fuzzy matching. Accept Notissima + common ASR misspellings (Notisima, Notissma, Natissima, etc.). Accept phonetically similar wake words. Include if it reasonably looks like a command to the assistant. Preserve the exact phrase from transcript. Empty array if none found`
         }
       ]
     })

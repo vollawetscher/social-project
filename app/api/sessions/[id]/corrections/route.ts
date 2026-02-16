@@ -67,6 +67,42 @@ export async function POST(
       }, { status: 500 })
     }
 
+    // Record word corrections to user_word_corrections for Speechmatics dictionary (top used)
+    // Only increment when correction is new or changed (avoid inflating on every save)
+    if (type === 'word_corrections' && typeof corrections === 'object' && !Array.isArray(corrections)) {
+      const prev = (existingCorrections.word_corrections || {}) as Record<string, string>
+      const wordCorrections = corrections as Record<string, string>
+      for (const [original, corrected] of Object.entries(wordCorrections)) {
+        const o = String(original ?? '').trim()
+        const c = String(corrected ?? '').trim()
+        if (!o || !c) continue
+        const unchanged = prev[o] === c
+        const { data: existing } = await db
+          .from('user_word_corrections')
+          .select('id, use_count')
+          .eq('user_id', user.id)
+          .eq('original', o)
+          .maybeSingle()
+        if (existing) {
+          await db
+            .from('user_word_corrections')
+            .update({
+              corrected: c,
+              ...(unchanged ? {} : { use_count: (existing.use_count ?? 1) + 1 }),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id)
+        } else {
+          await db.from('user_word_corrections').insert({
+            user_id: user.id,
+            original: o,
+            corrected: c,
+            use_count: 1,
+          })
+        }
+      }
+    }
+
     return NextResponse.json({ 
       success: true,
       corrections: updatedCorrections

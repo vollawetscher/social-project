@@ -8,6 +8,8 @@ import {
   Info,
   Shield,
   Quote,
+  Terminal,
+  CheckCircle2,
   Sparkles,
   FileText,
   Users,
@@ -589,6 +591,57 @@ export function SessionSetupPanel({
                     className="bg-secondary border-border text-sm"
                   />
                 </div>
+                {session.extractedContext?.consent && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      Consent
+                    </Label>
+                    <div className="rounded-md bg-secondary/50 border border-border px-3 py-2 text-sm">
+                      {session.extractedContext.consent.discussed ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-foreground">
+                            <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                            <span>Consent discussed</span>
+                          </div>
+                          {session.extractedContext.consent.summary && (
+                            <p className="text-muted-foreground text-xs pl-5">{session.extractedContext.consent.summary}</p>
+                          )}
+                          {session.extractedContext.consent.participantsConsented?.length ? (
+                            <p className="text-muted-foreground text-xs pl-5">
+                              Participants: {session.extractedContext.consent.participantsConsented.join(', ')}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <span>No consent exchange detected</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {session.extractedContext?.spokenCommands && session.extractedContext.spokenCommands.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Terminal className="h-3 w-3" />
+                      Extracted commands
+                    </Label>
+                    <div className="space-y-2">
+                      {session.extractedContext.spokenCommands.map((cmd, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-md bg-secondary/50 border border-border px-3 py-2 text-sm"
+                        >
+                          <p className="text-foreground font-medium">{cmd.phrase}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {cmd.speaker}{cmd.intentSummary ? ` · ${cmd.intentSummary}` : ''}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </CollapsibleContent>
           </Card>

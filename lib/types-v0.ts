@@ -123,6 +123,16 @@ export interface ExtractedContext {
   purpose: string
   agenda: string[]
   venue: string
+  consent?: {
+    discussed: boolean
+    participantsConsented?: string[]
+    summary?: string | null
+  } | null
+  spokenCommands?: Array<{
+    phrase: string
+    speaker: string
+    intentSummary?: string
+  }> | null
 }
 
 export interface SuggestedOutputFormat {

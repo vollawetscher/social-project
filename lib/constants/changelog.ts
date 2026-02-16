@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.5.7',
+    date: 'February 18, 2026',
+    entries: [
+      {
+        version: '1.5.7',
+        date: 'February 18, 2026',
+        category: 'feature',
+        title: 'Consent & Spoken Commands in Context',
+        description: 'The AI now detects transcription consent at the start of conversations and extracts voice commands (e.g. "Notissima: Create sales analysis"). Both appear in the Context panel for review—command execution logic will follow.',
+      },
+    ],
+  },
+  {
     version: '1.5.6',
     date: 'February 18, 2026',
     entries: [
