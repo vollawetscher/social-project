@@ -145,6 +145,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     speechmaticsSummary: (dbSession as any).speechmatics_summary || undefined,
     recordedAt: (dbSession as any).recorded_at || undefined,
     ownerEmail: (dbSession as any).owner_email, // Admin view: session owner email
+    ownerId: (dbSession as any).user_id, // For hand-off: show control when owner
     lastError: (dbSession as any).last_error, // Transcription/processing error
   }
 }

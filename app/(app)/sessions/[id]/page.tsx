@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -22,6 +22,7 @@ import {
   Loader2,
   Sparkles,
   LayoutTemplate,
+  UserRoundPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +35,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { exportOutput } from "@/lib/utils/output-export"
 import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
@@ -49,6 +58,7 @@ import type { Session, SuggestedOutputFormat } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 import { formatDetailDate } from "@/lib/utils/date-formatters"
 import { EditableTitle } from "@/components/ui/editable-title"
+import { useAuth } from "@/lib/auth/AuthProvider"
 
 /** Renders Speechmatics summary with paragraphs and bullet lists */
 function FormattedSummary({ text }: { text: string }) {
@@ -82,7 +92,9 @@ function FormattedSummary({ text }: { text: string }) {
 
 export default function SessionDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const sessionId = params.id as string
+  const { user } = useAuth()
 
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -112,6 +124,9 @@ export default function SessionDetailPage() {
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
   const [retryingTranscribe, setRetryingTranscribe] = useState(false)
   const [profileLanguage, setProfileLanguage] = useState<string | null>(null)
+  const [handOffOpen, setHandOffOpen] = useState(false)
+  const [handOffEmail, setHandOffEmail] = useState('')
+  const [handOffLoading, setHandOffLoading] = useState(false)
 
   // Fetch user profile for preferred_report_language (used by AI-suggested outputs)
   useEffect(() => {
@@ -535,6 +550,28 @@ export default function SessionDetailPage() {
     }
   }
 
+  const handleHandOff = async () => {
+    if (!handOffEmail.trim()) return
+    setHandOffLoading(true)
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/reassign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newOwnerEmail: handOffEmail.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to hand off')
+      toast.success('Session transferred successfully')
+      setHandOffOpen(false)
+      setHandOffEmail('')
+      router.push('/sessions')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to hand off')
+    } finally {
+      setHandOffLoading(false)
+    }
+  }
+
   const handleRetryTranscription = async () => {
     setRetryingTranscribe(true)
     try {
@@ -588,6 +625,18 @@ export default function SessionDetailPage() {
           </div>
         ) : null}
         <div className="flex items-center gap-2">
+          {/* Hand off session - only when owner */}
+          {session.ownerId === user?.id && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHandOffOpen(true)}
+              className="gap-1.5"
+            >
+              <UserRoundPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">Hand off</span>
+            </Button>
+          )}
           {/* Context panel toggle - floating sheet, transcript stays full width */}
           <Button
             variant="ghost"
@@ -615,6 +664,37 @@ export default function SessionDetailPage() {
           </Sheet>
         </div>
       </div>
+
+      {/* Hand off dialog */}
+      <Dialog open={handOffOpen} onOpenChange={setHandOffOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Hand off session</DialogTitle>
+            <DialogDescription>
+              Transfer this session to a colleague. Enter their email address. They will see it in their sessions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              type="email"
+              placeholder="colleague@example.com"
+              value={handOffEmail}
+              onChange={(e) => setHandOffEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleHandOff()}
+              disabled={handOffLoading}
+              className="w-full"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHandOffOpen(false)} disabled={handOffLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleHandOff} disabled={!handOffEmail.trim() || handOffLoading}>
+              {handOffLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Hand off'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Main Content */}
       <div className="flex-1 flex gap-4 pt-4 min-h-0">

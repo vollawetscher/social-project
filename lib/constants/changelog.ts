@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.5.6',
+    date: 'February 18, 2026',
+    entries: [
+      {
+        version: '1.5.6',
+        date: 'February 18, 2026',
+        category: 'feature',
+        title: 'Session Hand-Off',
+        description: 'Transfer ownership of your sessions to a colleague. Click "Hand off" on any session you own, enter their email, and they get full access—useful when passing work to another team member.',
+      },
+    ],
+  },
+  {
     version: '1.5.5',
     date: 'February 18, 2026',
     entries: [
