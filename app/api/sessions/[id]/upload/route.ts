@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { logError } from '@/lib/services/error-logger'
+import { getStorageMimeType } from '@/lib/utils/audio-format-detector'
 
 export async function POST(
   request: Request,
@@ -140,14 +141,12 @@ export async function POST(
       .update({ status: 'uploading' })
       .eq('id', params.id)
 
-    const fileExt = file.name.split('.').pop()
+    const fileExt = (file.name.split('.').pop() || 'mp3').toLowerCase()
     const fileName = `${Date.now()}.${fileExt}`
     const storagePath = `sessions/${params.id}/${fileName}`
 
-    // Supabase bucket allows audio/mp4 but not video/mp4 - use audio/mp4 for storage
-    // (same container; iOS/downloaded .mp4 often report as video/mp4)
-    const storageContentType =
-      normalizedFileType === 'video/mp4' ? 'audio/mp4' : file.type
+    // Use extension-based MIME for phone recordings (browser often reports wrong/empty)
+    const storageContentType = getStorageMimeType(file)
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
@@ -198,7 +197,7 @@ export async function POST(
       .insert({
         session_id: params.id,
         storage_path: storagePath,
-        mime_type: file.type,
+        mime_type: storageContentType,
         size_bytes: file.size,
         file_purpose: filePurpose,
       })

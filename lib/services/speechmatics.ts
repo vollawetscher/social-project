@@ -28,12 +28,15 @@ export class SpeechmaticsService {
     console.log('[Speechmatics] Audio buffer size:', audioBuffer.length, 'bytes')
     console.log('[Speechmatics] MIME type:', mimeType)
 
+    // Normalize video/mp4 → audio/mp4 (same container, Speechmatics prefers audio)
+    const normalizedMime = mimeType?.toLowerCase().startsWith('video/') ? 'audio/mp4' : (mimeType || 'audio/mpeg')
+
     const formData = new FormData()
 
-    const fileExtension = this.getFileExtensionFromMimeType(mimeType)
+    const fileExtension = this.getFileExtensionFromMimeType(normalizedMime)
     console.log('[Speechmatics] Using file extension:', fileExtension)
 
-    const audioBlob = new Blob([audioBuffer], { type: mimeType })
+    const audioBlob = new Blob([audioBuffer], { type: normalizedMime })
     formData.append('data_file', audioBlob, `audio.${fileExtension}`)
 
     const config = {
@@ -69,7 +72,7 @@ export class SpeechmaticsService {
         const errorText = await response.text()
         console.error('[Speechmatics] API error response:', errorText)
         console.error('[Speechmatics] Status code:', response.status)
-        console.error('[Speechmatics] File details - MIME:', mimeType, 'Extension:', fileExtension, 'Size:', audioBuffer.length)
+        console.error('[Speechmatics] File details - MIME:', normalizedMime, 'Extension:', fileExtension, 'Size:', audioBuffer.length)
 
         let errorMessage = `Speechmatics API error: ${response.status}`
 

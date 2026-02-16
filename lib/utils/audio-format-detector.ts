@@ -75,6 +75,27 @@ export function detectSupportedAudioFormat(): AudioFormatInfo {
   }
 }
 
+/** Get storage-safe MIME type for upload. Phone recordings often report wrong/empty file.type */
+export function getStorageMimeType(file: File): string {
+  const ext = (file.name.split('.').pop() || '').toLowerCase()
+  const typeMap: Record<string, string> = {
+    mp4: 'audio/mp4',
+    m4a: 'audio/mp4',
+    m4v: 'audio/mp4',
+    aac: 'audio/aac',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    flac: 'audio/flac',
+    amr: 'audio/amr',
+  }
+  if (typeMap[ext]) return typeMap[ext]
+  if (file.type && (file.type.startsWith('audio/') || file.type === 'video/mp4')) {
+    return file.type === 'video/mp4' ? 'audio/mp4' : file.type
+  }
+  return 'audio/mpeg'
+}
+
 export function isMobileSafari(): boolean {
   if (typeof window === 'undefined') return false
 

@@ -54,6 +54,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
+import { getStorageMimeType } from "@/lib/utils/audio-format-detector"
 import { parseTranscriptFile } from "@/lib/utils/transcript-parser"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
@@ -614,11 +615,10 @@ export default function SessionsPage() {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
-        const extension = file.name.split('.').pop() || 'mp3'
+        const extension = (file.name.split('.').pop() || 'mp3').toLowerCase()
         const fileName = `${session.id}_${Date.now()}_${i}.${extension}`
-        // Supabase bucket allows audio/mp4 but not video/mp4 - normalize for storage
-        const storageContentType =
-          file.type === 'video/mp4' ? 'audio/mp4' : (file.type || 'audio/mpeg')
+        // Use extension-based MIME for phone recordings (browser often reports wrong/empty)
+        const storageContentType = getStorageMimeType(file)
 
         const { error: uploadError } = await supabase.storage
           .from('rohbericht-audio')
@@ -642,7 +642,11 @@ export default function SessionsPage() {
 
         if (i === 0) firstPublicUrl = publicUrl
 
-        const audioDuration = await getAudioDuration(file)
+        let audioDuration = await getAudioDuration(file)
+        if (!Number.isFinite(audioDuration) || audioDuration <= 0) {
+          // Fallback for phone MP4: HTML5 audio often fails with fragmented/HLS-style files
+          audioDuration = 1
+        }
         totalDuration += audioDuration
 
         const { error: fileError } = await supabase
@@ -651,7 +655,7 @@ export default function SessionsPage() {
             session_id: session.id,
             storage_path: fileName,
             original_filename: file.name,
-            mime_type: file.type || 'audio/mpeg',
+            mime_type: storageContentType,
             size_bytes: file.size,
             file_purpose: 'meeting',
             upload_status: 'completed',
