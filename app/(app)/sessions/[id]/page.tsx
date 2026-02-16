@@ -48,6 +48,36 @@ import { toV0Session } from "@/lib/adapters/session-adapter"
 import type { Session, SuggestedOutputFormat } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
+/** Renders Speechmatics summary with paragraphs and bullet lists */
+function FormattedSummary({ text }: { text: string }) {
+  const blocks = text.split(/\n\n+/).filter(Boolean)
+  return (
+    <div className="space-y-4 text-sm text-foreground leading-relaxed">
+      {blocks.map((block, i) => {
+        const lines = block.split(/\n/).filter(Boolean)
+        const isList = lines.every((l) => l.trim().startsWith("- ") || l.trim().startsWith("• "))
+        if (isList && lines.length > 0) {
+          return (
+            <ul key={i} className="list-none space-y-2 pl-0">
+              {lines.map((line, j) => (
+                <li key={j} className="flex gap-2">
+                  <span className="text-muted-foreground shrink-0">•</span>
+                  <span>{line.replace(/^[-•]\s*/, "").trim()}</span>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+        return (
+          <p key={i} className="text-foreground">
+            {block.trim()}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function SessionDetailPage() {
   const params = useParams()
   const sessionId = params.id as string
@@ -376,13 +406,17 @@ export default function SessionDetailPage() {
         setSession(v0Session)
         if (v0Session.status === 'ready') {
           fetchOutputs()
+          // Workflow automation: auto-gen runs async after transcribe; poll for new outputs
+          ;[3000, 6000, 9000, 12000].forEach((delay) => {
+            setTimeout(() => fetchOutputs(), delay)
+          })
         }
       } catch {
         // ignore
       }
     }, 3000)
     return () => clearInterval(interval)
-  }, [sessionId, session?.status])
+  }, [sessionId, session?.status, fetchOutputs])
 
   if (loading) {
     return (
@@ -584,17 +618,8 @@ export default function SessionDetailPage() {
             <TabsTrigger value="context">Context</TabsTrigger>
             <TabsTrigger value="outputs">Outputs</TabsTrigger>
           </TabsList>
-          <TabsContent value="transcript" className="flex-1 min-h-0 mt-0 flex flex-col gap-3">
-            {session.speechmaticsSummary && (
-              <div className="shrink-0 rounded-lg border border-border bg-muted/30 p-4">
-                <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Auto-generated summary
-                </p>
-                <p className="text-sm text-foreground whitespace-pre-wrap">{session.speechmaticsSummary}</p>
-              </div>
-            )}
-            <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
+          <TabsContent value="transcript" className="flex-1 min-h-0 mt-0">
+            <div className="h-full rounded-lg border border-border bg-card overflow-hidden">
               <TranscriptViewer 
                 segments={session.transcript}
                 currentTime={currentAudioTime}
@@ -623,9 +648,9 @@ export default function SessionDetailPage() {
                       <Sparkles className="h-4 w-4" />
                       Session Summary
                     </h3>
-                    <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50 whitespace-pre-wrap">
-                      {session.speechmaticsSummary}
-                    </p>
+                    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                      <FormattedSummary text={session.speechmaticsSummary} />
+                    </div>
                   </div>
                 )}
                 {/* Recording Type & Domain */}
@@ -896,8 +921,8 @@ export default function SessionDetailPage() {
 
         {/* Center: Content Area (Desktop) */}
         <div className="hidden md:flex flex-1 min-h-0 flex-col gap-4">
-          {/* Audio Player */}
-          {session.audioUrl && (
+          {/* Audio Player - only when viewing transcript */}
+          {activeTab === "transcript" && session.audioUrl && (
             <AudioPlayer
               ref={audioPlayerRef}
               audioUrl={session.audioUrl}
@@ -908,26 +933,15 @@ export default function SessionDetailPage() {
           
           {/* Tab Content */}
           {activeTab === "transcript" && (
-            <div className="flex-1 flex flex-col gap-4 min-h-0">
-              {session.speechmaticsSummary && (
-                <div className="shrink-0 rounded-lg border border-border bg-muted/30 p-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Auto-generated summary
-                  </p>
-                  <p className="text-sm text-foreground whitespace-pre-wrap">{session.speechmaticsSummary}</p>
-                </div>
-              )}
-              <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
-                <TranscriptViewer 
-                  segments={session.transcript} 
-                  currentTime={currentAudioTime}
-                  onSeek={handleSeekToTime}
-                  corrections={session.transcriptCorrections}
-                  onTogglePlayback={handleTogglePlayback}
-                  isPlaying={isAudioPlaying}
-                />
-              </div>
+            <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
+              <TranscriptViewer 
+                segments={session.transcript} 
+                currentTime={currentAudioTime}
+                onSeek={handleSeekToTime}
+                corrections={session.transcriptCorrections}
+                onTogglePlayback={handleTogglePlayback}
+                isPlaying={isAudioPlaying}
+              />
             </div>
           )}
 
@@ -949,9 +963,9 @@ export default function SessionDetailPage() {
                       <Sparkles className="h-4 w-4" />
                       Session Summary
                     </h3>
-                    <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50 whitespace-pre-wrap">
-                      {session.speechmaticsSummary}
-                    </p>
+                    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                      <FormattedSummary text={session.speechmaticsSummary} />
+                    </div>
                   </div>
                 )}
                 {/* Recording Type & Domain */}
