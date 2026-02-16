@@ -910,7 +910,7 @@ export default function SessionDetailPage() {
                         className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2"
                       >
                         <h4 className="text-sm font-medium text-foreground">{suggestion.title}</h4>
-                        <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
+                        <p className="text-xs text-muted-foreground flex-1">
                           {suggestion.description}
                         </p>
                         <Button
@@ -1237,7 +1237,7 @@ export default function SessionDetailPage() {
                         className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2"
                       >
                         <h4 className="text-sm font-medium text-foreground">{suggestion.title}</h4>
-                        <p className="text-xs text-muted-foreground flex-1 line-clamp-2">
+                        <p className="text-xs text-muted-foreground flex-1">
                           {suggestion.description}
                         </p>
                         <Button

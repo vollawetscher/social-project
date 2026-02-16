@@ -16,6 +16,8 @@ Redirect URLs (add these):
   - https://social-project-production-2ca7.up.railway.app/dashboard
   - http://localhost:3000/auth/callback (for development)
   - http://localhost:3000/dashboard (for development)
+
+Password reset, invites, and email confirmations all route through /auth/callback (with ?next= for the final destination).
 ```
 
 ### 2. Environment Variables
@@ -70,10 +72,10 @@ Use `{{ .ConfirmationURL }}` in templates - Supabase automatically adds proper r
 
 ### Password Reset Flow
 
-1. User can request password reset (add this feature if needed)
-2. Supabase sends reset email
-3. User sets new password
-4. Redirected back to app
+1. User requests reset at `/reset-password`
+2. Supabase sends email with link → redirects to `/auth/callback?next=/reset-password/confirm&code=...`
+3. Auth callback exchanges code for session, redirects to `/reset-password/confirm`
+4. User sets new password, then redirected to login
 
 ## API Endpoints
 
