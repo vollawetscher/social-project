@@ -14,6 +14,14 @@ async function processTranscriptionJob(sessionId: string) {
   const errorLogger = await createErrorLogger(supabase)
   
   try {
+    // Get session for input_hint (influences Speechmatics content_type)
+    const { data: sessionRow } = await supabase
+      .from('sessions')
+      .select('input_hint')
+      .eq('id', sessionId)
+      .single()
+    const inputHint = (sessionRow as { input_hint?: string } | null)?.input_hint || ''
+
     // Get all files for this session
     const { data: files } = await supabase
       .from('files')
@@ -99,9 +107,10 @@ async function processTranscriptionJob(sessionId: string) {
       const audioBuffer = Buffer.from(await audioData.arrayBuffer())
       console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)
 
-      console.log('[Transcribe] Calling Speechmatics API...')
+      const contentType = (inputHint === 'presentation' || inputHint === 'voice_note') ? 'informative' : 'conversational'
+      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType })
       const speechmatics = createSpeechmaticsService()
-      const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type)
+      const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, { contentType })
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 
       console.log(`[Transcribe] Step 1 (File ${i + 1}): Starting PII redaction...`)

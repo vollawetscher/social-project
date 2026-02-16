@@ -19,7 +19,11 @@ export class SpeechmaticsService {
     this.apiKey = config.apiKey
   }
 
-  async transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<SpeechmaticsTranscript> {
+  async transcribeAudio(
+    audioBuffer: Buffer,
+    mimeType: string,
+    options?: { contentType?: 'conversational' | 'informative' }
+  ): Promise<SpeechmaticsTranscript> {
     console.log('[Speechmatics] Starting transcription')
     console.log('[Speechmatics] Audio buffer size:', audioBuffer.length, 'bytes')
     console.log('[Speechmatics] MIME type:', mimeType)
@@ -41,7 +45,7 @@ export class SpeechmaticsService {
         enable_entities: false, // Disabled to preserve numbers in transcript
       },
       summarization_config: {
-        content_type: 'conversational', // Best for meetings/calls with multiple participants
+        content_type: options?.contentType ?? 'conversational',
         summary_length: 'brief',
       },
     }

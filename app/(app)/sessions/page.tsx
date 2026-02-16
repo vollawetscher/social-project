@@ -187,6 +187,7 @@ export default function SessionsPage() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [language, setLanguage] = useState<string>('de') // Default to German
+  const [inputHint, setInputHint] = useState<string>('') // meeting, presentation, trade_show, voice_note, '' = auto
   const [previewFiles, setPreviewFiles] = useState<File[]>([])
   const [previewOpen, setPreviewOpen] = useState(false)
   const [uploadingTranscript, setUploadingTranscript] = useState(false)
@@ -386,6 +387,7 @@ export default function SessionsPage() {
     setUploadingTranscript(false)
     if (success > 0) {
       toast.success(`${success} transcript(s) imported`)
+      setIsUploadOpen(false)
       await fetchSessions()
     }
   }, [processTranscriptFile, fetchSessions])
@@ -400,6 +402,7 @@ export default function SessionsPage() {
       setUploadingTranscript(true)
       if (await processPastedTranscript(text)) {
         toast.success('Pasted transcript imported')
+        setIsUploadOpen(false)
         await fetchSessions()
       }
     } catch (err: unknown) {
@@ -420,6 +423,7 @@ export default function SessionsPage() {
       try {
         if (await processPastedTranscript(text)) {
           toast.success('Pasted transcript imported')
+          setIsUploadOpen(false)
           await fetchSessions()
         }
       } catch (err: unknown) {
@@ -451,6 +455,7 @@ export default function SessionsPage() {
       setUploadingTranscript(false)
       if (success > 0) {
         toast.success(`${success} transcript(s) imported`)
+        setIsUploadOpen(false)
         await fetchSessions()
       }
     })()
@@ -551,6 +556,7 @@ export default function SessionsPage() {
     setPreviewFiles([])
     if (successCount > 0) {
       toast.success(`${successCount} session(s) uploaded successfully`)
+      setIsUploadOpen(false)
       await fetchSessions()
     }
     if (errorCount > 0 && successCount === 0) {
@@ -593,6 +599,7 @@ export default function SessionsPage() {
         user_id: user.id,
         status: 'uploading',
         language: language,
+        ...(inputHint && { input_hint: inputHint }),
       })
       .select()
       .single()
@@ -653,11 +660,16 @@ export default function SessionsPage() {
         if (fileError) throw new Error(`Failed to create file record: ${fileError.message}`)
       }
 
+      // Use earliest file lastModified as recorded_at when available
+      const recordedAtMs = Math.min(...files.map((f) => f.lastModified))
+      const recordedAt = Number.isFinite(recordedAtMs) ? new Date(recordedAtMs).toISOString() : null
+
       const { error: updateError } = await supabase
         .from('sessions')
         .update({
           audio_url: firstPublicUrl,
-          duration_sec: totalDuration
+          duration_sec: totalDuration,
+          ...(recordedAt && { recorded_at: recordedAt }),
         })
         .eq('id', session.id)
 
@@ -918,6 +930,26 @@ export default function SessionsPage() {
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3">
             <div className="space-y-3">
+              {/* Content Hint */}
+              <div>
+                <label htmlFor="upload-hint" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  What type of content?
+                </label>
+                <select
+                  id="upload-hint"
+                  value={inputHint}
+                  onChange={(e) => setInputHint(e.target.value)}
+                  disabled={uploadingFiles}
+                  className="w-full p-2 border rounded-md text-sm bg-background"
+                >
+                  <option value="">Let system decide</option>
+                  <option value="meeting">Meeting or call</option>
+                  <option value="presentation">Presentation or lecture</option>
+                  <option value="trade_show">Trade show / booth talk</option>
+                  <option value="voice_note">Voice note or dictation</option>
+                </select>
+              </div>
+
               {/* Language Selection */}
               <div>
                 <label htmlFor="upload-language" className="text-xs font-medium text-muted-foreground mb-1.5 block">

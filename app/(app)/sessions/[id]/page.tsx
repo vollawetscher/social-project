@@ -47,6 +47,8 @@ import {
 import { toV0Session } from "@/lib/adapters/session-adapter"
 import type { Session, SuggestedOutputFormat } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
+import { formatDetailDate } from "@/lib/utils/date-formatters"
+import { EditableTitle } from "@/components/ui/editable-title"
 
 /** Renders Speechmatics summary with paragraphs and bullet lists */
 function FormattedSummary({ text }: { text: string }) {
@@ -85,6 +87,10 @@ export default function SessionDetailPage() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [rightPanelOpen, setRightPanelOpen] = useState(false)
+  // Ensure context panel is closed when entering session (no persisted open state)
+  useEffect(() => {
+    setRightPanelOpen(false)
+  }, [sessionId])
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [outputs, setOutputs] = useState<any[]>([])
@@ -95,6 +101,7 @@ export default function SessionDetailPage() {
   const [activeTab, setActiveTab] = useState("transcript")
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const audioPlayerRef = useRef<any>(null)
+  const analyzeSessionRef = useRef<((retryCount?: number) => Promise<void>) | null>(null)
   
   // Participant editing state
   const [editingParticipants, setEditingParticipants] = useState(false)
@@ -313,6 +320,7 @@ export default function SessionDetailPage() {
         
         // Also fetch outputs for this session
         fetchOutputs()
+        return v0Session
       } catch (error) {
         console.error('Error fetching session:', error)
       } finally {
@@ -379,12 +387,14 @@ export default function SessionDetailPage() {
         if (!retrying) setAnalyzing(false)
       }
     }
+    analyzeSessionRef.current = analyzeSession
     
     fetchSession()
-    // Only analyze if session is ready (has transcript)
-    fetchSession().then(() => {
-      // Wait a bit to see if transcript exists
-      setTimeout(() => analyzeSession(), 1000)
+    // Only analyze if session has transcript - never analyze without one
+    fetchSession().then((v0) => {
+      if (v0?.transcript?.length) {
+        setTimeout(() => analyzeSession(), 1000)
+      }
     })
   }, [sessionId, fetchOutputs])
 
@@ -410,6 +420,10 @@ export default function SessionDetailPage() {
           ;[3000, 6000, 9000, 12000].forEach((delay) => {
             setTimeout(() => fetchOutputs(), delay)
           })
+          // Trigger analyze now that we have transcript (no analysis without transcript)
+          if (transcriptData?.raw_json?.length && analyzeSessionRef.current) {
+            setTimeout(() => analyzeSessionRef.current?.(), 1000)
+          }
         }
       } catch {
         // ignore
@@ -502,6 +516,25 @@ export default function SessionDetailPage() {
     }
   }
 
+  const handleRenameSession = async (newName: string) => {
+    if (!newName.trim()) return
+    const prevName = session.filename
+    setSession((s) => (s ? { ...s, filename: newName.trim() } : s))
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ internal_case_id: newName.trim() }),
+      })
+      if (!res.ok) throw new Error('Failed to rename')
+      toast.success('Session name updated')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to rename')
+      setSession((s) => (s ? { ...s, filename: prevName } : s))
+      throw err
+    }
+  }
+
   const handleRetryTranscription = async () => {
     setRetryingTranscribe(true)
     try {
@@ -531,10 +564,14 @@ export default function SessionDetailPage() {
               <span className="hidden sm:inline">Back</span>
             </Button>
           </Link>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground truncate max-w-[300px] md:max-w-[500px]">
-              {session.filename}
-            </h1>
+          <div className="min-w-0">
+            <EditableTitle
+              value={session.filename}
+              fallback="Untitled Session"
+              onSave={handleRenameSession}
+              placeholder="Session name"
+              className="text-lg font-semibold text-foreground truncate max-w-[300px] md:max-w-[500px]"
+            />
             <p className="text-xs text-muted-foreground">
               Session Review
             </p>
@@ -639,6 +676,16 @@ export default function SessionDetailPage() {
                     <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
                     <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
                     <p className="text-xs text-muted-foreground">Extracting participants, purpose, and context</p>
+                  </div>
+                )}
+                {/* Recording date/time from audio metadata */}
+                {session?.recordedAt && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Recording Info</h3>
+                    <div className="p-3 rounded-lg bg-secondary/50">
+                      <p className="text-sm text-foreground">{formatDetailDate(session.recordedAt)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">From audio file metadata</p>
+                    </div>
                   </div>
                 )}
                 {/* Speechmatics Summary */}
@@ -954,6 +1001,16 @@ export default function SessionDetailPage() {
                     <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
                     <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
                     <p className="text-xs text-muted-foreground">Extracting participants, purpose, and context</p>
+                  </div>
+                )}
+                {/* Recording date/time from audio metadata */}
+                {session?.recordedAt && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Recording Info</h3>
+                    <div className="p-3 rounded-lg bg-secondary/50">
+                      <p className="text-sm text-foreground">{formatDetailDate(session.recordedAt)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">From audio file metadata</p>
+                    </div>
                   </div>
                 )}
                 {/* Speechmatics Summary */}

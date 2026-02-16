@@ -26,6 +26,7 @@ export async function POST(
     const file = formData.get('file') as File
     const duration = parseInt(formData.get('duration') as string || '0', 10)
     const filePurpose = (formData.get('purpose') as string || 'meeting') as 'context' | 'meeting' | 'dictation' | 'instruction' | 'addition'
+    const recordedAtParam = formData.get('recorded_at') as string | null
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -243,13 +244,20 @@ export async function POST(
       .from('rohbericht-audio')
       .getPublicUrl(storagePath)
 
+    const updatePayload: Record<string, unknown> = {
+      status: 'created',
+      duration_sec: duration,
+      audio_url: publicUrl,
+    }
+    if (recordedAtParam) {
+      const parsed = new Date(recordedAtParam)
+      if (!isNaN(parsed.getTime())) updatePayload.recorded_at = parsed.toISOString()
+    } else if (file.lastModified && file.lastModified > 0) {
+      updatePayload.recorded_at = new Date(file.lastModified).toISOString()
+    }
     await supabase
       .from('sessions')
-      .update({
-        status: 'created',
-        duration_sec: duration,
-        audio_url: publicUrl,
-      })
+      .update(updatePayload)
       .eq('id', params.id)
 
     return NextResponse.json({

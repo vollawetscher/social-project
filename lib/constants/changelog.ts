@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.5.5',
+    date: 'February 18, 2026',
+    entries: [
+      {
+        version: '1.5.5',
+        date: 'February 18, 2026',
+        category: 'feature',
+        title: 'Content Type Hint Before Upload',
+        description: 'Before uploading audio, you can now say what kind of content it is—meeting, presentation, trade show talk, or voice note. The system uses this to improve summaries and analysis.',
+      },
+    ],
+  },
+  {
     version: '1.5.4',
     date: 'February 16, 2026',
     entries: [

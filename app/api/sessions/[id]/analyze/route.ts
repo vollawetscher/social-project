@@ -170,8 +170,9 @@ export async function POST(
    - Use free-form text - be specific and accurate
 
 3. **Rich Context** to help understand and document this session
-4. **User Identification**: The recording was made by "${userName || 'unknown user'}". Try to identify which participant is this user.
-5. **Suggested Output Formats**: Based on the conversation type and domain, suggest exactly 3 different output formats that would be useful. Examples:
+4. **User-Indicated Content Hint**: The user selected this before upload (use to guide recording type/domain if relevant): ${(session as { input_hint?: string }).input_hint || 'none'}
+5. **User Identification**: The recording was made by "${userName || 'unknown user'}". Try to identify which participant is this user.
+6. **Suggested Output Formats**: Based on the conversation type and domain, suggest exactly 3 different output formats that would be useful. Examples:
    - Sales call: meeting minutes, internal sales call analysis (what worked, what was missed, buying signals), short team update
    - Legal: deposition summary, client status memo, billing timeline notes
    - Medical: consultation notes, referral summary, patient-facing summary

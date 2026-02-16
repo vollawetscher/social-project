@@ -108,9 +108,10 @@ export default function UploadRecordingsPage() {
 
     // 2. Upload via API (server-side storage - reliable, no client storage RLS)
     const formData = new FormData()
-    formData.append('file', new File([recording.blob], filename, { type: recording.mimeType }))
+    formData.append('file', new File([recording.blob], filename, { type: recording.mimeType, lastModified: recording.timestamp }))
     formData.append('duration', String(Math.round(recording.duration)))
     formData.append('purpose', 'meeting')
+    formData.append('recorded_at', new Date(recording.timestamp).toISOString())
 
     const uploadRes = await fetch(`/api/sessions/${session.id}/upload`, {
       method: 'POST',

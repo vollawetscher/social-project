@@ -143,6 +143,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     transcriptCorrections: (dbSession as any).transcript_corrections || {}, // Alias system
     suggestedOutputFormats: (dbSession as any).suggested_output_formats || [],
     speechmaticsSummary: (dbSession as any).speechmatics_summary || undefined,
+    recordedAt: (dbSession as any).recorded_at || undefined,
     ownerEmail: (dbSession as any).owner_email, // Admin view: session owner email
     lastError: (dbSession as any).last_error, // Transcription/processing error
   }
