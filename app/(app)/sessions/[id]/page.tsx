@@ -674,6 +674,9 @@ export default function SessionDetailPage() {
               Transfer this session to a colleague. Enter their email address. They will see it in their sessions.
             </DialogDescription>
           </DialogHeader>
+          <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-800 dark:text-amber-200">
+            This session will disappear from your account once transferred. You will be redirected to the sessions list.
+          </div>
           <div className="py-4">
             <Input
               type="email"

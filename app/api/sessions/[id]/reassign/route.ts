@@ -38,7 +38,9 @@ export async function POST(
     }
 
     // Look up target user by email (case-insensitive)
-    const { data: targetProfile, error: profileError } = await supabase
+    // Use service role - RLS restricts profiles to own row; owner needs to find other users
+    const adminSupabase = createServiceRoleClient()
+    const { data: targetProfile, error: profileError } = await adminSupabase
       .from('profiles')
       .select('id')
       .ilike('email', newOwnerEmail)
@@ -58,7 +60,6 @@ export async function POST(
     }
 
     // Use service role to bypass RLS (user_id change is blocked by WITH CHECK)
-    const adminSupabase = createServiceRoleClient()
     const { data: updated, error: updateError } = await adminSupabase
       .from('sessions')
       .update({ user_id: targetProfile.id })

@@ -41,7 +41,7 @@ export async function GET(
       sessionId: output.session_id,
       sessionFilename: output.sessions?.internal_case_id || `Session ${output.session_id.slice(0, 8)}`,
       templateId: output.template_id,
-      templateName: output.templates?.name || output.title || 'Unknown Template',
+      templateName: output.templates?.name || output.template_name || 'Unknown Template',
       perspective: output.perspective || 'party_a',
       audience: output.audience || 'internal',
       language: output.language || 'en',
