@@ -105,6 +105,7 @@ export interface Session {
   outputCount?: number // Number of generated outputs for this session
   transcriptCorrections?: TranscriptCorrections // Alias system for corrections & PII
   suggestedOutputFormats?: SuggestedOutputFormat[] // AI-suggested output formats for this session (domain-aware)
+  speechmaticsSummary?: string // Brief summary from Speechmatics (generated during transcription)
   ownerEmail?: string // Admin view: session owner email
   lastError?: string // Transcription or processing error message
 }

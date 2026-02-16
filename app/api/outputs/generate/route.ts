@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { GenerateOutputConfig } from '@/lib/types-v0'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { applyTranscriptCorrections } from '@/lib/utils/transcript-corrections'
+import { mergeTranscripts } from '@/lib/utils/merge-transcripts'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -66,14 +67,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // Fetch transcript
-    const { data: transcript, error: transcriptError } = await supabase
+    // Fetch transcripts (multiple rows if session has multiple audio files)
+    const { data: transcriptRows, error: transcriptError } = await supabase
       .from('transcripts')
       .select('*')
       .eq('session_id', sessionId)
-      .single()
+      .order('created_at', { ascending: true })
 
-    if (transcriptError || !transcript) {
+    if (transcriptError || !transcriptRows?.length) {
+      return NextResponse.json({ error: 'Transcript not found' }, { status: 404 })
+    }
+
+    const transcript = mergeTranscripts(transcriptRows)
+    if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 })
     }
 

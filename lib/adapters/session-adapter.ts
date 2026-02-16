@@ -113,10 +113,10 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     return languageMap[langCode] || langCode.toUpperCase()
   }
 
-  // Get language: prefer transcript language, then session language, finally default to English
+  // Get language: prefer transcript language, then session language, finally default to German (app default)
   const languageCode = additionalData?.transcript?.language || 
                        (dbSession as any).language || 
-                       'en'
+                       'de'
   
   // Normalize extracted context - ensure participants are valid or fallback to speaker IDs
   const extractedContext = normalizeExtractedContext(rawContext, speakers)
@@ -142,6 +142,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     extractedContext, // Normalized AI-extracted rich context
     transcriptCorrections: (dbSession as any).transcript_corrections || {}, // Alias system
     suggestedOutputFormats: (dbSession as any).suggested_output_formats || [],
+    speechmaticsSummary: (dbSession as any).speechmatics_summary || undefined,
     ownerEmail: (dbSession as any).owner_email, // Admin view: session owner email
     lastError: (dbSession as any).last_error, // Transcription/processing error
   }

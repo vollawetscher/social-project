@@ -84,15 +84,29 @@ export function GenerateOutputModal({
   const [selectedTemplate, setSelectedTemplate] = useState<string>(template?.id || initialTemplateId || "")
   const [selectedPerspective, setSelectedPerspective] = useState<ParticipantRole | "">("")
   const [selectedAudience, setSelectedAudience] = useState<Audience | "">("")
-  const [selectedLanguage, setSelectedLanguage] = useState("English")
+  const [selectedLanguage, setSelectedLanguage] = useState("German")  // App default; updated by profile/session
+  const [profileLanguage, setProfileLanguage] = useState<string | null>(null)
 
-  // Default output language from session (e.g. German upload → German output)
+  // Fetch user profile for preferred_report_language (fallback when session language is missing/wrong)
   useEffect(() => {
-    const code = session?.languageCode || session?.language?.slice(0, 2)?.toLowerCase()
+    if (!open) return
+    fetch('/api/profile')
+      .then((r) => r.ok ? r.json() : null)
+      .then((profile) => {
+        const lang = profile?.preferred_report_language
+        if (lang && typeof lang === 'string') setProfileLanguage(lang.slice(0, 2).toLowerCase())
+      })
+      .catch(() => {})
+  }, [open])
+
+  // Default output language: user profile preference > session (from transcript) > English
+  // Profile wins because user explicitly set it; session language can be misdetected (e.g. German audio → "en")
+  useEffect(() => {
+    const code = profileLanguage || session?.languageCode
     if (code && codeToLanguage[code]) {
       setSelectedLanguage(codeToLanguage[code])
     }
-  }, [session?.id, session?.languageCode, session?.language])
+  }, [session?.id, session?.languageCode, profileLanguage])
   const [tone, setTone] = useState<OutputTone>("neutral")
   const [format, setFormat] = useState<OutputFormat>("markdown")
   const [doInstructions, setDoInstructions] = useState("")

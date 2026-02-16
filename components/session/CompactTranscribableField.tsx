@@ -51,7 +51,7 @@ export function CompactTranscribableField({
   const [isConnected, setIsConnected] = useState(false)
   const [saving, setSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
-  const [isOpen, setIsOpen] = useState(!locked && !!value) // Auto-open only if unlocked and has content
+  const [isOpen, setIsOpen] = useState(false) // Closed by default
   const [isLocked, setIsLocked] = useState(locked) // Lock feature
   const [isDirty, setIsDirty] = useState(false) // Track if user is actively editing
   

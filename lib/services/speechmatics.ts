@@ -8,6 +8,7 @@ export interface SpeechmaticsTranscript {
   segments: TranscriptSegment[]
   language: string
   fullText: string
+  summary?: string
 }
 
 export class SpeechmaticsService {
@@ -38,6 +39,10 @@ export class SpeechmaticsService {
         operating_point: 'enhanced',
         diarization: 'speaker',
         enable_entities: false, // Disabled to preserve numbers in transcript
+      },
+      summarization_config: {
+        content_type: 'conversational', // Best for meetings/calls with multiple participants
+        summary_length: 'brief',
       },
     }
 
@@ -226,13 +231,16 @@ export class SpeechmaticsService {
 
     const uniqueSpeakers = new Set(segments.map(s => s.speaker))
     const detectedLanguage = data.metadata?.language || 'en'
+    const summary = data.summary?.content
     console.log(`[Speechmatics] Parsed ${segments.length} segments with ${uniqueSpeakers.size} unique speakers: ${Array.from(uniqueSpeakers).join(', ')}`)
     console.log(`[Speechmatics] Detected language: ${detectedLanguage}`)
+    if (summary) console.log(`[Speechmatics] Summary length: ${summary.length} chars`)
 
     return {
       segments,
       language: detectedLanguage,
       fullText,
+      summary: summary || undefined,
     }
   }
 }

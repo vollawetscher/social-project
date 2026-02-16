@@ -116,7 +116,7 @@ export function SessionSetupPanel({
   onContextSaved,
   analyzing = false,
 }: SessionSetupPanelProps) {
-  const [isContextOpen, setIsContextOpen] = useState(true)
+  const [isContextOpen, setIsContextOpen] = useState(false)
   const [selectedRecordingType, setSelectedRecordingType] = useState<RecordingType | undefined>(
     session.recordingType
   )

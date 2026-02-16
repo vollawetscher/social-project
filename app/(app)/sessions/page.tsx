@@ -245,12 +245,6 @@ export default function SessionsPage() {
     if (user) fetchSessions()
   }, [user, adminView, fetchSessions])
 
-  // Open upload section by default on touch devices (mobile) so file picker is reachable without drag-and-drop
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'ontouchstart' in window) {
-      setIsUploadOpen(true)
-    }
-  }, [])
 
   // Poll when any session is transcribing so badges update when ready
   const hasInProgress = sessions.some(s =>

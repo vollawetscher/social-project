@@ -54,7 +54,7 @@ export default function SessionDetailPage() {
 
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [rightPanelOpen, setRightPanelOpen] = useState(true)
+  const [rightPanelOpen, setRightPanelOpen] = useState(false)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [outputs, setOutputs] = useState<any[]>([])
@@ -74,6 +74,18 @@ export default function SessionDetailPage() {
   const   [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
   const [retryingTranscribe, setRetryingTranscribe] = useState(false)
+  const [profileLanguage, setProfileLanguage] = useState<string | null>(null)
+
+  // Fetch user profile for preferred_report_language (used by AI-suggested outputs)
+  useEffect(() => {
+    fetch('/api/profile')
+      .then((r) => r.ok ? r.json() : null)
+      .then((profile) => {
+        const lang = profile?.preferred_report_language
+        if (lang && typeof lang === 'string') setProfileLanguage(lang.slice(0, 2).toLowerCase())
+      })
+      .catch(() => {})
+  }, [])
 
   // Handle seeking to a specific time from transcript click
   const handleSeekToTime = (time: number) => {
@@ -205,7 +217,7 @@ export default function SessionDetailPage() {
             templateName: suggestion.title,
             perspective: 'observer',
             audience: 'internal',
-            language: session.languageCode || 'en',
+            language: profileLanguage || session.languageCode || 'de',
             tone: 'neutral',
             format: 'markdown',
             doInstructions: suggestion.generationInstructions,
@@ -296,6 +308,15 @@ export default function SessionDetailPage() {
           console.log('[AI Analysis] Success! Data:', data)
           console.log('[AI Analysis] Participants received:', data.extractedContext?.participants)
           setAnalysis(data)
+          
+          // When auto-generation is triggered, poll for new outputs (generation runs async)
+          if (data.autoGeneration?.status === 'triggered') {
+            toast.info('Generating output...', { duration: 3000 })
+            const delays = [5000, 10000, 15000]
+            delays.forEach((delay, i) => {
+              setTimeout(() => fetchOutputs(), delay)
+            })
+          }
           
           // Update session with fresh AI data
           setSession(prev => {
@@ -563,8 +584,17 @@ export default function SessionDetailPage() {
             <TabsTrigger value="context">Context</TabsTrigger>
             <TabsTrigger value="outputs">Outputs</TabsTrigger>
           </TabsList>
-          <TabsContent value="transcript" className="flex-1 min-h-0 mt-0">
-            <div className="h-full rounded-lg border border-border bg-card overflow-hidden">
+          <TabsContent value="transcript" className="flex-1 min-h-0 mt-0 flex flex-col gap-3">
+            {session.speechmaticsSummary && (
+              <div className="shrink-0 rounded-lg border border-border bg-muted/30 p-4">
+                <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Auto-generated summary
+                </p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{session.speechmaticsSummary}</p>
+              </div>
+            )}
+            <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
               <TranscriptViewer 
                 segments={session.transcript}
                 currentTime={currentAudioTime}
@@ -584,6 +614,18 @@ export default function SessionDetailPage() {
                     <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
                     <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
                     <p className="text-xs text-muted-foreground">Extracting participants, purpose, and context</p>
+                  </div>
+                )}
+                {/* Speechmatics Summary */}
+                {session?.speechmaticsSummary && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Session Summary
+                    </h3>
+                    <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50 whitespace-pre-wrap">
+                      {session.speechmaticsSummary}
+                    </p>
                   </div>
                 )}
                 {/* Recording Type & Domain */}
@@ -866,15 +908,26 @@ export default function SessionDetailPage() {
           
           {/* Tab Content */}
           {activeTab === "transcript" && (
-            <div className="flex-1 rounded-lg border border-border bg-card overflow-hidden">
-              <TranscriptViewer 
-                segments={session.transcript} 
-                currentTime={currentAudioTime}
-                onSeek={handleSeekToTime}
-                corrections={session.transcriptCorrections}
-                onTogglePlayback={handleTogglePlayback}
-                isPlaying={isAudioPlaying}
-              />
+            <div className="flex-1 flex flex-col gap-4 min-h-0">
+              {session.speechmaticsSummary && (
+                <div className="shrink-0 rounded-lg border border-border bg-muted/30 p-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Auto-generated summary
+                  </p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{session.speechmaticsSummary}</p>
+                </div>
+              )}
+              <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
+                <TranscriptViewer 
+                  segments={session.transcript} 
+                  currentTime={currentAudioTime}
+                  onSeek={handleSeekToTime}
+                  corrections={session.transcriptCorrections}
+                  onTogglePlayback={handleTogglePlayback}
+                  isPlaying={isAudioPlaying}
+                />
+              </div>
             </div>
           )}
 
@@ -887,6 +940,18 @@ export default function SessionDetailPage() {
                     <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
                     <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
                     <p className="text-xs text-muted-foreground">Extracting participants, purpose, and context</p>
+                  </div>
+                )}
+                {/* Speechmatics Summary */}
+                {session?.speechmaticsSummary && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Session Summary
+                    </h3>
+                    <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50 whitespace-pre-wrap">
+                      {session.speechmaticsSummary}
+                    </p>
                   </div>
                 )}
                 {/* Recording Type & Domain */}

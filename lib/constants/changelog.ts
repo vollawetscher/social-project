@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.5.4',
+    date: 'February 16, 2026',
+    entries: [
+      {
+        version: '1.5.4',
+        date: 'February 16, 2026',
+        category: 'feature',
+        title: 'Automatic Session Summary',
+        description: 'When a recording is transcribed, Speechmatics now generates a brief summary automatically. You see it right above the transcript on each session—great for quickly understanding what was discussed.',
+      },
+    ],
+  },
+  {
+    version: '1.5.3',
+    date: 'February 11, 2026',
+    entries: [
+      {
+        version: '1.5.3',
+        date: 'February 11, 2026',
+        category: 'fix',
+        title: 'Output Language Follows Your Profile',
+        description: 'When generating outputs, the app now respects your preferred report language from settings. If automatic detection is wrong, your profile setting ensures reports are generated in the language you chose.',
+      },
+    ],
+  },
+  {
     version: '1.5.2',
     date: 'February 15, 2026',
     entries: [

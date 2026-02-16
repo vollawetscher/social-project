@@ -120,6 +120,7 @@ async function processTranscriptionJob(sessionId: string) {
           raw_text: transcript.fullText,
           redacted_text: redactionResult.redactedText,
           language: transcript.language,
+          summary: transcript.summary || null,
         })
 
       if (transcriptError) {
@@ -187,6 +188,25 @@ async function processTranscriptionJob(sessionId: string) {
       }
     } else {
       console.log(`[Transcribe] Keeping user-selected language: ${userSelectedLang}`)
+    }
+
+    // Update session with Speechmatics summary (concatenate all transcript summaries for multi-file)
+    const { data: transcriptSummaries } = await supabase
+      .from('transcripts')
+      .select('summary')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true })
+
+    const summaries = (transcriptSummaries || [])
+      .map((t: any) => t?.summary?.trim())
+      .filter(Boolean)
+    if (summaries.length > 0) {
+      const mergedSummary = summaries.join('\n\n')
+      await supabase
+        .from('sessions')
+        .update({ speechmatics_summary: mergedSummary })
+        .eq('id', sessionId)
+      console.log(`[Transcribe] Session speechmatics_summary set (${summaries.length} part(s))`)
     }
 
     // Get session info and user preferences

@@ -117,7 +117,7 @@ function OutputDetailSheet({ output }: { output: Output }) {
 
         <div className="mt-6 space-y-6">
           {/* Metadata Accordion */}
-          <Accordion type="single" collapsible defaultValue="metadata">
+          <Accordion type="single" collapsible defaultValue="">
             <AccordionItem value="metadata" className="border-border">
               <AccordionTrigger className="text-sm font-medium">
                 Output Metadata
