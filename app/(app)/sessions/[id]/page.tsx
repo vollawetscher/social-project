@@ -629,7 +629,6 @@ export default function SessionDetailPage() {
           {/* Bug reporter with session context */}
           <BugReporter
             sessionId={session.id}
-            caseId={session.caseId}
             variant="ghost"
             size="sm"
             iconOnly
