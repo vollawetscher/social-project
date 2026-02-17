@@ -3,6 +3,61 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createErrorLogger, ErrorContext } from '@/lib/services/error-logger'
 
+// PATCH /api/error-logs - Resolve/update an error log (admin only)
+export async function PATCH(request: Request) {
+  try {
+    const user = await requireAuth()
+    const supabase = await createClient()
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { id, resolved, resolution_notes } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'Error log ID required' }, { status: 400 })
+    }
+
+    const updateData: Record<string, any> = {}
+    if (typeof resolved === 'boolean') {
+      updateData.resolved = resolved
+      if (resolved) {
+        updateData.resolved_at = new Date().toISOString()
+      } else {
+        updateData.resolved_at = null
+      }
+    }
+    if (typeof resolution_notes === 'string') {
+      updateData.resolution_notes = resolution_notes
+    }
+
+    const { error } = await supabase
+      .from('error_logs')
+      .update(updateData)
+      .eq('id', id)
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    if (error instanceof Error) {
+      const authError = handleAuthError(error)
+      return NextResponse.json({ error: authError.message }, { status: authError.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 // POST /api/error-logs - Submit an error log (client-side or server-side)
 export async function POST(request: Request) {
   try {

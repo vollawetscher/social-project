@@ -128,7 +128,9 @@ export default function ProfilePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <BugReporter variant="outline" size="default" />
+          {profile.role === 'admin' && (
+            <BugReporter variant="outline" size="default" />
+          )}
           <Button onClick={() => router.push('/settings')} variant="outline">
             <Settings className="h-4 w-4 mr-2" />
             Edit Settings
@@ -274,26 +276,28 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Support & Feedback */}
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bug className="h-5 w-5" />
-            Help & Feedback
-          </CardTitle>
-          <CardDescription>
-            Report issues or request new features
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Found a bug or have a feature request? Let us know! Your feedback helps improve Notissima for everyone.
-          </p>
-          <div className="flex gap-2">
-            <BugReporter variant="default" size="default" />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Support & Feedback - Admin only */}
+      {profile.role === 'admin' && (
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bug className="h-5 w-5" />
+              Help & Feedback
+            </CardTitle>
+            <CardDescription>
+              Report issues or request new features
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Found a bug or have a feature request? Let us know! Your feedback helps improve Notissima for everyone.
+            </p>
+            <div className="flex gap-2">
+              <BugReporter variant="default" size="default" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
