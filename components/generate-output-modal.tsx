@@ -238,6 +238,11 @@ export function GenerateOutputModal({
             templateId: selectedTemplate || null,
             templateName: templates.find((t) => t.id === selectedTemplate)?.name || 'Custom Output',
             perspective: selectedPerspective,
+            perspectiveSpeakerName: (() => {
+              if (!selectedPerspective || selectedPerspective === 'observer') return undefined
+              const speaker = session.speakers.find(s => s.participantRole === selectedPerspective)
+              return speaker ? getDisplayName(speaker) : undefined
+            })(),
             audience: selectedAudience,
             language: languageToConfig[selectedLanguage]?.code ?? 'en',
             tone,
@@ -567,6 +572,9 @@ export function GenerateOutputModal({
                       <SelectItem value="direct">Direct</SelectItem>
                       <SelectItem value="neutral">Neutral</SelectItem>
                       <SelectItem value="formal">Formal</SelectItem>
+                      <SelectItem value="casual">Casual</SelectItem>
+                      <SelectItem value="funny">Funny</SelectItem>
+                      <SelectItem value="technical">Technical</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -591,7 +599,7 @@ export function GenerateOutputModal({
                   <Textarea
                     value={doInstructions}
                     onChange={(e) => setDoInstructions(e.target.value)}
-                    placeholder="e.g., Include action items, mention specific deadlines..."
+                    placeholder={"e.g., Focus on action items and deadlines\nAnnotate if something is unclear or ambiguous\nInclude exact quotes for key decisions\nHighlight areas of disagreement"}
                     className="bg-secondary border-border min-h-[80px]"
                   />
                 </div>
@@ -602,7 +610,7 @@ export function GenerateOutputModal({
                   <Textarea
                     value={dontInstructions}
                     onChange={(e) => setDontInstructions(e.target.value)}
-                    placeholder="e.g., Avoid mentioning competitor names..."
+                    placeholder={"e.g., Skip smalltalk and greetings\nLeave out off-topic tangents\nAvoid mentioning competitor names\nDon't include personal anecdotes"}
                     className="bg-secondary border-border min-h-[80px]"
                   />
                 </div>

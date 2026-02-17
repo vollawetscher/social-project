@@ -5,6 +5,7 @@ import type { GenerateOutputConfig } from '@/lib/types-v0'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { applyTranscriptCorrections } from '@/lib/utils/transcript-corrections'
 import { mergeTranscripts } from '@/lib/utils/merge-transcripts'
+import { logError } from '@/lib/services/error-logger'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -130,17 +131,32 @@ export async function POST(request: Request) {
       observer: 'neutral observer'
     }
 
+    // Build perspective instruction using speaker name when available
+    const speakerName = config.perspectiveSpeakerName
+    let perspectiveInstruction: string
+    if (config.perspective === 'observer' || !config.perspective) {
+      perspectiveInstruction = 'a neutral observer (third person)'
+    } else if (speakerName) {
+      perspectiveInstruction = `${speakerName} (first person — use "I" when referring to ${speakerName}, and refer to other participants by name)`
+    } else {
+      perspectiveInstruction = perspectiveMap[config.perspective] || 'a neutral observer'
+    }
+
     const audienceMap: Record<string, string> = {
       internal: 'internal team members',
-      client: 'external clients',
-      legal: 'legal professionals',
-      executive: 'executive leadership'
+      external: 'external third parties',
+      client: 'external clients (client-facing — professional, clear, no internal jargon)',
+      legal: 'legal professionals (precise language, factual, avoid speculation)',
+      executive: 'executive leadership (high-level, concise, focus on outcomes and decisions)',
     }
 
     const toneMap: Record<string, string> = {
+      direct: 'direct and to the point',
+      neutral: 'neutral and balanced',
       formal: 'formal and professional',
       casual: 'casual and conversational',
-      technical: 'technical and detailed'
+      funny: 'light-hearted and witty (while remaining accurate)',
+      technical: 'technical and detailed',
     }
 
     const languageMap: Record<string, string> = {
@@ -167,7 +183,7 @@ export async function POST(request: Request) {
 Your task is to generate ${formatMap[config.format] || 'a report'} from the following conversation.
 
 Key requirements:
-- Perspective: Write from the viewpoint of ${perspectiveMap[config.perspective || 'observer'] || 'a neutral observer'}
+- Perspective: Write from the viewpoint of ${perspectiveInstruction}
 - Audience: The output is intended for ${audienceMap[config.audience || 'internal'] || 'internal use'}
 - Tone: Use a ${toneMap[config.tone] || 'professional'} tone
 - Language: Generate the output in ${outputLanguage}
@@ -208,10 +224,10 @@ Please generate the requested output following all requirements and guidelines.`
     
     console.log('[Generate Output] Prompt length:', userPrompt.length)
 
-    // Generate with Claude
+    // Generate with Claude (use generous token limit to avoid truncated reports)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 4096,
+      max_tokens: 16384,
       messages: [
         {
           role: 'user',
@@ -229,6 +245,11 @@ Please generate the requested output following all requirements and guidelines.`
 
     if (!generatedContent) {
       return NextResponse.json({ error: 'Failed to generate output' }, { status: 500 })
+    }
+
+    // Detect truncated output - if Claude hit the token limit the report is incomplete
+    if (message.stop_reason === 'max_tokens') {
+      console.warn('[Generate Output] Response was truncated (hit max_tokens). Output may be incomplete.')
     }
 
     // Save the output to database
@@ -267,7 +288,22 @@ Please generate the requested output following all requirements and guidelines.`
 
     if (insertError || !output) {
       console.error('[Generate Output] Database insert error:', insertError)
-      console.error('[Generate Output] Error details:', JSON.stringify(insertError, null, 2))
+      await logError({
+        errorType: 'api_error',
+        severity: 'error',
+        message: `Failed to save generated output: ${insertError?.message || 'No data returned'}`,
+        userId,
+        sessionId,
+        endpoint: '/api/outputs/generate',
+        method: 'POST',
+        errorCode: insertError?.code,
+        metadata: {
+          step: 'output_insert',
+          contentLength: generatedContent.length,
+          templateId: config.templateId,
+          dbError: insertError,
+        },
+      }).catch(() => {})
       return NextResponse.json({ 
         error: 'Failed to save output',
         details: insertError,
@@ -376,6 +412,15 @@ Please generate the requested output following all requirements and guidelines.`
 
   } catch (error) {
     console.error('Error generating output:', error)
+    await logError({
+      errorType: 'server_error',
+      severity: 'error',
+      message: `Output generation failed: ${(error as Error).message}`,
+      error,
+      endpoint: '/api/outputs/generate',
+      method: 'POST',
+      metadata: { step: 'unhandled_exception' },
+    }).catch(() => {})
     return NextResponse.json(
       { error: 'Failed to generate output: ' + (error as Error).message }, 
       { status: 500 }

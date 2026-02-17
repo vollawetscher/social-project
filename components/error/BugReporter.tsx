@@ -21,6 +21,8 @@ interface BugReporterProps {
   caseId?: string | null
   sessionId?: string | null
   fileId?: string | null
+  /** Extra metadata to include in the report (e.g. session status, error messages) */
+  extraContext?: Record<string, any>
   variant?: 'default' | 'outline' | 'ghost'
   size?: 'default' | 'sm' | 'lg' | 'icon'
   iconOnly?: boolean
@@ -31,6 +33,7 @@ export function BugReporter({
   caseId,
   sessionId,
   fileId,
+  extraContext,
   variant = 'outline',
   size = 'sm',
   iconOnly = false,
@@ -47,8 +50,8 @@ export function BugReporter({
   const handleSubmit = async () => {
     if (!description.trim()) {
       toast({
-        title: 'Beschreibung erforderlich',
-        description: 'Bitte beschreiben Sie das Problem.',
+        title: 'Description required',
+        description: 'Please describe the problem you encountered.',
         variant: 'destructive',
       })
       return
@@ -57,7 +60,6 @@ export function BugReporter({
     setIsSubmitting(true)
 
     try {
-      // Gather client-side context
       const errorContext = {
         caseId,
         sessionId,
@@ -77,6 +79,7 @@ export function BugReporter({
           },
           timestamp: new Date().toISOString(),
           language: navigator.language,
+          ...(extraContext || {}),
         },
       }
 
@@ -97,11 +100,10 @@ export function BugReporter({
       setSubmitSuccess(true)
 
       toast({
-        title: 'Fehlerbericht gesendet',
-        description: 'Vielen Dank für Ihr Feedback. Wir werden das Problem untersuchen.',
+        title: 'Bug report sent',
+        description: 'Thank you for your feedback. We will investigate the issue.',
       })
 
-      // Reset form after a delay
       setTimeout(() => {
         setOpen(false)
         setDescription('')
@@ -112,8 +114,8 @@ export function BugReporter({
     } catch (error) {
       console.error('Failed to submit bug report:', error)
       toast({
-        title: 'Fehler',
-        description: 'Der Fehlerbericht konnte nicht gesendet werden. Bitte versuchen Sie es später erneut.',
+        title: 'Error',
+        description: 'Could not send the bug report. Please try again later.',
         variant: 'destructive',
       })
     } finally {
@@ -124,27 +126,27 @@ export function BugReporter({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} size={size} className={className} title="Problem melden">
+        <Button variant={variant} size={size} className={className} title="Report a problem">
           <Bug className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} />
-          {!iconOnly && 'Problem melden'}
+          {!iconOnly && 'Report Problem'}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Problem melden</DialogTitle>
+          <DialogTitle>Report a Problem</DialogTitle>
           <DialogDescription>
-            Beschreiben Sie das Problem, das Sie festgestellt haben. Ihre Rückmeldung hilft uns, die Anwendung zu verbessern.
+            Describe the issue you encountered. Your feedback helps us improve the application.
           </DialogDescription>
         </DialogHeader>
 
         {submitSuccess ? (
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              Fehlerbericht erfolgreich gesendet!
+          <Alert className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <AlertDescription className="text-green-800 dark:text-green-300">
+              Bug report sent successfully!
               {errorId && (
-                <p className="mt-2 text-xs text-green-600">
-                  Referenz-ID: {errorId.substring(0, 8)}...
+                <p className="mt-2 text-xs text-green-600 dark:text-green-500">
+                  Reference ID: {errorId.substring(0, 8)}...
                 </p>
               )}
             </AlertDescription>
@@ -153,11 +155,11 @@ export function BugReporter({
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="description">
-                Was ist das Problem? <span className="text-red-500">*</span>
+                What went wrong? <span className="text-red-500">*</span>
               </Label>
               <Textarea
                 id="description"
-                placeholder="Beschreiben Sie das Problem, das Sie festgestellt haben..."
+                placeholder="Describe the problem you encountered..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
@@ -167,11 +169,11 @@ export function BugReporter({
 
             <div className="grid gap-2">
               <Label htmlFor="reproduction">
-                Schritte zum Reproduzieren (optional)
+                Steps to reproduce (optional)
               </Label>
               <Textarea
                 id="reproduction"
-                placeholder="1. Gehe zu...&#10;2. Klicke auf...&#10;3. Sehe Fehler..."
+                placeholder={"1. Go to...\n2. Click on...\n3. See error..."}
                 value={reproductionSteps}
                 onChange={(e) => setReproductionSteps(e.target.value)}
                 rows={4}
@@ -182,10 +184,10 @@ export function BugReporter({
             {(caseId || sessionId || fileId) && (
               <Alert>
                 <AlertDescription className="text-xs text-muted-foreground">
-                  <strong>Debug-Kontext wird automatisch hinzugefügt:</strong>
-                  {caseId && <div>Projekt-ID: {caseId.substring(0, 8)}...</div>}
-                  {sessionId && <div>Gesprächs-ID: {sessionId.substring(0, 8)}...</div>}
-                  {fileId && <div>Datei-ID: {fileId.substring(0, 8)}...</div>}
+                  <strong>Debug context will be included automatically:</strong>
+                  {caseId && <div>Case ID: {caseId.substring(0, 8)}...</div>}
+                  {sessionId && <div>Session ID: {sessionId.substring(0, 8)}...</div>}
+                  {fileId && <div>File ID: {fileId.substring(0, 8)}...</div>}
                 </AlertDescription>
               </Alert>
             )}
@@ -200,16 +202,16 @@ export function BugReporter({
                 onClick={() => setOpen(false)}
                 disabled={isSubmitting}
               >
-                Abbrechen
+                Cancel
               </Button>
               <Button onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sende...
+                    Sending...
                   </>
                 ) : (
-                  'Bericht senden'
+                  'Send Report'
                 )}
               </Button>
             </>

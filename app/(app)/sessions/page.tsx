@@ -344,23 +344,54 @@ export default function SessionsPage() {
     const { segments, rawText } = parseTranscriptFile(trimmed, 'pasted.txt')
     const timestamp = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/[/,]/g, '-')
     const sessionName = `Pasted ${timestamp}`
-    const res = await fetch('/api/sessions/import-transcript', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language,
-        sessionName,
-        segments: segments.length > 0 ? segments : undefined,
-        rawText: rawText || trimmed,
-        rawFileContent: trimmed,
-        filename: 'pasted.txt',
-      }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.error || 'Import failed')
+
+    // Use AbortController to prevent indefinite waiting on long content
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 120_000) // 2 min client-side timeout
+
+    try {
+      const res = await fetch('/api/sessions/import-transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language,
+          sessionName,
+          segments: segments.length > 0 ? segments : undefined,
+          rawText: rawText || trimmed,
+          rawFileContent: trimmed,
+          filename: 'pasted.txt',
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Import failed')
+      }
+      return true
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err?.name === 'AbortError') {
+        // Log timeout to error service
+        fetch('/api/error-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            errorType: 'client_error',
+            severity: 'error',
+            message: `Transcript import timed out after 120s (content length: ${trimmed.length} chars)`,
+            metadata: {
+              step: 'client_fetch_timeout',
+              contentLength: trimmed.length,
+              segmentCount: segments.length,
+              url: window.location.href,
+            },
+          }),
+        }).catch(() => {})
+        throw new Error('Import timed out. The content may be too long — try pasting a shorter excerpt or splitting it into parts.')
+      }
+      throw err
     }
-    return true
   }, [language])
 
   const handleTranscriptFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

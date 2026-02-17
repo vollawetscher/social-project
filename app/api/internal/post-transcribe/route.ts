@@ -5,6 +5,7 @@
  */
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { logError } from '@/lib/services/error-logger'
 
 export async function POST(request: Request) {
   try {
@@ -70,6 +71,20 @@ export async function POST(request: Request) {
     if (!analyzeRes.ok) {
       const err = await analyzeRes.text()
       console.error('[Post-Transcribe] Analyze failed:', analyzeRes.status, err)
+      await logError({
+        errorType: 'api_error',
+        severity: 'error',
+        message: `Post-transcribe analyze failed (HTTP ${analyzeRes.status}): ${err.substring(0, 500)}`,
+        sessionId,
+        userId,
+        endpoint: '/api/internal/post-transcribe',
+        method: 'POST',
+        metadata: {
+          step: 'analyze_trigger',
+          analyzeStatus: analyzeRes.status,
+          analyzeResponse: err.substring(0, 1000),
+        },
+      }).catch(() => {})
       return NextResponse.json(
         { error: 'Analyze failed', details: err },
         { status: 500 }
@@ -80,6 +95,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   } catch (error: any) {
     console.error('[Post-Transcribe] Error:', error)
+    await logError({
+      errorType: 'server_error',
+      severity: 'error',
+      message: `Post-transcribe unhandled error: ${error?.message || 'Unknown'}`,
+      error,
+      endpoint: '/api/internal/post-transcribe',
+      method: 'POST',
+      metadata: { step: 'unhandled_exception' },
+    }).catch(() => {})
     return NextResponse.json(
       { error: error?.message || 'Internal error' },
       { status: 500 }

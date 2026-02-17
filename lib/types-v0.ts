@@ -44,9 +44,9 @@ export type SemanticRole =
   | 'moderator'
   | 'participant'
 
-export type Audience = 'internal' | 'external'
+export type Audience = 'internal' | 'external' | 'client' | 'legal' | 'executive'
 
-export type OutputTone = 'direct' | 'neutral' | 'formal'
+export type OutputTone = 'direct' | 'neutral' | 'formal' | 'casual' | 'funny' | 'technical'
 
 export type OutputFormat = 'markdown' | 'json'
 
@@ -195,6 +195,7 @@ export interface GenerateOutputConfig {
   templateId?: string | null // Optional - when generating from AI suggestion, can be empty
   templateName?: string // Custom name when no template (e.g. suggestion title)
   perspective: ParticipantRole | null // From whose perspective to generate
+  perspectiveSpeakerName?: string // Actual name of the selected speaker (for first-person perspective)
   audience: Audience | null
   language: string
   tone: OutputTone

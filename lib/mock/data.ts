@@ -393,4 +393,7 @@ export const semanticRoleLabels: Record<string, string> = {
 export const audienceLabels: Record<string, string> = {
   internal: 'Internal (Team / Organization)',
   external: 'External (Third Parties)',
+  client: 'Client-Facing',
+  legal: 'Legal',
+  executive: 'Executive',
 }

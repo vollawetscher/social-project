@@ -2,6 +2,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { toV0Sessions } from '@/lib/adapters/session-adapter'
+import { logError } from '@/lib/services/error-logger'
 
 export async function GET(request: Request) {
   try {
@@ -116,6 +117,16 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
+      await logError({
+        errorType: 'api_error',
+        severity: 'error',
+        message: `Failed to create session: ${error.message}`,
+        userId: user.id,
+        endpoint: '/api/sessions',
+        method: 'POST',
+        errorCode: error.code,
+        metadata: { dbError: error },
+      }).catch(() => {})
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -123,8 +134,26 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)
+      if (authError.status >= 500) {
+        await logError({
+          errorType: 'server_error',
+          severity: 'error',
+          message: `Session creation failed: ${error.message}`,
+          error,
+          endpoint: '/api/sessions',
+          method: 'POST',
+        }).catch(() => {})
+      }
       return NextResponse.json({ error: authError.message }, { status: authError.status })
     }
+    await logError({
+      errorType: 'server_error',
+      severity: 'critical',
+      message: `Session creation unknown error: ${String(error)}`,
+      error,
+      endpoint: '/api/sessions',
+      method: 'POST',
+    }).catch(() => {})
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -3,6 +3,7 @@
  * Reorganizes into coherent conversation format for better analysis.
  */
 import Anthropic from '@anthropic-ai/sdk'
+import { logError } from '@/lib/services/error-logger'
 
 export interface StructuredSegment {
   start_ms: number
@@ -48,16 +49,41 @@ export async function structureTranscript(
   const client = new Anthropic({ apiKey })
   const truncated = rawContent.slice(0, 50000) // ~12k tokens input limit consideration
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 8192,
-    messages: [
-      {
-        role: 'user',
-        content: `${STRUCTURE_PROMPT}\n\nLanguage hint: ${language}\n\nRaw content:\n\n${truncated}`,
+  // Wrap Claude call with a timeout to prevent hanging on very long content
+  const TIMEOUT_MS = 90_000 // 90 seconds
+  let response: Anthropic.Message
+  try {
+    response = await Promise.race([
+      client.messages.create({
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 8192,
+        messages: [
+          {
+            role: 'user',
+            content: `${STRUCTURE_PROMPT}\n\nLanguage hint: ${language}\n\nRaw content:\n\n${truncated}`,
+          },
+        ],
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`AI structuring timed out after ${TIMEOUT_MS / 1000}s. The content may be too long or complex. Try pasting a shorter excerpt.`)), TIMEOUT_MS)
+      ),
+    ])
+  } catch (err: any) {
+    await logError({
+      errorType: 'api_error',
+      severity: 'error',
+      message: `AI structuring failed: ${err?.message || 'Unknown error'}`,
+      error: err,
+      endpoint: 'structureTranscript',
+      metadata: {
+        contentLength: rawContent.length,
+        truncatedLength: truncated.length,
+        language,
+        isTimeout: err?.message?.includes('timed out'),
       },
-    ],
-  })
+    }).catch(() => {})
+    throw err
+  }
 
   const text =
     response.content?.[0]?.type === 'text'

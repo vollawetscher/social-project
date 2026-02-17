@@ -444,10 +444,14 @@ Respond ONLY with a JSON object in this format:
 
     const message = await this.client.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 4096,
+      max_tokens: 16384,
       temperature: 0.3,
       messages: [{ role: 'user', content: prompt }],
     })
+
+    if (message.stop_reason === 'max_tokens') {
+      console.warn('[generateReport] Response was truncated (hit max_tokens). Report may be incomplete.')
+    }
 
     const responseText = message.content
       .filter((block) => block.type === 'text')
@@ -483,7 +487,7 @@ Respond ONLY with a JSON object in this format:
 
       const message = await this.client.messages.create({
         model: 'claude-sonnet-4-5-20250929',
-        max_tokens: 4096,
+        max_tokens: 16384,
         temperature: 0.3,
         messages: [
           {
@@ -492,6 +496,10 @@ Respond ONLY with a JSON object in this format:
           },
         ],
       })
+
+      if (message.stop_reason === 'max_tokens') {
+        console.warn('[generateGespraechsbericht] Response was truncated (hit max_tokens). Report may be incomplete.')
+      }
 
       const responseText = message.content
         .filter((block) => block.type === 'text')

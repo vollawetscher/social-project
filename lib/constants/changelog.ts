@@ -14,6 +14,40 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.6.0',
+    date: 'February 17, 2026',
+    entries: [
+      {
+        version: '1.6.0',
+        date: 'February 17, 2026',
+        category: 'feature',
+        title: 'Richer Output Configuration',
+        description: 'More control over generated outputs: choose from new audience types (Client-Facing, Legal, Executive), additional tones (Casual, Funny, Technical), and first-person speaker perspectives so reports can read as "I said…" from a participant\'s viewpoint. The Do/Don\'t instruction fields now suggest common options like skipping smalltalk or focusing on action items.',
+      },
+      {
+        version: '1.6.0',
+        date: 'February 17, 2026',
+        category: 'improvement',
+        title: 'Bug Reporter',
+        description: 'Report problems directly from any session using the bug icon in the header. Your report automatically includes session context so we can diagnose issues faster.',
+      },
+      {
+        version: '1.6.0',
+        date: 'February 17, 2026',
+        category: 'fix',
+        title: 'Complete Reports',
+        description: 'Fixed an issue where generated reports could be cut off mid-section, resulting in incomplete content. Reports now have enough room to generate fully, even for longer conversations.',
+      },
+      {
+        version: '1.6.0',
+        date: 'February 17, 2026',
+        category: 'fix',
+        title: 'Reliable Transcript Import',
+        description: 'Pasting long conversations no longer hangs silently. You\'ll now see clear error messages if something goes wrong, and a timeout prevents indefinite waiting. All errors are tracked so we can fix root causes.',
+      },
+    ],
+  },
+  {
     version: '1.5.8',
     date: 'February 17, 2026',
     entries: [

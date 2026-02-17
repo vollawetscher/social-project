@@ -59,6 +59,7 @@ import { cn } from "@/lib/utils"
 import { formatDetailDate } from "@/lib/utils/date-formatters"
 import { EditableTitle } from "@/components/ui/editable-title"
 import { useAuth } from "@/lib/auth/AuthProvider"
+import { BugReporter } from "@/components/error/BugReporter"
 
 /** Renders Speechmatics summary with paragraphs and bullet lists */
 function FormattedSummary({ text }: { text: string }) {
@@ -625,6 +626,21 @@ export default function SessionDetailPage() {
           </div>
         ) : null}
         <div className="flex items-center gap-2">
+          {/* Bug reporter with session context */}
+          <BugReporter
+            sessionId={session.id}
+            caseId={session.caseId}
+            variant="ghost"
+            size="sm"
+            iconOnly
+            extraContext={{
+              sessionStatus: session.status,
+              sessionName: session.filename,
+              lastError: session.lastError,
+              hasSpeakers: session.speakers?.length > 0,
+              hasTranscript: !!session.transcript?.length,
+            }}
+          />
           {/* Hand off session - only when owner */}
           {session.ownerId === user?.id && (
             <Button

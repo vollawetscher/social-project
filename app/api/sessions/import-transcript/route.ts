@@ -10,6 +10,7 @@ import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { needsStructureHeuristic } from '@/lib/utils/transcript-structure-check'
 import { structureTranscript } from '@/lib/services/transcript-structurer'
+import { logError } from '@/lib/services/error-logger'
 
 interface ParsedSegment {
   start_ms: number
@@ -56,6 +57,21 @@ export async function POST(request: Request) {
         rawText = structured.rawText
       } catch (err: any) {
         console.error('[Import Transcript] AI structuring failed:', err?.message)
+        await logError({
+          errorType: 'api_error',
+          severity: 'error',
+          message: `AI structuring failed: ${err?.message || 'Unknown error'}`,
+          error: err,
+          userId: user.id,
+          endpoint: '/api/sessions/import-transcript',
+          method: 'POST',
+          metadata: {
+            step: 'ai_structuring',
+            contentLength: rawFileContent?.length,
+            filename,
+            language,
+          },
+        }).catch(() => {})
         return NextResponse.json(
           {
             error: 'Failed to structure transcript. Try a cleaner format or use TXT with plain paragraphs.',
@@ -107,6 +123,22 @@ export async function POST(request: Request) {
       .single()
 
     if (sessionError) {
+      await logError({
+        errorType: 'api_error',
+        severity: 'error',
+        message: `Failed to create session: ${sessionError.message}`,
+        userId: user.id,
+        endpoint: '/api/sessions/import-transcript',
+        method: 'POST',
+        errorCode: sessionError.code,
+        metadata: {
+          step: 'session_creation',
+          segmentCount: segments.length,
+          textLength: rawText?.length,
+          language: langCode,
+          dbError: sessionError,
+        },
+      }).catch(() => {})
       return NextResponse.json(
         { error: `Failed to create session: ${sessionError.message}` },
         { status: 500 }
@@ -129,6 +161,23 @@ export async function POST(request: Request) {
     })
 
     if (transcriptError) {
+      await logError({
+        errorType: 'api_error',
+        severity: 'error',
+        message: `Failed to save transcript: ${transcriptError.message}`,
+        userId: user.id,
+        sessionId: session.id,
+        endpoint: '/api/sessions/import-transcript',
+        method: 'POST',
+        errorCode: transcriptError.code,
+        metadata: {
+          step: 'transcript_insert',
+          segmentCount: segments.length,
+          rawTextLength: rawText?.length,
+          language: langCode,
+          dbError: transcriptError,
+        },
+      }).catch(() => {})
       await supabase.from('sessions').delete().eq('id', session.id)
       return NextResponse.json(
         { error: `Failed to save transcript: ${transcriptError.message}` },
@@ -171,11 +220,31 @@ export async function POST(request: Request) {
   } catch (error: any) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)
+      if (authError.status >= 500) {
+        await logError({
+          errorType: 'server_error',
+          severity: 'error',
+          message: `Import transcript failed: ${error.message}`,
+          error,
+          endpoint: '/api/sessions/import-transcript',
+          method: 'POST',
+          metadata: { step: 'unhandled_exception' },
+        }).catch(() => {})
+      }
       return NextResponse.json(
         { error: authError.message },
         { status: authError.status }
       )
     }
+    await logError({
+      errorType: 'server_error',
+      severity: 'critical',
+      message: `Import transcript unknown error: ${String(error)}`,
+      error,
+      endpoint: '/api/sessions/import-transcript',
+      method: 'POST',
+      metadata: { step: 'unhandled_exception', rawError: String(error) },
+    }).catch(() => {})
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
