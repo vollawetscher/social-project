@@ -24,7 +24,10 @@ export default function ResetPasswordPage() {
 
     try {
       const supabase = createClient()
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      // Prefer NEXT_PUBLIC_SITE_URL but NEVER use localhost (common Railway misconfiguration)
+      const envUrl = process.env.NEXT_PUBLIC_SITE_URL || ''
+      const isInvalidEnv = !envUrl || /localhost|127\.0\.0\.1/.test(envUrl)
+      const siteUrl = isInvalidEnv ? window.location.origin : envUrl
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${siteUrl}/auth/callback?next=/reset-password/confirm`,
       })

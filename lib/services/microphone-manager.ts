@@ -7,6 +7,13 @@
 
 type MicrophoneOwner = 'audio-recorder' | 'live-dictation' | null
 
+export interface MicrophoneOptions {
+  echoCancellation?: boolean
+  noiseSuppression?: boolean
+  autoGainControl?: boolean
+  channelCount?: number
+}
+
 class MicrophoneManager {
   private currentOwner: MicrophoneOwner = null
   private currentStream: MediaStream | null = null
@@ -16,7 +23,7 @@ class MicrophoneManager {
    * Request microphone access
    * Returns null if microphone is already in use by another component
    */
-  async requestMicrophone(owner: MicrophoneOwner): Promise<MediaStream | null> {
+  async requestMicrophone(owner: MicrophoneOwner, options?: MicrophoneOptions): Promise<MediaStream | null> {
     // Check if already owned by someone else
     if (this.currentOwner && this.currentOwner !== owner) {
       console.warn(`[MicrophoneManager] Microphone already in use by: ${this.currentOwner}`)
@@ -30,20 +37,36 @@ class MicrophoneManager {
     }
 
     try {
-      // Request new microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        }
-      })
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: options?.echoCancellation ?? true,
+        noiseSuppression: options?.noiseSuppression ?? true,
+        autoGainControl: options?.autoGainControl ?? true,
+      }
+
+      if (options?.channelCount) {
+        audioConstraints.channelCount = { ideal: options.channelCount }
+      }
+
+      console.log(`[MicrophoneManager] Requesting microphone for ${owner} with constraints:`, audioConstraints)
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
 
       this.currentStream = stream
       this.currentOwner = owner
       this.notifyListeners(owner)
 
-      console.log(`[MicrophoneManager] Microphone granted to: ${owner}`)
+      const track = stream.getAudioTracks()[0]
+      const settings = track?.getSettings()
+      console.log(`[MicrophoneManager] Microphone granted to: ${owner}`, {
+        channelCount: settings?.channelCount,
+        sampleRate: settings?.sampleRate,
+        echoCancellation: settings?.echoCancellation,
+        noiseSuppression: settings?.noiseSuppression,
+        autoGainControl: settings?.autoGainControl,
+        deviceId: settings?.deviceId,
+        label: track?.label,
+      })
+
       return stream
     } catch (error) {
       console.error(`[MicrophoneManager] Failed to get microphone for ${owner}:`, error)

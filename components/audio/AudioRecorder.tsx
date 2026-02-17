@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Mic, Square, Play, Pause, Trash2 } from 'lucide-react'
+import { Mic, Square, Play, Pause, Trash2, Settings2 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { detectSupportedAudioFormat, isMobileSafari } from '@/lib/utils/audio-format-detector'
 import { microphoneManager } from '@/lib/services/microphone-manager'
@@ -18,6 +21,10 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const [audioURL, setAudioURL] = useState<string | null>(null)
   const [duration, setDuration] = useState(0)
   const [recordingTime, setRecordingTime] = useState(0)
+  const [audioProcessing, setAudioProcessing] = useState(true)
+  const [channelCount, setChannelCount] = useState(1)
+  const [audioLevels, setAudioLevels] = useState<number[]>([0])
+  const [showSettings, setShowSettings] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -31,6 +38,10 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const isPageVisibleRef = useRef<boolean>(true)
   const isPausedRef = useRef<boolean>(false)
   const wakeLockRef = useRef<any>(null)
+  const analyserContextRef = useRef<AudioContext | null>(null)
+  const analysersRef = useRef<AnalyserNode[]>([])
+  const animationFrameRef = useRef<number | null>(null)
+  const levelUpdateRef = useRef<number>(0)
 
   useEffect(() => {
     return () => {
@@ -43,12 +54,85 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       if (audioURL) {
         URL.revokeObjectURL(audioURL)
       }
-      // Release microphone on unmount
+      stopLevelMonitoring()
       microphoneManager.releaseMicrophone('audio-recorder')
-      // Release wake lock
       releaseWakeLock()
     }
   }, [audioURL])
+
+  // --- Audio Level Monitoring ---
+  const startLevelMonitoring = useCallback((stream: MediaStream) => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      analyserContextRef.current = audioContext
+      const source = audioContext.createMediaStreamSource(stream)
+
+      const track = stream.getAudioTracks()[0]
+      const settings = track?.getSettings()
+      const channels = settings?.channelCount || 1
+      setChannelCount(channels)
+
+      if (channels >= 2) {
+        const splitter = audioContext.createChannelSplitter(channels)
+        source.connect(splitter)
+        const analysers: AnalyserNode[] = []
+        for (let i = 0; i < Math.min(channels, 2); i++) {
+          const analyser = audioContext.createAnalyser()
+          analyser.fftSize = 256
+          analyser.smoothingTimeConstant = 0.8
+          splitter.connect(analyser, i)
+          analysers.push(analyser)
+        }
+        analysersRef.current = analysers
+      } else {
+        const analyser = audioContext.createAnalyser()
+        analyser.fftSize = 256
+        analyser.smoothingTimeConstant = 0.8
+        source.connect(analyser)
+        analysersRef.current = [analyser]
+      }
+
+      console.log(`[AudioRecorder] Level monitoring started: ${channels} channel(s)`)
+
+      const updateLevels = () => {
+        const now = Date.now()
+        // Throttle to ~20fps to save battery
+        if (now - levelUpdateRef.current > 50) {
+          const levels = analysersRef.current.map(analyser => {
+            const data = new Uint8Array(analyser.frequencyBinCount)
+            analyser.getByteTimeDomainData(data)
+            let peak = 0
+            for (let i = 0; i < data.length; i++) {
+              const amplitude = Math.abs(data[i] - 128) / 128
+              if (amplitude > peak) peak = amplitude
+            }
+            return peak
+          })
+          setAudioLevels(levels)
+          levelUpdateRef.current = now
+        }
+        animationFrameRef.current = requestAnimationFrame(updateLevels)
+      }
+
+      updateLevels()
+    } catch (error) {
+      console.error('[AudioRecorder] Failed to start level monitoring:', error)
+    }
+  }, [])
+
+  const stopLevelMonitoring = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+    if (analyserContextRef.current) {
+      analyserContextRef.current.close().catch(() => {})
+      analyserContextRef.current = null
+    }
+    analysersRef.current = []
+    setAudioLevels([0])
+    setChannelCount(1)
+  }, [])
 
   // Request Wake Lock to keep recording active when screen is off
   const requestWakeLock = async () => {
@@ -94,13 +178,16 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       
       if (isRecording) {
         if (!isVisible) {
-          // Screen off - pause UI timer to save battery
+          // Screen off - pause UI timer and level monitoring to save battery
           if (timerRef.current) {
             clearInterval(timerRef.current)
             timerRef.current = null
           }
-          console.log('[AudioRecorder] Screen off - paused UI timer (health monitoring still active)')
-          // Wake Lock should keep recording active
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current)
+            animationFrameRef.current = null
+          }
+          console.log('[AudioRecorder] Screen off - paused UI timer & levels (health monitoring still active)')
         } else {
           // Screen on - resume UI timer and re-acquire wake lock if needed
           if (!timerRef.current) {
@@ -225,12 +312,20 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     }
 
     try {
-      // Request microphone via manager
-      const stream = await microphoneManager.requestMicrophone('audio-recorder')
+      // Request microphone with user-selected options
+      const stream = await microphoneManager.requestMicrophone('audio-recorder', {
+        echoCancellation: audioProcessing,
+        noiseSuppression: audioProcessing,
+        autoGainControl: audioProcessing,
+        channelCount: 2, // Always request stereo; browser gives what's available
+      })
       if (!stream) {
         toast.error('Microphone already in use')
         return
       }
+
+      // Start level monitoring for visual feedback
+      startLevelMonitoring(stream)
       
       // Monitor for stream ending unexpectedly
       stream.getAudioTracks().forEach(track => {
@@ -285,7 +380,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
       mediaRecorder.onstop = async () => {
         stopHealthMonitoring()
-        releaseWakeLock() // Release wake lock when recording stops
+        stopLevelMonitoring()
+        releaseWakeLock()
         
         // Wait for any pending dataavailable events to fire
         await new Promise(resolve => setTimeout(resolve, 200))
@@ -415,7 +511,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       }
       
       stopHealthMonitoring()
-      releaseWakeLock() // Release wake lock when stopping
+      stopLevelMonitoring()
+      releaseWakeLock()
       
       // Force final buffer flush before stopping
       // This ensures the last chunk of data is captured
@@ -445,7 +542,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
   const discardRecording = () => {
     stopHealthMonitoring()
-    releaseWakeLock() // Release wake lock when discarding
+    stopLevelMonitoring()
+    releaseWakeLock()
     if (audioURL) {
       URL.revokeObjectURL(audioURL)
     }
@@ -462,6 +560,18 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const getLevelColor = (level: number) => {
+    if (level > 0.85) return 'bg-red-500'
+    if (level > 0.6) return 'bg-yellow-500'
+    return 'bg-green-500'
+  }
+
+  const getLevelWidth = (level: number) => {
+    // Scale: 0-1 input, with amplification for typical speech levels
+    const scaled = Math.min(level * 2.5, 1)
+    return `${scaled * 100}%`
   }
 
   return (
@@ -487,8 +597,75 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
               </div>
 
               {isRecording && (
-                <div className="text-2xl font-mono font-bold text-slate-900">
-                  {formatTime(recordingTime)}
+                <>
+                  {/* Timer and channel indicator */}
+                  <div className="flex items-center gap-2">
+                    <div className="text-2xl font-mono font-bold text-slate-900">
+                      {formatTime(recordingTime)}
+                    </div>
+                    <Badge variant={channelCount >= 2 ? 'default' : 'secondary'} className="text-xs">
+                      {channelCount >= 2 ? 'Stereo' : 'Mono'}
+                    </Badge>
+                  </div>
+
+                  {/* Audio level indicators */}
+                  <div className="w-full max-w-xs space-y-1.5">
+                    {audioLevels.map((level, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        {channelCount >= 2 && (
+                          <span className="text-[10px] font-medium text-slate-400 w-3 text-right">
+                            {i === 0 ? 'L' : 'R'}
+                          </span>
+                        )}
+                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-[width] duration-75 ${getLevelColor(level)}`}
+                            style={{ width: getLevelWidth(level) }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {!audioProcessing && (
+                    <p className="text-[11px] text-amber-600">
+                      Audio processing off — best for external mics
+                    </p>
+                  )}
+                </>
+              )}
+
+              {/* Settings toggle (only when not recording) */}
+              {!isRecording && (
+                <div className="w-full max-w-xs">
+                  <button
+                    onClick={() => setShowSettings(prev => !prev)}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 transition-colors mb-2"
+                  >
+                    <Settings2 className="h-3.5 w-3.5" />
+                    {showSettings ? 'Hide settings' : 'Audio settings'}
+                  </button>
+
+                  {showSettings && (
+                    <div className="border rounded-lg p-3 space-y-3 bg-slate-50">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="audio-processing" className="text-sm font-medium">
+                            Audio Processing
+                          </Label>
+                          <p className="text-[11px] text-slate-500 leading-tight">
+                            Echo cancellation, noise suppression & auto-gain.
+                            Turn off for external microphones.
+                          </p>
+                        </div>
+                        <Switch
+                          id="audio-processing"
+                          checked={audioProcessing}
+                          onCheckedChange={setAudioProcessing}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

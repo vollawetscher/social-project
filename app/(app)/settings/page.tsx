@@ -18,6 +18,8 @@ import {
   Zap,
   Loader2,
   Save,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -45,6 +47,7 @@ import {
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 import { UserProfile, SUPPORTED_LANGUAGES, TIMEZONES } from "@/lib/types/profile"
 
 export default function SettingsPage() {
@@ -61,6 +64,11 @@ export default function SettingsPage() {
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [sessionTimeout, setSessionTimeout] = useState(true)
   const [retentionPolicy, setRetentionPolicy] = useState("90")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Fetch user profile and templates on mount
   useEffect(() => {
@@ -134,6 +142,32 @@ export default function SettingsPage() {
       toast.error(errorMessage)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!user?.email) return
+    if (newPassword.length < 6) {
+      toast.error("Passwort muss mindestens 6 Zeichen haben")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwörter stimmen nicht überein")
+      return
+    }
+    setChangingPassword(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      toast.success("Passwort wurde geändert")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Passwort konnte nicht geändert werden"
+      toast.error(msg)
+    } finally {
+      setChangingPassword(false)
     }
   }
 

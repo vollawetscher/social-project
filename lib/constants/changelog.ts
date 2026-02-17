@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.5.8',
+    date: 'February 17, 2026',
+    entries: [
+      {
+        version: '1.5.8',
+        date: 'February 17, 2026',
+        category: 'improvement',
+        title: 'Enhanced Audio Recorder',
+        description: 'The recorder now shows live audio level meters so you can see sound being captured in real time. Stereo recording is supported when you connect an external microphone, with a clear Mono/Stereo indicator. A new Audio Processing toggle lets you disable echo cancellation, noise suppression, and auto-gain for better quality with external mics.',
+      },
+    ],
+  },
+  {
     version: '1.5.7',
     date: 'February 18, 2026',
     entries: [

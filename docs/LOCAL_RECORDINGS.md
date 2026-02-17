@@ -24,8 +24,8 @@ Recordings use the best format supported by the browser:
 
 - **Bitrate**: ~64-128 kbps (varies by browser)
 - **Sample rate**: 16kHz - 48kHz (browser dependent)
-- **Channels**: Mono (single channel)
-- **File size**: ~1-2 MB per minute of audio
+- **Channels**: Mono or Stereo (auto-detected; stereo when external mic supports it)
+- **File size**: ~1-2 MB per minute (mono), ~2-4 MB per minute (stereo)
 
 ## Storage Limits
 
@@ -210,9 +210,9 @@ navigator.storage.estimate().then(estimate => {
 
 ### Recording Performance
 
-- **CPU usage**: Low (~2-5%)
+- **CPU usage**: Low (~2-5%), level meter adds ~1-2%
 - **Memory usage**: ~10-50 MB while recording
-- **Battery impact**: Minimal (same as native voice recorder)
+- **Battery impact**: Minimal (level meter paused when screen off)
 
 ### Storage Performance
 
@@ -261,9 +261,11 @@ navigator.storage.estimate().then(estimate => {
 2. Record in quiet environment
 3. Speak clearly close to microphone
 4. Check microphone quality
+5. **External mic:** Turn off Audio Processing in recorder settings (disables echo cancellation, noise suppression, auto-gain)
 
 ---
 
-**Last Updated:** January 31, 2026
+**Last Updated:** February 17, 2026
 **Format Support:** MP4, WebM, Ogg, AAC
 **Storage:** IndexedDB API
+**Features:** Stereo support, audio processing toggle, real-time level meters
