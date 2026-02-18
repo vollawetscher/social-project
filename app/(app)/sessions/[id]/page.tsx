@@ -414,9 +414,11 @@ export default function SessionDetailPage() {
     })
   }, [sessionId, fetchOutputs])
 
-  // Poll when transcribing so badge updates when transcript is ready
+  // Poll when transcribing so badge updates when transcript is ready (stop if stuck >15min)
   useEffect(() => {
     if (!session || !['transcribing', 'uploading', 'summarizing'].includes(session.status)) return
+    const age = Date.now() - new Date(session.createdAt).getTime()
+    if (age > 15 * 60 * 1000) return
     const interval = setInterval(async () => {
       try {
         const sessionRes = await fetch(`/api/sessions/${sessionId}`)
@@ -621,6 +623,20 @@ export default function SessionDetailPage() {
             {session.audioUrl ? (
               <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
                 {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry transcription'}
+              </Button>
+            ) : null}
+          </div>
+        ) : (session.status === 'transcribing' || session.status === 'uploading') &&
+            Date.now() - new Date(session.createdAt).getTime() > 15 * 60 * 1000 ? (
+          <div className="flex items-center gap-2 w-full max-w-md rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
+            <span className="text-destructive flex-1">
+              {session.status === 'transcribing'
+                ? 'Transcription appears stuck. The background job may have failed.'
+                : 'Upload appears stuck. Please try uploading again.'}
+            </span>
+            {session.audioUrl && session.status === 'transcribing' ? (
+              <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
+                {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry'}
               </Button>
             ) : null}
           </div>

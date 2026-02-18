@@ -60,14 +60,29 @@ import { parseTranscriptFile, cleanPastedContent } from "@/lib/utils/transcript-
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
-const statusConfig: Record<
-  SessionStatus,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string; animated?: boolean }
-> = {
+type StatusDisplay = { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string; animated?: boolean }
+
+const statusConfig: Record<SessionStatus, StatusDisplay> = {
   uploading: { label: "Uploading", variant: "secondary", className: "bg-info/20 text-info border-info/30 animate-pulse", animated: true },
   transcribing: { label: "Transcribing", variant: "secondary", className: "bg-warning/20 text-warning border-warning/30 animate-pulse", animated: true },
   ready: { label: "Ready", variant: "default", className: "bg-success/20 text-success border-success/30" },
   failed: { label: "Failed", variant: "destructive" },
+}
+
+const STALE_THRESHOLD_MS = 15 * 60 * 1000
+
+const staleStatus: StatusDisplay = {
+  label: "Stuck — tap to retry",
+  variant: "destructive",
+  className: "bg-destructive/15 text-destructive border-destructive/30",
+}
+
+function getStatusDisplay(session: Session): StatusDisplay {
+  if (session.status === 'uploading' || session.status === 'transcribing') {
+    const age = Date.now() - new Date(session.createdAt).getTime()
+    if (age > STALE_THRESHOLD_MS) return staleStatus
+  }
+  return statusConfig[session.status as SessionStatus]
 }
 
 function formatDuration(seconds: number): string {
@@ -344,13 +359,11 @@ export default function SessionsPage() {
       toast.error('Pasted content is empty or too short')
       return false
     }
-    const { segments, rawText } = parseTranscriptFile(trimmed, 'pasted.txt')
     const timestamp = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/[/,]/g, '-')
     const sessionName = `Pasted ${timestamp}`
 
-    // Use AbortController to prevent indefinite waiting on long content
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 120_000) // 2 min client-side timeout
+    const timeoutId = setTimeout(() => controller.abort(), 120_000)
 
     try {
       const res = await fetch('/api/sessions/import-transcript', {
@@ -359,8 +372,8 @@ export default function SessionsPage() {
         body: JSON.stringify({
           language,
           sessionName,
-          segments: segments.length > 0 ? segments : undefined,
-          rawText: rawText || trimmed,
+          segments: [{ start_ms: 0, end_ms: 0, speaker: '', text: trimmed }],
+          rawText: trimmed,
           filename: 'pasted.txt',
         }),
         signal: controller.signal,
@@ -1173,7 +1186,7 @@ export default function SessionsPage() {
             </div>
           ) : (
             filteredSessions.map((session: Session) => {
-              const status = statusConfig[session.status as SessionStatus]
+              const status = getStatusDisplay(session)
               return (
                 <div
                   key={session.id}
@@ -1247,6 +1260,12 @@ export default function SessionsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/sessions/${session.id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Details
+                          </Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
                           <Download className="mr-2 h-4 w-4" />
                           Transcript
@@ -1299,7 +1318,7 @@ export default function SessionsPage() {
                 </TableRow>
               ) : (
                 filteredSessions.map((session: Session) => {
-                  const status = statusConfig[session.status as SessionStatus]
+                  const status = getStatusDisplay(session)
                   return (
                     <TableRow 
                       key={session.id} 
@@ -1389,6 +1408,12 @@ export default function SessionsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/sessions/${session.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Details
+                              </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
                               <Download className="mr-2 h-4 w-4" />
                               Transcript

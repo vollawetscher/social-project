@@ -66,12 +66,11 @@ export function detectSupportedAudioFormat(): AudioFormatInfo {
     }
   }
 
-  console.warn('[AudioFormat] No Speechmatics-compatible format supported by browser')
-  console.warn('[AudioFormat] Falling back to browser default - transcription may fail')
+  console.warn('[AudioFormat] No Speechmatics-compatible format supported by this browser')
   return {
     mimeType: '',
-    extension: 'mp4',
-    isSupported: true,
+    extension: 'webm',
+    isSupported: false,
   }
 }
 

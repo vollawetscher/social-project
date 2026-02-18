@@ -344,6 +344,16 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       const audioFormat = detectSupportedAudioFormat()
       console.log('[AudioRecorder] Using audio format:', audioFormat)
 
+      if (!audioFormat.isSupported) {
+        microphoneManager.releaseMicrophone('audio-recorder')
+        stopLevelMonitoring()
+        toast.error(
+          'Your browser cannot record in a supported audio format. Please use Safari (iPhone/Mac) or upload a pre-recorded file instead.',
+          { duration: 10000 }
+        )
+        return
+      }
+
       if (isMobileSafari()) {
         console.log('[AudioRecorder] Mobile Safari detected')
       }
@@ -355,7 +365,16 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
       const mediaRecorder = new MediaRecorder(stream, options)
 
-      const actualMimeType = mediaRecorder.mimeType || audioFormat.mimeType || 'audio/webm'
+      const actualMimeType = mediaRecorder.mimeType || audioFormat.mimeType
+      if (!actualMimeType) {
+        microphoneManager.releaseMicrophone('audio-recorder')
+        stopLevelMonitoring()
+        toast.error(
+          'Could not determine recording format. Please use Safari or upload a file instead.',
+          { duration: 10000 }
+        )
+        return
+      }
       recordedMimeTypeRef.current = actualMimeType
       console.log('[AudioRecorder] MediaRecorder created with mimeType:', actualMimeType)
 
