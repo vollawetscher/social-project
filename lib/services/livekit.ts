@@ -104,7 +104,7 @@ function getSupabaseS3Upload(): S3Upload {
     accessKey,
     secret: secretKey,
     bucket: 'rohbericht-audio',
-    region: process.env.SUPABASE_S3_REGION || 'eu-central-1',
+    region: process.env.SUPABASE_S3_REGION || 'eu-west-1',
     endpoint: `${supabaseUrl}/storage/v1/s3`,
     forcePathStyle: true,
   })
