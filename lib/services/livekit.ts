@@ -100,12 +100,24 @@ function getSupabaseS3Upload(): S3Upload {
   const secretKey = process.env.SUPABASE_S3_SECRET_KEY
   if (!secretKey) throw new Error('SUPABASE_S3_SECRET_KEY is not configured')
 
+  // Derive the storage-specific hostname: project-ref.storage.supabase.co
+  // from the standard project URL: https://project-ref.supabase.co
+  let endpointHost: string
+  try {
+    const url = new URL(supabaseUrl)
+    endpointHost = url.host.replace('.supabase.co', '.storage.supabase.co')
+  } catch {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not a valid URL')
+  }
+
+  const endpoint = `https://${endpointHost}/storage/v1/s3`
+
   return new S3Upload({
     accessKey,
     secret: secretKey,
     bucket: 'rohbericht-audio',
     region: process.env.SUPABASE_S3_REGION || 'eu-west-1',
-    endpoint: `${supabaseUrl}/storage/v1/s3`,
+    endpoint,
     forcePathStyle: true,
   })
 }
