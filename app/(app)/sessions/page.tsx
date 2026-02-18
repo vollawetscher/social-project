@@ -398,7 +398,6 @@ export default function SessionsPage() {
             metadata: {
               step: 'client_fetch_timeout',
               contentLength: trimmed.length,
-              segmentCount: segments.length,
               url: window.location.href,
             },
           }),
