@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   LiveKitRoom,
+  RoomAudioRenderer,
   useConnectionState,
   useLocalParticipant,
   useRemoteParticipants,
@@ -64,6 +65,7 @@ export function CallRoom(props: CallRoomProps) {
         if (props.onLeave) props.onLeave()
       }}
     >
+      <RoomAudioRenderer />
       <CallRoomInner {...props} />
     </LiveKitRoom>
   )
