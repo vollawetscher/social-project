@@ -37,26 +37,9 @@ export default function CallRoomPage() {
       return
     }
 
-    if (callIdParam) {
-      fetchCallDetails(callIdParam)
-    } else {
-      setPhase("setup")
-    }
+    // No token = joining as guest/second participant, go straight to setup
+    setPhase("setup")
   }, [authLoading, callIdParam, tokenParam])
-
-  async function fetchCallDetails(id: string) {
-    try {
-      const res = await fetch(`/api/calls/${id}`)
-      if (!res.ok) throw new Error("Call not found")
-      const data = await res.json()
-      setCallType(data.call_type)
-      setContactName(data.participant_b_identity || data.phone_number || undefined)
-      setPhase("setup")
-    } catch (err: any) {
-      setError(err.message || "Failed to load call")
-      setPhase("error")
-    }
-  }
 
   const handleJoin = useCallback(async (displayName: string) => {
     setPhase("joining")
