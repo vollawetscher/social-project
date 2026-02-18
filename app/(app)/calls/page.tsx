@@ -52,6 +52,7 @@ export default function CallsPage() {
   const [calls, setCalls] = useState<Call[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchCalls()
@@ -74,18 +75,22 @@ export default function CallsPage() {
   async function handleNewCall(mode: CallMode) {
     if (creating) return
     setCreating(true)
+    setError(null)
     try {
       const res = await fetch("/api/calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ callType: "web", mode }),
       })
-      if (res.ok) {
-        const data = await res.json()
-        router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `Failed to create call (${res.status})`)
       }
-    } catch (err) {
+      const data = await res.json()
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}`)
+    } catch (err: any) {
       console.error("[Calls] Failed to create call:", err)
+      setError(err.message || "Failed to create call")
     } finally {
       setCreating(false)
     }
@@ -94,26 +99,33 @@ export default function CallsPage() {
   async function handleDialpadCall(phoneNumber: string, mode: CallMode) {
     if (creating) return
     setCreating(true)
+    setError(null)
     try {
       const res = await fetch("/api/calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ callType: "pstn_outbound", mode }),
       })
-      if (!res.ok) throw new Error("Failed to create call")
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to create call")
+      }
       const data = await res.json()
 
-      // Dial the phone number
       const dialRes = await fetch(`/api/calls/${data.callId}/dial`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneNumber }),
       })
-      if (!dialRes.ok) throw new Error("Failed to dial")
+      if (!dialRes.ok) {
+        const dialData = await dialRes.json().catch(() => ({}))
+        throw new Error(dialData.error || "Failed to dial")
+      }
 
       router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}&phone=${encodeURIComponent(phoneNumber)}`)
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Calls] Failed to create PSTN call:", err)
+      setError(err.message || "Failed to create call")
     } finally {
       setCreating(false)
     }
@@ -166,6 +178,13 @@ export default function CallsPage() {
           </button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
 
       {/* Tab Bar */}
       <div className="flex border-b border-border bg-card">
