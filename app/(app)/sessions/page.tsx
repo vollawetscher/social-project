@@ -54,8 +54,9 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
+import { PastePreviewSheet } from "@/components/upload/PastePreviewSheet"
 import { getStorageMimeType } from "@/lib/utils/audio-format-detector"
-import { parseTranscriptFile } from "@/lib/utils/transcript-parser"
+import { parseTranscriptFile, cleanPastedContent } from "@/lib/utils/transcript-parser"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
@@ -192,6 +193,8 @@ export default function SessionsPage() {
   const [previewFiles, setPreviewFiles] = useState<File[]>([])
   const [previewOpen, setPreviewOpen] = useState(false)
   const [uploadingTranscript, setUploadingTranscript] = useState(false)
+  const [pastePreviewText, setPastePreviewText] = useState('')
+  const [pastePreviewOpen, setPastePreviewOpen] = useState(false)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const transcriptInputRef = useRef<HTMLInputElement>(null)
@@ -358,7 +361,6 @@ export default function SessionsPage() {
           sessionName,
           segments: segments.length > 0 ? segments : undefined,
           rawText: rawText || trimmed,
-          rawFileContent: trimmed,
           filename: 'pasted.txt',
         }),
         signal: controller.signal,
@@ -424,6 +426,33 @@ export default function SessionsPage() {
     }
   }, [processTranscriptFile, fetchSessions])
 
+  const openPastePreview = useCallback((raw: string) => {
+    const cleaned = cleanPastedContent(raw)
+    if (!cleaned || cleaned.length < 10) {
+      toast.error('Pasted content is empty or too short')
+      return
+    }
+    setPastePreviewText(cleaned)
+    setPastePreviewOpen(true)
+  }, [])
+
+  const handlePastePreviewConfirm = useCallback(async (text: string) => {
+    setUploadingTranscript(true)
+    try {
+      if (await processPastedTranscript(text)) {
+        toast.success('Pasted transcript imported')
+        setPastePreviewOpen(false)
+        setIsUploadOpen(false)
+        await fetchSessions()
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Import failed'
+      toast.error(msg)
+    } finally {
+      setUploadingTranscript(false)
+    }
+  }, [processPastedTranscript, fetchSessions])
+
   const handlePasteTranscript = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText()
@@ -431,40 +460,20 @@ export default function SessionsPage() {
         toast.error('Clipboard is empty')
         return
       }
-      setUploadingTranscript(true)
-      if (await processPastedTranscript(text)) {
-        toast.success('Pasted transcript imported')
-        setIsUploadOpen(false)
-        await fetchSessions()
-      }
+      openPastePreview(text)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to paste'
+      const msg = err instanceof Error ? err.message : 'Failed to read clipboard'
       toast.error(msg)
-    } finally {
-      setUploadingTranscript(false)
     }
-  }, [processPastedTranscript, fetchSessions])
+  }, [openPastePreview])
 
   const handleTranscriptPaste = useCallback((e: React.ClipboardEvent) => {
     if (uploadingTranscript) return
     const text = e.clipboardData?.getData('text/plain')
     if (!text?.trim()) return
     e.preventDefault()
-    setUploadingTranscript(true)
-    ;(async () => {
-      try {
-        if (await processPastedTranscript(text)) {
-          toast.success('Pasted transcript imported')
-          setIsUploadOpen(false)
-          await fetchSessions()
-        }
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Paste failed')
-      } finally {
-        setUploadingTranscript(false)
-      }
-    })()
-  }, [processPastedTranscript, fetchSessions, uploadingTranscript])
+    openPastePreview(text)
+  }, [openPastePreview, uploadingTranscript])
 
   const handleFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -1409,6 +1418,14 @@ export default function SessionsPage() {
         files={previewFiles}
         onConfirm={handleUploadConfirm}
         loading={uploadingFiles}
+      />
+
+      <PastePreviewSheet
+        open={pastePreviewOpen}
+        onOpenChange={setPastePreviewOpen}
+        initialText={pastePreviewText}
+        onConfirm={handlePastePreviewConfirm}
+        loading={uploadingTranscript}
       />
     </div>
   )

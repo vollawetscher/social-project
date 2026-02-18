@@ -2,6 +2,29 @@
  * Parse transcript files (TXT, SRT, VTT) into segment format compatible with the app.
  */
 
+/** Strip formatting noise from pasted content so parseTXT handles it reliably. */
+export function cleanPastedContent(raw: string): string {
+  let t = raw
+  // Remove emojis / symbol codepoints
+  t = t.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '')
+  // Remove markdown code fences and their content
+  t = t.replace(/```[\s\S]*?```/g, '')
+  // Convert markdown table rows to plain text
+  t = t.replace(/^\|(.+)\|$/gm, (_, row: string) =>
+    row.split('|').map((c: string) => c.trim()).filter(Boolean).join(' — ')
+  )
+  // Remove table separator rows
+  t = t.replace(/^\|[-:\s|]+\|$/gm, '')
+  // Strip bold / italic markers
+  t = t.replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+  t = t.replace(/_{1,3}([^_]+)_{1,3}/g, '$1')
+  // Strip heading markers
+  t = t.replace(/^#{1,6}\s+/gm, '')
+  // Collapse 3+ blank lines to 2
+  t = t.replace(/\n{3,}/g, '\n\n')
+  return t.trim()
+}
+
 export interface ParsedSegment {
   start_ms: number
   end_ms: number
