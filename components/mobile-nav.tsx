@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Mic, FileText, LayoutTemplate, Settings } from "lucide-react"
+import { Mic, FileText, LayoutTemplate, Settings, Phone } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -15,6 +15,11 @@ const navItems = [
     name: "Outputs",
     href: "/outputs",
     icon: FileText,
+  },
+  {
+    name: "Calls",
+    href: "/calls",
+    icon: Phone,
   },
   {
     name: "Templates",

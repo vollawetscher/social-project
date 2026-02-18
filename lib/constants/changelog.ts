@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.7.0',
+    date: 'February 18, 2026',
+    entries: [
+      {
+        version: '1.7.0',
+        date: 'February 18, 2026',
+        category: 'feature',
+        title: 'Video & Phone Calls',
+        description: 'Make video calls directly in the browser or dial phone numbers from the app. Each call is automatically recorded and transcribed per speaker, then fed into your existing session pipeline for analysis and report generation.',
+      },
+    ],
+  },
+  {
     version: '1.6.0',
     date: 'February 17, 2026',
     entries: [

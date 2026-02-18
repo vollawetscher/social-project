@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Bug,
+  Phone,
 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
@@ -37,6 +38,11 @@ const navItems = [
     name: "Outputs",
     href: "/outputs",
     icon: FileText,
+  },
+  {
+    name: "Calls",
+    href: "/calls",
+    icon: Phone,
   },
   {
     name: "Templates",
