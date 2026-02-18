@@ -100,7 +100,11 @@ export async function POST(request: Request) {
         const roomName = egressInfo.roomName
         const egressId = egressInfo.egressId
 
-        console.log('[LiveKit Webhook] Egress ended:', egressId, 'room:', roomName)
+        // Log full egress info for debugging
+        const egressStatus = (egressInfo as any).status
+        const egressError = (egressInfo as any).error
+        console.log('[LiveKit Webhook] Egress ended:', egressId, 'room:', roomName, 'status:', egressStatus, 'error:', egressError)
+        console.log('[LiveKit Webhook] Egress file info:', JSON.stringify((egressInfo as any).fileResults || (egressInfo as any).file || 'none'))
 
         const { data: call } = await supabase
           .from('calls')
@@ -110,6 +114,15 @@ export async function POST(request: Request) {
 
         if (!call || call.track_a_egress_id !== egressId) break
         if (!call.session_id) break
+
+        if (egressError) {
+          console.error('[LiveKit Webhook] Egress failed:', egressError)
+          await supabase
+            .from('calls')
+            .update({ status: 'error', last_error: `Egress failed: ${egressError}` })
+            .eq('id', call.id)
+          break
+        }
 
         // Extract the storage path from egress file results
         const fileResults = (egressInfo as any).fileResults || []
