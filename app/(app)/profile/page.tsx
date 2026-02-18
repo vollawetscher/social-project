@@ -2,9 +2,9 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug } from "lucide-react"
+import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug, Smartphone, Share, Plus } from "lucide-react"
 import { BugReporter } from "@/components/error/BugReporter"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +12,83 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { UserProfile } from "@/lib/types/profile"
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
+function InstallAppCard() {
+  const [isMobile, setIsMobile] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
+  const [isIOS, setIsIOS] = useState(false)
+  const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null)
+  const [canInstall, setCanInstall] = useState(false)
+  const [installed, setInstalled] = useState(false)
+
+  useEffect(() => {
+    const ua = navigator.userAgent
+    setIsMobile(/iPhone|iPad|iPod|Android|webOS|Mobile/i.test(ua))
+    setIsIOS(/iPad|iPhone|iPod/.test(ua))
+    setIsStandalone(
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as any).standalone === true
+    )
+
+    const handler = (e: Event) => {
+      e.preventDefault()
+      deferredPromptRef.current = e as BeforeInstallPromptEvent
+      setCanInstall(true)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  if (!isMobile || isStandalone || installed) return null
+
+  const handleInstall = async () => {
+    if (!deferredPromptRef.current) return
+    deferredPromptRef.current.prompt()
+    const { outcome } = await deferredPromptRef.current.userChoice
+    if (outcome === 'accepted') setInstalled(true)
+    deferredPromptRef.current = null
+    setCanInstall(false)
+  }
+
+  return (
+    <Card className="border-border">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Smartphone className="h-5 w-5" />
+          Install App
+        </CardTitle>
+        <CardDescription>
+          Add Notissima to your home screen for quick access
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {canInstall ? (
+          <Button onClick={handleInstall}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add to Home Screen
+          </Button>
+        ) : isIOS ? (
+          <div className="flex items-start gap-3 text-sm text-muted-foreground">
+            <Share className="h-5 w-5 shrink-0 mt-0.5" />
+            <p>
+              Tap the <span className="font-medium text-foreground">Share</span> button in Safari, then choose{' '}
+              <span className="font-medium text-foreground">Add to Home Screen</span>.
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Open this page in Chrome and tap the menu, then &quot;Add to Home Screen&quot;.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth()
@@ -275,6 +352,9 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Install App - mobile only, not already installed */}
+      <InstallAppCard />
 
       {/* Support & Feedback - Admin only */}
       {profile.role === 'admin' && (
