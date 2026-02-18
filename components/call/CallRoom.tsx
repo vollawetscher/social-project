@@ -21,6 +21,8 @@ import {
   X,
   MessageSquareText,
   ArrowLeft,
+  Link2,
+  Check,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -143,6 +145,16 @@ function CallRoomInner({
     localParticipant.setScreenShareEnabled(!isScreenSharing)
   }, [localParticipant, isScreenSharing])
 
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  const copyInviteLink = useCallback(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.delete("token")
+    navigator.clipboard.writeText(url.toString())
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }, [])
+
   const statusLabel = {
     connecting: "Connecting...",
     ringing: "Waiting for others...",
@@ -234,6 +246,17 @@ function CallRoomInner({
               )}>
                 {statusLabel[callStatus]}
               </p>
+              {callStatus === "ringing" && (
+                <button
+                  onClick={copyInviteLink}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/15 transition-colors mt-4"
+                >
+                  {linkCopied ? <Check className="h-4 w-4 text-primary" /> : <Link2 className="h-4 w-4 text-primary" />}
+                  <span className="text-sm text-primary font-medium">
+                    {linkCopied ? "Link copied!" : "Copy invite link"}
+                  </span>
+                </button>
+              )}
               {callStatus === "connected" && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 mt-4">
                   <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -387,7 +410,14 @@ function CallRoomInner({
                     {contactInitials}
                   </AvatarFallback>
                 </Avatar>
-                <p className="text-sm text-white/40">Waiting for others...</p>
+                <p className="text-sm text-white/40 mb-3">Waiting for others...</p>
+                <button
+                  onClick={copyInviteLink}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
+                >
+                  {linkCopied ? <Check className="h-3.5 w-3.5 text-white/70" /> : <Link2 className="h-3.5 w-3.5 text-white/70" />}
+                  <span className="text-xs text-white/70">{linkCopied ? "Copied!" : "Copy invite link"}</span>
+                </button>
               </div>
             )}
           </div>
