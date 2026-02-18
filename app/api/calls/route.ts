@@ -28,13 +28,18 @@ export async function POST(request: Request) {
     const roomCreatedAtMs = Date.now()
 
     // Create the LiveKit room
-    await createRoom(roomName, {
-      maxParticipants: 2,
-      emptyTimeout: 300,
-      metadata: JSON.stringify({ callType, mode, createdBy: user.id }),
-    })
+    try {
+      await createRoom(roomName, {
+        maxParticipants: 2,
+        emptyTimeout: 300,
+        metadata: JSON.stringify({ callType, mode, createdBy: user.id }),
+      })
+    } catch (lkError: any) {
+      console.error('[Calls] LiveKit createRoom failed:', lkError)
+      return NextResponse.json({ error: `LiveKit room creation failed: ${lkError.message}` }, { status: 500 })
+    }
 
-    // Create a session for this call (will hold transcript + analysis later)
+    // Create a session for this call
     const inputHint = callType === 'pstn_outbound' ? 'phone_call' : 'video_call'
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
@@ -52,7 +57,7 @@ export async function POST(request: Request) {
 
     if (sessionError) {
       console.error('[Calls] Failed to create session:', sessionError)
-      return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
+      return NextResponse.json({ error: `Session creation failed: ${sessionError.message}` }, { status: 500 })
     }
 
     // Create the call record
@@ -71,12 +76,18 @@ export async function POST(request: Request) {
       .single()
 
     if (callError) {
-      console.error('[Calls] Failed to create call:', callError)
-      return NextResponse.json({ error: 'Failed to create call record' }, { status: 500 })
+      console.error('[Calls] Failed to create call record:', callError)
+      return NextResponse.json({ error: `Call record creation failed: ${callError.message}` }, { status: 500 })
     }
 
     // Generate a LiveKit access token for the initiator
-    const token = await createRoomToken(roomName, user.id, displayName)
+    let token: string
+    try {
+      token = await createRoomToken(roomName, user.id, displayName)
+    } catch (tokenError: any) {
+      console.error('[Calls] Token generation failed:', tokenError)
+      return NextResponse.json({ error: `Token generation failed: ${tokenError.message}` }, { status: 500 })
+    }
 
     return NextResponse.json({
       callId: call.id,
