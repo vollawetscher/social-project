@@ -897,7 +897,7 @@ export default function SessionsPage() {
       session.language.toLowerCase().includes(q) ||
       session.speechmaticsSummary?.toLowerCase().includes(q) ||
       session.extractedContext?.purpose?.toLowerCase().includes(q) ||
-      session.extractedContext?.topics?.some(t => t.toLowerCase().includes(q)) ||
+      session.extractedContext?.agenda?.some(t => t.toLowerCase().includes(q)) ||
       session.extractedContext?.participants?.some(p =>
         (typeof p === 'string' ? p : p.name)?.toLowerCase().includes(q)
       ) ||
