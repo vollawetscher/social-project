@@ -413,56 +413,56 @@ function CallRoomInner({
         </div>
       </div>
 
-      {/* Video Area — remote fullscreen, local as PiP */}
+      {/* Video Area — remote on top, local below */}
       <div className="flex-1 overflow-hidden relative">
-        <div className="h-full">
-          {/* Main view: remote participant (or waiting placeholder) */}
-          {remoteParticipants.length > 0 ? (
-            <div className={cn(
-              "h-full gap-2",
-              remoteParticipants.length > 1 ? "grid grid-cols-2" : ""
-            )}>
-              {remoteParticipants.map((rp) => {
-                const remoteCamera = cameraTracks.find(t => t.participant.sid === rp.sid)
-                return (
-                  <LiveParticipantTile
-                    key={rp.sid}
-                    name={rp.name || rp.identity}
-                    isMuted={!rp.isMicrophoneEnabled}
-                    hasVideo={rp.isCameraEnabled}
-                    videoTrack={remoteCamera}
-                  />
-                )
-              })}
-            </div>
-          ) : (
-            /* Waiting placeholder (full area) */
-            <div className="h-full rounded-xl bg-[#1a1a1a] flex flex-col items-center justify-center">
-              <Avatar className="h-14 w-14 mb-3">
-                <AvatarFallback className="bg-white/10 text-white text-lg">
-                  {contactInitials}
-                </AvatarFallback>
-              </Avatar>
-              <p className="text-sm text-white/40 mb-3">Waiting for others...</p>
-              <button
-                onClick={copyInviteLink}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
-              >
-                {linkCopied ? <Check className="h-3.5 w-3.5 text-white/70" /> : <Link2 className="h-3.5 w-3.5 text-white/70" />}
-                <span className="text-xs text-white/70">{linkCopied ? "Copied!" : "Copy invite link"}</span>
-              </button>
-            </div>
-          )}
+        <div className="h-full p-2 flex flex-col gap-2">
+          {/* Top: remote participant (or waiting placeholder) */}
+          <div className="flex-1 min-h-0">
+            {remoteParticipants.length > 0 ? (
+              <div className={cn(
+                "h-full gap-2",
+                remoteParticipants.length > 1 ? "grid grid-cols-2" : ""
+              )}>
+                {remoteParticipants.map((rp) => {
+                  const remoteCamera = cameraTracks.find(t => t.participant.sid === rp.sid)
+                  return (
+                    <LiveParticipantTile
+                      key={rp.sid}
+                      name={rp.name || rp.identity}
+                      isMuted={!rp.isMicrophoneEnabled}
+                      hasVideo={rp.isCameraEnabled}
+                      videoTrack={remoteCamera}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="h-full rounded-xl bg-[#1a1a1a] flex flex-col items-center justify-center">
+                <Avatar className="h-14 w-14 mb-3">
+                  <AvatarFallback className="bg-white/10 text-white text-lg">
+                    {contactInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="text-sm text-white/40 mb-3">Waiting for others...</p>
+                <button
+                  onClick={copyInviteLink}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
+                >
+                  {linkCopied ? <Check className="h-3.5 w-3.5 text-white/70" /> : <Link2 className="h-3.5 w-3.5 text-white/70" />}
+                  <span className="text-xs text-white/70">{linkCopied ? "Copied!" : "Copy invite link"}</span>
+                </button>
+              </div>
+            )}
+          </div>
 
-          {/* Local PiP — bottom-right corner */}
-          <div className="absolute bottom-3 right-3 w-28 h-20 sm:w-36 sm:h-24 rounded-xl overflow-hidden shadow-lg ring-1 ring-white/20 z-10">
+          {/* Bottom: local participant */}
+          <div className="flex-1 min-h-0">
             <LiveParticipantTile
               name="You"
               isMuted={isMuted}
               hasVideo={isCameraOn}
               videoTrack={cameraTracks.find(t => t.participant.sid === localParticipant.sid)}
               isLocal
-              compact
             />
           </div>
         </div>
@@ -514,13 +514,12 @@ function CallRoomInner({
 /**
  * Renders a participant's video tile with real LiveKit track or avatar fallback.
  */
-function LiveParticipantTile({ name, isMuted, hasVideo, videoTrack, isLocal, compact }: {
+function LiveParticipantTile({ name, isMuted, hasVideo, videoTrack, isLocal }: {
   name: string
   isMuted: boolean
   hasVideo: boolean
   videoTrack?: ReturnType<typeof useTracks>[number]
   isLocal?: boolean
-  compact?: boolean
 }) {
   const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
   const displayName = isLocal ? "You" : name.split(" ")[0]
@@ -533,29 +532,20 @@ function LiveParticipantTile({ name, isMuted, hasVideo, videoTrack, isLocal, com
           className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
-        <Avatar className={compact ? "h-8 w-8" : "h-14 w-14"}>
+        <Avatar className="h-14 w-14">
           <AvatarFallback className="bg-white/10 text-white text-lg">
             {initials}
           </AvatarFallback>
         </Avatar>
       )}
-
-      {!compact && (
-        <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-white font-medium truncate">{displayName}</span>
-            {isMuted && (
-              <span className="text-[8px] text-destructive bg-destructive/20 px-1 rounded">MUTED</span>
-            )}
-          </div>
+      <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-white font-medium truncate">{displayName}</span>
+          {isMuted && (
+            <span className="text-[8px] text-destructive bg-destructive/20 px-1 rounded">MUTED</span>
+          )}
         </div>
-      )}
-
-      {compact && isMuted && (
-        <div className="absolute top-1 right-1">
-          <span className="text-[8px] text-destructive bg-black/60 px-1 rounded">MUTED</span>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
