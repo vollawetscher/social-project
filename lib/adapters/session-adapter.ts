@@ -114,9 +114,9 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     return languageMap[langCode] || langCode.toUpperCase()
   }
 
-  // Get language: prefer transcript language, then session language, finally default to German (app default)
-  const languageCode = additionalData?.transcript?.language || 
-                       (dbSession as any).language || 
+  // Session language = user's configured language; transcript language is only used for mismatch detection
+  const languageCode = (dbSession as any).language || 
+                       additionalData?.transcript?.language || 
                        'de'
   
   // Normalize extracted context - ensure participants are valid or fallback to speaker IDs
@@ -127,7 +127,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     filename: additionalData?.filename || dbSession.internal_case_id || `Session ${dbSession.id.slice(0, 8)}`,
     duration: dbSession.duration_sec || 0,
     language: getLanguageDisplay(languageCode),
-    languageCode: typeof languageCode === 'string' ? languageCode.slice(0, 2).toLowerCase() : 'en',
+    languageCode: typeof languageCode === 'string' ? languageCode.slice(0, 2).toLowerCase() : 'de',
     createdAt: dbSession.created_at,
     status: mapStatus(dbSession.status),
     piiRedactionEnabled: false, // TODO: Get from user preferences or session metadata
