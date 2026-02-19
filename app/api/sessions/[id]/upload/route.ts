@@ -68,6 +68,7 @@ export async function POST(
       'audio/wave',
       'audio/x-wav',
       'audio/ogg',
+      'application/ogg',  // some browsers report OGG files with this MIME type
       'audio/aac',
       'audio/flac',
       'audio/x-m4a',

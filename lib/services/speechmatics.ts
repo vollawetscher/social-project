@@ -165,6 +165,7 @@ export class SpeechmaticsService {
       'audio/x-wav': 'wav',
       'audio/webm': 'webm',
       'audio/ogg': 'ogg',
+      'application/ogg': 'ogg',
       'audio/mp4': 'm4a',
       'video/mp4': 'm4a',
       'audio/x-m4a': 'm4a',
