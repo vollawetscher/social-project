@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch profiles for all session owners
-    const userIds = [...new Set((sessions || []).map((s: any) => s.user_id))]
+    const userIds = Array.from(new Set((sessions || []).map((s: any) => s.user_id)))
     let profileMap: Record<string, { display_name: string | null; email: string | null }> = {}
     if (userIds.length > 0) {
       const { data: profiles } = await serviceClient
