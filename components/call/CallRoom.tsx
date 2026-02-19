@@ -466,7 +466,6 @@ function CallRoomInner({
             />
           </div>
         </div>
-        </div>
 
         {/* Transcript Overlay */}
         {showTranscript && (
