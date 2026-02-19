@@ -25,7 +25,6 @@ import {
   Link2,
   Check,
   Loader2,
-  NotebookPen,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -370,39 +369,52 @@ function CallRoomInner({
           )}
         </div>
 
-        {/* Post-call notes overlay (callee hung up, initiator stays to add notes) */}
+        {/* Post-call spoken notes (callee hung up, mic + recording still active) */}
         {calleeLeft ? (
-          <div className="border-t border-border bg-card px-4 pt-4 pb-safe shrink-0">
-            <div className="flex items-center gap-2 mb-3">
-              <NotebookPen className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-sm font-semibold text-foreground">Call ended — add notes before closing</span>
+          <div className="flex flex-col items-center justify-center flex-1 px-6 py-8 bg-background gap-6">
+            {/* Pulsing mic indicator */}
+            <div className="relative flex items-center justify-center">
+              <span className="absolute h-24 w-24 rounded-full bg-destructive/20 animate-ping" />
+              <span className="absolute h-16 w-16 rounded-full bg-destructive/30 animate-pulse" />
+              <div className="relative h-14 w-14 rounded-full bg-destructive flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="h-7 w-7 text-white fill-current">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/>
+                </svg>
+              </div>
             </div>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add context, action items, or commands for the transcript…"
-              autoFocus
-              className="w-full h-28 text-sm rounded-lg p-3 resize-none focus:outline-none focus:ring-1 bg-secondary text-foreground placeholder:text-muted-foreground focus:ring-primary"
-            />
-            <div className="flex gap-2 mt-3 pb-4">
-              <button
-                onClick={endCall}
-                disabled={savingNotes}
-                className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors"
-              >
-                Skip
-              </button>
-              <button
-                onClick={saveNotesAndEnd}
-                disabled={savingNotes}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-              >
-                {savingNotes
-                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
-                  : "Save & End"
-                }
-              </button>
+
+            {/* Instruction text */}
+            <div className="text-center space-y-1.5">
+              <p className="text-base font-semibold text-foreground">Still recording — speak your notes</p>
+              <p className="text-sm text-muted-foreground">
+                Say <span className="font-medium text-foreground">"Notissima:"</span> followed by a command
+              </p>
             </div>
+
+            {/* Example commands */}
+            <div className="w-full max-w-xs space-y-2">
+              {[
+                "Notissima: Summarise focussing on cost savings",
+                "Notissima: Extract all action items",
+                "Notissima: Save this as a report",
+              ].map((ex) => (
+                <div key={ex} className="px-3 py-2 rounded-lg bg-secondary text-xs text-muted-foreground font-mono">
+                  "{ex}"
+                </div>
+              ))}
+            </div>
+
+            {/* Done button */}
+            <button
+              onClick={saveNotesAndEnd}
+              disabled={savingNotes}
+              className="w-full max-w-xs py-3.5 rounded-2xl bg-destructive text-white text-sm font-semibold hover:bg-destructive/90 transition-colors flex items-center justify-center gap-2 mt-2"
+            >
+              {savingNotes
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Ending…</>
+                : <>Stop Recording & End</>
+              }
+            </button>
           </div>
         ) : (
           <>
