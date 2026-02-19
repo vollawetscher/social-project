@@ -24,6 +24,8 @@ import {
   ArrowLeft,
   Link2,
   Check,
+  Loader2,
+  NotebookPen,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -98,6 +100,10 @@ function CallRoomInner({
   const [showNotes, setShowNotes] = useState(false)
   const [notes, setNotes] = useState("")
   const [viewMode, setViewMode] = useState<"simple" | "transcript">("simple")
+  // Post-call notes state
+  const [calleeLeft, setCalleeLeft] = useState(false)
+  const [savingNotes, setSavingNotes] = useState(false)
+  const remoteEverConnected = useRef(false)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -114,6 +120,16 @@ function CallRoomInner({
         ? "ringing"
         : "connecting"
 
+  // Track whether the remote participant was ever connected, then detect when they leave
+  useEffect(() => {
+    if (hasRemote) {
+      remoteEverConnected.current = true
+    } else if (remoteEverConnected.current && isConnected && !calleeLeft) {
+      // Remote left while we're still connected → callee hung up
+      setCalleeLeft(true)
+    }
+  }, [hasRemote, isConnected, calleeLeft])
+
   const isMuted = !localParticipant.isMicrophoneEnabled
   const isCameraOn = localParticipant.isCameraEnabled
   const isScreenSharing = localParticipant.isScreenShareEnabled
@@ -128,13 +144,38 @@ function CallRoomInner({
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [callStatus])
 
-  const endCall = useCallback(() => {
+  const endCall = useCallback(async () => {
+    // Delete the LiveKit room via API — this terminates SIP/Twilio legs too
+    if (callId) {
+      try {
+        await fetch(`/api/calls/${callId}/end`, { method: "POST" })
+      } catch {
+        // Best-effort; proceed to disconnect regardless
+      }
+    }
     room.disconnect()
     setTimeout(() => {
       if (onLeave) onLeave()
       else router.push("/calls")
     }, 500)
-  }, [room, router, onLeave])
+  }, [callId, room, router, onLeave])
+
+  const saveNotesAndEnd = useCallback(async () => {
+    setSavingNotes(true)
+    if (callId && notes.trim()) {
+      try {
+        await fetch(`/api/calls/${callId}/notes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes }),
+        })
+      } catch {
+        // Best-effort
+      }
+    }
+    setSavingNotes(false)
+    endCall()
+  }, [callId, notes, endCall])
 
   const toggleMute = useCallback(() => {
     localParticipant.setMicrophoneEnabled(isMuted)
@@ -329,53 +370,91 @@ function CallRoomInner({
           )}
         </div>
 
-        {/* Notes Panel */}
-        {showNotes && (
-          <div className="border-t px-4 py-3 shrink-0 border-border bg-card">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Notes</span>
-              <button onClick={() => setShowNotes(false)}>
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
+        {/* Post-call notes overlay (callee hung up, initiator stays to add notes) */}
+        {calleeLeft ? (
+          <div className="border-t border-border bg-card px-4 pt-4 pb-safe shrink-0">
+            <div className="flex items-center gap-2 mb-3">
+              <NotebookPen className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm font-semibold text-foreground">Call ended — add notes before closing</span>
             </div>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add call notes..."
-              className="w-full h-20 text-sm rounded-lg p-2 resize-none focus:outline-none focus:ring-1 bg-secondary text-foreground placeholder:text-muted-foreground focus:ring-primary"
+              placeholder="Add context, action items, or commands for the transcript…"
+              autoFocus
+              className="w-full h-28 text-sm rounded-lg p-3 resize-none focus:outline-none focus:ring-1 bg-secondary text-foreground placeholder:text-muted-foreground focus:ring-primary"
             />
+            <div className="flex gap-2 mt-3 pb-4">
+              <button
+                onClick={endCall}
+                disabled={savingNotes}
+                className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                onClick={saveNotesAndEnd}
+                disabled={savingNotes}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+              >
+                {savingNotes
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                  : "Save & End"
+                }
+              </button>
+            </div>
           </div>
-        )}
-
-        {/* Controls */}
-        {callStatus !== "ended" ? (
-          <CallControls
-            mode={mode}
-            isMuted={isMuted}
-            isCameraOn={isCameraOn}
-            isSpeaker={false}
-            isOnHold={false}
-            isScreenSharing={isScreenSharing}
-            showNotes={showNotes}
-            showTranscript={showTranscript}
-            onToggleMute={toggleMute}
-            onToggleCamera={toggleCamera}
-            onToggleSpeaker={() => {}}
-            onToggleHold={() => {}}
-            onToggleScreenShare={toggleScreenShare}
-            onToggleNotes={() => setShowNotes(!showNotes)}
-            onToggleTranscript={() => setShowTranscript(!showTranscript)}
-            onEndCall={endCall}
-          />
         ) : (
-          <div className="px-4 pb-6 pt-3 border-t border-border bg-card text-center py-4">
-            <p className="text-sm text-muted-foreground">
-              Call ended {duration > 0 && `· ${formatDuration(duration)}`}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Transcript will be available in Sessions
-            </p>
-          </div>
+          <>
+            {/* Notes Panel (in-call) */}
+            {showNotes && (
+              <div className="border-t px-4 py-3 shrink-0 border-border bg-card">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">Notes</span>
+                  <button onClick={() => setShowNotes(false)}>
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add call notes..."
+                  className="w-full h-20 text-sm rounded-lg p-2 resize-none focus:outline-none focus:ring-1 bg-secondary text-foreground placeholder:text-muted-foreground focus:ring-primary"
+                />
+              </div>
+            )}
+
+            {/* Controls */}
+            {callStatus !== "ended" ? (
+              <CallControls
+                mode={mode}
+                isMuted={isMuted}
+                isCameraOn={isCameraOn}
+                isSpeaker={false}
+                isOnHold={false}
+                isScreenSharing={isScreenSharing}
+                showNotes={showNotes}
+                showTranscript={showTranscript}
+                onToggleMute={toggleMute}
+                onToggleCamera={toggleCamera}
+                onToggleSpeaker={() => {}}
+                onToggleHold={() => {}}
+                onToggleScreenShare={toggleScreenShare}
+                onToggleNotes={() => setShowNotes(!showNotes)}
+                onToggleTranscript={() => setShowTranscript(!showTranscript)}
+                onEndCall={endCall}
+              />
+            ) : (
+              <div className="px-4 pb-6 pt-3 border-t border-border bg-card text-center py-4">
+                <p className="text-sm text-muted-foreground">
+                  Call ended {duration > 0 && `· ${formatDuration(duration)}`}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Transcript will be available in Sessions
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     )
