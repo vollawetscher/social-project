@@ -20,6 +20,8 @@ import {
   Save,
   Eye,
   EyeOff,
+  Phone,
+  Video,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -526,6 +528,46 @@ export default function SettingsPage() {
                 <h4 className="font-medium text-foreground">Database</h4>
                 <p className="text-xs text-muted-foreground mt-1">
                   Secure data storage & auth
+                </p>
+                <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Configure
+                </Button>
+              </div>
+
+              {/* Phone Service */}
+              <div className="p-4 rounded-lg border border-border bg-secondary/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                    <Phone className="h-4 w-4 text-primary" />
+                  </div>
+                  <Badge className="bg-success/20 text-success border-success/30">
+                    Connected
+                  </Badge>
+                </div>
+                <h4 className="font-medium text-foreground">Phone Service</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Outbound PSTN calls & SIP trunk
+                </p>
+                <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Configure
+                </Button>
+              </div>
+
+              {/* Video Conference Server */}
+              <div className="p-4 rounded-lg border border-border bg-secondary/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-8 w-8 rounded bg-info/10 flex items-center justify-center">
+                    <Video className="h-4 w-4 text-info" />
+                  </div>
+                  <Badge className="bg-success/20 text-success border-success/30">
+                    Connected
+                  </Badge>
+                </div>
+                <h4 className="font-medium text-foreground">Video Conference Server</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Real-time video & audio rooms
                 </p>
                 <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
                   <ExternalLink className="h-3 w-3 mr-1" />

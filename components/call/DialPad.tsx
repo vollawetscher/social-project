@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Phone, Video, Delete } from "lucide-react"
+import { Phone, Delete } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -97,23 +97,14 @@ export function DialPad({ onCall, disabled, initialNumber = "" }: DialPadProps) 
           ))}
         </div>
 
-        <div className="flex items-center justify-center gap-8 mt-6">
+        <div className="flex items-center justify-center mt-6">
           <Button
-            size="lg"
+            size="icon"
             onClick={() => number && onCall(number, "audio")}
             disabled={!number || disabled}
             className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90"
           >
             <Phone className="h-7 w-7" />
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => number && onCall(number, "video")}
-            disabled={!number || disabled}
-            className="h-14 w-14 rounded-full bg-info/10 border-info/30 hover:bg-info/20"
-          >
-            <Video className="h-6 w-6 text-info" />
           </Button>
         </div>
       </div>

@@ -349,6 +349,80 @@ Respond in this exact JSON format:
       console.log('[Analyze API] Auto-generation disabled')
     }
 
+    // Execute spoken commands (e.g. "Notissima: create a summary focusing on cost savings")
+    // Commands are already detected by Claude and stored in ai_extracted_context.spokenCommands.
+    // For each output-creation command, call outputs/generate using the spoken phrase as the
+    // doInstructions so the user's exact intent drives the output.
+    const spokenCommands: Array<{ phrase: string; speaker: string; intentSummary?: string }> =
+      analysis.extractedContext?.spokenCommands || []
+
+    if (spokenCommands.length > 0) {
+      console.log('[Analyze API] Found', spokenCommands.length, 'spoken command(s) — executing...')
+
+      // Resolve template: prefer user's default, fall back to first available system template
+      let commandTemplateId: string | null = templateId || null
+      if (!commandTemplateId) {
+        const supabaseAdmin = createServiceRoleClient()
+        const { data: sysTemplate } = await supabaseAdmin
+          .from('templates')
+          .select('id')
+          .eq('is_system', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+        commandTemplateId = sysTemplate?.id || null
+      }
+
+      if (commandTemplateId) {
+        const baseUrl = new URL(request.url).origin
+        const cmdHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (isInternalCall && process.env.INTERNAL_API_SECRET) {
+          cmdHeaders['x-internal-secret'] = process.env.INTERNAL_API_SECRET
+          cmdHeaders['x-internal-user-id'] = userId
+        } else {
+          // Forward auth for user-initiated analyze calls
+          if (request.headers.get('Authorization')) cmdHeaders['Authorization'] = request.headers.get('Authorization')!
+          if (request.headers.get('Cookie')) cmdHeaders['Cookie'] = request.headers.get('Cookie')!
+        }
+
+        const outputCreationIntent = /create|generat|summar|extract|report|analys|output|save|write/i
+
+        for (const cmd of spokenCommands) {
+          const isOutputCommand = outputCreationIntent.test(cmd.intentSummary || '') ||
+            outputCreationIntent.test(cmd.phrase)
+
+          if (!isOutputCommand) {
+            console.log('[Analyze API] Skipping non-output command:', cmd.phrase)
+            continue
+          }
+
+          console.log('[Analyze API] Executing spoken command:', cmd.phrase)
+          fetch(`${baseUrl}/api/outputs/generate`, {
+            method: 'POST',
+            headers: cmdHeaders,
+            body: JSON.stringify({
+              sessionId: params.id,
+              config: {
+                templateId: commandTemplateId,
+                perspective: 'observer',
+                audience: 'internal',
+                language: profile?.preferred_report_language?.slice(0, 2) || 'de',
+                tone: 'neutral',
+                format: 'markdown',
+                // Use the exact spoken phrase as the generation instruction
+                doInstructions: cmd.phrase,
+                dontInstructions: '',
+                createTemplateFromConfig: false,
+                citeTimestamps: false,
+              },
+            }),
+          }).catch(err => console.error('[Analyze API] Spoken command execution failed:', cmd.phrase, err))
+        }
+      } else {
+        console.warn('[Analyze API] No template available to execute spoken commands')
+      }
+    }
+
     return NextResponse.json({
       recordingType: analysis.recordingType,
       recordingTypeConfidence: analysis.recordingTypeConfidence,

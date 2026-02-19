@@ -22,6 +22,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { DialPad } from "@/components/call/DialPad"
 import { toast } from "sonner"
@@ -84,6 +92,8 @@ export default function CallsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Confirmation dialog for new web calls
+  const [pendingCallMode, setPendingCallMode] = useState<CallMode | null>(null)
   // Dialpad pre-fill (from contact tap)
   const [dialpadNumber, setDialpadNumber] = useState("")
 
@@ -306,10 +316,7 @@ export default function CallsPage() {
         <h1 className="text-lg font-semibold text-foreground mb-3">Calls</h1>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => {
-              if (activeTab === "dialpad") return
-              handleNewCall("audio")
-            }}
+            onClick={() => setPendingCallMode("audio")}
             disabled={creating}
             className="flex items-center gap-3 p-3 rounded-xl bg-primary/10 hover:bg-primary/15 transition-colors disabled:opacity-50"
           >
@@ -322,7 +329,7 @@ export default function CallsPage() {
             </div>
           </button>
           <button
-            onClick={() => handleNewCall("video")}
+            onClick={() => setPendingCallMode("video")}
             disabled={creating}
             className="flex items-center gap-3 p-3 rounded-xl bg-info/10 hover:bg-info/15 transition-colors disabled:opacity-50"
           >
@@ -578,6 +585,55 @@ export default function CallsPage() {
           />
         )}
       </div>
+
+      {/* New call confirmation dialog */}
+      <Dialog open={!!pendingCallMode} onOpenChange={(open) => { if (!open) setPendingCallMode(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {pendingCallMode === "video" ? (
+                <Video className="h-5 w-5 text-info" />
+              ) : (
+                <Phone className="h-5 w-5 text-primary" />
+              )}
+              Start {pendingCallMode === "video" ? "Video" : "Audio"} Call
+            </DialogTitle>
+            <DialogDescription>
+              {pendingCallMode === "video"
+                ? "A new call room will be created. You can share the link with anyone you want to call."
+                : "A new audio call room will be created. You can share the link with anyone you want to call."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setPendingCallMode(null)}
+              disabled={creating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pendingCallMode) return
+                const mode = pendingCallMode
+                setPendingCallMode(null)
+                handleNewCall(mode)
+              }}
+              disabled={creating}
+              className={pendingCallMode === "video" ? "bg-info hover:bg-info/90" : ""}
+            >
+              {creating ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : pendingCallMode === "video" ? (
+                <Video className="h-4 w-4 mr-2" />
+              ) : (
+                <Phone className="h-4 w-4 mr-2" />
+              )}
+              Start Call
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

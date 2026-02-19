@@ -55,6 +55,55 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
+/**
+ * Plays a soft two-tone outbound ringtone (440 Hz + 480 Hz, European-style)
+ * using the Web Audio API while `playing` is true. No audio files needed.
+ */
+function useRingtone(playing: boolean) {
+  const ctxRef = useRef<AudioContext | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const stop = useCallback(() => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
+    if (ctxRef.current) { ctxRef.current.close().catch(() => {}); ctxRef.current = null }
+  }, [])
+
+  const scheduleRing = useCallback((ctx: AudioContext) => {
+    const now = ctx.currentTime
+    // Two simultaneous sine tones blended softly — classic double-ring
+    for (const freq of [440, 480]) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "sine"
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(0.055, now + 0.06)   // soft fade-in
+      gain.gain.setValueAtTime(0.055, now + 0.38)
+      gain.gain.linearRampToValueAtTime(0, now + 0.44)        // soft fade-out
+      osc.start(now)
+      osc.stop(now + 0.44)
+    }
+    // Repeat every 2.4 s (ring 0.44 s, pause 1.96 s)
+    timerRef.current = setTimeout(() => {
+      if (ctxRef.current) scheduleRing(ctxRef.current)
+    }, 2400)
+  }, [])
+
+  useEffect(() => {
+    if (!playing) { stop(); return }
+    try {
+      const ctx = new AudioContext()
+      ctxRef.current = ctx
+      scheduleRing(ctx)
+    } catch {
+      // AudioContext unavailable (e.g. SSR)
+    }
+    return stop
+  }, [playing, scheduleRing, stop])
+}
+
 export function CallRoom(props: CallRoomProps) {
   return (
     <LiveKitRoom
@@ -118,6 +167,9 @@ function CallRoomInner({
       : isConnected
         ? "ringing"
         : "connecting"
+
+  // Play soft ringtone while waiting for the other side to join
+  useRingtone(callStatus === "ringing")
 
   // Track whether the remote participant was ever connected, then detect when they leave
   useEffect(() => {
