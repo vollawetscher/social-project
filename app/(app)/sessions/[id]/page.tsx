@@ -95,7 +95,8 @@ export default function SessionDetailPage() {
   const params = useParams()
   const router = useRouter()
   const sessionId = params.id as string
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const isAdmin = (profile as any)?.role === 'admin'
 
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -620,7 +621,7 @@ export default function SessionDetailPage() {
         {session.status === 'failed' && session.lastError ? (
           <div className="flex items-center gap-2 w-full max-w-md rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
             <span className="text-destructive flex-1 truncate">{session.lastError}</span>
-            {session.audioUrl ? (
+            {(session.audioUrl || isAdmin) ? (
               <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
                 {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry transcription'}
               </Button>
@@ -634,7 +635,7 @@ export default function SessionDetailPage() {
                 ? 'Transcription appears stuck. The background job may have failed.'
                 : 'Upload appears stuck. Please try uploading again.'}
             </span>
-            {session.audioUrl && session.status === 'transcribing' ? (
+            {(session.audioUrl || isAdmin) && session.status === 'transcribing' ? (
               <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
                 {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry'}
               </Button>

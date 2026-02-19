@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Bug,
   Phone,
+  Shield,
 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
@@ -57,6 +58,11 @@ const navItems = [
 ]
 
 const adminNavItems = [
+  {
+    name: "All Sessions",
+    href: "/admin/sessions",
+    icon: Shield,
+  },
   {
     name: "Bug Reports",
     href: "/admin/bugs",
