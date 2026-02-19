@@ -101,8 +101,8 @@ export async function POST(request: Request) {
           console.log('[LiveKit Webhook] Call ended:', call.id)
         }
 
-        // If no egress was started (participant B never joined or call was too short),
-        // the session stays in 'created' forever. Close it out as 'done' (no recording).
+        // If no egress was started (nobody answered), delete the session + call entirely
+        // so they don't pollute the user's sessions list.
         if (call.session_id && !call.track_a_egress_id) {
           const { data: session } = await supabase
             .from('sessions')
@@ -111,14 +111,16 @@ export async function POST(request: Request) {
             .maybeSingle()
 
           if (session?.status === 'created') {
+            // Null out session_id on call first (FK), then delete both
+            await supabase
+              .from('calls')
+              .update({ session_id: null })
+              .eq('id', call.id)
             await supabase
               .from('sessions')
-              .update({
-                status: 'done',
-                last_error: 'Call ended without a recording (no second participant joined).',
-              })
+              .delete()
               .eq('id', call.session_id)
-            console.log('[LiveKit Webhook] Closed orphaned session (no egress):', call.session_id)
+            console.log('[LiveKit Webhook] Deleted unanswered session+call (no egress):', call.session_id, call.id)
           }
         }
         break

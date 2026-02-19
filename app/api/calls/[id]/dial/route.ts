@@ -19,7 +19,7 @@ export async function POST(
     const { id: callId } = params
 
     const body: DialRequest = await request.json()
-    const { phoneNumber } = body
+    const { phoneNumber, contactName } = body as DialRequest & { contactName?: string }
 
     if (!phoneNumber) {
       return NextResponse.json({ error: 'phoneNumber is required' }, { status: 400 })
@@ -72,6 +72,7 @@ export async function POST(
         phone_number: phoneNumber_e164,
         sip_call_id: sipParticipant.participantId,
         participant_b_identity: `sip-${phoneNumber_e164}`,
+        ...(contactName ? { contact_name: contactName } : {}),
       })
       .eq('id', callId)
 

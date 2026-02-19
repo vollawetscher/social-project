@@ -22,7 +22,7 @@ export class SpeechmaticsService {
   async transcribeAudio(
     audioBuffer: Buffer,
     mimeType: string,
-    options?: { contentType?: 'conversational' | 'informative' }
+    options?: { contentType?: 'conversational' | 'informative'; language?: string }
   ): Promise<SpeechmaticsTranscript> {
     console.log('[Speechmatics] Starting transcription')
     console.log('[Speechmatics] Audio buffer size:', audioBuffer.length, 'bytes')
@@ -42,7 +42,7 @@ export class SpeechmaticsService {
     const config = {
       type: 'transcription',
       transcription_config: {
-        language: 'auto',
+        language: options?.language || 'auto',
         operating_point: 'enhanced',
         diarization: 'speaker',
         enable_entities: false, // Disabled to preserve numbers in transcript

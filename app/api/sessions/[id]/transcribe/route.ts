@@ -14,13 +14,14 @@ async function processTranscriptionJob(sessionId: string) {
   const errorLogger = await createErrorLogger(supabase)
   
   try {
-    // Get session for input_hint (influences Speechmatics content_type)
+    // Get session for input_hint and language
     const { data: sessionRow } = await supabase
       .from('sessions')
-      .select('input_hint')
+      .select('input_hint, language')
       .eq('id', sessionId)
       .single()
-    const inputHint = (sessionRow as { input_hint?: string } | null)?.input_hint || ''
+    const inputHint = (sessionRow as any)?.input_hint || ''
+    const sessionLanguage = (sessionRow as any)?.language?.slice(0, 2) || null
 
     // Get all files for this session
     const { data: files } = await supabase
@@ -123,7 +124,10 @@ async function processTranscriptionJob(sessionId: string) {
       const contentType = (inputHint === 'presentation' || inputHint === 'voice_note') ? 'informative' : 'conversational'
       console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType })
       const speechmatics = createSpeechmaticsService()
-      const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, { contentType })
+      const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, {
+        contentType,
+        language: sessionLanguage || undefined,
+      })
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 
       if (transcript.segments.length === 0) {

@@ -16,10 +16,10 @@ export async function POST(request: Request) {
     const body: CreateCallRequest = await request.json()
     const { callType = 'web', mode = 'audio', participantName } = body
 
-    // Get user profile for display name
+    // Get user profile for display name and preferred language
     const { data: profile } = await supabase
       .from('profiles')
-      .select('display_name, email')
+      .select('display_name, email, preferred_language')
       .eq('id', user.id)
       .single()
 
@@ -41,6 +41,8 @@ export async function POST(request: Request) {
 
     // Create a session for this call
     const inputHint = callType === 'pstn_outbound' ? 'phone_call' : 'video_call'
+    const preferredLang = (profile as any)?.preferred_language?.slice(0, 2) || null
+
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .insert({
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
         duration_sec: 0,
         last_error: '',
         input_hint: inputHint,
+        ...(preferredLang ? { language: preferredLang } : {}),
       })
       .select('id')
       .single()

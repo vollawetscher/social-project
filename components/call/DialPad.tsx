@@ -51,7 +51,8 @@ export function DialPad({ onCall, disabled, initialNumber = "" }: DialPadProps) 
       <div className="flex items-center justify-center gap-2 px-6 py-5 min-h-[72px]">
         <input
           ref={inputRef}
-          type="tel"
+          type="text"
+          inputMode="none"
           value={number}
           onChange={handleInputChange}
           placeholder="Enter number"

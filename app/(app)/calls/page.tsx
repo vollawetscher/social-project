@@ -17,6 +17,7 @@ import {
   Download,
   Loader2,
   X,
+  UserPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -93,6 +94,9 @@ export default function CallsPage() {
   const [error, setError] = useState<string | null>(null)
   // Confirmation dialog for new web calls
   const [pendingCallMode, setPendingCallMode] = useState<CallMode | null>(null)
+  // Save-to-contacts prompt: stores the phone number to save
+  const [savingNumber, setSavingNumber] = useState<string | null>(null)
+  const [saveContactName, setSaveContactName] = useState("")
   // Dialpad pre-fill (from contact tap)
   const [dialpadNumber, setDialpadNumber] = useState("")
 
@@ -157,7 +161,7 @@ export default function CallsPage() {
     }
   }
 
-  async function handleDialpadCall(phoneNumber: string, mode: CallMode) {
+  async function handleDialpadCall(phoneNumber: string, mode: CallMode, contactName?: string) {
     if (creating) return
     setCreating(true)
     setError(null)
@@ -181,7 +185,7 @@ export default function CallsPage() {
       const dialRes = await fetch(`/api/calls/${data.callId}/dial`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: normalized }),
+        body: JSON.stringify({ phoneNumber: normalized, ...(contactName ? { contactName } : {}) }),
       })
       if (!dialRes.ok) {
         const dialData = await dialRes.json().catch(() => ({}))
@@ -283,9 +287,8 @@ export default function CallsPage() {
       toast.error("This contact has no phone number")
       return
     }
-    // Pre-fill dialpad and switch to it
-    setDialpadNumber(contact.phone_number)
-    setActiveTab("dialpad")
+    // Dial directly, carrying the contact name so it appears in recent calls
+    handleDialpadCall(contact.phone_number, mode, contact.name)
   }
 
   const filteredContacts = useMemo(() => {
@@ -305,7 +308,11 @@ export default function CallsPage() {
   ]
 
   const recentCalls = useMemo(() => {
-    return calls.filter((c) => c.status === "done" || c.status === "ended" || c.status === "error")
+    return calls.filter(
+      (c) =>
+        (c.status === "done" || c.status === "ended" || c.status === "error") &&
+        c.call_type === "pstn_outbound"
+    )
   }, [calls])
 
   return (
@@ -389,9 +396,9 @@ export default function CallsPage() {
             ) : (
               <div className="divide-y divide-border">
                 {recentCalls.map((call) => {
-                  const isVideo = call.call_type === "web"
-                  const name = call.participant_b_identity || call.phone_number || "Unknown"
-                  const initials = name.slice(0, 2).toUpperCase()
+                  const name = call.contact_name || call.phone_number || "Unknown"
+                  const isUnknown = !call.contact_name
+                  const initials = name.replace(/^\+/, "").slice(0, 2).toUpperCase()
                   const durationSec = call.started_at && call.ended_at
                     ? Math.round((new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000)
                     : 0
@@ -433,6 +440,20 @@ export default function CallsPage() {
                           </span>
                         </div>
                       </div>
+                      {isUnknown && call.phone_number && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setAddPhone(call.phone_number!)
+                            setActiveTab("contacts")
+                            setShowAddForm(true)
+                          }}
+                          className="shrink-0 p-2 text-muted-foreground hover:text-primary transition-colors"
+                          title="Save to contacts"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                        </button>
+                      )}
                       <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                     </button>
                   )
