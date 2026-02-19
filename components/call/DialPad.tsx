@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Phone, Video, Delete } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 interface DialPadProps {
   onCall: (phoneNumber: string, mode: "audio" | "video") => void
   disabled?: boolean
+  initialNumber?: string
 }
 
 const DIALPAD_KEYS = [
@@ -20,35 +21,57 @@ const DIALPAD_KEYS = [
   { digit: "7", letters: "PQRS" },
   { digit: "8", letters: "TUV" },
   { digit: "9", letters: "WXYZ" },
-  { digit: "*", letters: "" },
-  { digit: "0", letters: "+" },
+  { digit: "+", letters: "" },
+  { digit: "0", letters: "" },
   { digit: "#", letters: "" },
 ]
 
-export function DialPad({ onCall, disabled }: DialPadProps) {
-  const [number, setNumber] = useState("")
+export function DialPad({ onCall, disabled, initialNumber = "" }: DialPadProps) {
+  const [number, setNumber] = useState(initialNumber)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handlePress = (digit: string) => {
     setNumber((prev) => prev + digit)
+    inputRef.current?.focus()
   }
 
   const handleDelete = () => {
     setNumber((prev) => prev.slice(0, -1))
   }
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Allow digits, +, spaces, dashes, parens — anything a phone number might contain
+    const val = e.target.value.replace(/[^\d+\s\-().]/g, "")
+    setNumber(val)
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-center px-4 py-6 min-h-[72px]">
-        <span
+      {/* Editable number display */}
+      <div className="flex items-center justify-center gap-2 px-6 py-5 min-h-[72px]">
+        <input
+          ref={inputRef}
+          type="tel"
+          value={number}
+          onChange={handleInputChange}
+          placeholder="Enter number"
           className={cn(
-            "font-mono transition-all",
+            "flex-1 bg-transparent text-center font-mono outline-none border-none",
+            "placeholder:text-muted-foreground/50",
             number.length > 0
               ? "text-2xl font-semibold text-foreground"
               : "text-lg text-muted-foreground"
           )}
-        >
-          {number || "Enter number"}
-        </span>
+        />
+        {number.length > 0 && (
+          <button
+            onClick={handleDelete}
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Delete"
+          >
+            <Delete className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 flex flex-col justify-center px-8 pb-4">
@@ -59,7 +82,10 @@ export function DialPad({ onCall, disabled }: DialPadProps) {
               onClick={() => handlePress(key.digit)}
               className="flex flex-col items-center justify-center h-16 rounded-full bg-secondary hover:bg-secondary/80 active:bg-muted transition-colors"
             >
-              <span className="text-xl font-semibold text-foreground">
+              <span className={cn(
+                "font-semibold text-foreground",
+                key.digit === "+" ? "text-2xl" : "text-xl"
+              )}>
                 {key.digit}
               </span>
               {key.letters && (
@@ -71,18 +97,7 @@ export function DialPad({ onCall, disabled }: DialPadProps) {
           ))}
         </div>
 
-        <div className="flex items-center justify-center gap-4 mt-6">
-          <button
-            onClick={handleDelete}
-            className={cn(
-              "h-14 w-14 rounded-full flex items-center justify-center transition-opacity",
-              number.length > 0
-                ? "opacity-100"
-                : "opacity-0 pointer-events-none"
-            )}
-          >
-            <Delete className="h-6 w-6 text-muted-foreground" />
-          </button>
+        <div className="flex items-center justify-center gap-8 mt-6">
           <Button
             size="lg"
             onClick={() => number && onCall(number, "audio")}

@@ -31,9 +31,27 @@ export async function GET(
       .eq('session_id', params.id)
       .order('created_at', { ascending: true })
 
+    // Generate signed URLs for audio files (1-hour expiry) so the client can play them
+    let filesWithUrls: any[] = files || []
+    if (filesWithUrls.length > 0) {
+      const paths = filesWithUrls.map((f: any) => f.storage_path).filter(Boolean)
+      if (paths.length > 0) {
+        const { data: signedUrls } = await db.storage
+          .from('rohbericht-audio')
+          .createSignedUrls(paths, 3600)
+
+        if (signedUrls) {
+          filesWithUrls = filesWithUrls.map((f: any) => {
+            const match = signedUrls.find((s) => s.path === f.storage_path)
+            return { ...f, signed_url: match?.signedUrl ?? null }
+          })
+        }
+      }
+    }
+
     return NextResponse.json({
       ...session,
-      files: files || []
+      files: filesWithUrls,
     })
   } catch (error) {
     if (error instanceof Error) {

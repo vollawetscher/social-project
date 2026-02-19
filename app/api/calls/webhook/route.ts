@@ -28,13 +28,23 @@ export async function POST(request: Request) {
 
         const { data: call } = await supabase
           .from('calls')
-          .select('id, session_id, participant_a_identity, participant_b_identity, status')
+          .select('id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id')
           .eq('room_name', roomName)
           .maybeSingle()
 
         if (!call) break
 
-        if (identity !== call.participant_a_identity && !call.participant_b_identity) {
+        // Participant B is:
+        //  - any non-A identity when participant_b_identity not yet set (web calls), OR
+        //  - the identity that matches the pre-set participant_b_identity (PSTN/SIP calls,
+        //    where the dial route sets participant_b_identity before the callee answers).
+        // Guard with !track_a_egress_id so we never start a second egress.
+        const isParticipantB =
+          identity !== call.participant_a_identity &&
+          (!call.participant_b_identity || identity === call.participant_b_identity) &&
+          !call.track_a_egress_id
+
+        if (isParticipantB) {
           await supabase
             .from('calls')
             .update({
@@ -73,7 +83,7 @@ export async function POST(request: Request) {
 
         const { data: call } = await supabase
           .from('calls')
-          .select('id, status')
+          .select('id, status, session_id, track_a_egress_id')
           .eq('room_name', roomName)
           .maybeSingle()
 
@@ -89,6 +99,27 @@ export async function POST(request: Request) {
             .eq('id', call.id)
 
           console.log('[LiveKit Webhook] Call ended:', call.id)
+        }
+
+        // If no egress was started (participant B never joined or call was too short),
+        // the session stays in 'created' forever. Close it out as 'done' (no recording).
+        if (call.session_id && !call.track_a_egress_id) {
+          const { data: session } = await supabase
+            .from('sessions')
+            .select('status')
+            .eq('id', call.session_id)
+            .maybeSingle()
+
+          if (session?.status === 'created') {
+            await supabase
+              .from('sessions')
+              .update({
+                status: 'done',
+                last_error: 'Call ended without a recording (no second participant joined).',
+              })
+              .eq('id', call.session_id)
+            console.log('[LiveKit Webhook] Closed orphaned session (no egress):', call.session_id)
+          }
         }
         break
       }
@@ -179,20 +210,20 @@ export async function POST(request: Request) {
             .update({ status: 'transcribing' })
             .eq('id', call.session_id)
 
-          // Trigger transcription pipeline (fire and forget)
+          // Trigger actual Speechmatics transcription (fire and forget)
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL
             || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null)
             || 'http://localhost:3000'
           const secret = process.env.INTERNAL_API_SECRET
 
           console.log('[LiveKit Webhook] Triggering transcription for session:', call.session_id)
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-          if (secret) headers['x-internal-secret'] = secret
+          const transcribeHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+          if (secret) transcribeHeaders['x-internal-secret'] = secret
 
-          fetch(`${baseUrl}/api/internal/post-transcribe`, {
+          fetch(`${baseUrl}/api/sessions/${call.session_id}/transcribe`, {
             method: 'POST',
-            headers,
-            body: JSON.stringify({ sessionId: call.session_id }),
+            headers: transcribeHeaders,
+            body: JSON.stringify({}),
           }).catch(err => console.error('[LiveKit Webhook] Transcription trigger failed:', err))
         } catch (err: any) {
           console.error('[LiveKit Webhook] Post-egress processing failed:', err)

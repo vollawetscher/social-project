@@ -133,7 +133,9 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     isOfflineCached: false, // TODO: Implement offline caching detection
     speakers,
     transcript: transcriptSegments,
-    audioUrl: (dbSession as any).audio_url, // Include audio URL if available
+    audioUrl: (dbSession as any).audio_url
+      || additionalData?.files?.find((f: any) => f.signed_url)?.signed_url
+      || undefined,
     domain: deriveDomain(dbSession),
     domains: (dbSession as any).suggested_domains || [], // 2-layer domain structure
     recordingType: (dbSession as any).recording_type,

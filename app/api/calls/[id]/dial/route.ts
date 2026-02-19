@@ -25,13 +25,18 @@ export async function POST(
       return NextResponse.json({ error: 'phoneNumber is required' }, { status: 400 })
     }
 
-    // Validate E.164 format (basic check)
-    if (!phoneNumber.match(/^\+[1-9]\d{1,14}$/)) {
+    // Server-side normalization: strip formatting, 00→+, prepend + if missing
+    let normalized = phoneNumber.replace(/[\s\-().]/g, '')
+    if (normalized.startsWith('00')) normalized = '+' + normalized.slice(2)
+    if (/^\d{7,15}$/.test(normalized)) normalized = '+' + normalized
+
+    if (!/^\+[1-9]\d{6,14}$/.test(normalized)) {
       return NextResponse.json(
-        { error: 'Phone number must be in E.164 format (e.g., +15551234567)' },
+        { error: `"${phoneNumber}" is not a valid phone number. Use E.164 format, e.g. +491711234567` },
         { status: 400 }
       )
     }
+    const phoneNumber_e164 = normalized
 
     // Look up the call and verify ownership
     const { data: call, error: callError } = await supabase
@@ -50,22 +55,23 @@ export async function POST(
     }
 
     // Create SIP participant (dials out via Twilio)
-    const sipParticipant = await createSipParticipant(call.room_name, phoneNumber, {
-      participantIdentity: `sip-${phoneNumber}`,
-      participantName: phoneNumber,
+    const sipParticipant = await createSipParticipant(call.room_name, phoneNumber_e164, {
+      participantIdentity: `sip-${phoneNumber_e164}`,
+      participantName: phoneNumber_e164,
       playDialtone: true,
       ringingTimeout: 30,
     })
 
-    // Update call record with PSTN info
+    // Update call record with PSTN info.
+    // Do NOT set status=active yet — wait for the SIP participant_joined webhook
+    // which confirms the callee actually answered, then start egress.
     await supabase
       .from('calls')
       .update({
         call_type: 'pstn_outbound',
-        phone_number: phoneNumber,
+        phone_number: phoneNumber_e164,
         sip_call_id: sipParticipant.participantId,
-        participant_b_identity: `sip-${phoneNumber}`,
-        status: 'active',
+        participant_b_identity: `sip-${phoneNumber_e164}`,
       })
       .eq('id', callId)
 

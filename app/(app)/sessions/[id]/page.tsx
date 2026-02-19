@@ -23,6 +23,7 @@ import {
   Sparkles,
   LayoutTemplate,
   UserRoundPlus,
+  Mic,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -132,6 +133,7 @@ export default function SessionDetailPage() {
   const [handOffOpen, setHandOffOpen] = useState(false)
   const [handOffEmail, setHandOffEmail] = useState('')
   const [handOffLoading, setHandOffLoading] = useState(false)
+  const [sessionFiles, setSessionFiles] = useState<any[]>([])
 
   // Fetch user profile for preferred_report_language (used by AI-suggested outputs)
   useEffect(() => {
@@ -337,6 +339,7 @@ export default function SessionDetailPage() {
         })
 
         setSession(v0Session)
+        setSessionFiles(sessionData.files || [])
 
         // Detect language mismatch: session configured language vs transcript-detected language
         const sessionLang = (sessionData.language || '').slice(0, 2).toLowerCase()
@@ -730,6 +733,33 @@ export default function SessionDetailPage() {
         </div>
       </div>
 
+      {/* Audio files strip */}
+      {sessionFiles.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 pt-3">
+          {sessionFiles.map((file: any) => {
+            const filename = (file.storage_path as string)?.split('/').pop() ?? 'audio'
+            const sizeMb = file.size_bytes ? (file.size_bytes / (1024 * 1024)).toFixed(1) : null
+            const hasAudio = !!file.signed_url
+            return (
+              <span
+                key={file.id}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                  hasAudio
+                    ? "border-border bg-muted text-muted-foreground"
+                    : "border-dashed border-muted-foreground/40 text-muted-foreground/60"
+                )}
+              >
+                <Mic className="h-3 w-3 shrink-0" />
+                <span className="max-w-[160px] truncate">{filename}</span>
+                {sizeMb && <span className="text-muted-foreground/60">·&nbsp;{sizeMb}&nbsp;MB</span>}
+                {!hasAudio && <span className="text-muted-foreground/50">(no signed URL)</span>}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
       {/* Language mismatch banner */}
       {languageMismatch && (() => {
         const langNames: Record<string, string> = {
@@ -837,8 +867,16 @@ export default function SessionDetailPage() {
             <TabsTrigger value="context">Context</TabsTrigger>
             <TabsTrigger value="outputs">Outputs</TabsTrigger>
           </TabsList>
-          <TabsContent value="transcript" className="flex-1 min-h-0 mt-0">
-            <div className="h-full rounded-lg border border-border bg-card overflow-hidden">
+          <TabsContent value="transcript" className="flex-1 min-h-0 mt-0 flex flex-col gap-3">
+            {session.audioUrl && (
+              <AudioPlayer
+                ref={audioPlayerRef}
+                audioUrl={session.audioUrl}
+                onTimeUpdate={setCurrentAudioTime}
+                onPlayStateChange={setIsAudioPlaying}
+              />
+            )}
+            <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
               <TranscriptViewer 
                 segments={session.transcript}
                 currentTime={currentAudioTime}

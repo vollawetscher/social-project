@@ -93,12 +93,25 @@ async function processTranscriptionJob(sessionId: string) {
       console.log('[Transcribe] Audio file downloaded successfully, size:', audioData.size)
 
       if (audioData.size < 1024) {
-        console.error('[Transcribe] Audio file too small:', audioData.size)
+        console.warn('[Transcribe] Audio file too small (empty call):', audioData.size, 'bytes')
+        // Save an empty transcript so the session is still accessible
+        await supabase
+          .from('transcripts')
+          .insert({
+            session_id: sessionId,
+            file_id: file.id,
+            raw_json: [],
+            redacted_json: [],
+            raw_text: '',
+            redacted_text: '',
+            language: 'de',
+            summary: null,
+          })
         await supabase
           .from('sessions')
           .update({
-            status: 'error',
-            last_error: 'Die Audiodatei ist zu klein oder leer. Bitte laden Sie eine gültige Audiodatei hoch.'
+            status: 'done',
+            last_error: 'Kein Gesprächsinhalt aufgezeichnet (Anruf war zu kurz oder stumm).',
           })
           .eq('id', sessionId)
         return
@@ -112,6 +125,10 @@ async function processTranscriptionJob(sessionId: string) {
       const speechmatics = createSpeechmaticsService()
       const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, { contentType })
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
+
+      if (transcript.segments.length === 0) {
+        console.warn('[Transcribe] No speech detected in audio for file:', file.storage_path)
+      }
 
       console.log(`[Transcribe] Step 1 (File ${i + 1}): Starting PII redaction...`)
       const piiService = createPIIRedactionService()
@@ -363,9 +380,17 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth()
-    await requireSessionAccess(params.id, user.id)
-    const supabase = await createClient()
+    // Allow internal calls (e.g. from LiveKit webhook) via x-internal-secret header.
+    // If INTERNAL_API_SECRET is not set, also allow through (dev / Railway without secret).
+    const expectedSecret = process.env.INTERNAL_API_SECRET
+    const providedSecret = request.headers.get('x-internal-secret')
+    const isInternalCall = !expectedSecret || providedSecret === expectedSecret
+
+    if (!isInternalCall) {
+      const user = await requireAuth()
+      await requireSessionAccess(params.id, user.id)
+    }
+    const supabase = isInternalCall ? createServiceRoleClient() : await createClient()
     const errorLogger = await createErrorLogger(supabase)
 
     const { data: session, error: sessionError } = await supabase
@@ -402,7 +427,10 @@ export async function POST(
   } catch (error: any) {
     console.error('[Transcribe] Failed to start job:', error)
 
-    const supabase = await createClient()
+    const expectedSecret = process.env.INTERNAL_API_SECRET
+    const providedSecret = request.headers.get('x-internal-secret')
+    const isInternalCall = !expectedSecret || providedSecret === expectedSecret
+    const supabase = isInternalCall ? createServiceRoleClient() : await createClient()
     const errorLogger = await createErrorLogger(supabase)
 
     // Get session context for error logging

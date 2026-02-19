@@ -11,8 +11,12 @@ import {
   Users,
   ChevronRight,
   PhoneOutgoing,
-  PhoneIncoming,
   PhoneMissed,
+  Plus,
+  Trash2,
+  Download,
+  Loader2,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,9 +24,19 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { DialPad } from "@/components/call/DialPad"
+import { toast } from "sonner"
 import type { Call, CallMode } from "@/lib/types/call"
 
 type TabType = "recent" | "contacts" | "dialpad"
+
+interface Contact {
+  id: string
+  name: string
+  phone_number: string | null
+  email: string | null
+  notes: string | null
+  created_at: string
+}
 
 function formatCallDuration(seconds: number): string {
   const hrs = Math.floor(seconds / 3600)
@@ -46,6 +60,23 @@ function formatRelativeTime(timestamp: string): string {
   return date.toLocaleDateString()
 }
 
+/**
+ * Normalize a phone number to E.164 format.
+ * Handles: spaces/dashes/parens, leading 00 (international prefix), missing +.
+ * Returns null if the number cannot be normalized to a plausible E.164 form.
+ */
+function normalizePhone(raw: string): string | null {
+  // Strip all whitespace, dashes, dots, parentheses
+  let cleaned = raw.replace(/[\s\-().]/g, "")
+  // Replace leading 00 with +
+  if (cleaned.startsWith("00")) cleaned = "+" + cleaned.slice(2)
+  // If it starts with digits only (no +), prepend + — valid for full international numbers
+  if (/^\d{7,15}$/.test(cleaned)) cleaned = "+" + cleaned
+  // Validate final E.164: + followed by 7–15 digits
+  if (/^\+[1-9]\d{6,14}$/.test(cleaned)) return cleaned
+  return null
+}
+
 export default function CallsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabType>("recent")
@@ -53,6 +84,20 @@ export default function CallsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Dialpad pre-fill (from contact tap)
+  const [dialpadNumber, setDialpadNumber] = useState("")
+
+  // Contacts state
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [contactSearch, setContactSearch] = useState("")
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addName, setAddName] = useState("")
+  const [addPhone, setAddPhone] = useState("")
+  const [addEmail, setAddEmail] = useState("")
+  const [savingContact, setSavingContact] = useState(false)
+  const [importingContacts, setImportingContacts] = useState(false)
+  const [deletingContactId, setDeletingContactId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchCalls()
@@ -60,6 +105,10 @@ export default function CallsPage() {
     const interval = setInterval(fetchCalls, 8000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (activeTab === "contacts") fetchContacts()
+  }, [activeTab])
 
   async function fetchCalls() {
     try {
@@ -104,6 +153,11 @@ export default function CallsPage() {
     setCreating(true)
     setError(null)
     try {
+      const normalized = normalizePhone(phoneNumber)
+      if (!normalized) {
+        throw new Error(`"${phoneNumber}" couldn't be converted to a valid phone number. Try adding the country code, e.g. +49171…`)
+      }
+
       const res = await fetch("/api/calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,14 +172,14 @@ export default function CallsPage() {
       const dialRes = await fetch(`/api/calls/${data.callId}/dial`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber }),
+        body: JSON.stringify({ phoneNumber: normalized }),
       })
       if (!dialRes.ok) {
         const dialData = await dialRes.json().catch(() => ({}))
         throw new Error(dialData.error || "Failed to dial")
       }
 
-      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}&phone=${encodeURIComponent(phoneNumber)}`)
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}&callType=pstn_outbound&phone=${encodeURIComponent(normalized)}`)
     } catch (err: any) {
       console.error("[Calls] Failed to create PSTN call:", err)
       setError(err.message || "Failed to create call")
@@ -133,6 +187,107 @@ export default function CallsPage() {
       setCreating(false)
     }
   }
+
+  async function fetchContacts() {
+    setContactsLoading(true)
+    try {
+      const res = await fetch("/api/contacts")
+      if (res.ok) {
+        const data = await res.json()
+        setContacts(data.contacts || [])
+      }
+    } catch {
+      // ignore
+    } finally {
+      setContactsLoading(false)
+    }
+  }
+
+  async function handleAddContact(e: React.FormEvent) {
+    e.preventDefault()
+    if (!addName.trim()) return
+    setSavingContact(true)
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: addName.trim(), phone_number: addPhone.trim() || null, email: addEmail.trim() || null }),
+      })
+      if (!res.ok) throw new Error("Failed to save contact")
+      const contact = await res.json()
+      setContacts((prev) => [...prev, contact].sort((a, b) => a.name.localeCompare(b.name)))
+      setAddName(""); setAddPhone(""); setAddEmail(""); setShowAddForm(false)
+      toast.success(`Contact "${contact.name}" added`)
+    } catch {
+      toast.error("Failed to save contact")
+    } finally {
+      setSavingContact(false)
+    }
+  }
+
+  async function handleDeleteContact(id: string, name: string) {
+    setDeletingContactId(id)
+    try {
+      await fetch(`/api/contacts/${id}`, { method: "DELETE" })
+      setContacts((prev) => prev.filter((c) => c.id !== id))
+      toast.success(`"${name}" removed`)
+    } catch {
+      toast.error("Failed to delete contact")
+    } finally {
+      setDeletingContactId(null)
+    }
+  }
+
+  async function handleImportContacts() {
+    // Web Contact Picker API — supported on mobile Chrome / iOS Safari 14.5+
+    if (!("contacts" in navigator) || !("ContactsManager" in window)) {
+      toast.error("Contact import is not supported on this browser. Try Chrome on Android or Safari on iOS.")
+      return
+    }
+    setImportingContacts(true)
+    try {
+      const selected = await (navigator as any).contacts.select(["name", "tel", "email"], { multiple: true })
+      if (!selected?.length) return
+      let added = 0
+      for (const c of selected) {
+        const name = c.name?.[0] || "Unknown"
+        const phone = c.tel?.[0] || null
+        const email = c.email?.[0] || null
+        const res = await fetch("/api/contacts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, phone_number: phone, email }),
+        })
+        if (res.ok) { const contact = await res.json(); setContacts((prev) => [...prev, contact]); added++ }
+      }
+      setContacts((prev) => [...prev].sort((a, b) => a.name.localeCompare(b.name)))
+      toast.success(`Imported ${added} contact${added !== 1 ? "s" : ""}`)
+    } catch (err: any) {
+      if (err?.name !== "AbortError") toast.error("Import failed")
+    } finally {
+      setImportingContacts(false)
+    }
+  }
+
+  function handleCallContact(contact: Contact, mode: CallMode) {
+    if (!contact.phone_number) {
+      toast.error("This contact has no phone number")
+      return
+    }
+    // Pre-fill dialpad and switch to it
+    setDialpadNumber(contact.phone_number)
+    setActiveTab("dialpad")
+  }
+
+  const filteredContacts = useMemo(() => {
+    if (!contactSearch.trim()) return contacts
+    const q = contactSearch.toLowerCase()
+    return contacts.filter(
+      (c) => c.name.toLowerCase().includes(q) ||
+        c.phone_number?.includes(q) ||
+        c.email?.toLowerCase().includes(q)
+    )
+  }, [contacts, contactSearch])
 
   const tabs = [
     { id: "recent" as const, label: "Recent", icon: Clock },
@@ -281,30 +436,146 @@ export default function CallsPage() {
           </div>
         )}
 
-        {/* Contacts - placeholder for now */}
+        {/* Contacts */}
         {activeTab === "contacts" && (
-          <div className="p-4">
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search contacts..."
-                className="pl-9 bg-secondary border-border"
-              />
+          <div className="flex flex-col h-full">
+            {/* Search + action bar */}
+            <div className="p-3 border-b border-border flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                  placeholder="Search contacts..."
+                  className="pl-9 bg-secondary border-border h-9"
+                />
+              </div>
+              <Button size="sm" variant="outline" className="h-9 gap-1.5 shrink-0" onClick={() => setShowAddForm((v) => !v)}>
+                {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                {showAddForm ? "Cancel" : "Add"}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-9 gap-1.5 shrink-0" onClick={handleImportContacts} disabled={importingContacts} title="Import from device contacts">
+                {importingContacts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              </Button>
             </div>
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">Contact list coming soon</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Use the dialpad to call a phone number
-              </p>
+
+            {/* Inline add form */}
+            {showAddForm && (
+              <form onSubmit={handleAddContact} className="p-3 border-b border-border bg-secondary/40 flex flex-col gap-2">
+                <Input
+                  placeholder="Name *"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  className="h-9 bg-background"
+                  required
+                  autoFocus
+                />
+                <Input
+                  placeholder="Phone (+49171…)"
+                  value={addPhone}
+                  onChange={(e) => setAddPhone(e.target.value)}
+                  type="tel"
+                  className="h-9 bg-background"
+                />
+                <Input
+                  placeholder="Email (optional)"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  type="email"
+                  className="h-9 bg-background"
+                />
+                <Button type="submit" size="sm" disabled={savingContact || !addName.trim()} className="h-9">
+                  {savingContact ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save contact"}
+                </Button>
+              </form>
+            )}
+
+            {/* Contact list */}
+            <div className="flex-1 overflow-y-auto">
+              {contactsLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredContacts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+                  <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  {contacts.length === 0 ? (
+                    <>
+                      <p className="text-muted-foreground font-medium">No contacts yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">Tap + Add or Import to get started</p>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground">No contacts match "{contactSearch}"</p>
+                  )}
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {filteredContacts.map((contact) => {
+                    const initials = contact.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+                    return (
+                      <div key={contact.id} className="flex items-center gap-3 px-4 py-3">
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarFallback className="bg-secondary text-foreground text-sm font-medium">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground text-sm truncate">{contact.name}</p>
+                          {contact.phone_number && (
+                            <p className="text-xs text-muted-foreground truncate">{contact.phone_number}</p>
+                          )}
+                          {!contact.phone_number && contact.email && (
+                            <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {contact.phone_number && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-primary hover:bg-primary/10"
+                              onClick={() => handleCallContact(contact, "audio")}
+                              disabled={creating}
+                              title="Call"
+                            >
+                              <Phone className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteContact(contact.id, contact.name)}
+                            disabled={deletingContactId === contact.id}
+                            title="Delete"
+                          >
+                            {deletingContactId === contact.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Trash2 className="h-4 w-4" />
+                            }
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Dialpad */}
         {activeTab === "dialpad" && (
-          <DialPad onCall={handleDialpadCall} disabled={creating} />
+          <DialPad
+            key={dialpadNumber}
+            initialNumber={dialpadNumber}
+            onCall={(number, mode) => {
+              setDialpadNumber("")
+              handleDialpadCall(number, mode)
+            }}
+            disabled={creating}
+          />
         )}
       </div>
     </div>

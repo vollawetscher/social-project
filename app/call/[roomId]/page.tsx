@@ -22,11 +22,12 @@ export default function CallRoomPage() {
   const tokenParam = searchParams?.get("token") || null
   const modeParam = (searchParams?.get("mode") as CallMode) || "video"
   const phoneParam = searchParams?.get("phone") || null
+  const callTypeParam = (searchParams?.get("callType") as "web" | "pstn_outbound") || "web"
 
   const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "active" | "error">("loading")
   const [callId, setCallId] = useState<string | null>(callIdParam)
   const [token, setToken] = useState<string | null>(tokenParam)
-  const [callType, setCallType] = useState<"web" | "pstn_outbound">("web")
+  const [callType, setCallType] = useState<"web" | "pstn_outbound">(callTypeParam)
   const [contactName, setContactName] = useState<string | undefined>()
   const [callerName, setCallerName] = useState<string>("Someone")
   const [error, setError] = useState<string | null>(null)
