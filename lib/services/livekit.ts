@@ -112,11 +112,13 @@ function getSupabaseS3Upload(): S3Upload {
 
   const endpoint = `https://${endpointHost}/storage/v1/s3`
 
+  // Supabase project is in eu-west-1 (Frankfurt). Hardcoded to prevent
+  // env var misconfiguration causing S3 signature mismatches.
   return new S3Upload({
     accessKey,
     secret: secretKey,
     bucket: 'rohbericht-audio',
-    region: process.env.SUPABASE_S3_REGION || 'eu-west-1',
+    region: 'eu-west-1',
     endpoint,
     forcePathStyle: true,
   })
