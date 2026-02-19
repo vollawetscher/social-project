@@ -417,11 +417,6 @@ export default function CallsPage() {
                             {initials}
                           </AvatarFallback>
                         </Avatar>
-                        {isVideo && (
-                          <div className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full bg-info flex items-center justify-center ring-2 ring-card">
-                            <Video className="h-2.5 w-2.5 text-info-foreground" />
-                          </div>
-                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
