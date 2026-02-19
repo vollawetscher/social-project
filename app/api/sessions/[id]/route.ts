@@ -9,20 +9,23 @@ export async function GET(
   try {
     const user = await requireAuth()
     await requireSessionAccess(params.id, user.id)
-    const supabase = await createClient()
 
-    const { data: session, error } = await supabase
+    // requireSessionAccess already verified access. Use service role so admins
+    // can read sessions belonging to other users regardless of RLS policy state.
+    const db = createServiceRoleClient()
+
+    const { data: session, error } = await db
       .from('sessions')
       .select('*')
       .eq('id', params.id)
       .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 404 })
+    if (error || !session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
     // Also fetch files for this session
-    const { data: files } = await supabase
+    const { data: files } = await db
       .from('files')
       .select('*')
       .eq('session_id', params.id)

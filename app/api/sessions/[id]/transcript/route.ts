@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { mergeTranscripts } from '@/lib/utils/merge-transcripts'
@@ -10,9 +10,11 @@ export async function GET(
   try {
     const user = await requireAuth()
     await requireSessionAccess(params.id, user.id)
-    const supabase = await createClient()
 
-    const { data: transcripts, error } = await supabase
+    // Use service role so admins can read transcripts for any session
+    const db = createServiceRoleClient()
+
+    const { data: transcripts, error } = await db
       .from('transcripts')
       .select('*')
       .eq('session_id', params.id)

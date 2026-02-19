@@ -126,6 +126,8 @@ export default function SessionDetailPage() {
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
   const [retryingTranscribe, setRetryingTranscribe] = useState(false)
   const [profileLanguage, setProfileLanguage] = useState<string | null>(null)
+  const [languageMismatch, setLanguageMismatch] = useState<{ sessionLang: string; transcriptLang: string } | null>(null)
+  const [updatingLanguage, setUpdatingLanguage] = useState(false)
   const [handOffOpen, setHandOffOpen] = useState(false)
   const [handOffEmail, setHandOffEmail] = useState('')
   const [handOffLoading, setHandOffLoading] = useState(false)
@@ -334,6 +336,15 @@ export default function SessionDetailPage() {
         })
 
         setSession(v0Session)
+
+        // Detect language mismatch: session configured language vs transcript-detected language
+        const sessionLang = (sessionData.language || '').slice(0, 2).toLowerCase()
+        const transcriptLang = (transcriptData?.language || '').slice(0, 2).toLowerCase()
+        if (sessionLang && transcriptLang && sessionLang !== transcriptLang) {
+          setLanguageMismatch({ sessionLang, transcriptLang })
+        } else {
+          setLanguageMismatch(null)
+        }
         
         // Also fetch outputs for this session
         fetchOutputs()
@@ -576,6 +587,25 @@ export default function SessionDetailPage() {
     }
   }
 
+  const handleUpdateLanguage = async (lang: string) => {
+    setUpdatingLanguage(true)
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: lang }),
+      })
+      if (!res.ok) throw new Error('Failed to update language')
+      setSession(prev => prev ? { ...prev, languageCode: lang } : prev)
+      setLanguageMismatch(null)
+      toast.success('Session language updated')
+    } catch {
+      toast.error('Failed to update language')
+    } finally {
+      setUpdatingLanguage(false)
+    }
+  }
+
   const handleRetryTranscription = async () => {
     setRetryingTranscribe(true)
     try {
@@ -696,6 +726,40 @@ export default function SessionDetailPage() {
           </Sheet>
         </div>
       </div>
+
+      {/* Language mismatch banner */}
+      {languageMismatch && (() => {
+        const langNames: Record<string, string> = {
+          de: 'German', en: 'English', fr: 'French', es: 'Spanish',
+          it: 'Italian', pt: 'Portuguese', nl: 'Dutch', pl: 'Polish',
+        }
+        const sessionLabel = langNames[languageMismatch.sessionLang] || languageMismatch.sessionLang.toUpperCase()
+        const transcriptLabel = langNames[languageMismatch.transcriptLang] || languageMismatch.transcriptLang.toUpperCase()
+        return (
+          <div className="flex items-center gap-3 rounded-lg border border-info/40 bg-info/10 px-4 py-2.5 text-sm mt-3">
+            <span className="flex-1 text-info-foreground">
+              Transcript detected as <strong>{transcriptLabel}</strong>, but session is set to <strong>{sessionLabel}</strong>.
+              Update session language to match?
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 h-7 border-info/40 text-info-foreground hover:bg-info/20"
+              onClick={() => handleUpdateLanguage(languageMismatch.transcriptLang)}
+              disabled={updatingLanguage}
+            >
+              {updatingLanguage ? <Loader2 className="h-3 w-3 animate-spin" /> : `Use ${transcriptLabel}`}
+            </Button>
+            <button
+              onClick={() => setLanguageMismatch(null)}
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )
+      })()}
 
       {/* Hand off dialog */}
       <Dialog open={handOffOpen} onOpenChange={setHandOffOpen}>
