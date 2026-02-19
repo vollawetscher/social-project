@@ -359,7 +359,25 @@ export default function AdminBugsPage() {
                         )}
                       </div>
                     </div>
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex items-center gap-2">
+                      {!err.resolved && (
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleResolve(err.id, true)
+                          }}
+                          disabled={resolvingId === err.id}
+                        >
+                          {resolvingId === err.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-3 w-3" />
+                          )}
+                          <span className="ml-1 hidden sm:inline">Resolve</span>
+                        </Button>
+                      )}
                       {isExpanded ? (
                         <ChevronUp className="h-4 w-4 text-muted-foreground" />
                       ) : (

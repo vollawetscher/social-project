@@ -28,6 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import { CallControls } from "@/components/call/CallControls"
 import type { CallMode, LayoutMode } from "@/lib/types/call"
 
@@ -149,13 +150,51 @@ function CallRoomInner({
 
   const [linkCopied, setLinkCopied] = useState(false)
 
-  const copyInviteLink = useCallback(() => {
+  const copyInviteLink = useCallback(async () => {
     const url = new URL(window.location.href)
     url.searchParams.delete("token")
-    navigator.clipboard.writeText(url.toString())
-    setLinkCopied(true)
-    setTimeout(() => setLinkCopied(false), 2000)
-  }, [])
+    // Ensure callId is in invite link so guests can fetch caller info
+    if (callId && !url.searchParams.get("callId")) {
+      url.searchParams.set("callId", callId)
+    }
+    const inviteUrl = url.toString()
+
+    // Prefer Web Share API on mobile (native share sheet, no clipboard permission needed)
+    if (navigator.share) {
+      try {
+        await navigator.share({ url: inviteUrl, title: "Join my call" })
+        return
+      } catch (err: any) {
+        // User dismissed share sheet — not an error
+        if (err?.name === "AbortError") return
+        // Fall through to clipboard
+      }
+    }
+
+    // Clipboard API fallback
+    try {
+      await navigator.clipboard.writeText(inviteUrl)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      // Last resort: execCommand fallback for older browsers / focus issues
+      try {
+        const ta = document.createElement("textarea")
+        ta.value = inviteUrl
+        ta.style.position = "fixed"
+        ta.style.opacity = "0"
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand("copy")
+        document.body.removeChild(ta)
+        setLinkCopied(true)
+        setTimeout(() => setLinkCopied(false), 2000)
+      } catch {
+        toast.error("Could not copy link — long-press the URL bar to copy manually")
+      }
+    }
+  }, [callId])
 
   const statusLabel = {
     connecting: "Connecting...",

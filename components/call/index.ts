@@ -1,5 +1,6 @@
 export { CallControls } from './CallControls'
 export { CallRoom } from './CallRoom'
 export { CallSetup } from './CallSetup'
+export { IncomingCall } from './IncomingCall'
 export { DialPad } from './DialPad'
 export { ParticipantTile } from './ParticipantTile'

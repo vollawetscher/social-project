@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useParams, useSearchParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { CallSetup } from "@/components/call/CallSetup"
+import { IncomingCall } from "@/components/call/IncomingCall"
 import { CallRoom } from "@/components/call/CallRoom"
 import { Loader2 } from "lucide-react"
 import type { CallMode } from "@/lib/types/call"
@@ -22,24 +23,47 @@ export default function CallRoomPage() {
   const modeParam = (searchParams?.get("mode") as CallMode) || "video"
   const phoneParam = searchParams?.get("phone") || null
 
-  const [phase, setPhase] = useState<"loading" | "setup" | "joining" | "active" | "error">("loading")
+  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "active" | "error">("loading")
   const [callId, setCallId] = useState<string | null>(callIdParam)
   const [token, setToken] = useState<string | null>(tokenParam)
   const [callType, setCallType] = useState<"web" | "pstn_outbound">("web")
   const [contactName, setContactName] = useState<string | undefined>()
+  const [callerName, setCallerName] = useState<string>("Someone")
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (authLoading) return
 
+    // Authenticated user with token = go straight to active
     if (tokenParam && callIdParam) {
       setPhase("active")
       return
     }
 
-    // No token = joining as guest/second participant, go straight to setup
-    setPhase("setup")
-  }, [authLoading, callIdParam, tokenParam])
+    if (user) {
+      // Logged-in user joining as second participant (no token)
+      setPhase("setup")
+      return
+    }
+
+    // Guest: fetch caller info, then show incoming call banner
+    async function fetchCallerInfo() {
+      if (callIdParam) {
+        try {
+          const res = await fetch(`/api/calls/${callIdParam}/info`)
+          if (res.ok) {
+            const data = await res.json()
+            setCallerName(data.callerName || "Someone")
+          }
+        } catch {
+          // silently ignore -- fall back to "Someone"
+        }
+      }
+      setPhase("incoming")
+    }
+
+    fetchCallerInfo()
+  }, [authLoading, callIdParam, tokenParam, user])
 
   const handleJoin = useCallback(async (displayName: string) => {
     setPhase("joining")
@@ -78,7 +102,7 @@ export default function CallRoomPage() {
     if (user) {
       router.push("/calls")
     } else {
-      setPhase("setup")
+      router.push("/")
     }
   }, [user, router])
 
@@ -100,7 +124,7 @@ export default function CallRoomPage() {
           <p className="text-lg font-medium text-foreground">Unable to join call</p>
           <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
           <button
-            onClick={() => user ? router.push("/calls") : router.push("/")}
+            onClick={() => router.push("/")}
             className="text-sm text-primary hover:underline"
           >
             Go back
@@ -110,14 +134,28 @@ export default function CallRoomPage() {
     )
   }
 
-  if (phase === "setup" || phase === "joining") {
+  // Guest: show incoming call UI (no name entry)
+  if (phase === "incoming" || (phase === "joining" && !user)) {
+    return (
+      <IncomingCall
+        callerName={callerName}
+        mode={modeParam}
+        onJoin={handleJoin}
+        onDecline={() => router.push("/")}
+        joining={phase === "joining"}
+      />
+    )
+  }
+
+  // Authenticated user without token: show setup (device check)
+  if (phase === "setup" || (phase === "joining" && user)) {
     return (
       <CallSetup
         mode={modeParam}
         isAuthenticated={!!user}
         userName={user?.user_metadata?.full_name || user?.email?.split("@")[0]}
         onJoin={handleJoin}
-        onCancel={() => user ? router.push("/calls") : router.push("/")}
+        onCancel={() => router.push("/calls")}
         joining={phase === "joining"}
       />
     )
