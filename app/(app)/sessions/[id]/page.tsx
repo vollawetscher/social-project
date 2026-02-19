@@ -880,7 +880,7 @@ export default function SessionDetailPage() {
             </div>
           </TabsContent>
           <TabsContent value="context" className="flex-1 min-h-0 mt-0">
-            <div className="h-full overflow-auto rounded-lg border border-border bg-card p-6">
+            <div className="max-h-[calc(100vh-16rem)] overflow-y-auto rounded-lg border border-border bg-card p-6">
               <div className="space-y-6">
                 {/* In-context AI analysis indicator */}
                 {analyzing && (
@@ -1023,7 +1023,7 @@ export default function SessionDetailPage() {
             </div>
           </TabsContent>
           <TabsContent value="outputs" className="flex-1 min-h-0 mt-0">
-            <div className="h-full overflow-auto rounded-lg border border-border bg-card p-4 space-y-6">
+            <div className="max-h-[calc(100vh-16rem)] overflow-y-auto rounded-lg border border-border bg-card p-4 space-y-6">
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">
