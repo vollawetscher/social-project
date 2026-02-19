@@ -663,9 +663,9 @@ export default function SessionDetailPage() {
             <span className="text-destructive flex-1">
               {session.status === 'transcribing'
                 ? 'Transcription appears stuck. The background job may have failed.'
-                : 'Upload appears stuck. Please try uploading again.'}
+                : 'Stuck — audio may already be uploaded. Tap Retry to start transcription.'}
             </span>
-            {(session.audioUrl || isAdmin) && session.status === 'transcribing' ? (
+            {(session.audioUrl || isAdmin) ? (
               <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
                 {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry'}
               </Button>
