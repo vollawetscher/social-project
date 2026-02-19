@@ -18,6 +18,7 @@ export interface Call {
   participant_a_identity: string | null
   participant_b_identity: string | null
   phone_number: string | null
+  contact_name: string | null
   sip_call_id: string | null
   started_at: string | null
   ended_at: string | null
