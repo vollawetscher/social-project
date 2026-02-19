@@ -61,7 +61,7 @@ async function processTranscriptionJob(sessionId: string) {
       const file = files[i]
       console.log(`[Transcribe] Processing file ${i + 1}/${files.length}: ${file.storage_path} (${file.file_purpose})`)
 
-      // Check if transcript already exists for this file
+      // Delete any existing transcript for this file so retry doesn't silently skip
       const { data: existingTranscript } = await supabase
         .from('transcripts')
         .select('id')
@@ -69,8 +69,8 @@ async function processTranscriptionJob(sessionId: string) {
         .maybeSingle()
 
       if (existingTranscript) {
-        console.log(`[Transcribe] Transcript already exists for file ${file.id}, skipping`)
-        continue
+        console.log(`[Transcribe] Deleting existing transcript for file ${file.id} before retry`)
+        await supabase.from('transcripts').delete().eq('id', existingTranscript.id)
       }
 
       console.log('[Transcribe] Downloading audio file from storage:', file.storage_path)
