@@ -63,6 +63,7 @@ import { cn } from "@/lib/utils"
 type StatusDisplay = { label: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string; animated?: boolean }
 
 const statusConfig: Record<SessionStatus, StatusDisplay> = {
+  recording: { label: "Recording", variant: "secondary", className: "bg-primary/20 text-primary border-primary/30 animate-pulse", animated: true },
   uploading: { label: "Uploading", variant: "secondary", className: "bg-info/20 text-info border-info/30 animate-pulse", animated: true },
   transcribing: { label: "Transcribing", variant: "secondary", className: "bg-warning/20 text-warning border-warning/30 animate-pulse", animated: true },
   ready: { label: "Ready", variant: "default", className: "bg-success/20 text-success border-success/30" },
@@ -78,7 +79,8 @@ const staleStatus: StatusDisplay = {
 }
 
 function getStatusDisplay(session: Session): StatusDisplay {
-  if (session.status === 'uploading' || session.status === 'transcribing') {
+  // Only transcribing can go stale. Recording and uploading are normal for long calls.
+  if (session.status === 'transcribing') {
     const age = Date.now() - new Date(session.createdAt).getTime()
     if (age > STALE_THRESHOLD_MS) return staleStatus
   }
@@ -266,9 +268,9 @@ export default function SessionsPage() {
   }, [user, adminView, fetchSessions])
 
 
-  // Poll when any session is transcribing so badges update when ready
+  // Poll when any session is in progress so badges update when ready
   const hasInProgress = sessions.some(s =>
-    s.status === 'transcribing' || s.status === 'uploading'
+    s.status === 'recording' || s.status === 'transcribing' || s.status === 'uploading'
   )
   useEffect(() => {
     if (!hasInProgress) return

@@ -50,6 +50,7 @@ function deriveDomain(dbSession: any): Domain {
 export function mapStatus(dbStatus: DbStatus): V0Status {
   const statusMap: Record<DbStatus, V0Status> = {
     'created': 'uploading',
+    'recording': 'recording',
     'uploading': 'uploading',
     'transcribing': 'transcribing',
     'summarizing': 'transcribing',

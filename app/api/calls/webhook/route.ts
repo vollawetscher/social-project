@@ -64,6 +64,10 @@ export async function POST(request: Request) {
                 .from('calls')
                 .update({ track_a_egress_id: egress.egressId })
                 .eq('id', call.id)
+              await supabase
+                .from('sessions')
+                .update({ status: 'recording' })
+                .eq('id', call.session_id)
               console.log('[LiveKit Webhook] Composite egress started:', egress.egressId)
             } catch (err: any) {
               console.error('[LiveKit Webhook] Failed to start egress:', err.message)
@@ -99,6 +103,16 @@ export async function POST(request: Request) {
             .eq('id', call.id)
 
           console.log('[LiveKit Webhook] Call ended:', call.id)
+        }
+
+        // Recording exists — egress is still uploading the file to S3.
+        // Set session to 'uploading' so the UI shows progress instead of "stuck".
+        if (call.session_id && call.track_a_egress_id) {
+          await supabase
+            .from('sessions')
+            .update({ status: 'uploading' })
+            .eq('id', call.session_id)
+          console.log('[LiveKit Webhook] Session set to uploading (egress pending):', call.session_id)
         }
 
         // If no egress was started (nobody answered), delete the session + call entirely

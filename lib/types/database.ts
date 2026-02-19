@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type SessionStatus = 'created' | 'uploading' | 'transcribing' | 'summarizing' | 'done' | 'error'
+export type SessionStatus = 'created' | 'recording' | 'uploading' | 'transcribing' | 'summarizing' | 'done' | 'error'
 export type UserRole = 'user' | 'admin'
 export type PIIType = 'name' | 'phone' | 'email' | 'address' | 'date'
 export type FilePurpose = 'context' | 'meeting' | 'dictation' | 'instruction' | 'addition'

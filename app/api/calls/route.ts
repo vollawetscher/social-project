@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     // Get user profile for display name and preferred language
     const { data: profile } = await supabase
       .from('profiles')
-      .select('display_name, email, preferred_language')
+      .select('display_name, email, default_recording_language')
       .eq('id', user.id)
       .single()
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     // Create a session for this call
     const inputHint = callType === 'pstn_outbound' ? 'phone_call' : 'video_call'
-    const preferredLang = (profile as any)?.preferred_language?.slice(0, 2) || null
+    const preferredLang = (profile as any)?.default_recording_language?.slice(0, 2) || null
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
