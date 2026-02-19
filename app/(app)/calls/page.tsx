@@ -316,7 +316,7 @@ export default function CallsPage() {
   }, [calls])
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-[calc(100vh-3.5rem-4rem-2rem)] md:h-[calc(100vh-3.5rem-3rem)] bg-background overflow-hidden">
       {/* Quick Actions */}
       <div className="px-4 py-4 border-b border-border">
         <h1 className="text-lg font-semibold text-foreground mb-3">Calls</h1>

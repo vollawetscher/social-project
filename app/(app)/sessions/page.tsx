@@ -889,12 +889,21 @@ export default function SessionsPage() {
     })
   }
 
-  const filteredSessions = sessions.filter(session => 
-    searchQuery === "" || 
-    session.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    session.language.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (adminView && session.ownerEmail?.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  const filteredSessions = sessions.filter(session => {
+    if (searchQuery === "") return true
+    const q = searchQuery.toLowerCase()
+    return (
+      session.filename.toLowerCase().includes(q) ||
+      session.language.toLowerCase().includes(q) ||
+      session.speechmaticsSummary?.toLowerCase().includes(q) ||
+      session.extractedContext?.purpose?.toLowerCase().includes(q) ||
+      session.extractedContext?.topics?.some(t => t.toLowerCase().includes(q)) ||
+      session.extractedContext?.participants?.some(p =>
+        (typeof p === 'string' ? p : p.name)?.toLowerCase().includes(q)
+      ) ||
+      (adminView && session.ownerEmail?.toLowerCase().includes(q))
+    )
+  })
 
   return (
     <div className="space-y-4">

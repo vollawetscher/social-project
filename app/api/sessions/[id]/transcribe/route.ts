@@ -122,11 +122,10 @@ async function processTranscriptionJob(sessionId: string) {
       console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)
 
       const contentType = (inputHint === 'presentation' || inputHint === 'voice_note') ? 'informative' : 'conversational'
-      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType })
+      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage })
       const speechmatics = createSpeechmaticsService()
       const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, {
         contentType,
-        language: sessionLanguage || undefined,
       })
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 

@@ -144,46 +144,45 @@ export default function OutputDetailPage() {
     }
   }
 
-  async function handleShare() {
-    if (!output) return
-    
-    setIsSharing(true)
-    try {
-      console.log('[Share] Calling API for output:', outputId)
-      const response = await fetch(`/api/outputs/${outputId}/share`, {
-        method: 'POST',
-      })
-      
-      console.log('[Share] API response status:', response.status)
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('[Share] API error:', errorData)
-        throw new Error(errorData.error || 'Failed to enable sharing')
-      }
-      
-      const data = await response.json()
-      console.log('[Share] API response data:', data)
-      console.log('[Share] Share URL:', data.shareUrl)
-      console.log('[Share] Share Token:', data.shareToken)
-      
-      setShareUrl(data.shareUrl)
-      setIsPublic(true)
-      
-      // Auto-copy link with header (can fail on first user gesture in some browsers)
-      const headline = extractOutputHeadline(output.content) || output.templateName
-      const shareText = formatShareLinkForCopy(data.shareUrl, headline, output.createdAt)
+  async function copyOrShare(url: string) {
+    const headline = extractOutputHeadline(output!.content) || output!.templateName
+    const shareText = formatShareLinkForCopy(url, headline, output!.createdAt)
+
+    if (typeof navigator.share === 'function') {
       try {
-        await navigator.clipboard.writeText(shareText)
+        await navigator.share({ title: headline || 'Shared output', text: shareText })
         setCopiedShareLink(true)
         setTimeout(() => setCopiedShareLink(false), 2000)
-        toast.success('Share link copied to clipboard!')
-      } catch {
-        // Clipboard may fail (permissions, focus); link is ready - user can click again
-        toast.success('Share link created – click Share again to copy', { duration: 4000 })
+        return
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return
       }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareText)
+      setCopiedShareLink(true)
+      setTimeout(() => setCopiedShareLink(false), 2000)
+      toast.success('Share link copied to clipboard!')
+    } catch {
+      toast.error('Could not copy link — try long-pressing the Share button')
+    }
+  }
+
+  async function handleShare() {
+    if (!output) return
+    setIsSharing(true)
+    try {
+      const response = await fetch(`/api/outputs/${outputId}/share`, { method: 'POST' })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to enable sharing')
+      }
+      const data = await response.json()
+      setShareUrl(data.shareUrl)
+      setIsPublic(true)
+      await copyOrShare(data.shareUrl)
     } catch (error) {
-      console.error('[Share] Error enabling sharing:', error)
       toast.error('Failed to enable sharing: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setIsSharing(false)
@@ -192,33 +191,14 @@ export default function OutputDetailPage() {
 
   async function handleCopyShareLink() {
     if (!output) return
-
-    let urlToCopy = shareUrl || (output.shareToken ? `${window.location.origin}/share/${output.shareToken}` : null)
-    // Refresh expiration when copying (extends by 3 days; same link, now valid again)
-    try {
-      const res = await fetch(`/api/outputs/${outputId}/share`, { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        urlToCopy = data.shareUrl || urlToCopy
-        setShareUrl(data.shareUrl)
-        setIsPublic(true)
-      }
-    } catch {
-      // Continue to copy even if refresh fails
-    }
-
+    const urlToCopy = shareUrl || (output.shareToken ? `${window.location.origin}/share/${output.shareToken}` : null)
     if (!urlToCopy) return
-
-    const headline = extractOutputHeadline(output.content) || output.templateName
-    const shareText = formatShareLinkForCopy(urlToCopy, headline, output?.createdAt)
-    try {
-      await navigator.clipboard.writeText(shareText)
-      setCopiedShareLink(true)
-      setTimeout(() => setCopiedShareLink(false), 2000)
-      toast.success('Link copied – valid for 3 more days')
-    } catch (error) {
-      toast.error('Failed to copy link')
-    }
+    await copyOrShare(urlToCopy)
+    fetch(`/api/outputs/${outputId}/share`, { method: 'POST' }).then(res => {
+      if (res.ok) res.json().then(data => {
+        if (data.shareUrl) { setShareUrl(data.shareUrl); setIsPublic(true) }
+      })
+    }).catch(() => {})
   }
 
   async function handleDisableSharing() {
