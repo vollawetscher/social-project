@@ -42,6 +42,7 @@ interface CallRoomProps {
   callType: "web" | "pstn_outbound"
   contactName?: string
   contactPhone?: string
+  displayName?: string
   onLeave?: () => void
 }
 
@@ -117,7 +118,7 @@ export function CallRoom(props: CallRoomProps) {
       }}
     >
       <RoomAudioRenderer />
-      <CallRoomInner {...props} />
+      <CallRoomInner {...props} displayName={props.displayName} />
     </LiveKitRoom>
   )
 }
@@ -129,6 +130,7 @@ function CallRoomInner({
   callType,
   contactName,
   contactPhone,
+  displayName,
   onLeave,
 }: Omit<CallRoomProps, "token" | "serverUrl">) {
   const router = useRouter()
@@ -168,8 +170,10 @@ function CallRoomInner({
         ? "ringing"
         : "connecting"
 
-  // Play soft ringtone while waiting for the other side to join
-  useRingtone(callStatus === "ringing")
+  // Play soft ringtone only while genuinely waiting for someone to join.
+  // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
+  // so we must exclude that post-call phase explicitly.
+  useRingtone(callStatus === "ringing" && !calleeLeft)
 
   // Track whether the remote participant was ever connected, then detect when they leave
   useEffect(() => {
@@ -251,10 +255,17 @@ function CallRoomInner({
     }
     const inviteUrl = url.toString()
 
+    const caller = displayName || "Someone"
+    const callLabel = mode === "video" ? "video call" : "audio call"
+    // Plain-text version — works in SMS, WhatsApp, iMessage, Telegram, etc.
+    const plainText = `Join ${caller} in a ${callLabel} now: ${inviteUrl}`
+    // HTML version — renders as a clean hyperlink when pasted into email / rich editor
+    const htmlText = `<p>Join <strong>${caller}</strong> in a ${callLabel}:<br><a href="${inviteUrl}">${inviteUrl}</a></p>`
+
     // Prefer Web Share API on mobile (native share sheet, no clipboard permission needed)
     if (navigator.share) {
       try {
-        await navigator.share({ url: inviteUrl, title: "Join my call" })
+        await navigator.share({ text: `Join ${caller} in a ${callLabel}:`, url: inviteUrl })
         return
       } catch (err: any) {
         // User dismissed share sheet — not an error
@@ -263,16 +274,33 @@ function CallRoomInner({
       }
     }
 
-    // Clipboard API fallback
+    // Try rich clipboard (text/html + text/plain) — works in email clients & rich editors
+    if (typeof ClipboardItem !== "undefined") {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": new Blob([plainText], { type: "text/plain" }),
+            "text/html": new Blob([htmlText], { type: "text/html" }),
+          }),
+        ])
+        setLinkCopied(true)
+        setTimeout(() => setLinkCopied(false), 2000)
+        return
+      } catch {
+        // Fall through
+      }
+    }
+
+    // Plain-text clipboard fallback
     try {
-      await navigator.clipboard.writeText(inviteUrl)
+      await navigator.clipboard.writeText(plainText)
       setLinkCopied(true)
       setTimeout(() => setLinkCopied(false), 2000)
     } catch {
       // Last resort: execCommand fallback for older browsers / focus issues
       try {
         const ta = document.createElement("textarea")
-        ta.value = inviteUrl
+        ta.value = plainText
         ta.style.position = "fixed"
         ta.style.opacity = "0"
         document.body.appendChild(ta)
@@ -286,7 +314,7 @@ function CallRoomInner({
         toast.error("Could not copy link — long-press the URL bar to copy manually")
       }
     }
-  }, [callId])
+  }, [callId, displayName, mode])
 
   const statusLabel = {
     connecting: "Connecting...",

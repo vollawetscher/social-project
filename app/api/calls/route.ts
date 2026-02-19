@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     try {
       await createRoom(roomName, {
         maxParticipants: 2,
-        emptyTimeout: 300,
+        emptyTimeout: 90,
         metadata: JSON.stringify({ callType, mode, createdBy: user.id }),
       })
     } catch (lkError: any) {

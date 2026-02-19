@@ -182,6 +182,7 @@ export default function CallRoomPage() {
       callType={callType}
       contactName={contactName}
       contactPhone={phoneParam || undefined}
+      displayName={user?.user_metadata?.full_name || user?.email?.split("@")[0]}
       onLeave={handleLeave}
     />
   )

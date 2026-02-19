@@ -28,7 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { DialPad } from "@/components/call/DialPad"
@@ -604,7 +603,7 @@ export default function CallsPage() {
                 : "A new audio call room will be created. You can share the link with anyone you want to call."}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <div className="flex flex-row gap-3 justify-end pt-2">
             <Button
               variant="outline"
               onClick={() => setPendingCallMode(null)}
@@ -620,7 +619,6 @@ export default function CallsPage() {
                 handleNewCall(mode)
               }}
               disabled={creating}
-              className={pendingCallMode === "video" ? "bg-info hover:bg-info/90" : ""}
             >
               {creating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -631,7 +629,7 @@ export default function CallsPage() {
               )}
               Start Call
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

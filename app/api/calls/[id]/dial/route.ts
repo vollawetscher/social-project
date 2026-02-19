@@ -59,7 +59,7 @@ export async function POST(
       participantIdentity: `sip-${phoneNumber_e164}`,
       participantName: phoneNumber_e164,
       playDialtone: true,
-      ringingTimeout: 30,
+      ringingTimeout: 90,
     })
 
     // Update call record with PSTN info.

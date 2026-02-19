@@ -68,7 +68,7 @@ export async function createRoom(
   const room = await roomService.createRoom({
     name: roomName,
     maxParticipants: options?.maxParticipants ?? 2,
-    emptyTimeout: options?.emptyTimeout ?? 300, // 5 min empty timeout
+    emptyTimeout: options?.emptyTimeout ?? 90, // 90 s empty timeout (outbound call answer window)
     metadata: options?.metadata,
   })
   console.log('[LiveKit] Room created:', room.name)
@@ -208,7 +208,7 @@ export async function createSipParticipant(
       participantIdentity: options?.participantIdentity ?? `phone-${phoneNumber}`,
       participantName: options?.participantName ?? phoneNumber,
       playDialtone: options?.playDialtone ?? true,
-      ringingTimeout: options?.ringingTimeout ?? 30,
+      ringingTimeout: options?.ringingTimeout ?? 90,
       maxCallDuration: options?.maxCallDuration ?? 3600, // 1 hour max
     },
   )

@@ -867,15 +867,7 @@ export default function SessionDetailPage() {
             <TabsTrigger value="context">Context</TabsTrigger>
             <TabsTrigger value="outputs">Outputs</TabsTrigger>
           </TabsList>
-          <TabsContent value="transcript" className="flex-1 min-h-0 mt-0 flex flex-col gap-3">
-            {session.audioUrl && (
-              <AudioPlayer
-                ref={audioPlayerRef}
-                audioUrl={session.audioUrl}
-                onTimeUpdate={setCurrentAudioTime}
-                onPlayStateChange={setIsAudioPlaying}
-              />
-            )}
+          <TabsContent value="transcript" className="flex-1 min-h-0 mt-0 flex flex-col">
             <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
               <TranscriptViewer 
                 segments={session.transcript}
@@ -1030,8 +1022,8 @@ export default function SessionDetailPage() {
               </div>
             </div>
           </TabsContent>
-          <TabsContent value="outputs" className="flex-1 min-h-0 mt-0">
-            <div className="h-full rounded-lg border border-border bg-card overflow-auto p-4 space-y-6">
+          <TabsContent value="outputs" className="flex-1 min-h-0 mt-0 flex flex-col">
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-border bg-card p-4 space-y-6">
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">
