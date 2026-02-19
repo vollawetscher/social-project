@@ -9,8 +9,10 @@ import { logError } from '@/lib/services/error-logger'
 
 export async function POST(request: Request) {
   try {
-    const secret = request.headers.get('x-internal-secret')
-    if (secret !== process.env.INTERNAL_API_SECRET || !process.env.INTERNAL_API_SECRET) {
+    // If INTERNAL_API_SECRET is configured, enforce it. If not set, allow (internal calls only).
+    const expectedSecret = process.env.INTERNAL_API_SECRET
+    const providedSecret = request.headers.get('x-internal-secret')
+    if (expectedSecret && providedSecret !== expectedSecret) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

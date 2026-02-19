@@ -56,6 +56,9 @@ export default function CallsPage() {
 
   useEffect(() => {
     fetchCalls()
+    // Poll every 8s so desktop sees new/updated calls without manual refresh
+    const interval = setInterval(fetchCalls, 8000)
+    return () => clearInterval(interval)
   }, [])
 
   async function fetchCalls() {

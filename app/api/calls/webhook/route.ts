@@ -173,26 +173,27 @@ export async function POST(request: Request) {
             .update({ status: 'transcribing' })
             .eq('id', call.id)
 
-          // Trigger transcription
+          // Set session to transcribing before triggering the job
+          await supabase
+            .from('sessions')
+            .update({ status: 'transcribing' })
+            .eq('id', call.session_id)
+
+          // Trigger transcription pipeline (fire and forget)
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL
             || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null)
             || 'http://localhost:3000'
           const secret = process.env.INTERNAL_API_SECRET
 
-          if (secret) {
-            console.log('[LiveKit Webhook] Triggering transcription for session:', call.session_id)
-            fetch(`${baseUrl}/api/internal/post-transcribe`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-internal-secret': secret },
-              body: JSON.stringify({ sessionId: call.session_id }),
-            }).catch(err => console.error('[LiveKit Webhook] Transcription trigger failed:', err))
-          } else {
-            await supabase
-              .from('sessions')
-              .update({ status: 'transcribing' })
-              .eq('id', call.session_id)
-            console.log('[LiveKit Webhook] Session ready for manual transcription (no INTERNAL_API_SECRET)')
-          }
+          console.log('[LiveKit Webhook] Triggering transcription for session:', call.session_id)
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          if (secret) headers['x-internal-secret'] = secret
+
+          fetch(`${baseUrl}/api/internal/post-transcribe`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ sessionId: call.session_id }),
+          }).catch(err => console.error('[LiveKit Webhook] Transcription trigger failed:', err))
         } catch (err: any) {
           console.error('[LiveKit Webhook] Post-egress processing failed:', err)
           await supabase
