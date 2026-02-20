@@ -44,13 +44,15 @@ export async function POST(request: Request) {
     const inputHint = callType === 'pstn_outbound' ? 'phone_call' : 'video_call'
     const preferredLang = (profile as any)?.default_recording_language?.slice(0, 2) || null
 
+    const sessionLabel = callType === 'web' ? 'Video Call' : 'Call'
+
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .insert({
         user_id: user.id,
         status: 'created',
         context_note: '',
-        internal_case_id: '',
+        internal_case_id: sessionLabel,
         duration_sec: 0,
         last_error: '',
         input_hint: inputHint,

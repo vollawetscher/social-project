@@ -100,6 +100,7 @@ export default function CallsPage() {
   const [pendingCallMode, setPendingCallMode] = useState<CallMode | null>(null)
   const [videoDialogStep, setVideoDialogStep] = useState<"choose" | "ring-sms">("choose")
   const [ringPhone, setRingPhone] = useState("")
+  const [ringContactName, setRingContactName] = useState("")
   const [ringSending, setRingSending] = useState(false)
   // Save-to-contacts prompt: stores the phone number to save
   const [savingNumber, setSavingNumber] = useState<string | null>(null)
@@ -195,7 +196,7 @@ export default function CallsPage() {
       fetch(`/api/calls/${data.callId}/ring-sms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: cleaned, callerName: data.displayName || "Someone" }),
+        body: JSON.stringify({ phoneNumber: cleaned, callerName: data.displayName || "Someone", ...(ringContactName ? { contactName: ringContactName } : {}) }),
       }).then(r => {
         if (r.ok) toast.success("Phone ringing & SMS sent!")
         else toast.error("Ring+SMS failed — share the link manually")
@@ -386,7 +387,7 @@ export default function CallsPage() {
             </div>
           </button>
           <button
-            onClick={() => { setPendingCallMode("video"); setVideoDialogStep("choose"); setRingPhone(""); fetchContacts() }}
+            onClick={() => { setPendingCallMode("video"); setVideoDialogStep("choose"); setRingPhone(""); setRingContactName(""); fetchContacts() }}
             disabled={creating}
             className="flex items-center gap-3 p-3 rounded-xl bg-info/10 hover:bg-info/15 transition-colors disabled:opacity-50"
           >
@@ -654,7 +655,7 @@ export default function CallsPage() {
 
       {/* Video call dialog — choose Copy Link or Ring + SMS */}
       <Dialog open={pendingCallMode === "video"} onOpenChange={(open) => {
-        if (!open) { setPendingCallMode(null); setVideoDialogStep("choose"); setRingPhone(""); }
+        if (!open) { setPendingCallMode(null); setVideoDialogStep("choose"); setRingPhone(""); setRingContactName(""); }
       }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -712,7 +713,7 @@ export default function CallsPage() {
                   inputMode="tel"
                   placeholder="+49 170 1234567"
                   value={ringPhone}
-                  onChange={(e) => setRingPhone(e.target.value)}
+                  onChange={(e) => { setRingPhone(e.target.value); setRingContactName("") }}
                   className="flex-1"
                   autoFocus
                 />
@@ -729,7 +730,7 @@ export default function CallsPage() {
                   {contacts.filter(c => c.phone_number).map((c) => (
                     <button
                       key={c.id}
-                      onClick={() => setRingPhone(c.phone_number || "")}
+                      onClick={() => { setRingPhone(c.phone_number || ""); setRingContactName(c.name) }}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent text-left text-sm"
                     >
                       <User className="h-4 w-4 text-muted-foreground shrink-0" />

@@ -20,7 +20,7 @@ export async function POST(
 
     const { data: call, error: callError } = await supabase
       .from('calls')
-      .select('room_name, user_id, call_type')
+      .select('room_name, user_id, call_type, session_id')
       .eq('id', callId)
       .single()
 
@@ -34,6 +34,7 @@ export async function POST(
     const body = await request.json()
     const phoneNumber: string = body.phoneNumber
     const callerName: string = body.callerName || 'Someone'
+    const contactName: string | undefined = body.contactName
 
     if (!phoneNumber || !/^\+[1-9]\d{6,14}$/.test(phoneNumber)) {
       return NextResponse.json({ error: 'Invalid phone number (E.164 required)' }, { status: 400 })
@@ -46,19 +47,30 @@ export async function POST(
 
     const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${callId}`
 
-    const [smsResult, voiceResult] = await Promise.all([
-      sendVideoCallInviteSMS(phoneNumber, callerName, joinUrl),
-      placeNotificationCall(phoneNumber, callerName),
-    ])
+    // Send SMS first so the link is on the phone when it rings
+    const smsResult = await sendVideoCallInviteSMS(phoneNumber, callerName, joinUrl)
+    console.log('[RingSMS] SMS:', smsResult.success ? 'sent' : smsResult.error)
 
-    console.log('[RingSMS] SMS:', smsResult.success ? 'sent' : smsResult.error,
-                '| Voice:', voiceResult.success ? voiceResult.callSid : voiceResult.error)
+    let voiceResult = { success: false, callSid: undefined as string | undefined, error: undefined as string | undefined }
+    if (smsResult.success) {
+      voiceResult = await placeNotificationCall(phoneNumber, callerName)
+      console.log('[RingSMS] Voice:', voiceResult.success ? voiceResult.callSid : voiceResult.error)
+    } else {
+      console.warn('[RingSMS] Skipping voice call — SMS failed, no link to click')
+    }
 
-    if (!smsResult.success && !voiceResult.success) {
+    if (call.session_id) {
+      const label = contactName || phoneNumber
+      await supabase
+        .from('sessions')
+        .update({ internal_case_id: `Call ${label}` })
+        .eq('id', call.session_id)
+    }
+
+    if (!smsResult.success) {
       return NextResponse.json({
-        error: 'Both SMS and voice call failed',
+        error: 'SMS failed — no link sent, skipped voice call',
         smsError: smsResult.error,
-        voiceError: voiceResult.error,
       }, { status: 502 })
     }
 

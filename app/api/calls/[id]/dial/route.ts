@@ -76,6 +76,14 @@ export async function POST(
       })
       .eq('id', callId)
 
+    if (call.session_id) {
+      const label = contactName || phoneNumber_e164
+      await supabase
+        .from('sessions')
+        .update({ internal_case_id: `Call ${label}` })
+        .eq('id', call.session_id)
+    }
+
     return NextResponse.json({
       sipCallId: sipParticipant.participantId,
     })

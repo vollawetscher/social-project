@@ -168,6 +168,12 @@ export async function POST(request: Request) {
             .from('calls')
             .update({ status: 'error', last_error: `Egress failed: ${egressError}` })
             .eq('id', call.id)
+          if (call.session_id) {
+            await supabase
+              .from('sessions')
+              .update({ status: 'error', last_error: `Recording failed: ${egressError}` })
+              .eq('id', call.session_id)
+          }
           break
         }
 
@@ -185,6 +191,12 @@ export async function POST(request: Request) {
             .from('calls')
             .update({ status: 'error', last_error: 'No recording file path in egress result' })
             .eq('id', call.id)
+          if (call.session_id) {
+            await supabase
+              .from('sessions')
+              .update({ status: 'error', last_error: 'No recording file in egress result' })
+              .eq('id', call.session_id)
+          }
           break
         }
 
@@ -247,6 +259,12 @@ export async function POST(request: Request) {
             .from('calls')
             .update({ status: 'error', last_error: err.message })
             .eq('id', call.id)
+          if (call.session_id) {
+            await supabase
+              .from('sessions')
+              .update({ status: 'error', last_error: err.message })
+              .eq('id', call.session_id)
+          }
         }
 
         break
