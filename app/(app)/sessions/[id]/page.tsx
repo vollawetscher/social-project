@@ -126,7 +126,6 @@ export default function SessionDetailPage() {
   const   [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
   const [retryingTranscribe, setRetryingTranscribe] = useState(false)
-  const [lastRetryAt, setLastRetryAt] = useState<number | null>(null)
   const [profileLanguage, setProfileLanguage] = useState<string | null>(null)
   const [languageMismatch, setLanguageMismatch] = useState<{ sessionLang: string; transcriptLang: string } | null>(null)
   const [updatingLanguage, setUpdatingLanguage] = useState(false)
@@ -433,12 +432,6 @@ export default function SessionDetailPage() {
   // Poll while call is recording, uploading, or transcribing so the UI stays in sync
   useEffect(() => {
     if (!session || !['recording', 'transcribing', 'uploading', 'summarizing'].includes(session.status)) return
-    // For recording/uploading, poll indefinitely (long calls are normal).
-    // For transcribing/summarizing, stop after 15 min (likely stuck).
-    if (['transcribing', 'summarizing'].includes(session.status)) {
-      const age = Date.now() - new Date(session.createdAt).getTime()
-      if (age > 15 * 60 * 1000) return
-    }
     const interval = setInterval(async () => {
       try {
         const sessionRes = await fetch(`/api/sessions/${sessionId}`)
@@ -624,7 +617,6 @@ export default function SessionDetailPage() {
       })
       if (!res.ok) throw new Error((await res.json()).error || 'Retry failed')
       toast.success('Transcription started. This may take a few minutes.')
-      setLastRetryAt(Date.now())
       setSession((s) => (s ? { ...s, status: 'transcribing', lastError: undefined } : s))
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to retry transcription')
@@ -663,19 +655,6 @@ export default function SessionDetailPage() {
             {(session.audioUrl || isAdmin) ? (
               <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
                 {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry transcription'}
-              </Button>
-            ) : null}
-          </div>
-        ) : session.status === 'transcribing' &&
-            Date.now() - new Date(session.createdAt).getTime() > 15 * 60 * 1000 &&
-            (!lastRetryAt || Date.now() - lastRetryAt > 15 * 60 * 1000) ? (
-          <div className="flex items-center gap-2 w-full max-w-md rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
-            <span className="text-destructive flex-1">
-              Transcription appears stuck. The background job may have failed.
-            </span>
-            {(session.audioUrl || isAdmin) ? (
-              <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
-                {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry'}
               </Button>
             ) : null}
           </div>

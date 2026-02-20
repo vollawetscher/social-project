@@ -70,20 +70,7 @@ const statusConfig: Record<SessionStatus, StatusDisplay> = {
   failed: { label: "Failed", variant: "destructive" },
 }
 
-const STALE_THRESHOLD_MS = 15 * 60 * 1000
-
-const staleStatus: StatusDisplay = {
-  label: "Stuck — tap to retry",
-  variant: "destructive",
-  className: "bg-destructive/15 text-destructive border-destructive/30",
-}
-
 function getStatusDisplay(session: Session): StatusDisplay {
-  // Only transcribing can go stale. Recording and uploading are normal for long calls.
-  if (session.status === 'transcribing') {
-    const age = Date.now() - new Date(session.createdAt).getTime()
-    if (age > STALE_THRESHOLD_MS) return staleStatus
-  }
   return statusConfig[session.status as SessionStatus]
 }
 
