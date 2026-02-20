@@ -23,6 +23,12 @@ export function needsStructureHeuristic(rawFileContent: string, filename: string
   if (trimmed.includes('-->') && /\d{2}:\d{2}:\d{2}[.,]\d{3}/.test(trimmed)) return false
   if (lower.startsWith('webvtt')) return false
 
+  // Speaker-labeled transcript (S1:, S2:, Speaker 1:, SPEAKER_00:) — already handled by parseTXT
+  const speakerLabelLines = trimmed.split(/\r?\n/).filter(l =>
+    /^\s*(S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:\s+/i.test(l)
+  )
+  if (speakerLabelLines.length >= 2) return false
+
   // TXT: check for messy patterns (chat, summaries, mixed)
   const messyPatterns = [
     /\b(chat|message|pm|dm)\s*(from|by|with)?\s*:?/i,

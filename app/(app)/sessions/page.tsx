@@ -328,23 +328,39 @@ export default function SessionsPage() {
       return false
     }
     const sessionName = file.name.replace(/\.[^/.]+$/, '') || file.name
-    const res = await fetch('/api/sessions/import-transcript', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language,
-        sessionName,
-        segments,
-        rawText,
-        rawFileContent,
-        filename: file.name,
-      }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.error || 'Import failed')
+    const uniqueSpeakers = new Set(segments.map(s => s.speaker))
+    const parserProducedGoodSegments = segments.length >= 2 && uniqueSpeakers.size >= 1
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 120_000)
+
+    try {
+      const res = await fetch('/api/sessions/import-transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language,
+          sessionName,
+          segments,
+          rawText,
+          ...(!parserProducedGoodSegments ? { rawFileContent } : {}),
+          filename: file.name,
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Import failed')
+      }
+      return true
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err.name === 'AbortError') {
+        throw new Error('Import timed out. Try a smaller file or paste the content instead.')
+      }
+      throw err
     }
-    return true
   }, [language])
 
   const processPastedTranscript = useCallback(async (rawContent: string): Promise<boolean> => {
