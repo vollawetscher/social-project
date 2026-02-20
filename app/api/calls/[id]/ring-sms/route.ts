@@ -51,7 +51,7 @@ export async function POST(
     const smsResult = await sendVideoCallInviteSMS(phoneNumber, callerName, joinUrl)
     console.log('[RingSMS] SMS:', smsResult.success ? 'sent' : smsResult.error)
 
-    let voiceResult = { success: false, callSid: undefined as string | undefined, error: undefined as string | undefined }
+    let voiceResult: { success: boolean; callSid?: string; error?: string } = { success: false }
     if (smsResult.success) {
       voiceResult = await placeNotificationCall(phoneNumber, callerName)
       console.log('[RingSMS] Voice:', voiceResult.success ? voiceResult.callSid : voiceResult.error)
