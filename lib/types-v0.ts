@@ -110,6 +110,7 @@ export interface Session {
   ownerEmail?: string // Admin view: session owner email
   ownerId?: string // Session owner user_id (for hand-off visibility)
   lastError?: string // Transcription or processing error message
+  isFromCall?: boolean // True when this session was forked from a caller's session (callee claim)
 }
 
 export interface ParticipantInfo {

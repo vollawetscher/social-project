@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth/AuthProvider"
 import { CallSetup } from "@/components/call/CallSetup"
 import { IncomingCall } from "@/components/call/IncomingCall"
 import { CallRoom } from "@/components/call/CallRoom"
+import { CallEndedSignup } from "@/components/call/CallEndedSignup"
 import { Loader2 } from "lucide-react"
 import type { CallMode } from "@/lib/types/call"
 
@@ -24,7 +25,7 @@ export default function CallRoomPage() {
   const phoneParam = searchParams?.get("phone") || null
   const callTypeParam = (searchParams?.get("callType") as "web" | "pstn_outbound") || "web"
 
-  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "active" | "error">("loading")
+  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "active" | "ended" | "error">("loading")
   const [callId, setCallId] = useState<string | null>(callIdParam)
   const [token, setToken] = useState<string | null>(tokenParam)
   const [callType, setCallType] = useState<"web" | "pstn_outbound">(callTypeParam)
@@ -99,13 +100,23 @@ export default function CallRoomPage() {
     }
   }, [callId, token])
 
-  const handleLeave = useCallback(() => {
+  const handleLeave = useCallback(async () => {
     if (user) {
-      router.push("/calls")
+      // If this authenticated user is the callee (no tokenParam = they didn't create the call),
+      // auto-claim the call to fork a session for them.
+      if (!tokenParam && callId) {
+        try {
+          await fetch(`/api/calls/${callId}/claim`, { method: "POST" })
+        } catch {
+          // Non-fatal — they can still navigate to their sessions
+        }
+      }
+      router.push("/sessions")
     } else {
-      router.push("/")
+      // Guest: show sign-up screen to convert them into a trial user
+      setPhase("ended")
     }
-  }, [user, router])
+  }, [user, tokenParam, callId, router])
 
   if (phase === "loading" || authLoading) {
     return (
@@ -158,6 +169,16 @@ export default function CallRoomPage() {
         onJoin={handleJoin}
         onCancel={() => router.push("/calls")}
         joining={phase === "joining"}
+      />
+    )
+  }
+
+  // Guest post-call: offer account creation to claim their session
+  if (phase === "ended") {
+    return (
+      <CallEndedSignup
+        callerName={callerName}
+        callId={callId || ""}
       />
     )
   }

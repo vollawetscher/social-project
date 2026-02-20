@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     loadUser()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       (async () => {
         if (!isMounted) return
 
@@ -100,6 +100,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             setProfile(null)
             setAuthMethod(null)
+          }
+
+          // After a fresh sign-in, claim any pending call the guest recorded
+          if (event === 'SIGNED_IN' && typeof window !== 'undefined') {
+            const pendingCallId = localStorage.getItem('pendingCallId')
+            if (pendingCallId) {
+              localStorage.removeItem('pendingCallId')
+              try {
+                await fetch(`/api/calls/${pendingCallId}/claim`, { method: 'POST' })
+              } catch (err) {
+                console.error('[AuthProvider] Failed to claim pending call:', err)
+              }
+              // Redirect to sessions so the user sees their new session
+              window.location.href = '/sessions'
+              return
+            }
           }
         } else {
           setProfile(null)

@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.8.0',
+    date: 'February 19, 2026',
+    entries: [
+      {
+        version: '1.8.0',
+        date: 'February 19, 2026',
+        category: 'feature',
+        title: 'Call Guest Onboarding',
+        description: 'When someone joins your video call as a guest, they can now create a free 5-day trial account after the call ends. Their account automatically includes the call recording as a session — with the full transcript and AI analysis — so they can explore Notissima with real content from your conversation.',
+      },
+    ],
+  },
+  {
     version: '1.7.0',
     date: 'February 18, 2026',
     entries: [

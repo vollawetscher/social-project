@@ -7,6 +7,81 @@ import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/h
 import { generateReport } from '@/lib/services/report-generator'
 import { createErrorLogger } from '@/lib/services/error-logger'
 
+/**
+ * After the caller's session is transcribed, copy the transcript to any pending
+ * callee session that was claimed before transcription completed.
+ */
+async function copyTranscriptToCalleeSession(supabase: any, callerSessionId: string) {
+  try {
+    const { data: callRow } = await supabase
+      .from('calls')
+      .select('callee_session_id')
+      .eq('session_id', callerSessionId)
+      .not('callee_session_id', 'is', null)
+      .maybeSingle()
+
+    if (!callRow?.callee_session_id) return
+
+    const { data: calleeSession } = await supabase
+      .from('sessions')
+      .select('id, is_callee_pending')
+      .eq('id', callRow.callee_session_id)
+      .maybeSingle()
+
+    if (!calleeSession?.is_callee_pending) return
+
+    console.log('[Transcribe] Found pending callee session, copying transcript:', calleeSession.id)
+
+    // Fetch caller transcripts
+    const { data: callerTranscripts } = await supabase
+      .from('transcripts')
+      .select('*')
+      .eq('session_id', callerSessionId)
+
+    // Get callee's file for linking
+    const { data: calleeFile } = await supabase
+      .from('files')
+      .select('id')
+      .eq('session_id', calleeSession.id)
+      .maybeSingle()
+
+    for (const t of callerTranscripts || []) {
+      await supabase.from('transcripts').insert({
+        session_id: calleeSession.id,
+        file_id: calleeFile?.id ?? null,
+        raw_json: t.raw_json,
+        redacted_json: t.redacted_json,
+        raw_text: t.raw_text,
+        redacted_text: t.redacted_text,
+        language: t.language,
+        summary: t.summary ?? null,
+      })
+    }
+
+    // Fetch updated caller session stats to copy to callee
+    const { data: callerSession } = await supabase
+      .from('sessions')
+      .select('duration_sec, language, speechmatics_summary')
+      .eq('id', callerSessionId)
+      .maybeSingle()
+
+    await supabase
+      .from('sessions')
+      .update({
+        status: 'done',
+        is_callee_pending: false,
+        duration_sec: callerSession?.duration_sec || 0,
+        language: callerSession?.language || 'de',
+        speechmatics_summary: callerSession?.speechmatics_summary ?? null,
+      })
+      .eq('id', calleeSession.id)
+
+    console.log('[Transcribe] Callee session transcript copy complete:', calleeSession.id)
+  } catch (err: any) {
+    console.error('[Transcribe] Failed to copy transcript to callee session:', err.message)
+  }
+}
+
 // Background job processor - runs independently of HTTP request
 // Uses service role to avoid RLS/auth context issues in serverless (no request scope after 202 response)
 async function processTranscriptionJob(sessionId: string) {
@@ -339,6 +414,9 @@ async function processTranscriptionJob(sessionId: string) {
         .eq('id', sessionId)
       console.log('[Transcribe] Session marked as done - user can manually generate report if needed')
     }
+
+    // If a callee claimed this call before transcription finished, copy the transcript now
+    await copyTranscriptToCalleeSession(supabase, sessionId)
 
     console.log('[Transcribe] All steps completed successfully!')
   } catch (error: any) {

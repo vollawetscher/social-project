@@ -150,6 +150,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     ownerEmail: (dbSession as any).owner_email, // Admin view: session owner email
     ownerId: (dbSession as any).user_id, // For hand-off: show control when owner
     lastError: (dbSession as any).last_error, // Transcription/processing error
+    isFromCall: (dbSession as any).is_from_call || false, // Callee's forked session from a call
   }
 }
 

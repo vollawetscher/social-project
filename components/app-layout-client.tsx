@@ -6,6 +6,7 @@ import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppTopbar } from "@/components/app-topbar"
 import { MobileNav } from "@/components/mobile-nav"
+import { TrialBanner } from "@/components/trial/TrialBanner"
 import { cn } from "@/lib/utils"
 
 export function AppLayoutClient({ children }: { children: React.ReactNode }) {
@@ -33,7 +34,10 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
           sidebarCollapsed && "md:pl-16"
         )}
       >
-        <div className="p-4 md:p-6">{children}</div>
+        <div className="p-4 md:p-6 space-y-4">
+          <TrialBanner />
+          {children}
+        </div>
       </main>
       
       {/* Mobile Bottom Navigation - visible only on mobile */}

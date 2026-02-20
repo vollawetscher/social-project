@@ -27,6 +27,7 @@ import {
   Pencil,
   FileText,
   FileAudio,
+  Video,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -72,6 +73,10 @@ const statusConfig: Record<SessionStatus, StatusDisplay> = {
 
 function getStatusDisplay(session: Session): StatusDisplay {
   return statusConfig[session.status as SessionStatus]
+}
+
+function isProcessing(session: Session): boolean {
+  return session.status === 'recording' || session.status === 'uploading' || session.status === 'transcribing'
 }
 
 function formatDuration(seconds: number): string {
@@ -1187,8 +1192,14 @@ export default function SessionsPage() {
               return (
                 <div
                   key={session.id}
-                  className="p-3 hover:bg-secondary/50 transition-colors cursor-pointer"
+                  className={cn(
+                    "p-3 transition-colors",
+                    isProcessing(session)
+                      ? "cursor-not-allowed opacity-70"
+                      : "hover:bg-secondary/50 cursor-pointer"
+                  )}
                   onClick={(e) => {
+                    if (isProcessing(session)) return
                     // Only navigate if clicking the card itself, not buttons/interactive elements
                     const target = e.target as HTMLElement
                     if (
@@ -1223,7 +1234,7 @@ export default function SessionsPage() {
                           {session.ownerEmail}
                         </p>
                       )}
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <Badge 
                           variant={status.variant}
                           className={cn("text-[10px]", status.className)}
@@ -1231,6 +1242,12 @@ export default function SessionsPage() {
                           {status.animated && <span className="inline-block w-1.5 h-1.5 rounded-full bg-current mr-1 animate-ping" />}
                           {status.label}
                         </Badge>
+                        {session.isFromCall && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
+                            <Video className="h-3 w-3 mr-1" />
+                            From a call
+                          </Badge>
+                        )}
                         {session.piiRedactionEnabled && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                             <Shield className="h-3 w-3 mr-1" />
@@ -1257,13 +1274,16 @@ export default function SessionsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/sessions/${session.id}`}>
+                        <DropdownMenuItem asChild disabled={isProcessing(session)}>
+                          <Link href={isProcessing(session) ? "#" : `/sessions/${session.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
                             Details
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
+                        <DropdownMenuItem
+                          disabled={isProcessing(session)}
+                          onClick={() => !isProcessing(session) && handleDownloadTranscript(session)}
+                        >
                           <Download className="mr-2 h-4 w-4" />
                           Transcript
                         </DropdownMenuItem>
@@ -1319,8 +1339,14 @@ export default function SessionsPage() {
                   return (
                     <TableRow 
                       key={session.id} 
-                      className="group cursor-pointer"
+                      className={cn(
+                        "group",
+                        isProcessing(session)
+                          ? "cursor-not-allowed opacity-70"
+                          : "cursor-pointer"
+                      )}
                       onClick={(e) => {
+                        if (isProcessing(session)) return
                         // Only navigate if clicking the row itself, not buttons/interactive elements
                         const target = e.target as HTMLElement
                         if (
@@ -1339,7 +1365,13 @@ export default function SessionsPage() {
                             session={session} 
                             onSave={handleRenameSession} 
                           />
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {session.isFromCall && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
+                                <Video className="h-3 w-3 mr-1" />
+                                From a call
+                              </Badge>
+                            )}
                             {session.piiRedactionEnabled && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                                 <Shield className="h-3 w-3 mr-1" />
@@ -1405,13 +1437,16 @@ export default function SessionsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/sessions/${session.id}`}>
+                            <DropdownMenuItem asChild disabled={isProcessing(session)}>
+                              <Link href={isProcessing(session) ? "#" : `/sessions/${session.id}`}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 Details
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadTranscript(session)}>
+                            <DropdownMenuItem
+                              disabled={isProcessing(session)}
+                              onClick={() => !isProcessing(session) && handleDownloadTranscript(session)}
+                            >
                               <Download className="mr-2 h-4 w-4" />
                               Transcript
                             </DropdownMenuItem>

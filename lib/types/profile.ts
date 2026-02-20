@@ -20,6 +20,9 @@ export interface UserProfile {
   email_verified?: boolean
   auth_method?: string
   preferences?: Record<string, any>
+
+  // Trial / onboarding
+  onboarding_expires_at?: string | null
 }
 
 export const SUPPORTED_LANGUAGES = [

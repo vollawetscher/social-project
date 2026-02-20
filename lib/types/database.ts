@@ -23,6 +23,7 @@ export interface Profile {
   auto_generate_reports?: boolean  // User preference: auto-generate reports after transcription
   preferences?: Json  // Additional user preferences for future extensibility
   created_at: string
+  onboarding_expires_at?: string | null  // Trial expiry set when callee claims a call
 }
 
 export interface Case {

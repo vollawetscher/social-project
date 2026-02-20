@@ -55,20 +55,41 @@ export async function GET(request: Request) {
         }, {})
       }
     } else {
-      const { data, error } = await supabase
+      // Find sessions where the user is the callee (claimed a forked session)
+      const { data: calleeLinks } = await supabase
+        .from('calls')
+        .select('callee_session_id')
+        .eq('callee_user_id', user.id)
+        .not('callee_session_id', 'is', null)
+
+      const calleeSessionIds = (calleeLinks || [])
+        .map((c: any) => c.callee_session_id)
+        .filter(Boolean) as string[]
+
+      let query = supabase
         .from('sessions')
-        .select(`
-          *,
-          outputs:outputs(count)
-        `)
-        .eq('user_id', user.id)
+        .select('*, outputs:outputs(count)')
         .order('created_at', { ascending: false })
+
+      if (calleeSessionIds.length > 0) {
+        query = query.or(`user_id.eq.${user.id},id.in.(${calleeSessionIds.join(',')})`)
+      } else {
+        query = query.eq('user_id', user.id)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         console.error('Database error:', error)
         return NextResponse.json({ error: error.message, details: error }, { status: 500 })
       }
-      sessions = data
+
+      // Tag callee sessions so the UI can show a "From a call" badge
+      const calleeSessionIdSet = new Set(calleeSessionIds)
+      sessions = (data || []).map((s: any) => ({
+        ...s,
+        is_from_call: calleeSessionIdSet.has(s.id),
+      }))
     }
 
     const sessionsWithCount = sessions?.map((session: any) => {
