@@ -25,6 +25,9 @@ import {
   Link2,
   Check,
   Loader2,
+  BellRing,
+  Send,
+  User,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -154,6 +157,14 @@ function CallRoomInner({
   const [calleeLeft, setCalleeLeft] = useState(false)
   const [savingNotes, setSavingNotes] = useState(false)
   const remoteEverConnected = useRef(false)
+
+  // Ring + SMS invite state
+  const [showRingSms, setShowRingSms] = useState(false)
+  const [ringPhone, setRingPhone] = useState("")
+  const [ringSending, setRingSending] = useState(false)
+  const [ringStatus, setRingStatus] = useState<"idle" | "sent" | "error">("idle")
+  const [contacts, setContacts] = useState<Array<{ id: string; name: string; phone_number: string }>>([])
+  const contactsFetched = useRef(false)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -316,6 +327,55 @@ function CallRoomInner({
     }
   }, [callId, displayName, mode])
 
+  const openRingSms = useCallback(async () => {
+    setShowRingSms(true)
+    setRingStatus("idle")
+    if (!contactsFetched.current) {
+      contactsFetched.current = true
+      try {
+        const res = await fetch("/api/contacts")
+        if (res.ok) {
+          const data = await res.json()
+          setContacts((data.contacts || []).filter((c: any) => c.phone_number))
+        }
+      } catch { /* ignore */ }
+    }
+  }, [])
+
+  const sendRingSms = useCallback(async () => {
+    if (!ringPhone.trim() || ringSending) return
+    let cleaned = ringPhone.trim().replace(/[\s\-().]/g, "")
+    if (cleaned.startsWith("00")) cleaned = "+" + cleaned.slice(2)
+    if (/^\d{7,15}$/.test(cleaned)) cleaned = "+" + cleaned
+    if (!/^\+[1-9]\d{6,14}$/.test(cleaned)) {
+      toast.error("Invalid phone number. Use international format, e.g. +49171…")
+      return
+    }
+    setRingSending(true)
+    try {
+      const res = await fetch(`/api/calls/${callId}/ring-sms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: cleaned, callerName: displayName || "Someone" }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to send")
+      setRingStatus("sent")
+      toast.success(
+        data.smsSent && data.voiceCallPlaced
+          ? "SMS sent & phone ringing!"
+          : data.smsSent
+            ? "SMS sent! (Voice call unavailable)"
+            : "Phone ringing! (SMS unavailable)"
+      )
+    } catch (err: any) {
+      setRingStatus("error")
+      toast.error(err.message || "Failed to ring & send SMS")
+    } finally {
+      setRingSending(false)
+    }
+  }, [ringPhone, ringSending, callId, displayName])
+
   const statusLabel = {
     connecting: "Connecting...",
     ringing: "Waiting for others...",
@@ -408,15 +468,71 @@ function CallRoomInner({
                 {statusLabel[callStatus]}
               </p>
               {callStatus === "ringing" && (
-                <button
-                  onClick={copyInviteLink}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/15 transition-colors mt-4"
-                >
-                  {linkCopied ? <Check className="h-4 w-4 text-primary" /> : <Link2 className="h-4 w-4 text-primary" />}
-                  <span className="text-sm text-primary font-medium">
-                    {linkCopied ? "Link copied!" : "Copy invite link"}
-                  </span>
-                </button>
+                <div className="flex flex-col items-center gap-3 mt-4 w-full max-w-xs">
+                  <div className="flex gap-2 w-full">
+                    <button
+                      onClick={copyInviteLink}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/15 transition-colors"
+                    >
+                      {linkCopied ? <Check className="h-4 w-4 text-primary" /> : <Link2 className="h-4 w-4 text-primary" />}
+                      <span className="text-sm text-primary font-medium">
+                        {linkCopied ? "Copied!" : "Copy link"}
+                      </span>
+                    </button>
+                    {callType === "web" && (
+                      <button
+                        onClick={openRingSms}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors",
+                          ringStatus === "sent"
+                            ? "bg-green-500/15 text-green-600"
+                            : "bg-orange-500/10 hover:bg-orange-500/15 text-orange-600"
+                        )}
+                      >
+                        {ringStatus === "sent" ? <Check className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}
+                        <span className="text-sm font-medium">
+                          {ringStatus === "sent" ? "Sent!" : "Ring + SMS"}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                  {showRingSms && callType === "web" && (
+                    <div className="w-full rounded-xl border border-border bg-card p-3 space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          inputMode="tel"
+                          placeholder="+49 170 1234567"
+                          value={ringPhone}
+                          onChange={(e) => setRingPhone(e.target.value)}
+                          className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <button
+                          onClick={sendRingSms}
+                          disabled={ringSending || !ringPhone.trim()}
+                          className="px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50 transition-colors"
+                        >
+                          {ringSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {contacts.length > 0 && (
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {contacts.map((c) => (
+                            <button
+                              key={c.id}
+                              onClick={() => { setRingPhone(c.phone_number); }}
+                              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-accent text-left text-sm"
+                            >
+                              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="truncate font-medium">{c.name}</span>
+                              <span className="text-xs text-muted-foreground ml-auto shrink-0">{c.phone_number}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
               {callStatus === "connected" && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 mt-4">
@@ -608,20 +724,70 @@ function CallRoomInner({
                 })}
               </div>
             ) : (
-              <div className="h-full rounded-xl bg-[#1a1a1a] flex flex-col items-center justify-center">
+              <div className="h-full rounded-xl bg-[#1a1a1a] flex flex-col items-center justify-center px-4">
                 <Avatar className="h-14 w-14 mb-3">
                   <AvatarFallback className="bg-white/10 text-white text-lg">
                     {contactInitials}
                   </AvatarFallback>
                 </Avatar>
                 <p className="text-sm text-white/40 mb-3">Waiting for others...</p>
-                <button
-                  onClick={copyInviteLink}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
-                >
-                  {linkCopied ? <Check className="h-3.5 w-3.5 text-white/70" /> : <Link2 className="h-3.5 w-3.5 text-white/70" />}
-                  <span className="text-xs text-white/70">{linkCopied ? "Copied!" : "Copy invite link"}</span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={copyInviteLink}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
+                  >
+                    {linkCopied ? <Check className="h-3.5 w-3.5 text-white/70" /> : <Link2 className="h-3.5 w-3.5 text-white/70" />}
+                    <span className="text-xs text-white/70">{linkCopied ? "Copied!" : "Copy link"}</span>
+                  </button>
+                  <button
+                    onClick={openRingSms}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors",
+                      ringStatus === "sent"
+                        ? "bg-green-500/20 text-green-400"
+                        : "bg-orange-500/15 hover:bg-orange-500/25 text-orange-400"
+                    )}
+                  >
+                    {ringStatus === "sent" ? <Check className="h-3.5 w-3.5" /> : <BellRing className="h-3.5 w-3.5" />}
+                    <span className="text-xs">{ringStatus === "sent" ? "Sent!" : "Ring + SMS"}</span>
+                  </button>
+                </div>
+                {showRingSms && (
+                  <div className="w-full max-w-xs mt-3 rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="tel"
+                        placeholder="+49 170 1234567"
+                        value={ringPhone}
+                        onChange={(e) => setRingPhone(e.target.value)}
+                        className="flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      <button
+                        onClick={sendRingSms}
+                        disabled={ringSending || !ringPhone.trim()}
+                        className="px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50 transition-colors"
+                      >
+                        {ringSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {contacts.length > 0 && (
+                      <div className="max-h-24 overflow-y-auto space-y-0.5">
+                        {contacts.map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => { setRingPhone(c.phone_number); }}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/10 text-left text-xs"
+                          >
+                            <User className="h-3 w-3 text-white/40 shrink-0" />
+                            <span className="truncate text-white/80">{c.name}</span>
+                            <span className="text-white/40 ml-auto shrink-0">{c.phone_number}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

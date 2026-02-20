@@ -100,6 +100,18 @@ export async function sendOTPSMS(phoneNumber: string, otp: string): Promise<Send
 }
 
 /**
+ * Sends a video call invite SMS with the join link
+ */
+export async function sendVideoCallInviteSMS(
+  phoneNumber: string,
+  callerName: string,
+  joinUrl: string,
+): Promise<SendSMSResponse> {
+  const message = `${callerName} lädt Sie zu einem Videoanruf ein.\n\nJetzt beitreten: ${joinUrl}`
+  return sendSMS({ to: phoneNumber, text: message })
+}
+
+/**
  * Validates phone number format (international format with country code)
  */
 export function isValidPhoneNumber(phoneNumber: string): boolean {

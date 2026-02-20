@@ -29,9 +29,10 @@ export async function POST(request: Request) {
 
     // Create the LiveKit room
     try {
+      const isVideoCall = callType === 'web'
       await createRoom(roomName, {
         maxParticipants: 2,
-        emptyTimeout: 90,
+        emptyTimeout: isVideoCall ? 900 : 90,
         metadata: JSON.stringify({ callType, mode, createdBy: user.id }),
       })
     } catch (lkError: any) {

@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.9.0',
+    date: 'February 20, 2026',
+    entries: [
+      {
+        version: '1.9.0',
+        date: 'February 20, 2026',
+        category: 'feature',
+        title: 'Ring + SMS Video Call Invites',
+        description: 'Invite someone to a video call by entering their phone number or picking a contact. Their phone rings with a short voice message and they receive an SMS with the join link — so they know to check their messages immediately.',
+      },
+    ],
+  },
+  {
     version: '1.8.0',
     date: 'February 19, 2026',
     entries: [
