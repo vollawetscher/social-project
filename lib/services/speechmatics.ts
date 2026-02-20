@@ -46,8 +46,8 @@ export class SpeechmaticsService {
         operating_point: 'enhanced',
         diarization: 'speaker',
         enable_entities: false,
-        ...(options?.maxSpeakers ? { speaker_diarization_config: { max_speakers: options.maxSpeakers } } : {}),
       },
+      ...(options?.maxSpeakers ? { speaker_diarization_config: { max_speakers: options.maxSpeakers } } : {}),
       summarization_config: {
         content_type: options?.contentType ?? 'conversational',
         summary_length: 'brief',
