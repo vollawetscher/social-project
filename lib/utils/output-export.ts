@@ -199,17 +199,28 @@ export async function exportOutput(
       } else if (block.type === 'code') {
         pdf.setFont('courier', 'normal')
         pdf.setFontSize(9)
-        const lines = block.value.split(/\r?\n/)
-        for (const line of lines) {
-          if (y + 5 > pageHeight - margin) {
-            pdf.addPage()
-            y = margin
-          }
-          pdf.text(line, margin + 5, y)
-          y += 5
+        const codeLines = block.value.split(/\r?\n/)
+        const lineH = 5
+        const codePad = 4
+        const codeBlockHeight = codeLines.length * lineH + codePad * 2
+
+        if (y + codeBlockHeight > pageHeight - margin) {
+          pdf.addPage()
+          y = margin
         }
+
+        pdf.setFillColor(245, 245, 245)
+        pdf.roundedRect(margin, y - codePad, maxWidth, codeBlockHeight, 2, 2, 'F')
+        y += codePad
+
+        pdf.setTextColor(30, 30, 30)
+        for (const line of codeLines) {
+          pdf.text(line, margin + 5, y)
+          y += lineH
+        }
+        pdf.setTextColor(0, 0, 0)
         pdf.setFont('helvetica', 'normal')
-        y += 2
+        y += codePad
       } else if (block.type === 'thematicBreak') {
         y += 4
         pdf.setDrawColor(200, 200, 200)

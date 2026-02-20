@@ -81,3 +81,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body, .dark {
+    background: white !important;
+    color: black !important;
+  }
+  .prose pre,
+  .prose code {
+    background: #f5f5f5 !important;
+    color: #1e1e1e !important;
+  }
+  .prose blockquote {
+    border-color: #ccc !important;
+    color: #333 !important;
+  }
+}
