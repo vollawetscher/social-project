@@ -626,9 +626,9 @@ export default function SessionDetailPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem-4rem)] md:min-h-[calc(100vh-3.5rem-3rem)] flex flex-col">
+    <div className="h-[calc(100vh-3.5rem-4rem)] md:h-[calc(100vh-3.5rem-3rem)] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-border">
+      <div className="flex items-center justify-between pb-4 border-b border-border shrink-0">
         <div className="flex items-center gap-3">
           <Link href="/sessions">
             <Button variant="ghost" size="sm" className="gap-1.5">
@@ -716,7 +716,7 @@ export default function SessionDetailPage() {
 
       {/* Audio files strip */}
       {sessionFiles.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 pt-3">
+        <div className="flex flex-wrap items-center gap-2 pt-3 shrink-0">
           {sessionFiles.map((file: any) => {
             const filename = (file.storage_path as string)?.split('/').pop() ?? 'audio'
             const sizeMb = file.size_bytes ? (file.size_bytes / (1024 * 1024)).toFixed(1) : null
@@ -750,7 +750,7 @@ export default function SessionDetailPage() {
         const sessionLabel = langNames[languageMismatch.sessionLang] || languageMismatch.sessionLang.toUpperCase()
         const transcriptLabel = langNames[languageMismatch.transcriptLang] || languageMismatch.transcriptLang.toUpperCase()
         return (
-          <div className="flex items-center gap-3 rounded-lg border border-info/40 bg-info/10 px-4 py-2.5 text-sm mt-3">
+          <div className="flex items-center gap-3 rounded-lg border border-info/40 bg-info/10 px-4 py-2.5 text-sm mt-3 shrink-0">
             <span className="flex-1 text-info-foreground">
               Transcript detected as <strong>{transcriptLabel}</strong>, but session is set to <strong>{sessionLabel}</strong>.
               Update session language to match?
@@ -848,8 +848,8 @@ export default function SessionDetailPage() {
             <TabsTrigger value="context">Context</TabsTrigger>
             <TabsTrigger value="outputs">Outputs</TabsTrigger>
           </TabsList>
-          <TabsContent value="transcript" className="mt-0">
-            <div className="max-h-[calc(100vh-14rem)] rounded-lg border border-border bg-card overflow-hidden">
+          <TabsContent value="transcript" className="mt-0 flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
               <TranscriptViewer 
                 segments={session.transcript}
                 currentTime={currentAudioTime}
