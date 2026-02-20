@@ -197,13 +197,11 @@ async function processTranscriptionJob(sessionId: string) {
       console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)
 
       const contentType = (inputHint === 'presentation' || inputHint === 'voice_note') ? 'informative' : 'conversational'
-      const isCall = inputHint === 'phone_call' || inputHint === 'video_call'
-      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage, isCall })
+      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage })
       const speechmatics = createSpeechmaticsService()
       const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, {
         contentType,
         language: sessionLanguage || undefined,
-        ...(isCall ? { maxSpeakers: 2 } : {}),
       })
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 

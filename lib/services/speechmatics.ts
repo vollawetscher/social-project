@@ -22,7 +22,7 @@ export class SpeechmaticsService {
   async transcribeAudio(
     audioBuffer: Buffer,
     mimeType: string,
-    options?: { contentType?: 'conversational' | 'informative'; language?: string; maxSpeakers?: number }
+    options?: { contentType?: 'conversational' | 'informative'; language?: string }
   ): Promise<SpeechmaticsTranscript> {
     console.log('[Speechmatics] Starting transcription')
     console.log('[Speechmatics] Audio buffer size:', audioBuffer.length, 'bytes')
@@ -47,7 +47,6 @@ export class SpeechmaticsService {
         diarization: 'speaker',
         enable_entities: false,
       },
-      ...(options?.maxSpeakers ? { speaker_diarization_config: { max_speakers: options.maxSpeakers } } : {}),
       summarization_config: {
         content_type: options?.contentType ?? 'conversational',
         summary_length: 'brief',
