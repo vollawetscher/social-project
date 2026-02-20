@@ -98,6 +98,7 @@ export async function POST(request: Request) {
       roomName,
       token,
       sessionId: session.id,
+      displayName,
     })
   } catch (error: any) {
     console.error('[Calls] Error creating call:', error)

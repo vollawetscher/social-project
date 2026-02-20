@@ -29,11 +29,11 @@ export async function placeNotificationCall(
   const twiml = [
     '<Response>',
     `<Say language="de-DE" voice="Polly.Vicki">`,
-    `${callerName} möchte einen Videoanruf mit Ihnen starten. Bitte prüfen Sie die SMS mit dem Einladungslink.`,
+    `${callerName} möchte einen Videoanruf starten. Klicken Sie einfach den Link in der SMS.`,
     '</Say>',
     '<Pause length="1"/>',
     `<Say language="en-US" voice="Polly.Joanna">`,
-    `${callerName} is inviting you to a video call. Please check your text messages for the link.`,
+    `${callerName} is inviting you to a video call. Please click the link in the SMS.`,
     '</Say>',
     '</Response>',
   ].join('')

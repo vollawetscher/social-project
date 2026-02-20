@@ -18,6 +18,10 @@ import {
   Loader2,
   X,
   UserPlus,
+  BellRing,
+  Link2,
+  Send,
+  User,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -92,8 +96,11 @@ export default function CallsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Confirmation dialog for new web calls
+  // Video call dialog: choose "Copy Link" vs "Ring + SMS"
   const [pendingCallMode, setPendingCallMode] = useState<CallMode | null>(null)
+  const [videoDialogStep, setVideoDialogStep] = useState<"choose" | "ring-sms">("choose")
+  const [ringPhone, setRingPhone] = useState("")
+  const [ringSending, setRingSending] = useState(false)
   // Save-to-contacts prompt: stores the phone number to save
   const [savingNumber, setSavingNumber] = useState<string | null>(null)
   const [saveContactName, setSaveContactName] = useState("")
@@ -158,6 +165,50 @@ export default function CallsPage() {
       setError(err.message || "Failed to create call")
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handleVideoRingSms() {
+    if (creating || ringSending) return
+    let cleaned = ringPhone.trim().replace(/[\s\-().]/g, "")
+    if (cleaned.startsWith("00")) cleaned = "+" + cleaned.slice(2)
+    if (/^\d{7,15}$/.test(cleaned)) cleaned = "+" + cleaned
+    if (!/^\+[1-9]\d{6,14}$/.test(cleaned)) {
+      toast.error("Invalid phone number. Use international format, e.g. +49171…")
+      return
+    }
+    setCreating(true)
+    setRingSending(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/calls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callType: "web", mode: "video" }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to create call")
+      }
+      const data = await res.json()
+
+      fetch(`/api/calls/${data.callId}/ring-sms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: cleaned, callerName: data.displayName || "Someone" }),
+      }).then(r => {
+        if (r.ok) toast.success("Phone ringing & SMS sent!")
+        else toast.error("Ring+SMS failed — share the link manually")
+      }).catch(() => toast.error("Ring+SMS failed — share the link manually"))
+
+      setPendingCallMode(null)
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=video`)
+    } catch (err: any) {
+      console.error("[Calls] Failed to create Ring+SMS call:", err)
+      setError(err.message || "Failed to create call")
+    } finally {
+      setCreating(false)
+      setRingSending(false)
     }
   }
 
@@ -335,7 +386,7 @@ export default function CallsPage() {
             </div>
           </button>
           <button
-            onClick={() => setPendingCallMode("video")}
+            onClick={() => { setPendingCallMode("video"); setVideoDialogStep("choose"); setRingPhone(""); fetchContacts() }}
             disabled={creating}
             className="flex items-center gap-3 p-3 rounded-xl bg-info/10 hover:bg-info/15 transition-colors disabled:opacity-50"
           >
@@ -601,48 +652,124 @@ export default function CallsPage() {
         )}
       </div>
 
-      {/* New call confirmation dialog */}
-      <Dialog open={!!pendingCallMode} onOpenChange={(open) => { if (!open) setPendingCallMode(null) }}>
+      {/* Video call dialog — choose Copy Link or Ring + SMS */}
+      <Dialog open={pendingCallMode === "video"} onOpenChange={(open) => {
+        if (!open) { setPendingCallMode(null); setVideoDialogStep("choose"); setRingPhone(""); }
+      }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {pendingCallMode === "video" ? (
-                <Video className="h-5 w-5 text-info" />
-              ) : (
-                <Phone className="h-5 w-5 text-primary" />
-              )}
-              Start {pendingCallMode === "video" ? "Video" : "Audio"} Call
+              <Video className="h-5 w-5 text-info" />
+              Start Video Call
             </DialogTitle>
             <DialogDescription>
-              {pendingCallMode === "video"
-                ? "A new call room will be created. You can share the link with anyone you want to call."
-                : "A new audio call room will be created. You can share the link with anyone you want to call."}
+              {videoDialogStep === "choose"
+                ? "How would you like to invite the other person?"
+                : "Enter a phone number or pick a contact. They'll receive a call and an SMS with the join link."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {videoDialogStep === "choose" ? (
+            <div className="flex flex-col gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setPendingCallMode(null)
+                  handleNewCall("video")
+                }}
+                disabled={creating}
+                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent transition-colors text-left"
+              >
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Link2 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Copy Link</p>
+                  <p className="text-xs text-muted-foreground">Share the invite link yourself</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setVideoDialogStep("ring-sms")}
+                disabled={creating}
+                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent transition-colors text-left"
+              >
+                <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+                  <BellRing className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Ring + SMS</p>
+                  <p className="text-xs text-muted-foreground">Phone rings & SMS with link is sent</p>
+                </div>
+              </button>
+              <Button variant="ghost" size="sm" onClick={() => setPendingCallMode(null)} className="mt-1">
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 pt-2">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  inputMode="tel"
+                  placeholder="+49 170 1234567"
+                  value={ringPhone}
+                  onChange={(e) => setRingPhone(e.target.value)}
+                  className="flex-1"
+                  autoFocus
+                />
+                <Button
+                  onClick={handleVideoRingSms}
+                  disabled={ringSending || !ringPhone.trim()}
+                  className="bg-orange-500 hover:bg-orange-600 text-white shrink-0"
+                >
+                  {ringSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+              {contacts.length > 0 && (
+                <div className="max-h-40 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+                  {contacts.filter(c => c.phone_number).map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setRingPhone(c.phone_number)}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent text-left text-sm"
+                    >
+                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate font-medium">{c.name}</span>
+                      <span className="text-xs text-muted-foreground ml-auto shrink-0">{c.phone_number}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setVideoDialogStep("choose")}>
+                  Back
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Audio call confirmation dialog */}
+      <Dialog open={pendingCallMode === "audio"} onOpenChange={(open) => { if (!open) setPendingCallMode(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Phone className="h-5 w-5 text-primary" />
+              Start Audio Call
+            </DialogTitle>
+            <DialogDescription>
+              A new call room will be created. You can share the link with anyone you want to call.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-row gap-3 justify-end pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setPendingCallMode(null)}
-              disabled={creating}
-            >
+            <Button variant="outline" onClick={() => setPendingCallMode(null)} disabled={creating}>
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                if (!pendingCallMode) return
-                const mode = pendingCallMode
-                setPendingCallMode(null)
-                handleNewCall(mode)
-              }}
+              onClick={() => { setPendingCallMode(null); handleNewCall("audio") }}
               disabled={creating}
             >
-              {creating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : pendingCallMode === "video" ? (
-                <Video className="h-4 w-4 mr-2" />
-              ) : (
-                <Phone className="h-4 w-4 mr-2" />
-              )}
+              {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Phone className="h-4 w-4 mr-2" />}
               Start Call
             </Button>
           </div>
