@@ -729,7 +729,7 @@ export default function CallsPage() {
                   {contacts.filter(c => c.phone_number).map((c) => (
                     <button
                       key={c.id}
-                      onClick={() => setRingPhone(c.phone_number)}
+                      onClick={() => setRingPhone(c.phone_number || "")}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent text-left text-sm"
                     >
                       <User className="h-4 w-4 text-muted-foreground shrink-0" />

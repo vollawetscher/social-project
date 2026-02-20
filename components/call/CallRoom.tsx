@@ -161,10 +161,12 @@ function CallRoomInner({
   const isConnecting = connectionState === ConnectionState.Connecting
   const isDisconnected = connectionState === ConnectionState.Disconnected
   const hasRemote = remoteParticipants.length > 0
+  const hasRemoteAudio = remoteParticipants.some(p => p.isMicrophoneEnabled)
+  const remoteReady = callType === "pstn_outbound" ? hasRemoteAudio : hasRemote
 
   const callStatus = isDisconnected
     ? "ended"
-    : isConnected && hasRemote
+    : isConnected && remoteReady
       ? "connected"
       : isConnected
         ? "ringing"
