@@ -22,7 +22,7 @@ export class SpeechmaticsService {
   async transcribeAudio(
     audioBuffer: Buffer,
     mimeType: string,
-    options?: { contentType?: 'conversational' | 'informative'; language?: string }
+    options?: { contentType?: 'conversational' | 'informative'; language?: string; maxSpeakers?: number }
   ): Promise<SpeechmaticsTranscript> {
     console.log('[Speechmatics] Starting transcription')
     console.log('[Speechmatics] Audio buffer size:', audioBuffer.length, 'bytes')
@@ -39,13 +39,14 @@ export class SpeechmaticsService {
     const audioBlob = new Blob([audioBuffer], { type: normalizedMime })
     formData.append('data_file', audioBlob, `audio.${fileExtension}`)
 
-    const config = {
+    const config: Record<string, any> = {
       type: 'transcription',
       transcription_config: {
         language: options?.language || 'auto',
         operating_point: 'enhanced',
         diarization: 'speaker',
-        enable_entities: false, // Disabled to preserve numbers in transcript
+        enable_entities: false,
+        ...(options?.maxSpeakers ? { speaker_diarization_config: { max_speakers: options.maxSpeakers } } : {}),
       },
       summarization_config: {
         content_type: options?.contentType ?? 'conversational',
