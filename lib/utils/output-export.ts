@@ -197,12 +197,15 @@ export async function exportOutput(
         addLine('  ' + inlineToText(block.children), 10, false, 8)
         y += 2
       } else if (block.type === 'code') {
-        pdf.setFont('courier', 'normal')
-        pdf.setFontSize(9)
+        pdf.setFont('helvetica', 'normal')
+        pdf.setFontSize(10)
+        const inset = 6
+        const wrapW = maxWidth - inset * 2
         const codeLines = block.value.split(/\r?\n/)
+        const wrapped = codeLines.flatMap(l => l ? pdf.splitTextToSize(l, wrapW) as string[] : [''])
         const lineH = 5
-        const codePad = 4
-        const codeBlockHeight = codeLines.length * lineH + codePad * 2
+        const codePad = 5
+        const codeBlockHeight = wrapped.length * lineH + codePad * 2
 
         if (y + codeBlockHeight > pageHeight - margin) {
           pdf.addPage()
@@ -213,13 +216,12 @@ export async function exportOutput(
         pdf.roundedRect(margin, y - codePad, maxWidth, codeBlockHeight, 2, 2, 'F')
         y += codePad
 
-        pdf.setTextColor(30, 30, 30)
-        for (const line of codeLines) {
-          pdf.text(line, margin + 5, y)
+        pdf.setTextColor(40, 40, 40)
+        for (const line of wrapped) {
+          pdf.text(line, margin + inset, y)
           y += lineH
         }
         pdf.setTextColor(0, 0, 0)
-        pdf.setFont('helvetica', 'normal')
         y += codePad
       } else if (block.type === 'thematicBreak') {
         y += 4
