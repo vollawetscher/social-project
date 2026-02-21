@@ -238,7 +238,7 @@ export class SpeechmaticsService {
     fullText = segments.map((s) => s.text).join(' ')
 
     const uniqueSpeakers = new Set(segments.map(s => s.speaker))
-    const detectedLanguage = data.metadata?.language || 'en'
+    const detectedLanguage = data.metadata?.transcription_config?.language || data.metadata?.language || 'en'
     const summary = data.summary?.content
     console.log(`[Speechmatics] Parsed ${segments.length} segments with ${uniqueSpeakers.size} unique speakers: ${Array.from(uniqueSpeakers).join(', ')}`)
     console.log(`[Speechmatics] Detected language: ${detectedLanguage}`)
