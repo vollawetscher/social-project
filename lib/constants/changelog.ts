@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.10.0',
+    date: 'February 21, 2026',
+    entries: [
+      {
+        version: '1.10.0',
+        date: 'February 21, 2026',
+        category: 'feature',
+        title: 'Transcription Consent',
+        description: 'Call participants now see a consent dialog before their audio is recorded. Three choices: agree to full recording, continue without being recorded (only the caller\'s side is transcribed), or leave the call. Consent is logged for compliance.',
+      },
+    ],
+  },
+  {
     version: '1.9.0',
     date: 'February 20, 2026',
     entries: [

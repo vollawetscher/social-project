@@ -155,6 +155,49 @@ export async function startCompositeEgress(
 }
 
 /**
+ * Start a Track Composite Egress that records only a specific participant's
+ * audio track as an OGG file. Used when the callee declines transcription
+ * consent — only the caller's side is recorded.
+ */
+export async function startTrackEgressForParticipant(
+  roomName: string,
+  sessionId: string,
+  participantIdentity: string,
+): Promise<EgressInfo> {
+  const egressClient = getEgressClient()
+  const roomService = getRoomService()
+
+  const participants = await roomService.listParticipants(roomName)
+  const participant = participants.find(p => p.identity === participantIdentity)
+  if (!participant) throw new Error(`Participant ${participantIdentity} not found in room`)
+
+  const audioTrack = participant.tracks.find(
+    t => t.type === 1 /* AUDIO */ || t.source === 1 /* MICROPHONE */
+  )
+  if (!audioTrack?.sid) throw new Error(`No audio track found for ${participantIdentity}`)
+
+  const storagePath = `sessions/${sessionId}/call_${roomName}_${Date.now()}_caller.ogg`
+
+  const output = new EncodedFileOutput({
+    fileType: EncodedFileType.OGG,
+    filepath: storagePath,
+    output: {
+      case: 's3',
+      value: getSupabaseS3Upload(),
+    },
+  })
+
+  const egress = await egressClient.startTrackCompositeEgress(
+    roomName,
+    output,
+    { audioTrackId: audioTrack.sid },
+  )
+
+  console.log('[LiveKit] Track egress started:', egress.egressId, 'track:', audioTrack.sid, 'participant:', participantIdentity, 'path:', storagePath)
+  return egress
+}
+
+/**
  * Stop a running egress by ID.
  */
 export async function stopEgress(egressId: string): Promise<EgressInfo> {

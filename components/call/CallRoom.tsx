@@ -228,7 +228,19 @@ function CallRoomInner({
     logConsent(true)
   }, [logConsent])
 
-  const handleConsentDecline = useCallback(() => {
+  const handleConsentDeclineStay = useCallback(async () => {
+    setConsentGiven(true)
+    logConsent(false)
+    if (callId) {
+      try {
+        await fetch(`/api/calls/${callId}/switch-egress`, { method: "POST" })
+      } catch {
+        // Non-fatal — recording may still include callee briefly
+      }
+    }
+  }, [logConsent, callId])
+
+  const handleConsentLeave = useCallback(() => {
     logConsent(false)
     if (onLeave) onLeave()
   }, [logConsent, onLeave])
@@ -472,33 +484,52 @@ function CallRoomInner({
             </h3>
             <p className="text-sm text-muted-foreground text-center leading-relaxed">
               This call will be recorded and transcribed using AI.
-              By continuing, you consent to the recording and processing of your audio.
+              You can choose how to proceed.
             </p>
           </div>
-          <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
-            <button
-              onClick={handleConsentDecline}
-              disabled={consentLogging}
-              className="flex flex-col items-center gap-1.5 py-4 hover:bg-destructive/5 transition-colors disabled:opacity-50"
-            >
-              <div className="h-11 w-11 rounded-full bg-destructive/10 flex items-center justify-center">
-                <Phone className="h-5 w-5 text-destructive rotate-[135deg]" />
-              </div>
-              <span className="text-xs font-medium text-destructive">Decline & Leave</span>
-            </button>
+          <div className="flex flex-col divide-y divide-border border-t border-border">
             <button
               onClick={handleConsentAccept}
               disabled={consentLogging}
-              className="flex flex-col items-center gap-1.5 py-4 hover:bg-success/5 transition-colors disabled:opacity-50"
+              className="flex items-center gap-3 px-5 py-3.5 hover:bg-success/5 transition-colors disabled:opacity-50"
             >
-              <div className="h-11 w-11 rounded-full bg-success/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center shrink-0">
                 {consentLogging ? (
                   <Loader2 className="h-5 w-5 text-success animate-spin" />
                 ) : (
                   <Check className="h-5 w-5 text-success" />
                 )}
               </div>
-              <span className="text-xs font-medium text-success">I Agree</span>
+              <div className="text-left">
+                <p className="text-sm font-medium text-foreground">I Agree</p>
+                <p className="text-xs text-muted-foreground">Record both sides of the call</p>
+              </div>
+            </button>
+            <button
+              onClick={handleConsentDeclineStay}
+              disabled={consentLogging}
+              className="flex items-center gap-3 px-5 py-3.5 hover:bg-warning/5 transition-colors disabled:opacity-50"
+            >
+              <div className="h-10 w-10 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
+                <Video className="h-5 w-5 text-warning" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-foreground">Continue without recording me</p>
+                <p className="text-xs text-muted-foreground">Only the other side will be transcribed</p>
+              </div>
+            </button>
+            <button
+              onClick={handleConsentLeave}
+              disabled={consentLogging}
+              className="flex items-center gap-3 px-5 py-3.5 hover:bg-destructive/5 transition-colors disabled:opacity-50"
+            >
+              <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <Phone className="h-5 w-5 text-destructive rotate-[135deg]" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-medium text-destructive">Leave call</p>
+                <p className="text-xs text-muted-foreground">Disconnect from this call</p>
+              </div>
             </button>
           </div>
         </div>
@@ -526,10 +557,12 @@ function CallRoomInner({
             {isInitiator && remoteConsents.length > 0 && (
               <Badge variant="secondary" className={cn(
                 "text-[10px] gap-1 border-0",
-                remoteConsents.every(c => c.granted) ? "bg-success/20 text-success" : "bg-warning/20 text-warning"
+                remoteConsents.every(c => c.granted)
+                  ? "bg-success/20 text-success"
+                  : "bg-warning/20 text-warning"
               )}>
                 <Check className="h-3 w-3" />
-                Consent
+                {remoteConsents.every(c => c.granted) ? "Consent" : "Caller only"}
               </Badge>
             )}
             <Badge variant="secondary" className={cn(
@@ -770,7 +803,7 @@ function CallRoomInner({
               remoteConsents.every(c => c.granted) ? "bg-success/20 text-success" : "bg-warning/20 text-warning"
             )}>
               <Check className="h-3 w-3" />
-              Consent
+              {remoteConsents.every(c => c.granted) ? "Consent" : "Caller only"}
             </Badge>
           )}
           <button
