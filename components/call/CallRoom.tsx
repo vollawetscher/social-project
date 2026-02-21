@@ -540,7 +540,8 @@ function CallRoomInner({
   // --- Audio-only or pre-connection view ---
   if (!isVideo || callStatus !== "connected") {
     return (
-      <div className="flex flex-col h-[100dvh] bg-background">
+      <div className="flex flex-col h-[100dvh] bg-background items-center">
+        <div className="flex flex-col w-full max-w-3xl h-full">
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 z-10 shrink-0">
           <button onClick={endCall} className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100 transition-opacity text-foreground">
@@ -774,6 +775,7 @@ function CallRoomInner({
             )}
           </>
         )}
+        </div>
       </div>
     )
   }
@@ -782,7 +784,8 @@ function CallRoomInner({
   const participantCount = 1 + remoteParticipants.length
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#111]">
+    <div className="flex flex-col h-[100dvh] bg-[#111] items-center">
+      <div className="flex flex-col w-full max-w-3xl h-full">
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-2.5 z-10 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -912,6 +915,7 @@ function CallRoomInner({
         onEndCall={endCall}
         dark
       />
+      </div>
     </div>
   )
 }

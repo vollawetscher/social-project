@@ -91,7 +91,7 @@ function normalizePhone(raw: string): string | null {
 
 export default function CallsPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<TabType>("recent")
+  const [activeTab, setActiveTab] = useState<TabType>("contacts")
   const [calls, setCalls] = useState<Call[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -436,11 +436,8 @@ export default function CallsPage() {
           </div>
         </div>
         <div className="flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto min-h-0 border-b border-border">
+          <div className="flex-1 overflow-y-auto min-h-0">
             <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} />
-          </div>
-          <div className="shrink-0">
-            <DialPad key={`desktop-${dialpadNumber}`} initialNumber={dialpadNumber} onCall={(number, mode) => { setDialpadNumber(""); handleDialpadCall(number, mode) }} disabled={creating} />
           </div>
         </div>
       </div>

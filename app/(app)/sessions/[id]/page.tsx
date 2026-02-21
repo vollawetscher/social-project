@@ -24,6 +24,8 @@ import {
   LayoutTemplate,
   UserRoundPlus,
   Mic,
+  ShieldCheck,
+  MessageSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -987,6 +989,45 @@ export default function SessionDetailPage() {
                         </p>
                       </div>
                     )}
+
+                    {session.extractedContext.consent && session.extractedContext.consent.discussed && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          Transcription Consent
+                        </p>
+                        <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
+                          {session.extractedContext.consent.summary && (
+                            <p className="text-foreground">{session.extractedContext.consent.summary}</p>
+                          )}
+                          {session.extractedContext.consent.participantsConsented && session.extractedContext.consent.participantsConsented.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Consented: {session.extractedContext.consent.participantsConsented.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {session.extractedContext.spokenCommands && session.extractedContext.spokenCommands.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Spoken Commands
+                        </p>
+                        <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
+                          {session.extractedContext.spokenCommands.map((cmd: any, idx: number) => (
+                            <div key={idx} className="space-y-0.5">
+                              <p className="text-foreground">&ldquo;{cmd.phrase}&rdquo;</p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{cmd.speaker}</span>
+                                {cmd.intentSummary && <span className="text-xs text-muted-foreground">· {cmd.intentSummary}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1311,6 +1352,45 @@ export default function SessionDetailPage() {
                         <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
                           {session.extractedContext.venue}
                         </p>
+                      </div>
+                    )}
+
+                    {session.extractedContext.consent && session.extractedContext.consent.discussed && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          Transcription Consent
+                        </p>
+                        <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
+                          {session.extractedContext.consent.summary && (
+                            <p className="text-foreground">{session.extractedContext.consent.summary}</p>
+                          )}
+                          {session.extractedContext.consent.participantsConsented && session.extractedContext.consent.participantsConsented.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Consented: {session.extractedContext.consent.participantsConsented.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {session.extractedContext.spokenCommands && session.extractedContext.spokenCommands.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Spoken Commands
+                        </p>
+                        <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
+                          {session.extractedContext.spokenCommands.map((cmd: any, idx: number) => (
+                            <div key={idx} className="space-y-0.5">
+                              <p className="text-foreground">&ldquo;{cmd.phrase}&rdquo;</p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">{cmd.speaker}</span>
+                                {cmd.intentSummary && <span className="text-xs text-muted-foreground">· {cmd.intentSummary}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
