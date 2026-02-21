@@ -99,7 +99,9 @@ function parseSRT(content: string): ParseResult {
 
 /** Extract speaker label (S1, S2, Speaker 1, etc.) from start of text if present */
 function extractSpeakerFromText(text: string): { speaker: string; text: string } {
-  const trimmed = text.trim()
+  let trimmed = text.trim()
+  // Strip leading [timestamp] prefix (e.g. [0:08], [12:34], [1:02:15])
+  trimmed = trimmed.replace(/^\[\d{1,2}:\d{2}(?::\d{2})?\]\s*/, '')
   // S1:, S2:, Speaker 1:, Speaker 2:, SPEAKER_00:, Speaker_1:
   const match = trimmed.match(
     /^(S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:?\s*(.*)$/i
@@ -234,6 +236,48 @@ function parseChatFormat(content: string): ParseResult | null {
 }
 
 /**
+ * Parse timestamped speaker-line format: [M:SS] S1: text or [MM:SS] Speaker 1: text
+ * Common in Notissima exports and similar transcript tools.
+ */
+function parseTimestampedSpeakerLines(content: string): ParseResult | null {
+  const lines = content.trim().split(/\r?\n/).filter(l => l.trim().length > 0)
+  if (lines.length < 2) return null
+
+  const linePattern = /^\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*(S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:\s*(.+)$/i
+  const matched: { startMs: number; speaker: string; text: string }[] = []
+  let misses = 0
+
+  for (const line of lines) {
+    const m = line.trim().match(linePattern)
+    if (m) {
+      const mins = parseInt(m[1], 10)
+      const secs = parseInt(m[2], 10)
+      const extraSecs = m[3] ? parseInt(m[3], 10) : 0
+      const startMs = (mins * 60 + secs + extraSecs) * 1000
+      const num = m[4].replace(/\D/g, '') || '1'
+      matched.push({ startMs, speaker: `S${num}`, text: m[5].trim() })
+    } else {
+      misses++
+    }
+  }
+
+  if (matched.length < 2 || misses > matched.length * 0.5) return null
+
+  const segments: ParsedSegment[] = matched.map((entry, i) => {
+    const nextStart = i + 1 < matched.length ? matched[i + 1].startMs : entry.startMs + 5000
+    return {
+      start_ms: entry.startMs,
+      end_ms: Math.max(nextStart, entry.startMs + 1000),
+      speaker: entry.speaker,
+      text: entry.text,
+    }
+  })
+
+  const rawText = segments.map(s => s.text).join('\n\n')
+  return { segments, rawText }
+}
+
+/**
  * Parse plain TXT: split by double newlines (paragraphs) or single newlines.
  * Assign sequential timestamps (~150 words/min ≈ 2.5 words/sec).
  */
@@ -292,7 +336,11 @@ export function parseTranscriptFile(
   if (ext === 'txt' || ext === '') {
     const chatResult = parseChatFormat(content)
     if (chatResult) return chatResult
+    const timestampedResult = parseTimestampedSpeakerLines(content)
+    if (timestampedResult) return timestampedResult
     return parseTXT(content)
   }
+  const timestampedResult = parseTimestampedSpeakerLines(content)
+  if (timestampedResult) return timestampedResult
   return parseTXT(content)
 }
