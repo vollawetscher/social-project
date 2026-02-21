@@ -46,6 +46,9 @@ export class SpeechmaticsService {
         operating_point: 'enhanced',
         diarization: 'speaker',
         enable_entities: false,
+        additional_vocab: [
+          { content: 'Notissima', sounds_like: ['Notiz immer', 'Notiz ima', 'no ti si ma', 'Notisima'] },
+        ],
       },
       summarization_config: {
         content_type: options?.contentType ?? 'conversational',
