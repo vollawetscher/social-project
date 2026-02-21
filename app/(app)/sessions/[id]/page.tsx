@@ -628,7 +628,7 @@ export default function SessionDetailPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-3.5rem-4rem)] md:h-[calc(100vh-3.5rem-3rem)] flex flex-col overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-border shrink-0">
         <div className="flex items-center gap-3">
@@ -845,13 +845,13 @@ export default function SessionDetailPage() {
 
         {/* Mobile Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 md:hidden">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-3 mb-4 shrink-0">
             <TabsTrigger value="transcript">Transcript</TabsTrigger>
             <TabsTrigger value="context">Context</TabsTrigger>
             <TabsTrigger value="outputs">Outputs</TabsTrigger>
           </TabsList>
-          <TabsContent value="transcript" className="mt-0 flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
+          <TabsContent value="transcript" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
+            <div className="h-full rounded-lg border border-border bg-card overflow-hidden">
               <TranscriptViewer 
                 segments={session.transcript}
                 currentTime={currentAudioTime}
@@ -862,8 +862,8 @@ export default function SessionDetailPage() {
               />
             </div>
           </TabsContent>
-          <TabsContent value="context" className="mt-0">
-            <div className="max-h-[calc(100vh-14rem)] overflow-y-auto rounded-lg border border-border bg-card p-6">
+          <TabsContent value="context" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
+            <div className="h-full overflow-y-auto rounded-lg border border-border bg-card p-6">
               <div className="space-y-6">
                 {/* In-context AI analysis indicator */}
                 {analyzing && (
@@ -1031,8 +1031,28 @@ export default function SessionDetailPage() {
                   </div>
                 )}
 
+                {/* In-Call Consent Logs (from consent dialog button) */}
+                {session?.consentLogs && session.consentLogs.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4" />
+                      Call Consent
+                    </h3>
+                    <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
+                      {session.consentLogs.map((log: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between">
+                          <span className="text-foreground">{log.participant_name || log.participant_identity || "Participant"}</span>
+                          <Badge variant={log.granted ? "default" : "outline"} className={log.granted ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0"}>
+                            {log.granted ? "Agreed" : "Declined"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* No Context Available */}
-                {!analyzing && !session?.recordingType && !session?.domain && !session?.extractedContext && (
+                {!analyzing && !session?.recordingType && !session?.domain && !session?.extractedContext && !((session?.consentLogs ?? []).length > 0) && (
                   <div className="text-center py-8">
                     <Settings2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-2">No context extracted yet</p>
@@ -1044,8 +1064,8 @@ export default function SessionDetailPage() {
               </div>
             </div>
           </TabsContent>
-          <TabsContent value="outputs" className="mt-0">
-            <div className="max-h-[calc(100vh-14rem)] overflow-y-auto rounded-lg border border-border bg-card p-4 space-y-6">
+          <TabsContent value="outputs" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
+            <div className="h-full overflow-y-auto rounded-lg border border-border bg-card p-4 space-y-6">
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">
@@ -1396,8 +1416,28 @@ export default function SessionDetailPage() {
                   </div>
                 )}
 
+                {/* In-Call Consent Logs (from consent dialog button) */}
+                {session?.consentLogs && session.consentLogs.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4" />
+                      Call Consent
+                    </h3>
+                    <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
+                      {session.consentLogs.map((log: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between">
+                          <span className="text-foreground">{log.participant_name || log.participant_identity || "Participant"}</span>
+                          <Badge variant={log.granted ? "default" : "outline"} className={log.granted ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0"}>
+                            {log.granted ? "Agreed" : "Declined"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* No Context Available */}
-                {!analyzing && !session?.recordingType && !session?.domain && !session?.extractedContext && (
+                {!analyzing && !session?.recordingType && !session?.domain && !session?.extractedContext && !((session?.consentLogs ?? []).length > 0) && (
                   <div className="text-center py-8">
                     <Settings2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground mb-2">No context extracted yet</p>

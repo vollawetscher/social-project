@@ -28,13 +28,12 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main
         className={cn(
-          "pt-14 pb-16 md:pb-0 transition-all duration-300",
-          // No left padding on mobile, sidebar-based padding on desktop
+          "h-[100dvh] flex flex-col pt-14 pb-16 md:pb-0 transition-all duration-300",
           "pl-0 md:pl-60",
           sidebarCollapsed && "md:pl-16"
         )}
       >
-        <div className="p-4 md:p-6 space-y-4">
+        <div className="p-4 md:p-6 flex-1 min-h-0 flex flex-col gap-4">
           <TrialBanner />
           {children}
         </div>

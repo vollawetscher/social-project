@@ -23,34 +23,23 @@ export async function POST(
     // Try to get authenticated user (optional for guest join)
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Look up the call
-    // Use service role if the user is a guest (RLS would block them)
-    let call
-    if (user) {
-      const { data } = await supabase
-        .from('calls')
-        .select('room_name, status, user_id')
-        .eq('id', callId)
-        .maybeSingle()
-      call = data
-    } else {
-      // For guests, we need to bypass RLS to check call exists
-      const { createServiceRoleClient } = await import('@/lib/supabase/server')
-      const serviceSupabase = createServiceRoleClient()
-      const { data } = await serviceSupabase
-        .from('calls')
-        .select('room_name, status, user_id')
-        .eq('id', callId)
-        .maybeSingle()
-      call = data
-    }
+    // Look up the call using service role — RLS on calls table only allows
+    // the owner to read, but callees (authenticated or guest) also need access
+    const { createServiceRoleClient } = await import('@/lib/supabase/server')
+    const db = createServiceRoleClient()
+    const { data: call } = await db
+      .from('calls')
+      .select('room_name, status, user_id')
+      .eq('id', callId)
+      .maybeSingle()
 
     if (!call) {
       return NextResponse.json({ error: 'Call not found' }, { status: 404 })
     }
 
-    // Only allow joining if call is waiting or active
-    if (call.status !== 'waiting' && call.status !== 'active') {
+    // Only allow joining if call is still joinable
+    const joinableStatuses = ['waiting', 'active', 'connected', 'recording']
+    if (!joinableStatuses.includes(call.status)) {
       return NextResponse.json({ error: 'Call is no longer active' }, { status: 410 })
     }
 

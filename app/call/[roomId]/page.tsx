@@ -7,7 +7,7 @@ import { CallSetup } from "@/components/call/CallSetup"
 import { IncomingCall } from "@/components/call/IncomingCall"
 import { CallRoom } from "@/components/call/CallRoom"
 import { CallEndedSignup } from "@/components/call/CallEndedSignup"
-import { Loader2 } from "lucide-react"
+import { Loader2, ShieldCheck } from "lucide-react"
 import type { CallMode } from "@/lib/types/call"
 
 const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || ""
@@ -28,7 +28,7 @@ export default function CallRoomPage() {
   const ringCallerNameParam = searchParams?.get("ringCallerName") || null
   const ringContactNameParam = searchParams?.get("ringContactName") || null
 
-  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "active" | "ended" | "error">("loading")
+  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "consent" | "active" | "ended" | "error">("loading")
   const [callId, setCallId] = useState<string | null>(callIdParam)
   const [token, setToken] = useState<string | null>(tokenParam)
   const [callType, setCallType] = useState<"web" | "pstn_outbound">(callTypeParam)
@@ -96,7 +96,8 @@ export default function CallRoomPage() {
 
       const data = await res.json()
       setToken(data.token)
-      setPhase("active")
+      // Non-initiators see consent before connecting
+      setPhase(tokenParam ? "active" : "consent")
     } catch (err: any) {
       setError(err.message || "Failed to join call")
       setPhase("error")
@@ -183,6 +184,68 @@ export default function CallRoomPage() {
         callerName={callerName}
         callId={callId || ""}
       />
+    )
+  }
+
+  // Consent screen — shown to callees before connecting to the call
+  if (phase === "consent") {
+    const handleConsent = async (granted: boolean) => {
+      if (callId) {
+        fetch(`/api/calls/${callId}/consent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            granted,
+            participantName: user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Guest",
+            participantIdentity: user?.id || `guest-${Date.now()}`,
+          }),
+        }).catch(() => {})
+      }
+      if (granted) {
+        setPhase("active")
+      } else {
+        // Declined — switch to caller-only recording after connecting
+        setPhase("active")
+        setTimeout(() => {
+          if (callId) {
+            fetch(`/api/calls/${callId}/switch-egress`, { method: "POST" }).catch(() => {})
+          }
+        }, 3000)
+      }
+    }
+
+    return (
+      <div className="flex items-center justify-center h-[100dvh] bg-background p-6">
+        <div className="w-full max-w-xs text-center space-y-6">
+          <ShieldCheck className="h-10 w-10 text-primary mx-auto" />
+          <h2 className="text-lg font-semibold text-foreground">
+            This call is being transcribed
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Do you consent?
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleConsent(true)}
+              className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => handleConsent(false)}
+              className="flex-1 py-2.5 rounded-lg border border-border text-foreground font-medium text-sm hover:bg-secondary transition-colors"
+            >
+              No
+            </button>
+          </div>
+          <button
+            onClick={() => router.push("/")}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Leave call
+          </button>
+        </div>
+      </div>
     )
   }
 

@@ -914,9 +914,9 @@ export default function SessionsPage() {
   })
 
   return (
-    <div className="space-y-4">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden gap-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Sessions</h1>
           <p className="text-sm text-muted-foreground">
@@ -926,7 +926,7 @@ export default function SessionsPage() {
       </div>
 
       {/* Record Bar + Upload Section - Same Height */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
         {/* Record Bar */}
         <div
           className={cn(
@@ -1157,9 +1157,9 @@ export default function SessionsPage() {
       </div>
 
       {/* Sessions List */}
-      <Card className="border-border">
+      <Card className="border-border flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Compact Header with Search + Admin Toggle */}
-        <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border">
+        <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-sm font-medium text-foreground whitespace-nowrap">
               Recent Sessions
@@ -1192,7 +1192,7 @@ export default function SessionsPage() {
         </div>
         
         {/* Mobile: Card List */}
-        <div className="md:hidden divide-y divide-border">
+        <div className="md:hidden divide-y divide-border flex-1 overflow-y-auto min-h-0">
           {loading ? (
             <div className="p-8 text-center">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
@@ -1320,7 +1320,7 @@ export default function SessionsPage() {
         </div>
         
         {/* Desktop: Table */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 md:overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">

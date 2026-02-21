@@ -151,6 +151,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     ownerId: (dbSession as any).user_id, // For hand-off: show control when owner
     lastError: (dbSession as any).last_error, // Transcription/processing error
     isFromCall: (dbSession as any).is_from_call || false, // Callee's forked session from a call
+    consentLogs: (dbSession as any).consent_logs || [],
   }
 }
 

@@ -171,9 +171,6 @@ function CallRoomInner({
   >(ringSmsParams ? "pending" : null)
   const ringSmsTriggered = useRef(false)
 
-  // Transcription consent — initiator auto-consents, callees see overlay
-  const [consentGiven, setConsentGiven] = useState(!!isInitiator)
-  const [consentLogging, setConsentLogging] = useState(false)
   const consentLoggedRef = useRef(false)
   const [remoteConsents, setRemoteConsents] = useState<{ name: string; granted: boolean }[]>([])
 
@@ -194,56 +191,21 @@ function CallRoomInner({
         ? "ringing"
         : "connecting"
 
-  // Log consent to backend
-  const logConsent = useCallback(async (granted: boolean) => {
-    if (!callId || consentLoggedRef.current) return
-    consentLoggedRef.current = true
-    setConsentLogging(true)
-    try {
-      await fetch(`/api/calls/${callId}/consent`, {
+  // Auto-log initiator consent on connect
+  useEffect(() => {
+    if (isInitiator && isConnected && callId && !consentLoggedRef.current) {
+      consentLoggedRef.current = true
+      fetch(`/api/calls/${callId}/consent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          granted,
+          granted: true,
           participantName: displayName || "Guest",
           participantIdentity: localParticipant.identity,
         }),
-      })
-    } catch {
-      // Non-fatal — consent was still shown to the user
-    } finally {
-      setConsentLogging(false)
+      }).catch(() => {})
     }
-  }, [callId, displayName, localParticipant.identity])
-
-  // Auto-log initiator consent
-  useEffect(() => {
-    if (isInitiator && isConnected && callId && !consentLoggedRef.current) {
-      logConsent(true)
-    }
-  }, [isInitiator, isConnected, callId, logConsent])
-
-  const handleConsentAccept = useCallback(() => {
-    setConsentGiven(true)
-    logConsent(true)
-  }, [logConsent])
-
-  const handleConsentDeclineStay = useCallback(async () => {
-    setConsentGiven(true)
-    logConsent(false)
-    if (callId) {
-      try {
-        await fetch(`/api/calls/${callId}/switch-egress`, { method: "POST" })
-      } catch {
-        // Non-fatal — recording may still include callee briefly
-      }
-    }
-  }, [logConsent, callId])
-
-  const handleConsentLeave = useCallback(() => {
-    logConsent(false)
-    if (onLeave) onLeave()
-  }, [logConsent, onLeave])
+  }, [isInitiator, isConnected, callId, displayName, localParticipant.identity])
 
   // Poll consent status for remote participants (initiator only)
   useEffect(() => {
@@ -383,15 +345,14 @@ function CallRoomInner({
     // HTML version — renders as a clean hyperlink when pasted into email / rich editor
     const htmlText = `<p>Join <strong>${caller}</strong> in a ${callLabel}:<br><a href="${inviteUrl}">${inviteUrl}</a></p>`
 
-    // Prefer Web Share API on mobile (native share sheet, no clipboard permission needed)
-    if (navigator.share) {
+    // Prefer Web Share API on mobile only (desktop share dialogs are clunky)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (isMobile && navigator.share) {
       try {
         await navigator.share({ text: `Join ${caller} in a ${callLabel}:`, url: inviteUrl })
         return
       } catch (err: any) {
-        // User dismissed share sheet — not an error
         if (err?.name === "AbortError") return
-        // Fall through to clipboard
       }
     }
 
@@ -462,80 +423,6 @@ function CallRoomInner({
 
   const remoteDisplayName = remoteParticipants[0]?.name || contactName || contactPhone || "Participant"
   const remoteInitials = remoteDisplayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-
-  // --- Consent overlay for callees ---
-  if (!consentGiven && isConnected) {
-    return (
-      <div className="flex flex-col h-[100dvh] bg-background items-center justify-center p-6">
-        <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-primary/5 border-b border-border px-6 py-4 text-center">
-            <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
-              Transcription Notice
-            </p>
-          </div>
-          <div className="px-6 pt-6 pb-4">
-            <div className="flex items-center justify-center mb-4">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <MessageSquareText className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-            <h3 className="text-lg font-semibold text-foreground text-center mb-2">
-              This call is being recorded
-            </h3>
-            <p className="text-sm text-muted-foreground text-center leading-relaxed">
-              This call will be recorded and transcribed using AI.
-              You can choose how to proceed.
-            </p>
-          </div>
-          <div className="flex flex-col divide-y divide-border border-t border-border">
-            <button
-              onClick={handleConsentAccept}
-              disabled={consentLogging}
-              className="flex items-center gap-3 px-5 py-3.5 hover:bg-success/5 transition-colors disabled:opacity-50"
-            >
-              <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-                {consentLogging ? (
-                  <Loader2 className="h-5 w-5 text-success animate-spin" />
-                ) : (
-                  <Check className="h-5 w-5 text-success" />
-                )}
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-foreground">I Agree</p>
-                <p className="text-xs text-muted-foreground">Record both sides of the call</p>
-              </div>
-            </button>
-            <button
-              onClick={handleConsentDeclineStay}
-              disabled={consentLogging}
-              className="flex items-center gap-3 px-5 py-3.5 hover:bg-warning/5 transition-colors disabled:opacity-50"
-            >
-              <div className="h-10 w-10 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
-                <Video className="h-5 w-5 text-warning" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-foreground">Continue without recording me</p>
-                <p className="text-xs text-muted-foreground">Only the other side will be transcribed</p>
-              </div>
-            </button>
-            <button
-              onClick={handleConsentLeave}
-              disabled={consentLogging}
-              className="flex items-center gap-3 px-5 py-3.5 hover:bg-destructive/5 transition-colors disabled:opacity-50"
-            >
-              <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
-                <Phone className="h-5 w-5 text-destructive rotate-[135deg]" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-destructive">Leave call</p>
-                <p className="text-xs text-muted-foreground">Disconnect from this call</p>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // --- Audio-only or pre-connection view ---
   if (!isVideo || callStatus !== "connected") {
@@ -824,9 +711,10 @@ function CallRoomInner({
 
       {/* Video Area — remote on top, local below */}
       <div className="flex-1 overflow-hidden relative">
-        <div className="h-full p-2 flex flex-col gap-2">
-          {/* Top: remote participant (or waiting placeholder) */}
-          <div className="flex-1 min-h-0">
+        <div className="h-full p-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-center">
+          {/* Remote participant (or waiting placeholder) */}
+          <div className="flex-1 min-h-0 flex items-center justify-center md:flex-none md:h-full">
+            <div className="w-full h-full md:h-full md:w-auto md:aspect-[3/4]">
             {remoteParticipants.length > 0 ? (
               <div className={cn(
                 "h-full gap-2",
@@ -852,20 +740,22 @@ function CallRoomInner({
                     {contactInitials}
                   </AvatarFallback>
                 </Avatar>
-                <p className="text-sm text-white/40 mb-3">Waiting for others...</p>
+                <p className="text-sm text-white/50 mb-4">Waiting for others...</p>
                 <button
                   onClick={copyInviteLink}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 transition-colors"
                 >
-                  {linkCopied ? <Check className="h-3.5 w-3.5 text-white/70" /> : <Link2 className="h-3.5 w-3.5 text-white/70" />}
-                  <span className="text-xs text-white/70">{linkCopied ? "Copied!" : "Copy invite link"}</span>
+                  {linkCopied ? <Check className="h-4 w-4 text-primary-foreground" /> : <Link2 className="h-4 w-4 text-primary-foreground" />}
+                  <span className="text-sm font-medium text-primary-foreground">{linkCopied ? "Copied!" : "Copy invite link"}</span>
                 </button>
               </div>
             )}
+            </div>
           </div>
 
-          {/* Bottom: local participant */}
-          <div className="flex-1 min-h-0">
+          {/* Local participant */}
+          <div className="flex-1 min-h-0 flex items-center justify-center md:flex-none md:h-full">
+            <div className="w-full h-full md:h-full md:w-auto md:aspect-[3/4]">
             <LiveParticipantTile
               name="You"
               isMuted={isMuted}
@@ -873,6 +763,7 @@ function CallRoomInner({
               videoTrack={cameraTracks.find(t => t.participant.sid === localParticipant.sid)}
               isLocal
             />
+            </div>
           </div>
         </div>
 
@@ -886,7 +777,7 @@ function CallRoomInner({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 pb-2">
-              <p className="text-sm text-white/40 text-center py-8">
+              <p className="text-sm text-white/80 text-center py-8">
                 Transcript will be available after the call ends...
               </p>
             </div>

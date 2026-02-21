@@ -49,9 +49,27 @@ export async function GET(
       }
     }
 
+    // Fetch in-call consent logs if this session is linked to a call
+    let consentLogs: any[] = []
+    const { data: linkedCall } = await db
+      .from('calls')
+      .select('id')
+      .or(`session_id.eq.${params.id},callee_session_id.eq.${params.id}`)
+      .maybeSingle()
+
+    if (linkedCall?.id) {
+      const { data: consents } = await db
+        .from('consent_logs')
+        .select('participant_name, participant_identity, granted, created_at')
+        .eq('call_id', linkedCall.id)
+        .order('created_at', { ascending: true })
+      consentLogs = consents || []
+    }
+
     return NextResponse.json({
       ...session,
       files: filesWithUrls,
+      consent_logs: consentLogs,
     })
   } catch (error) {
     if (error instanceof Error) {
