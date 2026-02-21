@@ -96,9 +96,9 @@ export function CallControls({
         />
         <button onClick={onEndCall} className="flex flex-col items-center gap-1">
           <div className="h-12 w-12 rounded-full flex items-center justify-center bg-destructive hover:bg-destructive/90 transition-colors">
-            <LogOut className="h-5 w-5 text-destructive-foreground" />
+            <PhoneOff className="h-5 w-5 text-destructive-foreground" />
           </div>
-          <span className="text-[10px] text-white/50">Leave</span>
+          <span className="text-[10px] text-white/50">End</span>
         </button>
       </div>
     )
