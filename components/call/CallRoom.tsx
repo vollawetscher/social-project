@@ -172,10 +172,10 @@ function CallRoomInner({
         ? "ringing"
         : "connecting"
 
-  // Play soft ringtone only while genuinely waiting for someone to join.
+  // Play soft ringtone only for outbound PSTN calls while waiting for callee to pick up.
   // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
   // so we must exclude that post-call phase explicitly.
-  useRingtone(callStatus === "ringing" && !calleeLeft)
+  useRingtone(callType === "pstn_outbound" && callStatus === "ringing" && !calleeLeft)
 
   // Track whether the remote participant was ever connected, then detect when they leave
   useEffect(() => {
