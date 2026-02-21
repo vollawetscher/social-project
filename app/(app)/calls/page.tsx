@@ -128,6 +128,10 @@ export default function CallsPage() {
   }, [])
 
   useEffect(() => {
+    fetchContacts()
+  }, [])
+
+  useEffect(() => {
     if (activeTab === "contacts") fetchContacts()
   }, [activeTab])
 
@@ -401,12 +405,12 @@ export default function CallsPage() {
         </div>
       )}
 
-      {/* Tab Bar */}
-      <div className="flex border-b border-border bg-card">
+      {/* Mobile Tab Bar */}
+      <div className="flex border-b border-border bg-card md:hidden">
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => { setActiveTab(tab.id); if (tab.id === "contacts") fetchContacts() }}
             className={cn(
               "flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors border-b-2",
               activeTab === tab.id
@@ -420,229 +424,32 @@ export default function CallsPage() {
         ))}
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Recent Calls */}
-        {activeTab === "recent" && (
-          <div>
-            {loading ? (
-              <div className="flex items-center justify-center py-16">
-                <p className="text-sm text-muted-foreground">Loading calls...</p>
-              </div>
-            ) : recentCalls.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Clock className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground">No recent calls</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your transcribed calls will appear here
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {recentCalls.map((call) => {
-                  const name = call.contact_name || call.phone_number || "Unknown"
-                  const isUnknown = !call.contact_name
-                  const initials = name.replace(/^\+/, "").slice(0, 2).toUpperCase()
-                  const durationSec = call.started_at && call.ended_at
-                    ? Math.round((new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000)
-                    : 0
-
-                  return (
-                    <button
-                      key={call.id}
-                      onClick={() => {
-                        if (call.session_id) router.push(`/sessions/${call.session_id}`)
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors text-left"
-                    >
-                      <div className="relative">
-                        <Avatar className="h-11 w-11">
-                          <AvatarFallback className="bg-secondary text-foreground text-sm">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground truncate">{name}</span>
-                          {call.session_id && call.status === "done" && (
-                            <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-0">
-                              Transcribed
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <PhoneOutgoing className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {formatRelativeTime(call.created_at)}
-                            {durationSec > 0 && ` · ${formatCallDuration(durationSec)}`}
-                          </span>
-                        </div>
-                      </div>
-                      {isUnknown && call.phone_number && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setAddPhone(call.phone_number!)
-                            setActiveTab("contacts")
-                            setShowAddForm(true)
-                          }}
-                          className="shrink-0 p-2 text-muted-foreground hover:text-primary transition-colors"
-                          title="Save to contacts"
-                        >
-                          <UserPlus className="h-4 w-4" />
-                        </button>
-                      )}
-                      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+      {/* === Desktop Content (two-column) === */}
+      <div className="hidden md:grid md:grid-cols-[1fr_380px] flex-1 min-h-0 divide-x divide-border">
+        <div className="flex flex-col min-h-0">
+          <div className="px-4 py-2.5 border-b border-border flex items-center gap-2 shrink-0">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">Recent Calls</span>
           </div>
-        )}
-
-        {/* Contacts */}
-        {activeTab === "contacts" && (
-          <div className="flex flex-col h-full">
-            {/* Search + action bar */}
-            <div className="p-3 border-b border-border flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  value={contactSearch}
-                  onChange={(e) => setContactSearch(e.target.value)}
-                  placeholder="Search contacts..."
-                  className="pl-9 bg-secondary border-border h-9"
-                />
-              </div>
-              <Button size="sm" variant="outline" className="h-9 gap-1.5 shrink-0" onClick={() => setShowAddForm((v) => !v)}>
-                {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {showAddForm ? "Cancel" : "Add"}
-              </Button>
-              <Button size="sm" variant="ghost" className="h-9 gap-1.5 shrink-0" onClick={handleImportContacts} disabled={importingContacts} title="Import from device contacts">
-                {importingContacts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              </Button>
-            </div>
-
-            {/* Inline add form */}
-            {showAddForm && (
-              <form onSubmit={handleAddContact} className="p-3 border-b border-border bg-secondary/40 flex flex-col gap-2">
-                <Input
-                  placeholder="Name *"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  className="h-9 bg-background"
-                  required
-                  autoFocus
-                />
-                <Input
-                  placeholder="Phone (+49171…)"
-                  value={addPhone}
-                  onChange={(e) => setAddPhone(e.target.value)}
-                  type="tel"
-                  className="h-9 bg-background"
-                />
-                <Input
-                  placeholder="Email (optional)"
-                  value={addEmail}
-                  onChange={(e) => setAddEmail(e.target.value)}
-                  type="email"
-                  className="h-9 bg-background"
-                />
-                <Button type="submit" size="sm" disabled={savingContact || !addName.trim()} className="h-9">
-                  {savingContact ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save contact"}
-                </Button>
-              </form>
-            )}
-
-            {/* Contact list */}
-            <div className="flex-1 overflow-y-auto">
-              {contactsLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : filteredContacts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-                  <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  {contacts.length === 0 ? (
-                    <>
-                      <p className="text-muted-foreground font-medium">No contacts yet</p>
-                      <p className="text-xs text-muted-foreground mt-1">Tap + Add or Import to get started</p>
-                    </>
-                  ) : (
-                    <p className="text-muted-foreground">No contacts match "{contactSearch}"</p>
-                  )}
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {filteredContacts.map((contact) => {
-                    const initials = contact.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-                    return (
-                      <div key={contact.id} className="flex items-center gap-3 px-4 py-3">
-                        <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarFallback className="bg-secondary text-foreground text-sm font-medium">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">{contact.name}</p>
-                          {contact.phone_number && (
-                            <p className="text-xs text-muted-foreground truncate">{contact.phone_number}</p>
-                          )}
-                          {!contact.phone_number && contact.email && (
-                            <p className="text-xs text-muted-foreground truncate">{contact.email}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {contact.phone_number && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-primary hover:bg-primary/10"
-                              onClick={() => handleCallContact(contact, "audio")}
-                              disabled={creating}
-                              title="Call"
-                            >
-                              <Phone className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteContact(contact.id, contact.name)}
-                            disabled={deletingContactId === contact.id}
-                            title="Delete"
-                          >
-                            {deletingContactId === contact.id
-                              ? <Loader2 className="h-4 w-4 animate-spin" />
-                              : <Trash2 className="h-4 w-4" />
-                            }
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+          <div className="flex-1 overflow-y-auto">
+            <RecentCallsList calls={recentCalls} loading={loading} router={router} setAddPhone={setAddPhone} setActiveTab={setActiveTab} setShowAddForm={setShowAddForm} />
           </div>
-        )}
+        </div>
+        <div className="flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto min-h-0 border-b border-border">
+            <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} />
+          </div>
+          <div className="shrink-0">
+            <DialPad key={`desktop-${dialpadNumber}`} initialNumber={dialpadNumber} onCall={(number, mode) => { setDialpadNumber(""); handleDialpadCall(number, mode) }} disabled={creating} />
+          </div>
+        </div>
+      </div>
 
-        {/* Dialpad */}
-        {activeTab === "dialpad" && (
-          <DialPad
-            key={dialpadNumber}
-            initialNumber={dialpadNumber}
-            onCall={(number, mode) => {
-              setDialpadNumber("")
-              handleDialpadCall(number, mode)
-            }}
-            disabled={creating}
-          />
-        )}
+      {/* === Mobile Content (tab-based) === */}
+      <div className="flex-1 overflow-y-auto md:hidden">
+        {activeTab === "recent" && <RecentCallsList calls={recentCalls} loading={loading} router={router} setAddPhone={setAddPhone} setActiveTab={setActiveTab} setShowAddForm={setShowAddForm} />}
+        {activeTab === "contacts" && <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} />}
+        {activeTab === "dialpad" && <DialPad key={dialpadNumber} initialNumber={dialpadNumber} onCall={(number, mode) => { setDialpadNumber(""); handleDialpadCall(number, mode) }} disabled={creating} />}
       </div>
 
       {/* Video call dialog — choose Copy Link or Ring + SMS */}
@@ -768,6 +575,178 @@ export default function CallsPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, setShowAddForm }: {
+  calls: Call[]
+  loading: boolean
+  router: { push: (url: string) => void }
+  setAddPhone: (v: string) => void
+  setActiveTab: (v: TabType) => void
+  setShowAddForm: (v: boolean) => void
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-sm text-muted-foreground">Loading calls...</p>
+      </div>
+    )
+  }
+  if (calls.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Clock className="h-12 w-12 text-muted-foreground/50 mb-4" />
+        <p className="text-muted-foreground">No recent calls</p>
+        <p className="text-xs text-muted-foreground mt-1">Your transcribed calls will appear here</p>
+      </div>
+    )
+  }
+  return (
+    <div className="divide-y divide-border">
+      {calls.map((call) => {
+        const name = call.contact_name || call.phone_number || "Unknown"
+        const initials = name === "Unknown" ? "?" : name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+        const isUnknown = !call.contact_name
+        const durationSec = call.ended_at && call.started_at
+          ? Math.round((new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000)
+          : 0
+        return (
+          <button
+            key={call.id}
+            onClick={() => { if (call.session_id) router.push(`/sessions/${call.session_id}`) }}
+            disabled={!call.session_id}
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors text-left"
+          >
+            <Avatar className="h-10 w-10 shrink-0">
+              <AvatarFallback className="bg-secondary text-foreground text-sm font-medium">{initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-foreground text-sm truncate">{name}</p>
+                {call.status === "done" && (
+                  <Badge variant="secondary" className="text-[9px] h-4 px-1.5 gap-0.5 bg-success/20 text-success border-0 shrink-0">Transcribed</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <PhoneOutgoing className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  {formatRelativeTime(call.created_at)}
+                  {durationSec > 0 && ` · ${formatCallDuration(durationSec)}`}
+                </span>
+              </div>
+            </div>
+            {isUnknown && call.phone_number && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setAddPhone(call.phone_number!); setActiveTab("contacts"); setShowAddForm(true) }}
+                className="shrink-0 p-2 text-muted-foreground hover:text-primary transition-colors"
+                title="Save to contacts"
+              >
+                <UserPlus className="h-4 w-4" />
+              </button>
+            )}
+            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function ContactsPanel({ contacts, filteredContacts, contactsLoading, contactSearch, setContactSearch, showAddForm, setShowAddForm, addName, setAddName, addPhone, setAddPhone, addEmail, setAddEmail, savingContact, handleAddContact, handleImportContacts, importingContacts, handleCallContact, handleDeleteContact, deletingContactId, creating }: {
+  contacts: Contact[]
+  filteredContacts: Contact[]
+  contactsLoading: boolean
+  contactSearch: string
+  setContactSearch: (v: string) => void
+  showAddForm: boolean
+  setShowAddForm: (v: boolean | ((prev: boolean) => boolean)) => void
+  addName: string
+  setAddName: (v: string) => void
+  addPhone: string
+  setAddPhone: (v: string) => void
+  addEmail: string
+  setAddEmail: (v: string) => void
+  savingContact: boolean
+  handleAddContact: (e: React.FormEvent) => void
+  handleImportContacts: () => void
+  importingContacts: boolean
+  handleCallContact: (contact: Contact, mode: CallMode) => void
+  handleDeleteContact: (id: string, name: string) => void
+  deletingContactId: string | null
+  creating: boolean
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-3 border-b border-border flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input type="search" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} placeholder="Search contacts..." className="pl-9 bg-secondary border-border h-9" />
+        </div>
+        <Button size="sm" variant="outline" className="h-9 gap-1.5 shrink-0" onClick={() => setShowAddForm((v: boolean) => !v)}>
+          {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {showAddForm ? "Cancel" : "Add"}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-9 gap-1.5 shrink-0" onClick={handleImportContacts} disabled={importingContacts} title="Import from device contacts">
+          {importingContacts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        </Button>
+      </div>
+      {showAddForm && (
+        <form onSubmit={handleAddContact} className="p-3 border-b border-border bg-secondary/40 flex flex-col gap-2">
+          <Input placeholder="Name *" value={addName} onChange={(e) => setAddName(e.target.value)} className="h-9 bg-background" required autoFocus />
+          <Input placeholder="Phone (+49171…)" value={addPhone} onChange={(e) => setAddPhone(e.target.value)} type="tel" className="h-9 bg-background" />
+          <Input placeholder="Email (optional)" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} type="email" className="h-9 bg-background" />
+          <Button type="submit" size="sm" disabled={savingContact || !addName.trim()} className="h-9">
+            {savingContact ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save contact"}
+          </Button>
+        </form>
+      )}
+      <div className="flex-1 overflow-y-auto">
+        {contactsLoading ? (
+          <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : filteredContacts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+            <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            {contacts.length === 0 ? (
+              <>
+                <p className="text-muted-foreground font-medium">No contacts yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Tap + Add or Import to get started</p>
+              </>
+            ) : (
+              <p className="text-muted-foreground">No contacts match &quot;{contactSearch}&quot;</p>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filteredContacts.map((contact) => {
+              const initials = contact.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+              return (
+                <div key={contact.id} className="flex items-center gap-3 px-4 py-3">
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarFallback className="bg-secondary text-foreground text-sm font-medium">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-foreground text-sm truncate">{contact.name}</p>
+                    {contact.phone_number && <p className="text-xs text-muted-foreground truncate">{contact.phone_number}</p>}
+                    {!contact.phone_number && contact.email && <p className="text-xs text-muted-foreground truncate">{contact.email}</p>}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {contact.phone_number && (
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => handleCallContact(contact, "audio")} disabled={creating} title="Call">
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteContact(contact.id, contact.name)} disabled={deletingContactId === contact.id} title="Delete">
+                      {deletingContactId === contact.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
