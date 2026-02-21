@@ -207,6 +207,7 @@ export default function CallRoomPage() {
       contactName={contactName}
       contactPhone={phoneParam || undefined}
       displayName={user?.user_metadata?.full_name || user?.email?.split("@")[0]}
+      isInitiator={!!tokenParam}
       onLeave={handleLeave}
       ringSmsParams={ringPhoneParam ? {
         phoneNumber: ringPhoneParam,

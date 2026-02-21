@@ -49,6 +49,7 @@ interface CallRoomProps {
   contactName?: string
   contactPhone?: string
   displayName?: string
+  isInitiator?: boolean
   onLeave?: () => void
   ringSmsParams?: RingSmsParams
 }
@@ -138,6 +139,7 @@ function CallRoomInner({
   contactName,
   contactPhone,
   displayName,
+  isInitiator,
   onLeave,
   ringSmsParams,
 }: Omit<CallRoomProps, "token" | "serverUrl">) {
@@ -169,6 +171,12 @@ function CallRoomInner({
   >(ringSmsParams ? "pending" : null)
   const ringSmsTriggered = useRef(false)
 
+  // Transcription consent — initiator auto-consents, callees see overlay
+  const [consentGiven, setConsentGiven] = useState(!!isInitiator)
+  const [consentLogging, setConsentLogging] = useState(false)
+  const consentLoggedRef = useRef(false)
+  const [remoteConsents, setRemoteConsents] = useState<{ name: string; granted: boolean }[]>([])
+
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   const isConnected = connectionState === ConnectionState.Connected
@@ -185,6 +193,66 @@ function CallRoomInner({
       : isConnected
         ? "ringing"
         : "connecting"
+
+  // Log consent to backend
+  const logConsent = useCallback(async (granted: boolean) => {
+    if (!callId || consentLoggedRef.current) return
+    consentLoggedRef.current = true
+    setConsentLogging(true)
+    try {
+      await fetch(`/api/calls/${callId}/consent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          granted,
+          participantName: displayName || "Guest",
+          participantIdentity: localParticipant.identity,
+        }),
+      })
+    } catch {
+      // Non-fatal — consent was still shown to the user
+    } finally {
+      setConsentLogging(false)
+    }
+  }, [callId, displayName, localParticipant.identity])
+
+  // Auto-log initiator consent
+  useEffect(() => {
+    if (isInitiator && isConnected && callId && !consentLoggedRef.current) {
+      logConsent(true)
+    }
+  }, [isInitiator, isConnected, callId, logConsent])
+
+  const handleConsentAccept = useCallback(() => {
+    setConsentGiven(true)
+    logConsent(true)
+  }, [logConsent])
+
+  const handleConsentDecline = useCallback(() => {
+    logConsent(false)
+    if (onLeave) onLeave()
+  }, [logConsent, onLeave])
+
+  // Poll consent status for remote participants (initiator only)
+  useEffect(() => {
+    if (!isInitiator || !callId || !hasRemote) return
+    let cancelled = false
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/calls/${callId}/consent`)
+        if (r.ok && !cancelled) {
+          const data = await r.json()
+          const others = (data.consents || [])
+            .filter((c: any) => c.participant_identity !== localParticipant.identity)
+            .map((c: any) => ({ name: c.participant_name, granted: c.granted }))
+          setRemoteConsents(others)
+        }
+      } catch { /* ignore */ }
+    }
+    poll()
+    const interval = setInterval(poll, 5000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [isInitiator, callId, hasRemote, localParticipant.identity])
 
   // Play soft ringtone only for outbound PSTN calls while waiting for callee to pick up.
   // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
@@ -383,6 +451,61 @@ function CallRoomInner({
   const remoteDisplayName = remoteParticipants[0]?.name || contactName || contactPhone || "Participant"
   const remoteInitials = remoteDisplayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
 
+  // --- Consent overlay for callees ---
+  if (!consentGiven && isConnected) {
+    return (
+      <div className="flex flex-col h-[100dvh] bg-background items-center justify-center p-6">
+        <div className="w-full max-w-sm bg-card border border-border rounded-2xl shadow-xl overflow-hidden">
+          <div className="bg-primary/5 border-b border-border px-6 py-4 text-center">
+            <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
+              Transcription Notice
+            </p>
+          </div>
+          <div className="px-6 pt-6 pb-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <MessageSquareText className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground text-center mb-2">
+              This call is being recorded
+            </h3>
+            <p className="text-sm text-muted-foreground text-center leading-relaxed">
+              This call will be recorded and transcribed using AI.
+              By continuing, you consent to the recording and processing of your audio.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 divide-x divide-border border-t border-border">
+            <button
+              onClick={handleConsentDecline}
+              disabled={consentLogging}
+              className="flex flex-col items-center gap-1.5 py-4 hover:bg-destructive/5 transition-colors disabled:opacity-50"
+            >
+              <div className="h-11 w-11 rounded-full bg-destructive/10 flex items-center justify-center">
+                <Phone className="h-5 w-5 text-destructive rotate-[135deg]" />
+              </div>
+              <span className="text-xs font-medium text-destructive">Decline & Leave</span>
+            </button>
+            <button
+              onClick={handleConsentAccept}
+              disabled={consentLogging}
+              className="flex flex-col items-center gap-1.5 py-4 hover:bg-success/5 transition-colors disabled:opacity-50"
+            >
+              <div className="h-11 w-11 rounded-full bg-success/10 flex items-center justify-center">
+                {consentLogging ? (
+                  <Loader2 className="h-5 w-5 text-success animate-spin" />
+                ) : (
+                  <Check className="h-5 w-5 text-success" />
+                )}
+              </div>
+              <span className="text-xs font-medium text-success">I Agree</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // --- Audio-only or pre-connection view ---
   if (!isVideo || callStatus !== "connected") {
     return (
@@ -398,6 +521,15 @@ function CallRoomInner({
               <Badge variant="secondary" className="text-[10px] gap-1 bg-destructive/20 text-destructive border-0">
                 <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
                 REC
+              </Badge>
+            )}
+            {isInitiator && remoteConsents.length > 0 && (
+              <Badge variant="secondary" className={cn(
+                "text-[10px] gap-1 border-0",
+                remoteConsents.every(c => c.granted) ? "bg-success/20 text-success" : "bg-warning/20 text-warning"
+              )}>
+                <Check className="h-3 w-3" />
+                Consent
               </Badge>
             )}
             <Badge variant="secondary" className={cn(
@@ -632,6 +764,15 @@ function CallRoomInner({
             <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
             {formatDuration(duration)}
           </Badge>
+          {isInitiator && remoteConsents.length > 0 && (
+            <Badge variant="secondary" className={cn(
+              "text-[10px] gap-1 border-0",
+              remoteConsents.every(c => c.granted) ? "bg-success/20 text-success" : "bg-warning/20 text-warning"
+            )}>
+              <Check className="h-3 w-3" />
+              Consent
+            </Badge>
+          )}
           <button
             onClick={() => setLayout(layout === "gallery" ? "focus" : "gallery")}
             className="h-7 w-7 rounded-md bg-white/10 flex items-center justify-center hover:bg-white/15 transition-colors"
