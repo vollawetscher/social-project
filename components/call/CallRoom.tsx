@@ -33,6 +33,12 @@ import { toast } from "sonner"
 import { CallControls } from "@/components/call/CallControls"
 import type { CallMode, LayoutMode } from "@/lib/types/call"
 
+interface RingSmsParams {
+  phoneNumber: string
+  callerName: string
+  contactName?: string
+}
+
 interface CallRoomProps {
   roomName: string
   callId: string
@@ -44,6 +50,7 @@ interface CallRoomProps {
   contactPhone?: string
   displayName?: string
   onLeave?: () => void
+  ringSmsParams?: RingSmsParams
 }
 
 function formatDuration(seconds: number): string {
@@ -132,6 +139,7 @@ function CallRoomInner({
   contactPhone,
   displayName,
   onLeave,
+  ringSmsParams,
 }: Omit<CallRoomProps, "token" | "serverUrl">) {
   const router = useRouter()
   const room = useRoomContext()
@@ -155,6 +163,12 @@ function CallRoomInner({
   const [savingNotes, setSavingNotes] = useState(false)
   const remoteEverConnected = useRef(false)
 
+  // Ring+SMS invitation status
+  const [ringSmsStatus, setRingSmsStatus] = useState<
+    "pending" | "sending" | "sms_sent" | "done" | "failed" | null
+  >(ringSmsParams ? "pending" : null)
+  const ringSmsTriggered = useRef(false)
+
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   const isConnected = connectionState === ConnectionState.Connected
@@ -176,6 +190,31 @@ function CallRoomInner({
   // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
   // so we must exclude that post-call phase explicitly.
   useRingtone(callType === "pstn_outbound" && callStatus === "ringing" && !calleeLeft)
+
+  // Trigger Ring+SMS once room is connected
+  useEffect(() => {
+    if (!ringSmsParams || ringSmsTriggered.current || !isConnected || !callId) return
+    ringSmsTriggered.current = true
+    setRingSmsStatus("sending")
+    fetch(`/api/calls/${callId}/ring-sms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phoneNumber: ringSmsParams.phoneNumber,
+        callerName: ringSmsParams.callerName,
+        ...(ringSmsParams.contactName ? { contactName: ringSmsParams.contactName } : {}),
+      }),
+    })
+      .then(async (r) => {
+        if (r.ok) {
+          setRingSmsStatus("sms_sent")
+          setTimeout(() => setRingSmsStatus("done"), 3000)
+        } else {
+          setRingSmsStatus("failed")
+        }
+      })
+      .catch(() => setRingSmsStatus("failed"))
+  }, [ringSmsParams, isConnected, callId])
 
   // Track whether the remote participant was ever connected, then detect when they leave
   useEffect(() => {
@@ -318,9 +357,19 @@ function CallRoomInner({
     }
   }, [callId, displayName, mode])
 
+  const ringSmsLabel = ringSmsStatus === "sending"
+    ? "Sending SMS & calling phone..."
+    : ringSmsStatus === "sms_sent"
+      ? "SMS sent! Phone ringing..."
+      : ringSmsStatus === "done"
+        ? "Invitation sent! Waiting to join..."
+        : ringSmsStatus === "failed"
+          ? "Invitation failed — share link manually"
+          : null
+
   const statusLabel = {
     connecting: "Connecting...",
-    ringing: "Waiting for others...",
+    ringing: ringSmsLabel || "Waiting for others...",
     connected: formatDuration(duration),
     ended: "Call Ended",
   }
@@ -409,6 +458,16 @@ function CallRoomInner({
               )}>
                 {statusLabel[callStatus]}
               </p>
+              {callStatus === "ringing" && ringSmsStatus && ringSmsStatus !== "failed" && ringSmsStatus !== "done" && (
+                <div className="flex items-center gap-2 mt-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                </div>
+              )}
+              {callStatus === "ringing" && ringSmsStatus === "done" && (
+                <div className="flex items-center gap-2 mt-2">
+                  <Check className="h-3.5 w-3.5 text-primary" />
+                </div>
+              )}
               {callStatus === "ringing" && (
                 <button
                   onClick={copyInviteLink}

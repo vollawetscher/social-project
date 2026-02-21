@@ -193,17 +193,9 @@ export default function CallsPage() {
       }
       const data = await res.json()
 
-      fetch(`/api/calls/${data.callId}/ring-sms`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: cleaned, callerName: data.displayName || "Someone", ...(ringContactName ? { contactName: ringContactName } : {}) }),
-      }).then(r => {
-        if (r.ok) toast.success("Phone ringing & SMS sent!")
-        else toast.error("Ring+SMS failed — share the link manually")
-      }).catch(() => toast.error("Ring+SMS failed — share the link manually"))
-
       setPendingCallMode(null)
-      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=video`)
+      const ringParams = `&ringPhone=${encodeURIComponent(cleaned)}&ringCallerName=${encodeURIComponent(data.displayName || "Someone")}${ringContactName ? `&ringContactName=${encodeURIComponent(ringContactName)}` : ""}`
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=video${ringParams}`)
     } catch (err: any) {
       console.error("[Calls] Failed to create Ring+SMS call:", err)
       setError(err.message || "Failed to create call")

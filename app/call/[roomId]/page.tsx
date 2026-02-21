@@ -24,6 +24,9 @@ export default function CallRoomPage() {
   const modeParam = (searchParams?.get("mode") as CallMode) || "video"
   const phoneParam = searchParams?.get("phone") || null
   const callTypeParam = (searchParams?.get("callType") as "web" | "pstn_outbound") || "web"
+  const ringPhoneParam = searchParams?.get("ringPhone") || null
+  const ringCallerNameParam = searchParams?.get("ringCallerName") || null
+  const ringContactNameParam = searchParams?.get("ringContactName") || null
 
   const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "active" | "ended" | "error">("loading")
   const [callId, setCallId] = useState<string | null>(callIdParam)
@@ -205,6 +208,11 @@ export default function CallRoomPage() {
       contactPhone={phoneParam || undefined}
       displayName={user?.user_metadata?.full_name || user?.email?.split("@")[0]}
       onLeave={handleLeave}
+      ringSmsParams={ringPhoneParam ? {
+        phoneNumber: ringPhoneParam,
+        callerName: ringCallerNameParam || "Someone",
+        contactName: ringContactNameParam || undefined,
+      } : undefined}
     />
   )
 }
