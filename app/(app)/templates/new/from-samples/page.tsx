@@ -73,7 +73,6 @@ export default function TemplateWizardPage() {
   // Constraints
   const [selectedPerspectives, setSelectedPerspectives] = useState<string[]>(["party_a", "party_b"])
   const [selectedAudience, setSelectedAudience] = useState<string[]>(["external"])
-  const [requiredInputs, setRequiredInputs] = useState<string[]>(["participants", "purpose"])
 
   // Template details
   const [templateName, setTemplateName] = useState("")
@@ -130,11 +129,6 @@ export default function TemplateWizardPage() {
         suggestedInstructions: data.analysis.suggestedInstructions || '',
       })
 
-      // Auto-populate required inputs based on AI analysis
-      if (data.analysis.requiredInputs && data.analysis.requiredInputs.length > 0) {
-        setRequiredInputs(data.analysis.requiredInputs)
-      }
-
       setIsAnalyzing(false)
       setAnalysisComplete(true)
       toast.success(`Analysis complete! Analyzed ${data.filesAnalyzed} file(s)`)
@@ -178,7 +172,7 @@ export default function TemplateWizardPage() {
               description: (s as any).description || `${s.name} section`,
               isRequired: true,
             })),
-          required_inputs: requiredInputs,
+          required_inputs: [],
           style_rules: [
             `Tone: ${analysisResults.tone}`,
             `Perspective: ${analysisResults.perspective}`,
@@ -219,11 +213,6 @@ export default function TemplateWizardPage() {
     )
   }
 
-  const toggleInput = (input: string) => {
-    setRequiredInputs((prev) =>
-      prev.includes(input) ? prev.filter((i) => i !== input) : [...prev, input]
-    )
-  }
 
   const canProceed = () => {
     switch (currentStep) {
@@ -516,30 +505,6 @@ export default function TemplateWizardPage() {
                 </div>
               </div>
 
-              {/* Required Inputs */}
-              <div className="space-y-3">
-                <Label>Required Inputs Checklist</Label>
-                <div className="space-y-2">
-                  {["participants", "purpose", "agenda", "venue", "date"].map((input) => (
-                    <div
-                      key={input}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border"
-                    >
-                      <Checkbox
-                        id={input}
-                        checked={requiredInputs.includes(input)}
-                        onCheckedChange={() => toggleInput(input)}
-                      />
-                      <label
-                        htmlFor={input}
-                        className="text-sm font-medium capitalize cursor-pointer flex-1"
-                      >
-                        {input}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </CardContent>
           </>
         )}
@@ -603,10 +568,6 @@ export default function TemplateWizardPage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Audience</span>
                     <span className="font-medium capitalize">{selectedAudience.join(", ")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Required Inputs</span>
-                    <span className="font-medium">{requiredInputs.length}</span>
                   </div>
                 </div>
               </div>

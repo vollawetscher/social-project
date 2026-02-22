@@ -193,6 +193,8 @@ export async function GET(request: Request) {
         styleRules: t.style_rules || [],
         suggestionTriggers: t.suggestion_triggers || [],
         sampleContent: t.sample_content || null,
+        defaultDoInstructions: t.default_do_instructions || '',
+        defaultDontInstructions: t.default_dont_instructions || '',
       } satisfies Template,
       score: scoreTemplate(
         { domain_tags: t.domain_tags || [], suggestion_triggers: t.suggestion_triggers || [] },

@@ -59,7 +59,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
-import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
+import { participantRoleLabels, participantRoleLabelsShort, audienceLabels } from "@/lib/mock/data"
 import { toast } from "sonner"
 import type { Output } from "@/lib/types-v0"
 
@@ -456,7 +456,7 @@ export default function OutputsPage() {
                       <span className="flex items-center gap-1 whitespace-nowrap">
                         <User className="h-3 w-3 shrink-0" />
                         <span className="hidden sm:inline">{participantRoleLabels[output.perspective]}</span>
-                        <span className="sm:hidden">{participantRoleLabels[output.perspective].split(' ')[0]}</span>
+                        <span className="sm:hidden">{participantRoleLabelsShort[output.perspective] || participantRoleLabels[output.perspective]}</span>
                       </span>
                       <span className="flex items-center gap-1 whitespace-nowrap">
                         <Calendar className="h-3 w-3 shrink-0" />

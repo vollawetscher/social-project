@@ -279,8 +279,10 @@ Please generate the requested output following all requirements and guidelines.`
         tone: config.tone,
         format: config.format,
         content: generatedContent,
-        transcript_version_hash: transcript.id, // Using transcript ID as version
+        transcript_version_hash: transcript.id,
         cite_timestamps: config.citeTimestamps || false,
+        do_instructions: config.doInstructions || '',
+        dont_instructions: config.dontInstructions || '',
         created_by: userId,
       })
       .select()

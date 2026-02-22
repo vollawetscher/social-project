@@ -113,6 +113,7 @@ export function GenerateOutputModal({
   const [dontInstructions, setDontInstructions] = useState("")
   const [createTemplate, setCreateTemplate] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [previousInstructions, setPreviousInstructions] = useState<{ doInstructions: string; dontInstructions: string } | null>(null)
   const [perspectiveConfirmed, setPerspectiveConfirmed] = useState(false)
   const [audienceConfirmed, setAudienceConfirmed] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -170,6 +171,29 @@ export function GenerateOutputModal({
   }, [template, initialTemplateId, templates])
 
   const currentTemplate = templates.find((t) => t.id === selectedTemplate)
+
+  // Pre-fill do/don't instructions from template defaults when template selection changes,
+  // and fetch previous instructions for this template
+  const [lastPrefilledTemplateId, setLastPrefilledTemplateId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!currentTemplate || currentTemplate.id === lastPrefilledTemplateId) return
+    setDoInstructions(currentTemplate.defaultDoInstructions || '')
+    setDontInstructions(currentTemplate.defaultDontInstructions || '')
+    setLastPrefilledTemplateId(currentTemplate.id)
+    setPreviousInstructions(null)
+
+    fetch(`/api/templates/${currentTemplate.id}/last-instructions`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const hasPrevDo = data.doInstructions && data.doInstructions !== (currentTemplate.defaultDoInstructions || '')
+        const hasPrevDont = data.dontInstructions && data.dontInstructions !== (currentTemplate.defaultDontInstructions || '')
+        if (hasPrevDo || hasPrevDont) {
+          setPreviousInstructions(data)
+        }
+      })
+      .catch(() => {})
+  }, [currentTemplate?.id])
 
   const isPerspectiveValid = selectedPerspective !== "" && perspectiveConfirmed
   const isAudienceValid = selectedAudience !== "" && audienceConfirmed
@@ -602,6 +626,16 @@ export function GenerateOutputModal({
                     placeholder={"e.g., Focus on action items and deadlines\nAnnotate if something is unclear or ambiguous\nInclude exact quotes for key decisions\nHighlight areas of disagreement"}
                     className="bg-secondary border-border min-h-[80px]"
                   />
+                  {previousInstructions?.doInstructions && doInstructions !== previousInstructions.doInstructions && (
+                    <button
+                      type="button"
+                      onClick={() => setDoInstructions(previousInstructions.doInstructions)}
+                      className="text-xs text-info hover:text-info/80 flex items-center gap-1"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Use previous: &quot;{previousInstructions.doInstructions.slice(0, 60)}{previousInstructions.doInstructions.length > 60 ? '...' : ''}&quot;
+                    </button>
+                  )}
                 </div>
 
                 {/* Don't Instructions */}
@@ -613,6 +647,16 @@ export function GenerateOutputModal({
                     placeholder={"e.g., Skip smalltalk and greetings\nLeave out off-topic tangents\nAvoid mentioning competitor names\nDon't include personal anecdotes"}
                     className="bg-secondary border-border min-h-[80px]"
                   />
+                  {previousInstructions?.dontInstructions && dontInstructions !== previousInstructions.dontInstructions && (
+                    <button
+                      type="button"
+                      onClick={() => setDontInstructions(previousInstructions.dontInstructions)}
+                      className="text-xs text-info hover:text-info/80 flex items-center gap-1"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Use previous: &quot;{previousInstructions.dontInstructions.slice(0, 60)}{previousInstructions.dontInstructions.length > 60 ? '...' : ''}&quot;
+                    </button>
+                  )}
                 </div>
 
                 {/* Create Template Checkbox */}

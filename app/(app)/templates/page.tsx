@@ -11,7 +11,6 @@ import {
   FileText,
   Users,
   User,
-  Tag,
   BarChart3,
   ChevronRight,
   Pencil,
@@ -47,7 +46,7 @@ import {
 } from "@/components/ui/sheet"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { participantRoleLabels } from "@/lib/mock/data"
+import { participantRoleLabels, participantRoleLabelsShort } from "@/lib/mock/data"
 import type { Template } from "@/lib/types-v0"
 
 const domainColors: Record<string, string> = {
@@ -59,8 +58,6 @@ const domainColors: Record<string, string> = {
   consulting: "bg-orange-500/20 text-orange-400 border-orange-500/30",
   general: "bg-gray-500/20 text-gray-400 border-gray-500/30",
 }
-
-const roleLabels = participantRoleLabels;
 
 // Generate sample content for template preview
 function getTemplateSample(template: Template): string {
@@ -158,21 +155,6 @@ function TemplateDetailSheet({ template }: { template: Template }) {
                     {section.description}
                   </p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Required Inputs */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-              <Tag className="h-4 w-4 text-muted-foreground" />
-              Required Inputs
-            </h3>
-            <div className="flex flex-wrap gap-1.5">
-              {template.requiredInputs.map((input: string) => (
-                <Badge key={input} variant="secondary" className="capitalize">
-                  {input}
-                </Badge>
               ))}
             </div>
           </div>
@@ -459,7 +441,7 @@ export default function TemplatesPage() {
                   <div className="flex flex-wrap gap-1 max-w-[150px]">
                     {template.intendedPerspectives.slice(0, 2).map((perspective: any) => (
                       <Badge key={perspective} variant="secondary" className="text-[10px]">
-                        {participantRoleLabels[perspective].split(" ")[0]}
+                        {participantRoleLabelsShort[perspective] || participantRoleLabels[perspective]}
                       </Badge>
                     ))}
                     {template.intendedPerspectives.length > 2 && (

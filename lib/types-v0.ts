@@ -162,7 +162,9 @@ export interface Template {
   requiredInputs: string[]
   styleRules: string[]
   suggestionTriggers: string[]
-  sampleContent?: string | null // Shortened sample from first output when saving from output
+  sampleContent?: string | null
+  defaultDoInstructions?: string
+  defaultDontInstructions?: string
 }
 
 export interface Output {

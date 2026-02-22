@@ -39,6 +39,8 @@ export async function GET() {
       styleRules: t.style_rules || [],
       suggestionTriggers: t.suggestion_triggers || [],
       sampleContent: t.sample_content || null,
+      defaultDoInstructions: t.default_do_instructions || '',
+      defaultDontInstructions: t.default_dont_instructions || '',
     }))
 
     return NextResponse.json(formattedTemplates)
@@ -69,7 +71,9 @@ export async function POST(request: Request) {
       requiredInputs, 
       styleRules, 
       suggestionTriggers,
-      instructions 
+      instructions,
+      defaultDoInstructions,
+      defaultDontInstructions,
     } = body
 
     // Validate required fields
@@ -91,6 +95,8 @@ export async function POST(request: Request) {
         style_rules: styleRules || [],
         suggestion_triggers: suggestionTriggers || [],
         instructions: instructions || `Generate a ${name} following the defined structure and style.`,
+        default_do_instructions: defaultDoInstructions || '',
+        default_dont_instructions: defaultDontInstructions || '',
         created_by: user.id,
         is_system: false,
       })
@@ -122,6 +128,8 @@ export async function POST(request: Request) {
       styleRules: template.style_rules || [],
       suggestionTriggers: template.suggestion_triggers || [],
       sampleContent: template.sample_content || null,
+      defaultDoInstructions: template.default_do_instructions || '',
+      defaultDontInstructions: template.default_dont_instructions || '',
     }
 
     return NextResponse.json(formattedTemplate, { status: 201 })

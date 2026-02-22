@@ -39,6 +39,8 @@ export async function GET(
       styleRules: template.style_rules || [],
       suggestionTriggers: template.suggestion_triggers || [],
       sampleContent: template.sample_content || null,
+      defaultDoInstructions: template.default_do_instructions || '',
+      defaultDontInstructions: template.default_dont_instructions || '',
     }
 
     return NextResponse.json(formattedTemplate)
@@ -70,7 +72,9 @@ export async function PUT(
       sections, 
       requiredInputs, 
       styleRules, 
-      suggestionTriggers 
+      suggestionTriggers,
+      defaultDoInstructions,
+      defaultDontInstructions,
     } = body
 
     // Update template (only if user owns it)
@@ -86,6 +90,8 @@ export async function PUT(
         required_inputs: requiredInputs,
         style_rules: styleRules,
         suggestion_triggers: suggestionTriggers,
+        default_do_instructions: defaultDoInstructions ?? '',
+        default_dont_instructions: defaultDontInstructions ?? '',
       })
       .eq('id', params.id)
       .eq('created_by', user.id)
@@ -110,6 +116,8 @@ export async function PUT(
       styleRules: template.style_rules || [],
       suggestionTriggers: template.suggestion_triggers || [],
       sampleContent: template.sample_content || null,
+      defaultDoInstructions: template.default_do_instructions || '',
+      defaultDontInstructions: template.default_dont_instructions || '',
     }
 
     return NextResponse.json(formattedTemplate)

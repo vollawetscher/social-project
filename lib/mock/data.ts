@@ -368,9 +368,15 @@ export const languages = [
 
 // Participant role labels (transcription-level)
 export const participantRoleLabels: Record<string, string> = {
-  party_a: 'Party A (Primary Speaker)',
-  party_b: 'Party B (Secondary Speaker)',
-  observer: 'Observer / Listener',
+  party_a: 'You / Your Side',
+  party_b: 'Other Party',
+  observer: 'Neutral Observer',
+}
+
+export const participantRoleLabelsShort: Record<string, string> = {
+  party_a: 'You',
+  party_b: 'Other',
+  observer: 'Observer',
 }
 
 // Semantic role labels for context display

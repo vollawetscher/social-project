@@ -41,7 +41,8 @@ export default function EditTemplatePage() {
   const [selectedAudiences, setSelectedAudiences] = useState<Audience[]>([])
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
   const [styleRules, setStyleRules] = useState("")
-  const [requiredInputs, setRequiredInputs] = useState("")
+  const [defaultDoInstructions, setDefaultDoInstructions] = useState("")
+  const [defaultDontInstructions, setDefaultDontInstructions] = useState("")
 
   useEffect(() => {
     fetchTemplate()
@@ -61,7 +62,8 @@ export default function EditTemplatePage() {
       setSelectedAudiences(data.allowed_audience || data.allowedAudience || [])
       setSelectedDomains(data.domain_tags || data.domainTags || [])
       setStyleRules((data.style_rules || data.styleRules || []).join('\n'))
-      setRequiredInputs((data.required_inputs || data.requiredInputs || []).join('\n'))
+      setDefaultDoInstructions(data.default_do_instructions || data.defaultDoInstructions || '')
+      setDefaultDontInstructions(data.default_dont_instructions || data.defaultDontInstructions || '')
     } catch (error) {
       console.error('Error fetching template:', error)
       toast.error('Failed to load template')
@@ -98,7 +100,8 @@ export default function EditTemplatePage() {
           allowedAudience: selectedAudiences,
           domainTags: selectedDomains,
           styleRules: styleRules.split('\n').filter(r => r.trim()),
-          requiredInputs: requiredInputs.split('\n').filter(i => i.trim()),
+          defaultDoInstructions: defaultDoInstructions.trim(),
+          defaultDontInstructions: defaultDontInstructions.trim(),
         }),
       })
 
@@ -322,19 +325,35 @@ export default function EditTemplatePage() {
         </CardContent>
       </Card>
 
-      {/* Required Inputs */}
+      {/* Default Generation Instructions */}
       <Card>
         <CardHeader>
-          <CardTitle>Required Inputs</CardTitle>
-          <CardDescription>Enter each required input on a new line</CardDescription>
+          <CardTitle>Default Generation Instructions</CardTitle>
+          <CardDescription>
+            Pre-fill the &quot;Do include&quot; and &quot;Do not include&quot; fields when this template is selected for generation
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Textarea
-            value={requiredInputs}
-            onChange={(e) => setRequiredInputs(e.target.value)}
-            placeholder="e.g., Full transcript&#10;Speaker roles&#10;Key topics discussed"
-            rows={4}
-          />
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="defaultDo">Do include...</Label>
+            <Textarea
+              id="defaultDo"
+              value={defaultDoInstructions}
+              onChange={(e) => setDefaultDoInstructions(e.target.value)}
+              placeholder={"e.g., Focus on action items and deadlines\nInclude exact quotes for key decisions\nHighlight areas of disagreement"}
+              rows={4}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="defaultDont">Do not include...</Label>
+            <Textarea
+              id="defaultDont"
+              value={defaultDontInstructions}
+              onChange={(e) => setDefaultDontInstructions(e.target.value)}
+              placeholder={"e.g., Skip smalltalk and greetings\nLeave out off-topic tangents\nDon't include personal anecdotes"}
+              rows={4}
+            />
+          </div>
         </CardContent>
       </Card>
 
