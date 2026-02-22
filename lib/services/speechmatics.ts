@@ -107,6 +107,8 @@ export class SpeechmaticsService {
   private async pollJobStatus(jobId: string): Promise<SpeechmaticsTranscript> {
     const maxAttempts = 60
     const pollInterval = 10000
+    const maxNetworkRetries = 5
+    let consecutiveNetworkErrors = 0
 
     console.log('[Speechmatics] Starting to poll job status, jobId:', jobId)
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -124,6 +126,7 @@ export class SpeechmaticsService {
 
         const status = await statusResponse.json()
         console.log('[Speechmatics] Job status:', status.job.status)
+        consecutiveNetworkErrors = 0
 
         if (status.job.status === 'done') {
           console.log('[Speechmatics] Job completed, fetching transcript')
@@ -149,6 +152,25 @@ export class SpeechmaticsService {
 
         await new Promise((resolve) => setTimeout(resolve, pollInterval))
       } catch (error: any) {
+        const isNetworkError = error.cause?.code === 'ETIMEDOUT' ||
+          error.cause?.code === 'ENETUNREACH' ||
+          error.cause?.code === 'ECONNRESET' ||
+          error.cause?.code === 'ECONNREFUSED' ||
+          error.message?.includes('fetch failed') ||
+          error.message?.includes('network') ||
+          error.code === 'ETIMEDOUT'
+
+        if (isNetworkError) {
+          consecutiveNetworkErrors++
+          console.warn(`[Speechmatics] Transient network error (${consecutiveNetworkErrors}/${maxNetworkRetries}):`, error.message)
+          if (consecutiveNetworkErrors >= maxNetworkRetries) {
+            console.error('[Speechmatics] Too many consecutive network errors, giving up')
+            throw new Error(`Failed to connect to Speechmatics API after ${maxNetworkRetries} retries: ${error.message}`)
+          }
+          await new Promise((resolve) => setTimeout(resolve, pollInterval * 2))
+          continue
+        }
+
         console.error('[Speechmatics] Poll error:', error.message)
         throw error
       }

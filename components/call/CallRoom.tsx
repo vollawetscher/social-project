@@ -13,6 +13,7 @@ import {
   VideoTrack,
 } from "@livekit/components-react"
 import { ConnectionState, Track } from "livekit-client"
+import { isTrackReference } from "@livekit/components-core"
 import {
   Phone,
   Video,
@@ -158,7 +159,7 @@ function CallRoomInner({
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }],
     { onlySubscribed: true }
   )
-  const activeScreenShare = screenShareTracks[0]
+  const activeScreenShare = screenShareTracks.find(isTrackReference)
 
   const [duration, setDuration] = useState(0)
   const [layout, setLayout] = useState<LayoutMode>("gallery")

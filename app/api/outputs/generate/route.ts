@@ -168,8 +168,17 @@ export async function POST(request: Request) {
       it: 'Italian',
       pt: 'Portuguese',
       nl: 'Dutch',
+      th: 'Thai',
+      ja: 'Japanese',
+      ko: 'Korean',
+      zh: 'Chinese',
+      ar: 'Arabic',
+      ru: 'Russian',
+      tr: 'Turkish',
+      vi: 'Vietnamese',
+      hi: 'Hindi',
     }
-    const outputLanguage = languageMap[config.language || 'en'] || 'English'
+    const outputLanguage = languageMap[config.language || 'en'] || config.language || 'English'
 
     const formatMap: Record<string, string> = {
       email: 'an email',
@@ -186,14 +195,14 @@ Key requirements:
 - Perspective: Write from the viewpoint of ${perspectiveInstruction}
 - Audience: The output is intended for ${audienceMap[config.audience || 'internal'] || 'internal use'}
 - Tone: Use a ${toneMap[config.tone] || 'professional'} tone
-- Language: Generate the output in ${outputLanguage}
+- Language: Generate the ENTIRE output in ${outputLanguage}, including all section headers, titles, labels, and body text. Do NOT leave any headers or structural elements in another language.
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
     if (template) {
       systemPrompt += `\n\nTemplate: ${template.name}
 ${template.description}
 
-Required sections:
+Required sections (translate section names and descriptions into ${outputLanguage}):
 ${template.sections?.map((s: any) => `- ${s.name}: ${s.description}${s.isRequired ? ' (Required)' : ''}`).join('\n')}
 
 Style guidelines:

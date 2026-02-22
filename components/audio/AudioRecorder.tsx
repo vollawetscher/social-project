@@ -488,7 +488,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     if (mediaRecorderRef.current && isRecording) {
       if (isPaused) {
         // Resuming
-        isPausedRef.current = false // Update ref first
+        isPausedRef.current = false
         setIsPaused(false)
         mediaRecorderRef.current.resume()
         const pauseDuration = Date.now() - pausedTimeRef.current
@@ -502,11 +502,26 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
           }, 100)
         }
         
+        // Restart health monitoring with fresh baseline after resume
+        stopHealthMonitoring()
+        lastChunkCountRef.current = chunksRef.current.length
+        lastHealthCheckRef.current = Date.now()
+        startHealthMonitoring()
+        
         toast.info('Recording resumed')
       } else {
-        // Pausing - update ref FIRST to prevent false health check warning
+        // Pausing
         isPausedRef.current = true
         setIsPaused(true)
+        
+        // Stop health monitoring entirely while paused
+        stopHealthMonitoring()
+        
+        // Stop UI timer so it doesn't keep ticking
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+          timerRef.current = null
+        }
         
         // Request data before pausing to ensure nothing is lost
         if (mediaRecorderRef.current.state === 'recording') {
