@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import React from "react"
 import { useState, useCallback, useRef, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -190,8 +191,9 @@ function EditableSessionName({
 
 export default function SessionsPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "")
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [isRecording, setIsRecording] = useState(false)

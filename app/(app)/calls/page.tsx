@@ -358,8 +358,9 @@ export default function CallsPage() {
   const recentCalls = useMemo(() => {
     return calls.filter(
       (c) =>
-        (c.status === "done" || c.status === "ended" || c.status === "error") &&
-        c.call_type === "pstn_outbound"
+        c.call_type === "pstn_outbound" &&
+        c.status !== "waiting" &&
+        c.status !== "active"
     )
   }, [calls])
 
@@ -609,6 +610,7 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
         const durationSec = call.ended_at && call.started_at
           ? Math.round((new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000)
           : 0
+        const isInProgress = call.status === "processing" || call.status === "transcribing"
         return (
           <button
             key={call.id}
@@ -624,6 +626,9 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
                 <p className="font-medium text-foreground text-sm truncate">{name}</p>
                 {call.status === "done" && (
                   <Badge variant="secondary" className="text-[9px] h-4 px-1.5 gap-0.5 bg-success/20 text-success border-0 shrink-0">Transcribed</Badge>
+                )}
+                {isInProgress && (
+                  <Badge variant="secondary" className="text-[9px] h-4 px-1.5 gap-0.5 bg-warning/20 text-warning border-0 shrink-0 animate-pulse">Processing</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">

@@ -31,6 +31,7 @@ interface AppTopbarProps {
 export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
   const [isOffline, setIsOffline] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [topbarSearch, setTopbarSearch] = useState("")
   const { user, profile, signOut } = useAuth()
   const router = useRouter()
 
@@ -89,6 +90,14 @@ export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
               type="search"
               placeholder="Search sessions, outputs..."
               className="pl-9 bg-secondary border-border"
+              value={topbarSearch}
+              onChange={(e) => setTopbarSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && topbarSearch.trim()) {
+                  router.push(`/sessions?q=${encodeURIComponent(topbarSearch.trim())}`)
+                  setTopbarSearch("")
+                }
+              }}
             />
           </div>
         </div>

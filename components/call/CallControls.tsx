@@ -26,6 +26,7 @@ interface CallControlsProps {
   isSpeaker: boolean
   isOnHold: boolean
   isScreenSharing: boolean
+  canScreenShare?: boolean
   showNotes: boolean
   showTranscript: boolean
   onToggleMute: () => void
@@ -48,6 +49,7 @@ export function CallControls({
   isSpeaker,
   isOnHold,
   isScreenSharing,
+  canScreenShare = true,
   showNotes,
   showTranscript,
   onToggleMute,
@@ -79,14 +81,16 @@ export function CallControls({
           onClick={onToggleCamera}
           dark
         />
-        <ControlButton
-          icon={MonitorUp}
-          label="Share"
-          active={isScreenSharing}
-          accent
-          onClick={onToggleScreenShare}
-          dark
-        />
+        {canScreenShare && (
+          <ControlButton
+            icon={MonitorUp}
+            label="Share"
+            active={isScreenSharing}
+            accent
+            onClick={onToggleScreenShare}
+            dark
+          />
+        )}
         <ControlButton
           icon={MessageSquareText}
           label="Transcript"
@@ -115,7 +119,7 @@ export function CallControls({
           <ControlButton icon={isCameraOn ? Video : VideoOff} label={isCameraOn ? "Cam On" : "Cam Off"} active={!isCameraOn} onClick={onToggleCamera} dark={dark} />
         )}
         <ControlButton icon={Volume2} label="Speaker" active={isSpeaker} onClick={onToggleSpeaker} dark={dark} />
-        {mode === "video" && (
+        {mode === "video" && canScreenShare && (
           <ControlButton icon={MonitorUp} label="Share" active={isScreenSharing} onClick={onToggleScreenShare} dark={dark} accent />
         )}
         <ControlButton icon={isOnHold ? Play : Pause} label={isOnHold ? "Resume" : "Hold"} active={isOnHold} onClick={onToggleHold} dark={dark} />

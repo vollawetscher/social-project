@@ -1040,9 +1040,16 @@ export default function SessionDetailPage() {
                     </h3>
                     <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
                       {session.consentLogs.map((log: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between">
-                          <span className="text-foreground">{log.participant_name || log.participant_identity || "Participant"}</span>
-                          <Badge variant={log.granted ? "default" : "outline"} className={log.granted ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0"}>
+                        <div key={idx} className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="text-foreground">{log.participant_name || log.participant_identity || "Participant"}</span>
+                            {log.created_at && (
+                              <p className="text-[10px] text-muted-foreground">
+                                {new Date(log.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant={log.granted ? "default" : "outline"} className={cn("shrink-0", log.granted ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0")}>
                             {log.granted ? "Agreed" : "Declined"}
                           </Badge>
                         </div>
@@ -1064,8 +1071,8 @@ export default function SessionDetailPage() {
               </div>
             </div>
           </TabsContent>
-          <TabsContent value="outputs" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
-            <div className="h-full overflow-y-auto rounded-lg border border-border bg-card p-4 space-y-6">
+          <TabsContent value="outputs" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden overflow-hidden">
+            <div className="h-full overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-card p-4 space-y-6">
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">
@@ -1078,10 +1085,10 @@ export default function SessionDetailPage() {
                     {session.suggestedOutputFormats.map((suggestion, idx) => (
                       <div
                         key={idx}
-                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2"
+                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2 overflow-hidden"
                       >
-                        <h4 className="text-sm font-medium text-foreground">{suggestion.title}</h4>
-                        <p className="text-xs text-muted-foreground flex-1">
+                        <h4 className="text-sm font-medium text-foreground break-words">{suggestion.title}</h4>
+                        <p className="text-xs text-muted-foreground flex-1 break-words">
                           {suggestion.description}
                         </p>
                         <Button
@@ -1425,9 +1432,16 @@ export default function SessionDetailPage() {
                     </h3>
                     <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
                       {session.consentLogs.map((log: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between">
-                          <span className="text-foreground">{log.participant_name || log.participant_identity || "Participant"}</span>
-                          <Badge variant={log.granted ? "default" : "outline"} className={log.granted ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0"}>
+                        <div key={idx} className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="text-foreground">{log.participant_name || log.participant_identity || "Participant"}</span>
+                            {log.created_at && (
+                              <p className="text-[10px] text-muted-foreground">
+                                {new Date(log.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant={log.granted ? "default" : "outline"} className={cn("shrink-0", log.granted ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0")}>
                             {log.granted ? "Agreed" : "Declined"}
                           </Badge>
                         </div>
@@ -1451,7 +1465,7 @@ export default function SessionDetailPage() {
           )}
 
           {activeTab === "outputs" && (
-            <div className="flex-1 rounded-lg border border-border bg-card overflow-auto p-4 space-y-6">
+            <div className="flex-1 rounded-lg border border-border bg-card overflow-y-auto overflow-x-hidden p-4 space-y-6">
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">
@@ -1464,10 +1478,10 @@ export default function SessionDetailPage() {
                     {session.suggestedOutputFormats.map((suggestion, idx) => (
                       <div
                         key={idx}
-                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2"
+                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2 overflow-hidden"
                       >
-                        <h4 className="text-sm font-medium text-foreground">{suggestion.title}</h4>
-                        <p className="text-xs text-muted-foreground flex-1">
+                        <h4 className="text-sm font-medium text-foreground break-words">{suggestion.title}</h4>
+                        <p className="text-xs text-muted-foreground flex-1 break-words">
                           {suggestion.description}
                         </p>
                         <Button
