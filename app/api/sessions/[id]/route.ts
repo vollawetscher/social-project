@@ -127,8 +127,33 @@ export async function DELETE(
       .single()
 
     const isAdmin = profile?.role === 'admin'
-    // Use service role when admin deletes another user's session (bypasses RLS)
     const db = isAdmin ? createServiceRoleClient() : supabase
+    const serviceDb = createServiceRoleClient()
+
+    // Block deletion if a callee session is still waiting for the transcript.
+    // Deleting now would orphan the callee session in 'transcribing' forever
+    // (FK ON DELETE SET NULL nullifies calls.session_id, breaking the link).
+    const { data: pendingCalleeCall } = await serviceDb
+      .from('calls')
+      .select('callee_session_id')
+      .eq('session_id', params.id)
+      .not('callee_session_id', 'is', null)
+      .maybeSingle()
+
+    if (pendingCalleeCall?.callee_session_id) {
+      const { data: calleeSession } = await serviceDb
+        .from('sessions')
+        .select('is_callee_pending')
+        .eq('id', pendingCalleeCall.callee_session_id)
+        .maybeSingle()
+
+      if (calleeSession?.is_callee_pending) {
+        return NextResponse.json(
+          { error: 'This session is shared with another user whose transcript is still being prepared. Please try again later.' },
+          { status: 409 }
+        )
+      }
+    }
 
     const { data: files } = await db
       .from('files')
@@ -137,7 +162,20 @@ export async function DELETE(
 
     if (files && files.length > 0) {
       const paths = files.map((f) => f.storage_path)
-      await db.storage.from('rohbericht-audio').remove(paths)
+
+      // Don't delete audio from storage if a callee session shares the same files.
+      const { data: sharedFiles } = await serviceDb
+        .from('files')
+        .select('storage_path')
+        .in('storage_path', paths)
+        .neq('session_id', params.id)
+
+      const sharedPaths = new Set((sharedFiles || []).map((f: any) => f.storage_path))
+      const pathsToDelete = paths.filter(p => !sharedPaths.has(p))
+
+      if (pathsToDelete.length > 0) {
+        await db.storage.from('rohbericht-audio').remove(pathsToDelete)
+      }
     }
 
     const { data: deleted, error } = await db

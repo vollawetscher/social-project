@@ -10,6 +10,10 @@ import { createErrorLogger } from '@/lib/services/error-logger'
 /**
  * After the caller's session is transcribed, copy the transcript to any pending
  * callee session that was claimed before transcription completed.
+ *
+ * Note: if the caller deletes their session before transcription completes,
+ * calls.session_id is SET NULL by the FK cascade, and this lookup will find nothing.
+ * That case is handled preemptively in the session DELETE handler instead.
  */
 async function copyTranscriptToCalleeSession(supabase: any, callerSessionId: string) {
   try {
@@ -96,7 +100,8 @@ async function processTranscriptionJob(sessionId: string) {
       .eq('id', sessionId)
       .single()
     const inputHint = (sessionRow as any)?.input_hint || ''
-    const sessionLanguage = (sessionRow as any)?.language?.slice(0, 2) || null
+    const rawLang = (sessionRow as any)?.language?.slice(0, 2) || null
+    const sessionLanguage = rawLang === 'au' ? null : rawLang // 'auto' → null → Speechmatics auto-detect
 
     // Get all files for this session
     const { data: files } = await supabase

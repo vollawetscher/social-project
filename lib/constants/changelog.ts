@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.10.1',
+    date: 'February 23, 2026',
+    entries: [
+      {
+        version: '1.10.1',
+        date: 'February 23, 2026',
+        category: 'fix',
+        title: 'Shared Call Sessions',
+        description: 'Fixed an issue where sessions shared with new users after a video call could get stuck in "Transcribing" status. Shared sessions now stay functional even if the original caller removes their copy.',
+      },
+    ],
+  },
+  {
     version: '1.10.0',
     date: 'February 21, 2026',
     entries: [

@@ -1085,10 +1085,10 @@ export default function SessionDetailPage() {
                     {session.suggestedOutputFormats.map((suggestion, idx) => (
                       <div
                         key={idx}
-                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2 overflow-hidden"
+                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2 overflow-hidden min-w-0"
                       >
-                        <h4 className="text-sm font-medium text-foreground break-words">{suggestion.title}</h4>
-                        <p className="text-xs text-muted-foreground flex-1 break-words">
+                        <h4 className="text-sm font-medium text-foreground break-words line-clamp-2">{suggestion.title}</h4>
+                        <p className="text-xs text-muted-foreground flex-1 break-words line-clamp-3">
                           {suggestion.description}
                         </p>
                         <Button
@@ -1478,10 +1478,10 @@ export default function SessionDetailPage() {
                     {session.suggestedOutputFormats.map((suggestion, idx) => (
                       <div
                         key={idx}
-                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2 overflow-hidden"
+                        className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2 overflow-hidden min-w-0"
                       >
-                        <h4 className="text-sm font-medium text-foreground break-words">{suggestion.title}</h4>
-                        <p className="text-xs text-muted-foreground flex-1 break-words">
+                        <h4 className="text-sm font-medium text-foreground break-words line-clamp-2">{suggestion.title}</h4>
+                        <p className="text-xs text-muted-foreground flex-1 break-words line-clamp-3">
                           {suggestion.description}
                         </p>
                         <Button

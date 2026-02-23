@@ -42,7 +42,6 @@ export async function POST(request: Request) {
 
     // Create a session for this call
     const inputHint = callType === 'pstn_outbound' ? 'phone_call' : 'video_call'
-    const preferredLang = (profile as any)?.default_recording_language?.slice(0, 2) || null
 
     const sessionLabel = callType === 'web' ? 'Video Call' : 'Call'
 
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
         duration_sec: 0,
         last_error: '',
         input_hint: inputHint,
-        ...(preferredLang ? { language: preferredLang } : {}),
+        language: 'auto',
       })
       .select('id')
       .single()

@@ -23,7 +23,7 @@ export async function POST(
     // --- 1. Fetch the call ---
     const { data: call, error: callError } = await supabase
       .from('calls')
-      .select('id, user_id, session_id, status, callee_user_id, callee_session_id, participant_b_identity, contact_name')
+      .select('id, user_id, session_id, status, callee_user_id, callee_session_id, participant_b_identity, contact_name, track_a_egress_id')
       .eq('id', callId)
       .maybeSingle()
 
@@ -52,7 +52,11 @@ export async function POST(
     }
 
     if (!call.session_id) {
-      return NextResponse.json({ error: 'No session found for this call' }, { status: 404 })
+      // session_id is null — the caller deleted the session (FK ON DELETE SET NULL)
+      const msg = call.track_a_egress_id
+        ? 'The recording for this call is no longer available'
+        : 'No session found for this call'
+      return NextResponse.json({ error: msg }, { status: 404 })
     }
 
     // --- 2. Fetch caller's session details ---

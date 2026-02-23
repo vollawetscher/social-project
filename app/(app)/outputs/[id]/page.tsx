@@ -144,28 +144,17 @@ export default function OutputDetailPage() {
     }
   }
 
-  async function copyOrShare(url: string) {
+  async function copyShareLink(url: string) {
     const headline = extractOutputHeadline(output!.content) || output!.templateName
     const shareText = formatShareLinkForCopy(url, headline, output!.createdAt)
-
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: headline || 'Shared output', text: shareText })
-        setCopiedShareLink(true)
-        setTimeout(() => setCopiedShareLink(false), 2000)
-        return
-      } catch (e: any) {
-        if (e?.name === 'AbortError') return
-      }
-    }
 
     try {
       await navigator.clipboard.writeText(shareText)
       setCopiedShareLink(true)
       setTimeout(() => setCopiedShareLink(false), 2000)
-      toast.success('Share link copied to clipboard!')
+      toast.success('Share link copied!')
     } catch {
-      toast.error('Could not copy link — try long-pressing the Share button')
+      toast.error('Could not copy link')
     }
   }
 
@@ -181,7 +170,7 @@ export default function OutputDetailPage() {
       const data = await response.json()
       setShareUrl(data.shareUrl)
       setIsPublic(true)
-      await copyOrShare(data.shareUrl)
+      toast.success('Share link created — tap again to copy')
     } catch (error) {
       toast.error('Failed to enable sharing: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
@@ -193,7 +182,7 @@ export default function OutputDetailPage() {
     if (!output) return
     const urlToCopy = shareUrl || (output.shareToken ? `${window.location.origin}/share/${output.shareToken}` : null)
     if (!urlToCopy) return
-    await copyOrShare(urlToCopy)
+    await copyShareLink(urlToCopy)
     fetch(`/api/outputs/${outputId}/share`, { method: 'POST' }).then(res => {
       if (res.ok) res.json().then(data => {
         if (data.shareUrl) { setShareUrl(data.shareUrl); setIsPublic(true) }

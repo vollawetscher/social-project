@@ -766,10 +766,10 @@ function CallRoomInner({
           </div>
         ) : (
           /* Normal layout: side by side / stacked */
-          <div className="h-full p-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-center">
+          <div className="h-full p-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-center md:overflow-hidden">
             {/* Remote participant (or waiting placeholder) */}
-            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-none md:h-full">
-              <div className="w-full h-full md:h-full md:w-auto md:aspect-[3/4]">
+            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
+              <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
               {remoteParticipants.length > 0 ? (
                 <div className={cn(
                   "h-full gap-2",
@@ -809,8 +809,8 @@ function CallRoomInner({
             </div>
 
             {/* Local participant */}
-            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-none md:h-full">
-              <div className="w-full h-full md:h-full md:w-auto md:aspect-[3/4]">
+            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
+              <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
               <LiveParticipantTile
                 name="You"
                 isMuted={isMuted}
