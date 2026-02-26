@@ -26,6 +26,7 @@ export interface UserProfile {
 }
 
 export const SUPPORTED_LANGUAGES = [
+  { value: 'auto', label: 'Auto-detect' },
   { value: 'de', label: 'German (Deutsch)' },
   { value: 'en', label: 'English' },
   { value: 'es', label: 'Spanish (Español)' },

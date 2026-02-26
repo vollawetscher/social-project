@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     const {
-      language = 'de',
+      language = 'auto',
       sessionName,
       segments: incomingSegments,
       rawText: incomingRawText,
@@ -95,7 +95,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const langCode = typeof language === 'string' ? language.slice(0, 2).toLowerCase() : 'de'
+    const langCode = language === 'auto' ? 'auto'
+      : typeof language === 'string' ? language.slice(0, 2).toLowerCase()
+      : 'auto'
     const timestamp = new Date().toLocaleString('en-US', {
       month: '2-digit',
       day: '2-digit',

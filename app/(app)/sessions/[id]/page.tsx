@@ -746,7 +746,7 @@ export default function SessionDetailPage() {
       {/* Language mismatch banner */}
       {languageMismatch && (() => {
         const langNames: Record<string, string> = {
-          de: 'German', en: 'English', fr: 'French', es: 'Spanish',
+          auto: 'Auto-detect', de: 'German', en: 'English', fr: 'French', es: 'Spanish',
           it: 'Italian', pt: 'Portuguese', nl: 'Dutch', pl: 'Polish',
         }
         const sessionLabel = langNames[languageMismatch.sessionLang] || languageMismatch.sessionLang.toUpperCase()
@@ -1234,6 +1234,7 @@ export default function SessionDetailPage() {
             <AudioPlayer
               ref={audioPlayerRef}
               audioUrl={session.audioUrl}
+              fileName={sessionFiles[0]?.storage_path?.split('/').pop()}
               onTimeUpdate={setCurrentAudioTime}
               onPlayStateChange={setIsAudioPlaying}
             />

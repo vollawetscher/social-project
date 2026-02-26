@@ -59,7 +59,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   
   // Form state
-  const [defaultRecordingLanguage, setDefaultRecordingLanguage] = useState("de")
+  const [defaultRecordingLanguage, setDefaultRecordingLanguage] = useState("auto")
   const [preferredReportLanguage, setPreferredReportLanguage] = useState("de")
   const [timezone, setTimezone] = useState("Europe/Berlin")
   const [afterTranscriptTemplateId, setAfterTranscriptTemplateId] = useState<string>("")
@@ -95,7 +95,7 @@ export default function SettingsPage() {
         setProfile(data)
         
         // Populate form with profile data
-        setDefaultRecordingLanguage(data.default_recording_language || 'de')
+        setDefaultRecordingLanguage(data.default_recording_language || 'auto')
         setPreferredReportLanguage(data.preferred_report_language || 'de')
         setTimezone(data.timezone || 'Europe/Berlin')
         setAfterTranscriptTemplateId(data.after_transcript_template_id || '')

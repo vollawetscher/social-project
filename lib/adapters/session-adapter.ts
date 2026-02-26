@@ -102,6 +102,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
   // Map language codes to display names
   const getLanguageDisplay = (langCode: string) => {
     const languageMap: Record<string, string> = {
+      'auto': 'Auto-detect',
       'de': 'German (Deutsch)',
       'en': 'English',
       'es': 'Spanish (Español)',

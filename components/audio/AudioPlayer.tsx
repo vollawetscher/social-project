@@ -9,11 +9,13 @@ import {
   SkipBack, 
   SkipForward, 
   Volume2, 
-  VolumeX 
+  VolumeX,
+  FileAudio
 } from 'lucide-react'
 
 interface AudioPlayerProps {
   audioUrl: string
+  fileName?: string
   onTimeUpdate?: (currentTime: number) => void
   onPlayStateChange?: (isPlaying: boolean) => void
   className?: string
@@ -26,7 +28,7 @@ export interface AudioPlayerHandle {
 }
 
 export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>(
-  ({ audioUrl, onTimeUpdate, onPlayStateChange, className = '' }, ref) => {
+  ({ audioUrl, fileName, onTimeUpdate, onPlayStateChange, className = '' }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null)
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
@@ -220,8 +222,14 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
 
       {/* Controls */}
       <div className="flex items-center justify-between">
-        {/* Playback controls */}
+        {/* File name + playback controls */}
         <div className="flex items-center gap-2">
+          {fileName && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground mr-1 max-w-[180px]">
+              <FileAudio className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{fileName}</span>
+            </span>
+          )}
           <Button
             variant="ghost"
             size="icon"

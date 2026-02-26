@@ -199,7 +199,7 @@ export default function SessionsPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [uploadingFiles, setUploadingFiles] = useState(false)
-  const [language, setLanguage] = useState<string>('de') // Default to German
+  const [language, setLanguage] = useState<string>('auto')
   const [inputHint, setInputHint] = useState<string>('') // meeting, presentation, trade_show, voice_note, '' = auto
   const [previewFiles, setPreviewFiles] = useState<File[]>([])
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -230,7 +230,7 @@ export default function SessionsPage() {
       const response = await fetch('/api/profile')
       if (response.ok) {
         const profile = await response.json()
-        setLanguage(profile.default_recording_language || 'de')
+        setLanguage(profile.default_recording_language || 'auto')
         setIsAdmin(profile.role === 'admin')
       }
     } catch (error) {
@@ -1039,6 +1039,7 @@ export default function SessionsPage() {
                   disabled={uploadingFiles}
                   className="w-full p-2 border rounded-md text-sm bg-background"
                 >
+                  <option value="auto">Auto-detect</option>
                   <option value="en">English</option>
                   <option value="de">German (Deutsch)</option>
                   <option value="es">Spanish (Español)</option>

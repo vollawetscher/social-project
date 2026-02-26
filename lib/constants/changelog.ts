@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.11.0',
+    date: 'February 26, 2026',
+    entries: [
+      {
+        version: '1.11.0',
+        date: 'February 26, 2026',
+        category: 'improvement',
+        title: 'Automatic Language Detection',
+        description: 'Recording language is now auto-detected by default. No more manual language selection needed — just record and the correct language is identified automatically. You can still override per session or in Settings.',
+      },
+    ],
+  },
+  {
     version: '1.10.1',
     date: 'February 23, 2026',
     entries: [

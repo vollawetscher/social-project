@@ -23,7 +23,7 @@ export default function UploadRecordingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [uploadStatuses, setUploadStatuses] = useState<Map<string, UploadStatus>>(new Map())
   const [uploading, setUploading] = useState(false)
-  const [language, setLanguage] = useState<string>('de') // Default to German
+  const [language, setLanguage] = useState<string>('auto')
   const router = useRouter()
   const { user, loading } = useAuth()
 
@@ -47,7 +47,7 @@ export default function UploadRecordingsPage() {
       const response = await fetch('/api/profile')
       if (response.ok) {
         const profile = await response.json()
-        setLanguage(profile.default_recording_language || 'de')
+        setLanguage(profile.default_recording_language || 'auto')
       }
     } catch (error) {
       console.error('Error fetching user preferences:', error)
@@ -307,6 +307,7 @@ export default function UploadRecordingsPage() {
               disabled={uploading}
               className="w-full p-2 border rounded-md text-sm"
             >
+              <option value="auto">Auto-detect</option>
               <option value="en">English</option>
               <option value="de">German (Deutsch)</option>
               <option value="es">Spanish (Español)</option>
