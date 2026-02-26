@@ -175,7 +175,6 @@ async function processTranscriptionJob(sessionId: string) {
 
       if (audioData.size < 1024) {
         console.warn('[Transcribe] Audio file too small (empty call):', audioData.size, 'bytes')
-        // Save an empty transcript so the session is still accessible
         await supabase
           .from('transcripts')
           .insert({
@@ -185,14 +184,14 @@ async function processTranscriptionJob(sessionId: string) {
             redacted_json: [],
             raw_text: '',
             redacted_text: '',
-            language: 'de',
+            language: sessionLanguage || 'en',
             summary: null,
           })
         await supabase
           .from('sessions')
           .update({
             status: 'done',
-            last_error: 'Kein Gesprächsinhalt aufgezeichnet (Anruf war zu kurz oder stumm).',
+            last_error: 'No speech recorded — the call was too short or silent.',
           })
           .eq('id', sessionId)
         return

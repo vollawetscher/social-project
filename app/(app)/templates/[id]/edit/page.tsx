@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   Save,
   Loader2,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,6 +33,7 @@ export default function EditTemplatePage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [enhancingDescription, setEnhancingDescription] = useState(false)
   const [template, setTemplate] = useState<Template | null>(null)
   
   // Form state
@@ -69,6 +71,28 @@ export default function EditTemplatePage() {
       toast.error('Failed to load template')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleEnhanceDescription = async () => {
+    if (!name.trim() && !description.trim()) {
+      toast.error("Enter a template name or rough description first")
+      return
+    }
+    setEnhancingDescription(true)
+    try {
+      const res = await fetch("/api/templates/enhance-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), description: description.trim() }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || "Failed to enhance")
+      const { enhanced } = await res.json()
+      if (enhanced) setDescription(enhanced)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to enhance description")
+    } finally {
+      setEnhancingDescription(false)
     }
   }
 
@@ -221,14 +245,30 @@ export default function EditTemplatePage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="description">Description</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                onClick={handleEnhanceDescription}
+                disabled={enhancingDescription || (!name.trim() && !description.trim())}
+              >
+                {enhancingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                Enhance with AI
+              </Button>
+            </div>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe what this template is for..."
+              placeholder="e.g. A structured protocol for client consultations, organized by topics discussed, with action items and follow-ups..."
               rows={3}
             />
+            <p className="text-xs text-muted-foreground">
+              This is the most important field — it tells the AI exactly what kind of document to generate and how to structure it.
+            </p>
           </div>
         </CardContent>
       </Card>

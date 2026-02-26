@@ -99,8 +99,24 @@ export class SpeechmaticsService {
       const transcript = await this.pollJobStatus(jobId)
       return transcript
     } catch (error: any) {
-      console.error('[Speechmatics] Fetch failed:', error.message, error.cause)
-      throw new Error(`Failed to connect to Speechmatics API: ${error.message}`)
+      console.error('[Speechmatics] Transcription error:', error.message, error.cause)
+
+      if (error.message.startsWith('Speechmatics job')) {
+        // Job rejected/failed by Speechmatics — surface the real reason
+        throw error
+      }
+
+      const isNetwork = error.cause?.code === 'ETIMEDOUT' ||
+        error.cause?.code === 'ENETUNREACH' ||
+        error.cause?.code === 'ECONNRESET' ||
+        error.cause?.code === 'ECONNREFUSED' ||
+        error.message?.includes('fetch failed')
+
+      if (isNetwork) {
+        throw new Error(`Failed to connect to Speechmatics API: ${error.message}`)
+      }
+
+      throw new Error(`Transcription failed: ${error.message}`)
     }
   }
 
@@ -146,8 +162,21 @@ export class SpeechmaticsService {
         }
 
         if (status.job.status === 'rejected' || status.job.status === 'failed') {
-          const errorDetails = status.job.errors?.map((e: any) => e.message || e).join(', ') || status.job.status
-          throw new Error(`Speechmatics job ${status.job.status}: ${errorDetails}`)
+          const rawErrors = status.job.errors?.map((e: any) => e.message || e).join(', ') || ''
+          const lower = rawErrors.toLowerCase()
+
+          let userMessage: string
+          if (lower.includes('language') || lower.includes('identify') || lower.includes('detect')) {
+            userMessage = 'Could not detect the language. The audio may be too short, too noisy, or contain no speech.'
+          } else if (lower.includes('audio') || lower.includes('duration') || lower.includes('empty')) {
+            userMessage = 'The audio file is too short or contains no usable speech for transcription.'
+          } else if (lower.includes('format') || lower.includes('codec') || lower.includes('unsupported')) {
+            userMessage = 'The audio format is not supported. Please convert to MP3, M4A, or WAV.'
+          } else {
+            userMessage = rawErrors || status.job.status
+          }
+
+          throw new Error(`Speechmatics job ${status.job.status}: ${userMessage}`)
         }
 
         await new Promise((resolve) => setTimeout(resolve, pollInterval))

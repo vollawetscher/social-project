@@ -651,16 +651,20 @@ export default function SessionDetailPage() {
             </p>
           </div>
         </div>
-        {session.status === 'failed' && session.lastError ? (
-          <div className="flex items-center gap-2 w-full max-w-md rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
-            <span className="text-destructive flex-1 truncate">{session.lastError}</span>
-            {(session.audioUrl || isAdmin) ? (
-              <Button size="sm" variant="outline" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
-                {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry transcription'}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+        {session.status === 'failed' && session.lastError ? (() => {
+          const err = session.lastError.toLowerCase()
+          const isRetryable = !err.includes('too short') && !err.includes('no speech') && !err.includes('no usable speech') && !err.includes('not supported') && !err.includes('format')
+          return (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full max-w-md rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm overflow-hidden">
+              <span className="text-destructive flex-1 min-w-0 break-words">{session.lastError}</span>
+              {isRetryable && (session.audioUrl || isAdmin) ? (
+                <Button size="sm" variant="outline" className="shrink-0 self-end sm:self-auto" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
+                  {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry'}
+                </Button>
+              ) : null}
+            </div>
+          )
+        })() : null}
         <div className="flex items-center gap-2">
           {/* Bug reporter with session context */}
           <BugReporter

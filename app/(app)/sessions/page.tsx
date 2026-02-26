@@ -194,6 +194,11 @@ export default function SessionsPage() {
   const searchParams = useSearchParams()
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "")
+
+  useEffect(() => {
+    const q = searchParams.get("q") || ""
+    if (q) setSearchQuery(q)
+  }, [searchParams])
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
