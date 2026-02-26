@@ -1,3 +1,7 @@
+const createNextIntlPlugin = require('next-intl/plugin')
+
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -7,11 +11,7 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   images: { unoptimized: true },
-  // Railway doesn't need standalone build
-  // output: 'standalone',
-  
-  // Increase timeout for static page generation (helps with font fetching)
   staticPageGenerationTimeout: 120,
-};
+}
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig)

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Search, WifiOff, RefreshCw, Bell, User, LogOut, Settings, Mic } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { Input } from "@/components/ui/input"
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/AuthProvider"
+import { LocaleSwitcher } from "@/components/locale-switcher"
 
 interface AppTopbarProps {
   sidebarCollapsed: boolean
@@ -34,6 +36,7 @@ export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
   const [topbarSearch, setTopbarSearch] = useState("")
   const { user, profile, signOut } = useAuth()
   const router = useRouter()
+  const t = useTranslations('nav')
 
   // Simulated sync function
   const handleSync = () => {
@@ -88,7 +91,7 @@ export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search sessions, outputs..."
+              placeholder={t('searchPlaceholder')}
               className="pl-9 bg-secondary border-border"
               value={topbarSearch}
               onChange={(e) => setTopbarSearch(e.target.value)}
@@ -161,6 +164,9 @@ export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
             </TooltipTrigger>
             <TooltipContent>Notifications</TooltipContent>
           </Tooltip>
+
+          {/* Language Switcher */}
+          <LocaleSwitcher compact />
 
           {/* User Menu */}
           <DropdownMenu>

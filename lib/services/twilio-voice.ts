@@ -3,19 +3,41 @@
  * Used for short notification calls (ring + TTS message), not for LiveKit SIP calls.
  */
 
+type SupportedLocale = 'en' | 'de' | 'es'
+
 interface TwilioCallResult {
   success: boolean
   callSid?: string
   error?: string
 }
 
+const voiceConfig: Record<SupportedLocale, { language: string; voice: string; message: (callerName: string) => string }> = {
+  en: {
+    language: 'en-US',
+    voice: 'Polly.Joanna',
+    message: (callerName) => `${callerName} is inviting you to a video call. Please click the link in the SMS.`,
+  },
+  de: {
+    language: 'de-DE',
+    voice: 'Polly.Vicki',
+    message: (callerName) => `${callerName} möchte einen Videoanruf starten. Klicken Sie einfach den Link in der SMS.`,
+  },
+  es: {
+    language: 'es-ES',
+    voice: 'Polly.Lucia',
+    message: (callerName) => `${callerName} le invita a una videollamada. Haga clic en el enlace del SMS.`,
+  },
+}
+
 /**
  * Places a short Twilio voice call that plays a TTS message and hangs up.
  * Uses Twilio REST API with inline TwiML (no webhook needed).
+ * The locale determines the language of the voice message; falls back to bilingual DE+EN.
  */
 export async function placeNotificationCall(
   to: string,
   callerName: string,
+  locale: SupportedLocale = 'en',
 ): Promise<TwilioCallResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const authToken = process.env.TWILIO_AUTH_TOKEN
@@ -26,15 +48,22 @@ export async function placeNotificationCall(
     return { success: false, error: 'Twilio voice not configured' }
   }
 
+  const cfg = voiceConfig[locale] || voiceConfig.en
+
   const twiml = [
     '<Response>',
-    `<Say language="de-DE" voice="Polly.Vicki">`,
-    `${callerName} möchte einen Videoanruf starten. Klicken Sie einfach den Link in der SMS.`,
+    `<Say language="${cfg.language}" voice="${cfg.voice}">`,
+    cfg.message(callerName),
     '</Say>',
     '<Pause length="1"/>',
-    `<Say language="en-US" voice="Polly.Joanna">`,
-    `${callerName} is inviting you to a video call. Please click the link in the SMS.`,
-    '</Say>',
+    // Always add English fallback for non-English locales
+    ...(locale !== 'en'
+      ? [
+          `<Say language="en-US" voice="Polly.Joanna">`,
+          voiceConfig.en.message(callerName),
+          '</Say>',
+        ]
+      : []),
     '</Response>',
   ].join('')
 

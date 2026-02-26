@@ -3,6 +3,9 @@
  * Informs users about GDPR-compliant voice processing
  */
 
+'use client'
+
+import { useTranslations } from 'next-intl'
 import { Info } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useTranslations } from "next-intl"
 import {
   Mic,
   FileText,
@@ -29,56 +30,30 @@ interface AppSidebarProps {
   onToggle: () => void
 }
 
-const navItems = [
-  {
-    name: "Sessions",
-    href: "/sessions",
-    icon: Mic,
-  },
-  {
-    name: "Outputs",
-    href: "/outputs",
-    icon: FileText,
-  },
-  {
-    name: "Calls",
-    href: "/calls",
-    icon: Phone,
-  },
-  {
-    name: "Templates",
-    href: "/templates",
-    icon: LayoutTemplate,
-  },
-  {
-    name: "Settings",
-    href: "/settings",
-    icon: Settings,
-  },
+const navItemDefs = [
+  { nameKey: "sessions", href: "/sessions", icon: Mic },
+  { nameKey: "outputs", href: "/outputs", icon: FileText },
+  { nameKey: "calls", href: "/calls", icon: Phone },
+  { nameKey: "templates", href: "/templates", icon: LayoutTemplate },
+  { nameKey: "settings", href: "/settings", icon: Settings },
 ]
 
-const adminNavItems = [
-  {
-    name: "All Sessions",
-    href: "/admin/sessions",
-    icon: Shield,
-  },
-  {
-    name: "Bug Reports",
-    href: "/admin/bugs",
-    icon: Bug,
-  },
+const adminNavItemDefs = [
+  { nameKey: "adminSessions", href: "/admin/sessions", icon: Shield },
+  { nameKey: "adminBugs", href: "/admin/bugs", icon: Bug },
 ]
 
 export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
   const pathname = usePathname()
   const { profile } = useAuth()
   const isAdmin = (profile as any)?.role === 'admin'
+  const t = useTranslations('nav')
 
-  const renderNavItem = (item: { name: string; href: string; icon: any }) => {
+  const renderNavItem = (item: { nameKey: string; href: string; icon: any }) => {
     const isActive =
       pathname === item.href || pathname.startsWith(item.href + "/")
     const Icon = item.icon
+    const name = t(item.nameKey)
 
     if (isCollapsed) {
       return (
@@ -94,11 +69,11 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
               )}
             >
               <Icon className="h-5 w-5" />
-              <span className="sr-only">{item.name}</span>
+              <span className="sr-only">{name}</span>
             </Link>
           </TooltipTrigger>
           <TooltipContent side="right" className="font-medium">
-            {item.name}
+            {name}
           </TooltipContent>
         </Tooltip>
       )
@@ -116,7 +91,7 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
         )}
       >
         <Icon className="h-5 w-5 shrink-0" />
-        <span className="text-sm font-medium whitespace-nowrap">{item.name}</span>
+        <span className="text-sm font-medium whitespace-nowrap">{name}</span>
       </Link>
     )
   }
@@ -129,7 +104,6 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
           isCollapsed ? "w-16" : "w-60"
         )}
       >
-        {/* Logo */}
         <div className="flex h-14 items-center border-b border-sidebar-border px-4">
           <Link href="/sessions">
             {isCollapsed ? (
@@ -140,11 +114,9 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
           </Link>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 space-y-1 p-2">
-          {navItems.map(renderNavItem)}
+          {navItemDefs.map(renderNavItem)}
 
-          {/* Admin section */}
           {isAdmin && (
             <>
               <div className={cn(
@@ -157,12 +129,11 @@ export function AppSidebar({ isCollapsed, onToggle }: AppSidebarProps) {
                   </p>
                 )}
               </div>
-              {adminNavItems.map(renderNavItem)}
+              {adminNavItemDefs.map(renderNavItem)}
             </>
           )}
         </nav>
 
-        {/* Collapse Toggle */}
         <div className="border-t border-sidebar-border p-2">
           <Button
             variant="ghost"

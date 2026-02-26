@@ -5,6 +5,8 @@
  * Supports German-speaking EU countries (DE, AT, CH)
  */
 
+type SupportedLocale = 'en' | 'de' | 'es'
+
 interface SendSMSResponse {
   success: boolean;
   messageId?: string;
@@ -16,9 +18,6 @@ interface SendSMSParams {
   text: string;
 }
 
-/**
- * Sends an SMS using seven.io API
- */
 async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
   const apiKey = process.env.SEVEN_IO_API_KEY;
 
@@ -35,9 +34,9 @@ async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
 
     const params = new URLSearchParams({
       p: apiKey,
-      to: to.replace('+', ''), // Remove + prefix for seven.io
+      to: to.replace('+', ''),
       text: text,
-      from: 'GespraechsAI', // Sender ID
+      from: 'Notissima',
     });
 
     const response = await fetch(`${url}?${params.toString()}`, {
@@ -49,8 +48,6 @@ async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
 
     const responseText = await response.text();
 
-    // seven.io returns success codes as numbers (e.g., "100", "101")
-    // Error codes are also numeric but indicate failure
     if (response.ok && !responseText.startsWith('9')) {
       return {
         success: true,
@@ -58,7 +55,6 @@ async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
       };
     }
 
-    // Parse error codes
     let errorMessage = 'Failed to send SMS';
     if (responseText.startsWith('900')) errorMessage = 'Invalid API key';
     else if (responseText.startsWith('901')) errorMessage = 'Insufficient credits';
@@ -80,71 +76,60 @@ async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
   }
 }
 
-/**
- * Generates a 6-digit OTP code
- */
 export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-/**
- * Sends an OTP code via SMS
- */
-export async function sendOTPSMS(phoneNumber: string, otp: string): Promise<SendSMSResponse> {
-  const message = `Ihr Gesprächsbericht Verifizierungscode ist: ${otp}\n\nDieser Code ist 5 Minuten gültig.\n\nYour Gesprächsbericht verification code is: ${otp}\n\nThis code is valid for 5 minutes.`;
-
-  return sendSMS({
-    to: phoneNumber,
-    text: message,
-  });
+const otpMessages: Record<SupportedLocale, (otp: string) => string> = {
+  en: (otp) => `Your Notissima verification code is: ${otp}\n\nThis code is valid for 5 minutes.`,
+  de: (otp) => `Ihr Notissima Verifizierungscode ist: ${otp}\n\nDieser Code ist 5 Minuten gültig.`,
+  es: (otp) => `Su código de verificación de Notissima es: ${otp}\n\nEste código es válido durante 5 minutos.`,
 }
 
-/**
- * Sends a video call invite SMS with the join link
- */
+export async function sendOTPSMS(
+  phoneNumber: string,
+  otp: string,
+  locale: SupportedLocale = 'en',
+): Promise<SendSMSResponse> {
+  const getMessage = otpMessages[locale] || otpMessages.en
+  return sendSMS({ to: phoneNumber, text: getMessage(otp) });
+}
+
+const inviteMessages: Record<SupportedLocale, (callerName: string, joinUrl: string) => string> = {
+  en: (callerName, joinUrl) => `${callerName} is inviting you to a video call.\n\nJoin now: ${joinUrl}`,
+  de: (callerName, joinUrl) => `${callerName} lädt Sie zu einem Videoanruf ein.\n\nJetzt beitreten: ${joinUrl}`,
+  es: (callerName, joinUrl) => `${callerName} le invita a una videollamada.\n\nUnirse ahora: ${joinUrl}`,
+}
+
 export async function sendVideoCallInviteSMS(
   phoneNumber: string,
   callerName: string,
   joinUrl: string,
+  locale: SupportedLocale = 'en',
 ): Promise<SendSMSResponse> {
-  const message = `${callerName} lädt Sie zu einem Videoanruf ein.\n\nJetzt beitreten: ${joinUrl}`
-  return sendSMS({ to: phoneNumber, text: message })
+  const getMessage = inviteMessages[locale] || inviteMessages.en
+  return sendSMS({ to: phoneNumber, text: getMessage(callerName, joinUrl) })
 }
 
-/**
- * Validates phone number format (international format with country code)
- */
 export function isValidPhoneNumber(phoneNumber: string): boolean {
-  // Must start with + followed by country code and number
-  // Length between 10-15 digits total
   const phoneRegex = /^\+[1-9]\d{9,14}$/;
   return phoneRegex.test(phoneNumber);
 }
 
-/**
- * Formats phone number for display
- * Example: +4915112345678 -> +49 151 12345678
- */
 export function formatPhoneNumber(phoneNumber: string): string {
   if (!phoneNumber || !phoneNumber.startsWith('+')) {
     return phoneNumber;
   }
 
-  // Remove + for processing
   const cleaned = phoneNumber.substring(1);
 
-  // Common formats for DE, AT, CH
   if (cleaned.startsWith('49')) {
-    // Germany: +49 151 12345678
     return `+49 ${cleaned.substring(2, 5)} ${cleaned.substring(5)}`;
   } else if (cleaned.startsWith('43')) {
-    // Austria: +43 664 12345678
     return `+43 ${cleaned.substring(2, 5)} ${cleaned.substring(5)}`;
   } else if (cleaned.startsWith('41')) {
-    // Switzerland: +41 76 1234567
     return `+41 ${cleaned.substring(2, 4)} ${cleaned.substring(4)}`;
   }
 
-  // Generic format for other countries
   return `+${cleaned.substring(0, 2)} ${cleaned.substring(2)}`;
 }
