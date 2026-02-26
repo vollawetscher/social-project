@@ -927,7 +927,7 @@ export default function SessionsPage() {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Sessions</h1>
           <p className="text-sm text-muted-foreground">
-            Record or upload audio to transcribe
+            From recordings, calls, uploads, or pasted text
           </p>
         </div>
       </div>
@@ -963,8 +963,8 @@ export default function SessionsPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-medium text-foreground">Start Recording</p>
-                  <p className="text-xs text-muted-foreground">Batch or real-time mode</p>
+                  <p className="text-sm font-medium text-foreground">Record</p>
+                  <p className="text-xs text-muted-foreground">Microphone or live meeting</p>
                 </>
               )}
             </div>
@@ -1000,8 +1000,8 @@ export default function SessionsPage() {
                   <Upload className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">Upload</p>
-                  <p className="text-xs text-muted-foreground">Audio or transcript files</p>
+                  <p className="text-sm font-medium text-foreground">Upload or Paste</p>
+                  <p className="text-xs text-muted-foreground">Audio, text files, or clipboard</p>
                 </div>
               </div>
               <ChevronRight className={cn(

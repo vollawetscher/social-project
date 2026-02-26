@@ -465,15 +465,35 @@ export default function SettingsPage() {
         </Card>
 
 
-        {/* Integrations Section */}
+        {/* Integrations & Security Section */}
         <Card className="border-border">
           <CardHeader>
-            <CardTitle>Integrations</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Infrastructure & Security
+            </CardTitle>
             <CardDescription>
-              Connected services and APIs
+              Connected services and their security measures
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
+            {/* Security Overview */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { icon: <Globe className="h-4 w-4" />, label: 'EU Hosting', detail: 'All data in EU' },
+                { icon: <Lock className="h-4 w-4" />, label: 'Encryption', detail: 'TLS + AES-256' },
+                { icon: <Shield className="h-4 w-4" />, label: 'Row Level Security', detail: 'Per-user isolation' },
+                { icon: <Eye className="h-4 w-4" />, label: 'Consent Logging', detail: 'Timestamped records' },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-success/30 bg-success/5 text-center">
+                  <div className="text-success">{item.icon}</div>
+                  <p className="text-xs font-medium text-foreground">{item.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Service Cards */}
             <div className="grid gap-4 md:grid-cols-3">
               {/* Transcription Service */}
               <div className="p-4 rounded-lg border border-border bg-secondary/30">
@@ -485,14 +505,15 @@ export default function SettingsPage() {
                     Connected
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">DSGVO-Compliant Transcription</h4>
+                <h4 className="font-medium text-foreground">Speechmatics</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  EU-hosted speech-to-text
+                  GDPR-compliant transcription
                 </p>
-                <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Configure
-                </Button>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">EU hosted</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">SOC 2</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">No data retention</Badge>
+                </div>
               </div>
 
               {/* LLM */}
@@ -505,34 +526,56 @@ export default function SettingsPage() {
                     Connected
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">LLM</h4>
+                <h4 className="font-medium text-foreground">Anthropic Claude</h4>
                 <p className="text-xs text-muted-foreground mt-1">
                   AI-powered content generation
                 </p>
-                <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Configure
-                </Button>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">No training on data</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">SOC 2</Badge>
+                </div>
               </div>
 
               {/* Database */}
               <div className="p-4 rounded-lg border border-border bg-secondary/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-bold text-primary">DB</span>
+                    <Database className="h-4 w-4 text-primary" />
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
                     Connected
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Database</h4>
+                <h4 className="font-medium text-foreground">Supabase</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Secure data storage & auth
+                  Database, auth & file storage
                 </p>
-                <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Configure
-                </Button>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">EU region</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">RLS enabled</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">AES-256</Badge>
+                </div>
+              </div>
+
+              {/* Hosting */}
+              <div className="p-4 rounded-lg border border-border bg-secondary/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                    <Wifi className="h-4 w-4 text-primary" />
+                  </div>
+                  <Badge className="bg-success/20 text-success border-success/30">
+                    Connected
+                  </Badge>
+                </div>
+                <h4 className="font-medium text-foreground">Railway</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Application hosting
+                </p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">EU region</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">TLS 1.3</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">SOC 2</Badge>
+                </div>
               </div>
 
               {/* Phone Service */}
@@ -545,14 +588,14 @@ export default function SettingsPage() {
                     Connected
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Phone Service</h4>
+                <h4 className="font-medium text-foreground">Twilio</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Outbound PSTN calls & SIP trunk
+                  PSTN calls & SMS
                 </p>
-                <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Configure
-                </Button>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">Encrypted signaling</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">GDPR DPA</Badge>
+                </div>
               </div>
 
               {/* Video Conference Server */}
@@ -565,14 +608,14 @@ export default function SettingsPage() {
                     Connected
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Video Conference Server</h4>
+                <h4 className="font-medium text-foreground">LiveKit</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Real-time video & audio rooms
+                  Video & audio conferencing
                 </p>
-                <Button variant="ghost" size="sm" className="mt-3 w-full justify-start text-xs">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Configure
-                </Button>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">E2E encrypted</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">DTLS/SRTP</Badge>
+                </div>
               </div>
             </div>
           </CardContent>
