@@ -162,7 +162,13 @@ export async function POST(
       })
 
     if (uploadError) {
-      const errorMessage = 'Upload failed: ' + uploadError.message
+      const isMaxSize = uploadError.message?.toLowerCase().includes('maximum allowed size') ||
+        uploadError.message?.toLowerCase().includes('exceeded') ||
+        uploadError.message?.toLowerCase().includes('too large')
+      const sizeMB = Math.round(file.size / 1024 / 1024)
+      const errorMessage = isMaxSize
+        ? `File too large (${sizeMB} MB). Maximum upload size is 500 MB.`
+        : 'Upload failed: ' + uploadError.message
       
       // Log error for tracking
       await logError({

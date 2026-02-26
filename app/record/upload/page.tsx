@@ -11,6 +11,8 @@ import { Upload, Loader2, Clock, Check, AlertCircle, Download, ArrowLeft } from 
 import { toast } from 'sonner'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { createClient } from '@/lib/supabase/client'
+import { getStorageMimeType } from '@/lib/utils/audio-format-detector'
 interface UploadStatus {
   id: string
   status: 'pending' | 'uploading' | 'success' | 'error'
@@ -79,7 +81,8 @@ export default function UploadRecordingsPage() {
     setSelectedIds(newSet)
   }
 
-  const uploadRecording = async (recording: LocalRecording, language: string = 'en'): Promise<string> => {
+  const uploadRecording = async (recording: LocalRecording, language: string = 'auto'): Promise<string> => {
+    const supabase = createClient()
     const timestamp = new Date(recording.timestamp).toLocaleString('en-US', {
       month: '2-digit',
       day: '2-digit',
@@ -91,7 +94,7 @@ export default function UploadRecordingsPage() {
     const extension = recording.mimeType.split('/')[1] || 'webm'
     const filename = `recording_${timestamp.replace(/[/,]/g, '-')}.${extension}`
 
-    // 1. Create session via API (avoids client-side RLS issues)
+    // 1. Create session via API
     const createRes = await fetch('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -106,51 +109,78 @@ export default function UploadRecordingsPage() {
     }
     const session = await createRes.json()
 
-    // 2. Upload via API with retry for transient network errors
-    const formData = new FormData()
-    formData.append('file', new File([recording.blob], filename, { type: recording.mimeType, lastModified: recording.timestamp }))
-    formData.append('duration', String(Math.round(recording.duration)))
-    formData.append('purpose', 'meeting')
-    formData.append('recorded_at', new Date(recording.timestamp).toISOString())
+    try {
+      // 2. Upload directly to Supabase Storage (bypasses API route body size limits)
+      const file = new File([recording.blob], filename, { type: recording.mimeType, lastModified: recording.timestamp })
+      const storagePath = `${session.id}_${Date.now()}_0.${extension}`
+      const storageContentType = getStorageMimeType(file)
 
-    let uploadRes: Response | null = null
-    const maxRetries = 2
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        uploadRes = await fetch(`/api/sessions/${session.id}/upload`, {
-          method: 'POST',
-          body: formData,
+      const { error: storageError } = await supabase.storage
+        .from('rohbericht-audio')
+        .upload(storagePath, file, {
+          contentType: storageContentType,
+          upsert: false,
         })
-        if (uploadRes.ok) break
-      } catch (networkErr) {
-        if (attempt < maxRetries) {
-          console.warn(`[Upload] Network error on attempt ${attempt + 1}, retrying...`, networkErr)
-          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)))
-          continue
-        }
-        await fetch(`/api/sessions/${session.id}`, { method: 'DELETE' }).catch(() => {})
-        throw new Error('Upload failed: network error. Please check your connection and try again.')
+
+      if (storageError) {
+        const sizeMB = Math.round(file.size / 1024 / 1024)
+        const msg = storageError.message?.includes('maximum allowed size')
+          ? `File too large (${sizeMB} MB). Please try a shorter recording.`
+          : `Upload failed: ${storageError.message}`
+        throw new Error(msg)
       }
-    }
-    if (!uploadRes || !uploadRes.ok) {
-      const errData = await uploadRes?.json().catch(() => ({})) || {}
-      const msg = errData.error || 'Upload failed'
-      await fetch(`/api/sessions/${session.id}`, { method: 'DELETE' }).catch(() => {})
-      throw new Error(msg)
-    }
 
-    // 3. Trigger transcription
-    const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ language }),
-    })
-    if (!transcribeRes.ok) {
-      console.error('Transcription trigger failed:', await transcribeRes.text())
-      // Session and audio exist - user can retry transcription from session page
-    }
+      const { data: { publicUrl } } = supabase.storage
+        .from('rohbericht-audio')
+        .getPublicUrl(storagePath)
 
-    return session.id
+      // 3. Create file record in DB
+      const { error: fileError } = await supabase
+        .from('files')
+        .insert({
+          session_id: session.id,
+          storage_path: storagePath,
+          original_filename: filename,
+          mime_type: storageContentType,
+          size_bytes: file.size,
+          file_purpose: 'meeting',
+          upload_status: 'completed',
+        })
+
+      if (fileError) throw new Error(`Failed to create file record: ${fileError.message}`)
+
+      // 4. Update session with audio URL and duration
+      const durationSec = Math.round(recording.duration)
+      const recordedAt = new Date(recording.timestamp).toISOString()
+      await supabase
+        .from('sessions')
+        .update({
+          audio_url: publicUrl,
+          duration_sec: durationSec,
+          status: 'created',
+          recorded_at: recordedAt,
+        })
+        .eq('id', session.id)
+
+      // 5. Trigger transcription
+      const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language }),
+      })
+      if (!transcribeRes.ok) {
+        console.error('Transcription trigger failed:', await transcribeRes.text())
+      }
+
+      return session.id
+    } catch (err) {
+      // Mark session as error so it's visible to the user
+      await supabase
+        .from('sessions')
+        .update({ status: 'error', last_error: err instanceof Error ? err.message : 'Upload failed' })
+        .eq('id', session.id)
+      throw err
+    }
   }
 
   const handleUpload = async () => {
