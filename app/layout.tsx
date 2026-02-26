@@ -1,15 +1,10 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/lib/auth/AuthProvider';
-
-// Temporarily using system fonts for faster, more reliable builds
-// Google Fonts was causing Railway deployment timeouts
-// Will re-enable Inter once deployment is stable
+import './globals.css'
+import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Notissima - Professional Meeting Documentation',
-  description: 'AI-powered transcription and documentation for meetings, consultations, and conversations',
+  description:
+    'AI-powered transcription and documentation for meetings, consultations, and conversations',
   manifest: '/manifest.json',
   themeColor: '#7C3AED',
   icons: {
@@ -34,7 +29,8 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Notissima - Professional Meeting Documentation',
-    description: 'AI-powered transcription and documentation for meetings, consultations, and conversations',
+    description:
+      'AI-powered transcription and documentation for meetings, consultations, and conversations',
     url: 'https://notissima.com',
     siteName: 'Notissima',
     images: [
@@ -51,24 +47,16 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Notissima - Professional Meeting Documentation',
-    description: 'AI-powered transcription and documentation for meetings, consultations, and conversations',
+    description:
+      'AI-powered transcription and documentation for meetings, consultations, and conversations',
     images: ['/og-image.png'],
   },
-};
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  return (
-    <html lang="de">
-      <body className="font-sans antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-        <Toaster />
-      </body>
-    </html>
-  );
+  return children
 }

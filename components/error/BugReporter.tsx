@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -39,6 +40,7 @@ export function BugReporter({
   iconOnly = false,
   className,
 }: BugReporterProps) {
+  const t = useTranslations('bugReporter')
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
   const [reproductionSteps, setReproductionSteps] = useState('')
@@ -126,7 +128,7 @@ export function BugReporter({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} size={size} className={className} title="Report a problem">
+        <Button variant={variant} size={size} className={className} title={t('triggerTitle')}>
           <Bug className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} />
           {!iconOnly && 'Report Problem'}
         </Button>
@@ -159,7 +161,7 @@ export function BugReporter({
               </Label>
               <Textarea
                 id="description"
-                placeholder="Describe the problem you encountered..."
+                placeholder={t('descriptionPlaceholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}

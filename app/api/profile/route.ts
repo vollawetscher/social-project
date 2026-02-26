@@ -43,6 +43,7 @@ export async function PATCH(request: Request) {
     const allowedFields = [
       'default_recording_language',
       'preferred_report_language',
+      'preferred_locale',
       'timezone',
       'after_transcript_action',
       'after_transcript_template_id',

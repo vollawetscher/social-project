@@ -8,6 +8,7 @@ export interface UserProfile {
   // Language preferences
   default_recording_language: string
   preferred_report_language: string
+  preferred_locale: 'en' | 'de' | 'es'
   timezone: string
   
   // Workflow preferences

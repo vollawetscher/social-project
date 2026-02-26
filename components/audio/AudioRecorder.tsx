@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Mic, Square, Play, Pause, Trash2, Settings2 } from 'lucide-react'
@@ -16,6 +17,7 @@ interface AudioRecorderProps {
 }
 
 export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
+  const t = useTranslations('recorder')
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [audioURL, setAudioURL] = useState<string | null>(null)
@@ -467,7 +469,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       // Request wake lock to keep recording active with screen off
       await requestWakeLock()
 
-      toast.success('Recording started')
+      toast.success(t('recordingStarted'))
     } catch (error: any) {
       console.error('[AudioRecorder] Start error:', error)
       
@@ -508,7 +510,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         lastHealthCheckRef.current = Date.now()
         startHealthMonitoring()
         
-        toast.info('Recording resumed')
+        toast.info(t('recordingResumed'))
       } else {
         // Pausing
         isPausedRef.current = true
@@ -533,7 +535,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         }
         mediaRecorderRef.current.pause()
         pausedTimeRef.current = Date.now()
-        toast.info('Recording paused')
+        toast.info(t('recordingPaused'))
       }
     }
   }
@@ -570,7 +572,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       isPausedRef.current = false // Reset ref
       setIsRecording(false)
       setIsPaused(false)
-      toast.success('Recording stopped')
+      toast.success(t('recordingStopped'))
     }
   }
 

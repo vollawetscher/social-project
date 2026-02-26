@@ -31,6 +31,13 @@ export async function POST(
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('preferred_locale')
+      .eq('id', user.id)
+      .single()
+    const locale = (profile?.preferred_locale as 'en' | 'de' | 'es') || 'en'
+
     const body = await request.json()
     const phoneNumber: string = body.phoneNumber
     const callerName: string = body.callerName || 'Someone'
@@ -48,12 +55,12 @@ export async function POST(
     const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${callId}`
 
     // Send SMS first so the link is on the phone when it rings
-    const smsResult = await sendVideoCallInviteSMS(phoneNumber, callerName, joinUrl)
+    const smsResult = await sendVideoCallInviteSMS(phoneNumber, callerName, joinUrl, locale)
     console.log('[RingSMS] SMS:', smsResult.success ? 'sent' : smsResult.error)
 
     let voiceResult: { success: boolean; callSid?: string; error?: string } = { success: false }
     if (smsResult.success) {
-      voiceResult = await placeNotificationCall(phoneNumber, callerName)
+      voiceResult = await placeNotificationCall(phoneNumber, callerName, locale)
       console.log('[RingSMS] Voice:', voiceResult.success ? voiceResult.callSid : voiceResult.error)
     } else {
       console.warn('[RingSMS] Skipping voice call — SMS failed, no link to click')

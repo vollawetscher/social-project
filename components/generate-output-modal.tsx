@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import {
   AlertTriangle,
   Sparkles,
@@ -79,6 +80,7 @@ export function GenerateOutputModal({
   session,
   onSuccess,
 }: GenerateOutputModalProps) {
+  const t = useTranslations('generateModal')
   const [templates, setTemplates] = useState<Template[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [selectedTemplate, setSelectedTemplate] = useState<string>(template?.id || initialTemplateId || "")
@@ -301,7 +303,7 @@ export function GenerateOutputModal({
       
     } catch (error) {
       console.error('Error generating output:', error)
-      toast.error('Failed to generate output: ' + (error as Error).message)
+      toast.error(t('generateFailed') + ': ' + (error as Error).message)
     } finally {
       setGenerating(false)
     }

@@ -1,78 +1,91 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import createIntlMiddleware from 'next-intl/middleware'
+import { routing } from './i18n/routing'
+
+const intlMiddleware = createIntlMiddleware(routing)
+
+const protectedPatterns = ['/sessions', '/templates', '/outputs', '/settings', '/calls', '/profile', '/admin', '/record']
+const publicPatterns = ['/api/', '/auth/', '/_next/', '/favicon', '/icon-', '/apple-touch', '/manifest', '/og-image', '/sw.js']
+
+function isPublicAsset(pathname: string) {
+  return publicPatterns.some((p) => pathname.startsWith(p))
+}
+
+function stripLocalePrefix(pathname: string): string {
+  for (const locale of routing.locales) {
+    if (locale === routing.defaultLocale) continue
+    if (pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`) {
+      return pathname.slice(locale.length + 1) || '/'
+    }
+  }
+  return pathname
+}
+
+function isProtectedRoute(pathname: string): boolean {
+  const bare = stripLocalePrefix(pathname)
+  return protectedPatterns.some((p) => bare.startsWith(p))
+}
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname } = request.nextUrl
 
-  const protectedRoutes = ['/sessions', '/templates', '/outputs', '/settings'];
-  const publicRoutes = ['/login', '/api/auth'];
+  if (pathname.startsWith('/api/') || isPublicAsset(pathname)) {
+    return NextResponse.next()
+  }
 
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  const intlResponse = intlMiddleware(request)
 
-  if (isProtectedRoute) {
-    let response = NextResponse.next({
-      request: {
-        headers: request.headers,
-      },
-    });
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value;
-          },
-          set(name: string, value: string, options: any) {
-            request.cookies.set(name, value);
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-            });
-          },
-          remove(name: string, options: any) {
-            request.cookies.delete(name);
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-            });
-          },
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      const loginUrl = new URL('/login', request.url);
-      return NextResponse.redirect(loginUrl);
+  if (!isProtectedRoute(pathname)) {
+    if (pathname === '/login' || pathname === '/signup' || pathname.startsWith('/de/login') || pathname.startsWith('/es/login') || pathname.startsWith('/de/signup') || pathname.startsWith('/es/signup')) {
+      intlResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+      intlResponse.headers.set('Pragma', 'no-cache')
+      intlResponse.headers.set('Expires', '0')
     }
-
-    // Prevent caching of protected routes
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-
-    return response;
+    return intlResponse
   }
 
-  // Disable cache for auth-related pages
-  if (isPublicRoute || pathname === '/login' || pathname === '/signup') {
-    const response = NextResponse.next();
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
-    return response;
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: any) {
+          request.cookies.set(name, value)
+          intlResponse.cookies.set({ name, value, ...options })
+        },
+        remove(name: string, options: any) {
+          request.cookies.delete(name)
+          intlResponse.cookies.set({ name, value: '', ...options })
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    const locale = stripLocalePrefix(pathname) !== pathname
+      ? pathname.split('/')[1]
+      : routing.defaultLocale
+    const loginPath = locale === routing.defaultLocale ? '/login' : `/${locale}/login`
+    const loginUrl = new URL(loginPath, request.url)
+    return NextResponse.redirect(loginUrl)
   }
 
-  return NextResponse.next();
+  intlResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  intlResponse.headers.set('Pragma', 'no-cache')
+  intlResponse.headers.set('Expires', '0')
+
+  return intlResponse
 }
 
 export const config = {
-  matcher: ['/sessions/:path*', '/templates/:path*', '/outputs/:path*', '/settings/:path*'],
-};
+  matcher: ['/((?!api|_next|.*\\..*).*)'],
+}

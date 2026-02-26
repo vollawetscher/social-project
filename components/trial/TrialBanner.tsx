@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { isOnTrial, trialDaysLeft } from "@/lib/utils/trial"
 import { Sparkles } from "lucide-react"
