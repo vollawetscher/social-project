@@ -14,6 +14,7 @@ import { localStorageService, LocalRecording } from '@/lib/services/local-storag
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { createClient } from '@/lib/supabase/client'
 import { getStorageMimeType } from '@/lib/utils/audio-format-detector'
+import { uploadToStorage } from '@/lib/utils/resumable-upload'
 interface UploadStatus {
   id: string
   status: 'pending' | 'uploading' | 'success' | 'error'
@@ -116,14 +117,11 @@ export default function UploadRecordingsPage() {
       const storagePath = `${session.id}_${Date.now()}_0.${extension}`
       const storageContentType = getStorageMimeType(file)
 
-      const { error: storageError } = await supabase.storage
-        .from('rohbericht-audio')
-        .upload(storagePath, file, {
+      try {
+        await uploadToStorage(supabase, 'rohbericht-audio', storagePath, file, {
           contentType: storageContentType,
-          upsert: false,
         })
-
-      if (storageError) {
+      } catch (storageError: any) {
         const sizeMB = Math.round(file.size / 1024 / 1024)
         const msg = storageError.message?.includes('maximum allowed size')
           ? `File too large (${sizeMB} MB). Please try a shorter recording.`

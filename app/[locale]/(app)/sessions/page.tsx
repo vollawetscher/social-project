@@ -59,6 +59,7 @@ import { Label } from "@/components/ui/label"
 import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
 import { PastePreviewSheet } from "@/components/upload/PastePreviewSheet"
 import { getStorageMimeType } from "@/lib/utils/audio-format-detector"
+import { uploadToStorage } from "@/lib/utils/resumable-upload"
 import { parseTranscriptFile, cleanPastedContent } from "@/lib/utils/transcript-parser"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
@@ -692,14 +693,11 @@ export default function SessionsPage() {
         // Use extension-based MIME for phone recordings (browser often reports wrong/empty)
         const storageContentType = getStorageMimeType(file)
 
-        const { error: uploadError } = await supabase.storage
-          .from('rohbericht-audio')
-          .upload(fileName, file, {
+        try {
+          await uploadToStorage(supabase, 'rohbericht-audio', fileName, file, {
             contentType: storageContentType,
-            upsert: false
           })
-
-        if (uploadError) {
+        } catch (uploadError: any) {
           const errMsg = `Failed to upload ${file.name}: ${uploadError.message}`
           await supabase
             .from('sessions')
