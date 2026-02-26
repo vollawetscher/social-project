@@ -720,32 +720,7 @@ export default function SessionDetailPage() {
         </div>
       </div>
 
-      {/* Audio files strip */}
-      {sessionFiles.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 pt-3 shrink-0">
-          {sessionFiles.map((file: any) => {
-            const filename = (file.storage_path as string)?.split('/').pop() ?? 'audio'
-            const sizeMb = file.size_bytes ? (file.size_bytes / (1024 * 1024)).toFixed(1) : null
-            const hasAudio = !!file.signed_url
-            return (
-              <span
-                key={file.id}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                  hasAudio
-                    ? "border-border bg-muted text-muted-foreground"
-                    : "border-dashed border-muted-foreground/40 text-muted-foreground/60"
-                )}
-              >
-                <Mic className="h-3 w-3 shrink-0" />
-                <span className="max-w-[160px] truncate">{filename}</span>
-                {sizeMb && <span className="text-muted-foreground/60">·&nbsp;{sizeMb}&nbsp;MB</span>}
-                {!hasAudio && <span className="text-muted-foreground/50">(no signed URL)</span>}
-              </span>
-            )
-          })}
-        </div>
-      )}
+      {/* Audio file name is shown inside the AudioPlayer component */}
 
       {/* Language mismatch banner */}
       {languageMismatch && (() => {

@@ -111,6 +111,20 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
       'pt': 'Portuguese (Português)',
       'nl': 'Dutch (Nederlands)',
       'pl': 'Polish (Polski)',
+      'cs': 'Czech (Čeština)',
+      'da': 'Danish (Dansk)',
+      'fi': 'Finnish (Suomi)',
+      'no': 'Norwegian (Norsk)',
+      'sv': 'Swedish (Svenska)',
+      'ru': 'Russian (Русский)',
+      'ja': 'Japanese (日本語)',
+      'zh': 'Chinese (中文)',
+      'ko': 'Korean (한국어)',
+      'ar': 'Arabic (العربية)',
+      'hi': 'Hindi (हिन्दी)',
+      'th': 'Thai (ไทย)',
+      'tr': 'Turkish (Türkçe)',
+      'vi': 'Vietnamese (Tiếng Việt)',
     }
     return languageMap[langCode] || langCode.toUpperCase()
   }
@@ -128,7 +142,9 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     filename: additionalData?.filename || dbSession.internal_case_id || `Session ${dbSession.id.slice(0, 8)}`,
     duration: dbSession.duration_sec || 0,
     language: getLanguageDisplay(languageCode),
-    languageCode: typeof languageCode === 'string' ? languageCode.slice(0, 2).toLowerCase() : 'de',
+    languageCode: languageCode === 'auto' ? 'auto'
+      : typeof languageCode === 'string' ? languageCode.slice(0, 2).toLowerCase()
+      : 'auto',
     createdAt: dbSession.created_at,
     status: mapStatus(dbSession.status),
     piiRedactionEnabled: false, // TODO: Get from user preferences or session metadata

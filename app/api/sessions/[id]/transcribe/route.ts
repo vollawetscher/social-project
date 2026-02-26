@@ -288,12 +288,14 @@ async function processTranscriptionJob(sessionId: string) {
         .maybeSingle()
 
       const detectedLanguage = firstTranscript?.language
-      if (detectedLanguage && typeof detectedLanguage === 'string' && detectedLanguage.length >= 2) {
+      if (detectedLanguage && typeof detectedLanguage === 'string' && detectedLanguage.length >= 2 && detectedLanguage !== 'auto') {
         await supabase
           .from('sessions')
           .update({ language: detectedLanguage.slice(0, 2).toLowerCase() })
           .eq('id', sessionId)
         console.log(`[Transcribe] Session language set from transcript: ${detectedLanguage}`)
+      } else {
+        console.warn(`[Transcribe] Could not determine detected language from transcript (got: ${detectedLanguage}), session language remains as-is`)
       }
     } else {
       console.log(`[Transcribe] Keeping user-selected language: ${userSelectedLang}`)

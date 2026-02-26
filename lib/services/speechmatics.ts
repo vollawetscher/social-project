@@ -292,10 +292,18 @@ export class SpeechmaticsService {
     fullText = segments.map((s) => s.text).join(' ')
 
     const uniqueSpeakers = new Set(segments.map(s => s.speaker))
-    const detectedLanguage = data.metadata?.transcription_config?.language || data.metadata?.language || 'en'
+
+    const configLanguage = data.metadata?.transcription_config?.language
+    const langIdResults = data.metadata?.language_identification?.results
+    const langIdTop = Array.isArray(langIdResults) && langIdResults.length > 0
+      ? langIdResults.sort((a: any, b: any) => (b.confidence || 0) - (a.confidence || 0))[0]?.language
+      : null
+    const wordLanguage = results.find((r: any) => r.alternatives?.[0]?.language)?.alternatives?.[0]?.language
+    const detectedLanguage = (configLanguage !== 'auto' && configLanguage) || langIdTop || wordLanguage || 'en'
+
     const summary = data.summary?.content
     console.log(`[Speechmatics] Parsed ${segments.length} segments with ${uniqueSpeakers.size} unique speakers: ${Array.from(uniqueSpeakers).join(', ')}`)
-    console.log(`[Speechmatics] Detected language: ${detectedLanguage}`)
+    console.log(`[Speechmatics] Language: config=${configLanguage}, langId=${langIdTop}, word=${wordLanguage} → ${detectedLanguage}`)
     if (summary) console.log(`[Speechmatics] Summary length: ${summary.length} chars`)
 
     return {

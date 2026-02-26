@@ -222,14 +222,8 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
 
       {/* Controls */}
       <div className="flex items-center justify-between">
-        {/* File name + playback controls */}
+        {/* Playback controls */}
         <div className="flex items-center gap-2">
-          {fileName && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground mr-1 max-w-[180px]">
-              <FileAudio className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{fileName}</span>
-            </span>
-          )}
           <Button
             variant="ghost"
             size="icon"
@@ -273,6 +267,13 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
           >
             {playbackRate}x
           </Button>
+
+          {fileName && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground max-w-[180px]">
+              <FileAudio className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{fileName}</span>
+            </span>
+          )}
 
           {/* Volume */}
           <div className="flex items-center gap-2">
