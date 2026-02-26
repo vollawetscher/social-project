@@ -144,23 +144,64 @@ export default function OutputDetailPage() {
     }
   }
 
-  async function copyShareLink(url: string) {
-    const headline = extractOutputHeadline(output!.content) || output!.templateName
-    const shareText = formatShareLinkForCopy(url, headline, output!.createdAt)
+  function markCopied() {
+    setCopiedShareLink(true)
+    setTimeout(() => setCopiedShareLink(false), 2000)
+    toast.success('Share link copied!')
+  }
 
-    try {
-      await navigator.clipboard.writeText(shareText)
-      setCopiedShareLink(true)
-      setTimeout(() => setCopiedShareLink(false), 2000)
-      toast.success('Share link copied!')
-    } catch {
-      toast.error('Could not copy link')
-    }
+  function buildShareText(url: string) {
+    const headline = extractOutputHeadline(output!.content) || output!.templateName
+    return formatShareLinkForCopy(url, headline, output!.createdAt)
+  }
+
+  // Fallback for when Clipboard API loses user activation after async work
+  function execCopyFallback(text: string): boolean {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.cssText = 'position:absolute;left:-9999px'
+    document.body.appendChild(ta)
+    ta.select()
+    let ok = false
+    try { ok = document.execCommand('copy') } catch {}
+    document.body.removeChild(ta)
+    return ok
   }
 
   async function handleShare() {
     if (!output) return
     setIsSharing(true)
+
+    const headline = extractOutputHeadline(output.content) || output.templateName
+
+    // Try ClipboardItem with Promise: initiates clipboard write synchronously
+    // (preserving user activation) while resolving content after the fetch.
+    if (typeof ClipboardItem !== 'undefined') {
+      try {
+        const blobPromise = fetch(`/api/outputs/${outputId}/share`, { method: 'POST' })
+          .then(res => { if (!res.ok) throw new Error(); return res.json() })
+          .then(data => {
+            setShareUrl(data.shareUrl)
+            setIsPublic(true)
+            return new Blob(
+              [formatShareLinkForCopy(data.shareUrl, headline, output.createdAt)],
+              { type: 'text/plain' }
+            )
+          })
+
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'text/plain': blobPromise })
+        ])
+        markCopied()
+        setIsSharing(false)
+        return
+      } catch {
+        // ClipboardItem with Promise not supported — fall through
+      }
+    }
+
+    // Fallback: fetch first, then copy via Clipboard API or execCommand
     try {
       const response = await fetch(`/api/outputs/${outputId}/share`, { method: 'POST' })
       if (!response.ok) {
@@ -170,7 +211,21 @@ export default function OutputDetailPage() {
       const data = await response.json()
       setShareUrl(data.shareUrl)
       setIsPublic(true)
-      toast.success('Share link created — tap again to copy')
+
+      const shareText = formatShareLinkForCopy(data.shareUrl, headline, output.createdAt)
+      let copied = false
+      try {
+        await navigator.clipboard.writeText(shareText)
+        copied = true
+      } catch {
+        copied = execCopyFallback(shareText)
+      }
+
+      if (copied) {
+        markCopied()
+      } else {
+        toast.success('Share link created — tap again to copy')
+      }
     } catch (error) {
       toast.error('Failed to enable sharing: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
@@ -182,7 +237,16 @@ export default function OutputDetailPage() {
     if (!output) return
     const urlToCopy = shareUrl || (output.shareToken ? `${window.location.origin}/share/${output.shareToken}` : null)
     if (!urlToCopy) return
-    await copyShareLink(urlToCopy)
+
+    const shareText = buildShareText(urlToCopy)
+    try {
+      await navigator.clipboard.writeText(shareText)
+      markCopied()
+    } catch {
+      if (execCopyFallback(shareText)) markCopied()
+      else toast.error('Could not copy link')
+    }
+
     fetch(`/api/outputs/${outputId}/share`, { method: 'POST' }).then(res => {
       if (res.ok) res.json().then(data => {
         if (data.shareUrl) { setShareUrl(data.shareUrl); setIsPublic(true) }

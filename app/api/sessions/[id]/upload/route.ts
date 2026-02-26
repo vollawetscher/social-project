@@ -4,6 +4,8 @@ import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/h
 import { logError } from '@/lib/services/error-logger'
 import { getStorageMimeType } from '@/lib/utils/audio-format-detector'
 
+export const maxDuration = 120
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }

@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { AppTopbar } from "@/components/app-topbar"
 import { MobileNav } from "@/components/mobile-nav"
 import { TrialBanner } from "@/components/trial/TrialBanner"
+import { BugReporter } from "@/components/error/BugReporter"
 import { cn } from "@/lib/utils"
 
 export function AppLayoutClient({ children }: { children: React.ReactNode }) {
@@ -41,6 +42,11 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
       
       {/* Mobile Bottom Navigation - visible only on mobile */}
       <MobileNav />
+
+      {/* Global bug reporter - always accessible */}
+      <div className="fixed bottom-20 right-4 md:bottom-4 z-50">
+        <BugReporter variant="outline" size="icon" iconOnly className="rounded-full shadow-lg bg-background" />
+      </div>
     </div>
   )
 }

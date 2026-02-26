@@ -106,21 +106,35 @@ export default function UploadRecordingsPage() {
     }
     const session = await createRes.json()
 
-    // 2. Upload via API (server-side storage - reliable, no client storage RLS)
+    // 2. Upload via API with retry for transient network errors
     const formData = new FormData()
     formData.append('file', new File([recording.blob], filename, { type: recording.mimeType, lastModified: recording.timestamp }))
     formData.append('duration', String(Math.round(recording.duration)))
     formData.append('purpose', 'meeting')
     formData.append('recorded_at', new Date(recording.timestamp).toISOString())
 
-    const uploadRes = await fetch(`/api/sessions/${session.id}/upload`, {
-      method: 'POST',
-      body: formData,
-    })
-    if (!uploadRes.ok) {
-      const errData = await uploadRes.json().catch(() => ({}))
+    let uploadRes: Response | null = null
+    const maxRetries = 2
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        uploadRes = await fetch(`/api/sessions/${session.id}/upload`, {
+          method: 'POST',
+          body: formData,
+        })
+        if (uploadRes.ok) break
+      } catch (networkErr) {
+        if (attempt < maxRetries) {
+          console.warn(`[Upload] Network error on attempt ${attempt + 1}, retrying...`, networkErr)
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1)))
+          continue
+        }
+        await fetch(`/api/sessions/${session.id}`, { method: 'DELETE' }).catch(() => {})
+        throw new Error('Upload failed: network error. Please check your connection and try again.')
+      }
+    }
+    if (!uploadRes || !uploadRes.ok) {
+      const errData = await uploadRes?.json().catch(() => ({})) || {}
       const msg = errData.error || 'Upload failed'
-      // Delete the orphan session on upload failure
       await fetch(`/api/sessions/${session.id}`, { method: 'DELETE' }).catch(() => {})
       throw new Error(msg)
     }
@@ -269,7 +283,7 @@ export default function UploadRecordingsPage() {
     <div className="min-h-screen bg-slate-50 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/record')} aria-label="Back">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
