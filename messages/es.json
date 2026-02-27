@@ -465,6 +465,7 @@
     "contactAddFailed": "No se pudo guardar el contacto",
     "contactDeleted": "\"{name}\" eliminado",
     "contactDeleteFailed": "No se pudo eliminar el contacto",
+    "contactDeleteConfirm": "¿Eliminar el contacto \"{name}\"?",
     "importContacts": "Importar de contactos del dispositivo",
     "importNotSupported": "La importación de contactos no es compatible con este navegador. Prueba Chrome en Android o Safari en iOS.",
     "noPhoneNumber": "Este contacto no tiene número de teléfono",

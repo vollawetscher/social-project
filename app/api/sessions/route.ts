@@ -66,19 +66,35 @@ export async function GET(request: Request) {
         .map((c: any) => c.callee_session_id)
         .filter(Boolean) as string[]
 
-      let query = supabase
-        .from('sessions')
-        .select('*, outputs:outputs(count)')
-        .order('created_at', { ascending: false })
-        .is('merged_into_session_id', null)
+      const runUserSessionsQuery = async (excludeMerged: boolean) => {
+        let query = supabase
+          .from('sessions')
+          .select('*, outputs:outputs(count)')
+          .order('created_at', { ascending: false })
 
-      if (calleeSessionIds.length > 0) {
-        query = query.or(`user_id.eq.${user.id},id.in.(${calleeSessionIds.join(',')})`)
-      } else {
-        query = query.eq('user_id', user.id)
+        if (excludeMerged) {
+          query = query.is('merged_into_session_id', null)
+        }
+
+        if (calleeSessionIds.length > 0) {
+          query = query.or(`user_id.eq.${user.id},id.in.(${calleeSessionIds.join(',')})`)
+        } else {
+          query = query.eq('user_id', user.id)
+        }
+
+        return query
       }
 
-      const { data, error } = await query
+      let { data, error } = await runUserSessionsQuery(true)
+
+      // Backward-compatible fallback for environments where the merge-tracking
+      // migration has not been applied yet.
+      if (error && /merged_into_session_id|column .* does not exist/i.test(error.message || '')) {
+        console.warn('sessions.merge_filter_unavailable; retrying without merged filter')
+        const fallback = await runUserSessionsQuery(false)
+        data = fallback.data
+        error = fallback.error
+      }
 
       if (error) {
         console.error('Database error:', error)

@@ -289,6 +289,7 @@ export default function CallsPage() {
   }
 
   async function handleDeleteContact(id: string, name: string) {
+    if (!confirm(t('contactDeleteConfirm', { name }))) return
     setDeletingContactId(id)
     try {
       await fetch(`/api/contacts/${id}`, { method: "DELETE" })
@@ -302,14 +303,16 @@ export default function CallsPage() {
   }
 
   async function handleImportContacts() {
-    // Web Contact Picker API — supported on mobile Chrome / iOS Safari 14.5+
-    if (!("contacts" in navigator) || !("ContactsManager" in window)) {
+    // Web Contact Picker API support is determined by navigator.contacts.select.
+    // Some browsers expose navigator.contacts without a global ContactsManager.
+    const contactsApi = (navigator as any).contacts
+    if (!contactsApi || typeof contactsApi.select !== "function") {
       toast.error(t('importNotSupported'))
       return
     }
     setImportingContacts(true)
     try {
-      const selected = await (navigator as any).contacts.select(["name", "tel", "email"], { multiple: true })
+      const selected = await contactsApi.select(["name", "tel", "email"], { multiple: true })
       if (!selected?.length) return
       let added = 0
       for (const c of selected) {
