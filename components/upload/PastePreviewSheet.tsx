@@ -29,6 +29,7 @@ export function PastePreviewSheet({
   onConfirm,
   loading = false,
 }: PastePreviewSheetProps) {
+  const t = useTranslations('pastePreview')
   const [text, setText] = useState(initialText)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -53,10 +54,10 @@ export function PastePreviewSheet({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Review pasted text
+            {t('title')}
           </SheetTitle>
           <SheetDescription>
-            Formatting and emojis have been stripped. Edit if needed, then import.
+            {t('description')}
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-hidden py-4">
@@ -69,11 +70,11 @@ export function PastePreviewSheet({
           />
         </div>
         <div className="text-xs text-muted-foreground pb-2">
-          {wordCount.toLocaleString()} words · {charCount.toLocaleString()} characters
+          {t('stats', { words: wordCount.toLocaleString(), characters: charCount.toLocaleString() })}
         </div>
         <SheetFooter className="border-t pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             onClick={() => onConfirm(trimmed)}
@@ -82,12 +83,12 @@ export function PastePreviewSheet({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Importing...
+                {t('importing')}
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Import
+                {t('import')}
               </>
             )}
           </Button>

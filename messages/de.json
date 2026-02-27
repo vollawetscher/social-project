@@ -87,9 +87,37 @@
     "title": "Sitzungen",
     "subtitle": "Aus Aufnahmen, Anrufen, Uploads oder eingefügtem Text",
     "record": "Aufnehmen",
+    "recordingActive": "Aufnahme...",
     "recordSubtitle": "Mikrofon oder Live-Meeting",
     "upload": "Hochladen oder Einfügen",
     "uploadSubtitle": "Audio, Textdateien oder Zwischenablage",
+    "recordingLanguage": "Aufnahmesprache",
+    "recentSessions": "Letzte Sitzungen",
+    "allUsers": "Alle Benutzer",
+    "loadingSessions": "Sitzungen werden geladen...",
+    "noSessionsFound": "Keine Sitzungen gefunden",
+    "details": "Details",
+    "pii": "PII",
+    "piiRedacted": "PII maskiert",
+    "cached": "Zwischengespeichert",
+    "actionsMenu": "Menue oeffnen",
+    "contentType": {
+      "label": "Welche Art von Inhalt?",
+      "auto": "System entscheiden lassen",
+      "meeting": "Meeting oder Anruf",
+      "presentation": "Praesentation oder Vortrag",
+      "tradeShow": "Messe / Standgespraech",
+      "voiceNote": "Sprachnotiz oder Diktat"
+    },
+    "table": {
+      "name": "Name",
+      "owner": "Besitzer",
+      "duration": "Dauer",
+      "language": "Sprache",
+      "status": "Status",
+      "created": "Erstellt",
+      "actions": "Aktionen"
+    },
     "searchPlaceholder": "Sitzungen durchsuchen...",
     "noSessions": "Noch keine Sitzungen",
     "noSessionsHint": "Nehmen Sie auf, laden Sie hoch oder fügen Sie Inhalte ein, um Ihre erste Sitzung zu erstellen",
@@ -117,7 +145,7 @@
       "autoDetect": "Automatisch erkennen",
       "label": "Sprache"
     },
-    "upload": {
+    "uploadMessages": {
       "webmError": "WebM/WebA-Format kann nicht transkribiert werden. Bitte zuerst in MP3 oder MP4 konvertieren (z.B. cloudconvert.com).",
       "selectAudio": "Bitte wählen Sie Audiodateien (MP3, WAV, MP4, M4A)",
       "dropAudio": "Bitte Audiodateien hier ablegen (MP3, WAV, MP4, M4A)",
@@ -133,6 +161,9 @@
       "clipboardFailed": "Zwischenablage konnte nicht gelesen werden",
       "uploadSuccess": "{count} Sitzung(en) erfolgreich hochgeladen",
       "allFailed": "Alle Uploads fehlgeschlagen",
+      "uploadItemFailed": "Fehlgeschlagen: {error}",
+      "unknownError": "Unbekannter Fehler",
+      "loginRequired": "Sie müssen angemeldet sein, um Dateien hochzuladen",
       "webmExcluded": "WebM/WebA-Dateien wurden ausgeschlossen. Bitte zuerst in MP3 oder MP4 konvertieren.",
       "fileTooLarge": "Datei zu groß ({sizeMB} MB). Bitte versuchen Sie eine kürzere Aufnahme.",
       "skippedFiles": "{count} Nicht-Transkript-Datei(en) übersprungen"
@@ -400,8 +431,34 @@
     "dropHint": "Dateien hier ablegen oder klicken zum Durchsuchen",
     "supportedFormats": "Unterstützt: MP3, WAV, M4A, MP4, OGG, FLAC",
     "transcriptFormats": "Oder Transkript-Dateien: TXT, SRT, VTT",
+    "audioFormatsShort": "MP3, WAV, MP4, M4A",
+    "transcriptFormatsShort": "TXT, SRT, VTT oder Chat einfuegen",
+    "audioCardTitle": "Audio hochladen",
+    "transcriptCardTitle": "Datei hochladen",
+    "tapToChoose": "Tippen zum Auswaehlen",
+    "tapToChooseOrPaste": "Tippen zum Auswaehlen oder Einfuegen (Ctrl/Cmd+V)",
     "uploading": "Wird hochgeladen...",
     "processing": "Wird verarbeitet..."
+  },
+  "uploadPreview": {
+    "title": "Audio hochladen",
+    "description": "Pruefen Sie Groesse und Dauer und waehlen Sie dann aus, was hochgeladen werden soll. Gruppieren Sie Dateien, um sie zu einer Sitzung zu kombinieren (z.B. bei Aufnahmeunterbrechungen).",
+    "loadingFileInfo": "Dateiinformationen werden geladen...",
+    "durationUnavailable": "Dauer nicht verfuegbar",
+    "ungroup": "Gruppierung aufheben",
+    "groupAll": "Alle zu einer Sitzung gruppieren",
+    "groupAllHint": "Verwenden Sie dies, wenn Aufnahmen unterbrochen wurden (z.B. durch einen Anruf) und Sie ein kombiniertes Transkript moechten.",
+    "cancel": "Abbrechen",
+    "uploading": "Wird hochgeladen...",
+    "confirmButton": "{count, plural, one {# Sitzung hochladen} other {# Sitzungen hochladen}}"
+  },
+  "pastePreview": {
+    "title": "Eingefuegten Text pruefen",
+    "description": "Formatierungen und Emojis wurden entfernt. Bei Bedarf bearbeiten und dann importieren.",
+    "stats": "{words} Woerter · {characters} Zeichen",
+    "cancel": "Abbrechen",
+    "import": "Importieren",
+    "importing": "Wird importiert..."
   },
   "pasteSheet": {
     "title": "Inhalt einfügen",

@@ -71,6 +71,7 @@ export function UploadPreviewSheet({
   onCancel,
   loading = false,
 }: UploadPreviewSheetProps) {
+  const t = useTranslations('uploadPreview')
   const [items, setItems] = useState<FileWithMeta[]>([])
   const [loadingMeta, setLoadingMeta] = useState(true)
 
@@ -155,17 +156,17 @@ export function UploadPreviewSheet({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <FileAudio className="h-5 w-5" />
-            Upload audio
+            {t('title')}
           </SheetTitle>
           <SheetDescription>
-            Check size and duration, then choose what to upload. Group files to combine into one session (e.g. recording interruptions).
+            {t('description')}
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto py-4">
           {loadingMeta ? (
             <div className="flex items-center justify-center py-12 gap-2">
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm text-muted-foreground">Loading file info...</span>
+              <span className="text-sm text-muted-foreground">{t('loadingFileInfo')}</span>
             </div>
           ) : (
             <div className="space-y-2">
@@ -192,7 +193,7 @@ export function UploadPreviewSheet({
                         <> • {formatDuration(item.duration)}</>
                       )}
                       {item.durationError && item.duration === null && (
-                        <span className="text-amber-600"> • Duration unavailable</span>
+                        <span className="text-amber-600"> • {t('durationUnavailable')}</span>
                       )}
                     </p>
                   </div>
@@ -203,7 +204,7 @@ export function UploadPreviewSheet({
                       className="text-xs shrink-0"
                       onClick={() => handleUngroup(item.id)}
                     >
-                      Ungroup
+                      {t('ungroup')}
                     </Button>
                   )}
                 </div>
@@ -218,17 +219,17 @@ export function UploadPreviewSheet({
                 className="w-full"
                 onClick={handleGroupAllSelected}
               >
-                Group all as one session
+                {t('groupAll')}
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                Use when recordings were interrupted (e.g. phone call) and you want one combined transcript.
+                {t('groupAllHint')}
               </p>
             </div>
           )}
         </div>
         <SheetFooter className="border-t pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             onClick={handleConfirm}
@@ -237,12 +238,12 @@ export function UploadPreviewSheet({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Uploading...
+                {t('uploading')}
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload {groupCount} session{groupCount !== 1 ? 's' : ''}
+                {t('confirmButton', { count: groupCount })}
               </>
             )}
           </Button>

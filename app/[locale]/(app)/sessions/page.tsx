@@ -196,6 +196,7 @@ export default function SessionsPage() {
   const searchParams = useSearchParams()
   const t = useTranslations('sessions')
   const tc = useTranslations('common')
+  const tl = useTranslations('languages')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "")
 
@@ -335,7 +336,7 @@ export default function SessionsPage() {
     const rawFileContent = await file.text()
     const { segments, rawText } = parseTranscriptFile(rawFileContent, file.name)
     if (segments.length === 0) {
-      toast.error(`No content in ${file.name}. Please add transcript text.`)
+      toast.error(t('uploadMessages.noContent', { fileName: file.name }))
       return false
     }
     const sessionName = file.name.replace(/\.[^/.]+$/, '') || file.name
@@ -362,13 +363,13 @@ export default function SessionsPage() {
       clearTimeout(timeoutId)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Import failed')
+        throw new Error(err.error || t('uploadMessages.importFailed'))
       }
       return true
     } catch (err: any) {
       clearTimeout(timeoutId)
       if (err.name === 'AbortError') {
-        throw new Error('Import timed out. Try a smaller file or paste the content instead.')
+        throw new Error(t('uploadMessages.importTimeout'))
       }
       throw err
     }
@@ -377,7 +378,7 @@ export default function SessionsPage() {
   const processPastedTranscript = useCallback(async (rawContent: string): Promise<boolean> => {
     const trimmed = rawContent.trim()
     if (!trimmed || trimmed.length < 10) {
-      toast.error('Pasted content is empty or too short')
+      toast.error(t('uploadMessages.emptyContent'))
       return false
     }
     const timestamp = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/[/,]/g, '-')
@@ -402,7 +403,7 @@ export default function SessionsPage() {
       clearTimeout(timeoutId)
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'Import failed')
+        throw new Error(err.error || t('uploadMessages.importFailed'))
       }
       return true
     } catch (err: any) {
@@ -423,7 +424,7 @@ export default function SessionsPage() {
             },
           }),
         }).catch(() => {})
-        throw new Error('Import timed out. The content may be too long — try pasting a shorter excerpt or splitting it into parts.')
+        throw new Error(t('uploadMessages.importTimeout'))
       }
       throw err
     }
@@ -436,11 +437,11 @@ export default function SessionsPage() {
     const transcriptFiles = Array.from(files).filter(isTranscriptFile)
     const skipped = files.length - transcriptFiles.length
     if (transcriptFiles.length === 0) {
-      toast.error('Please select TXT, SRT, or VTT files')
+      toast.error(t('uploadMessages.selectTranscript'))
       return
     }
     if (skipped > 0) {
-      toast.info(`Skipped ${skipped} non-transcript file(s)`)
+      toast.info(t('uploadMessages.skippedFiles', { count: skipped }))
     }
     setUploadingTranscript(true)
     let success = 0
@@ -453,7 +454,7 @@ export default function SessionsPage() {
     }
     setUploadingTranscript(false)
     if (success > 0) {
-      toast.success(`${success} transcript(s) imported`)
+      toast.success(t('uploadMessages.importSuccess', { count: success }))
       setIsUploadOpen(false)
       await fetchSessions()
     }
@@ -462,7 +463,7 @@ export default function SessionsPage() {
   const openPastePreview = useCallback((raw: string) => {
     const cleaned = cleanPastedContent(raw)
     if (!cleaned || cleaned.length < 10) {
-      toast.error('Pasted content is empty or too short')
+      toast.error(t('uploadMessages.emptyContent'))
       return
     }
     setPastePreviewText(cleaned)
@@ -473,13 +474,13 @@ export default function SessionsPage() {
     setUploadingTranscript(true)
     try {
       if (await processPastedTranscript(text)) {
-        toast.success('Pasted transcript imported')
+        toast.success(t('uploadMessages.pasteImported'))
         setPastePreviewOpen(false)
         setIsUploadOpen(false)
         await fetchSessions()
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Import failed'
+      const msg = err instanceof Error ? err.message : t('uploadMessages.importFailed')
       toast.error(msg)
     } finally {
       setUploadingTranscript(false)
@@ -490,12 +491,12 @@ export default function SessionsPage() {
     try {
       const text = await navigator.clipboard.readText()
       if (!text?.trim()) {
-        toast.error('Clipboard is empty')
+        toast.error(t('uploadMessages.clipboardEmpty'))
         return
       }
       openPastePreview(text)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to read clipboard'
+      const msg = err instanceof Error ? err.message : t('uploadMessages.clipboardFailed')
       toast.error(msg)
     }
   }, [openPastePreview])
@@ -513,7 +514,7 @@ export default function SessionsPage() {
     setIsDraggingFile(false)
     const files = Array.from(e.dataTransfer.files).filter(isTranscriptFile)
     if (files.length === 0) {
-      toast.error('Please drop TXT, SRT, or VTT files')
+      toast.error(t('uploadMessages.dropTranscript'))
       return
     }
     setUploadingTranscript(true)
@@ -528,7 +529,7 @@ export default function SessionsPage() {
       }
       setUploadingTranscript(false)
       if (success > 0) {
-        toast.success(`${success} transcript(s) imported`)
+      toast.success(t('uploadMessages.importSuccess', { count: success }))
         setIsUploadOpen(false)
         await fetchSessions()
       }
@@ -559,7 +560,7 @@ export default function SessionsPage() {
       return f.type.startsWith('audio/') || f.type === 'video/mp4' || /\.(mp3|wav|m4a|m4v|mp4|ogg|aac|flac)$/i.test(f.name)
     })
     if (files.some(isWebm)) {
-      toast.error('WebM/WebA format cannot be transcribed. Convert to MP3 or MP4 first (e.g. cloudconvert.com).')
+      toast.error(t('uploadMessages.webmError'))
     }
     if (transcriptFiles.length > 0) {
       setIsUploadOpen(true)
@@ -570,12 +571,12 @@ export default function SessionsPage() {
           try {
             if (await processTranscriptFile(file)) success++
           } catch (err: any) {
-            toast.error(`${file.name}: ${err?.message || 'Import failed'}`)
+            toast.error(`${file.name}: ${err?.message || t('uploadMessages.importFailed')}`)
           }
         }
         setUploadingTranscript(false)
         if (success > 0) {
-          toast.success(`${success} transcript(s) imported`)
+          toast.success(t('uploadMessages.importSuccess', { count: success }))
           await fetchSessions()
         }
       })()
@@ -584,7 +585,7 @@ export default function SessionsPage() {
       setPreviewFiles(audioFiles)
       setPreviewOpen(true)
     } else {
-      toast.error('Please drop transcript files (TXT, SRT, VTT) or audio files (MP3, WAV, MP4, M4A). WebM is not supported.')
+      toast.error(t('uploadMessages.dropTranscript'))
     }
   }, [processTranscriptFile, fetchSessions])
 
@@ -598,12 +599,12 @@ export default function SessionsPage() {
       )
       if (audioFiles.length === 0) {
         toast.error(files.length > 0 && Array.from(files).some(isWebm)
-          ? 'WebM/WebA format cannot be transcribed. Convert to MP3 or MP4 first (e.g. cloudconvert.com).'
-          : 'Please select audio files (MP3, WAV, MP4, M4A)')
+          ? t('uploadMessages.webmError')
+          : t('uploadMessages.selectAudio'))
         return
       }
       if (Array.from(files).some(isWebm)) {
-        toast.error('WebM/WebA files were excluded. Convert to MP3 or MP4 first.')
+        toast.error(t('uploadMessages.webmExcluded'))
       }
       setPreviewFiles(audioFiles)
       setPreviewOpen(true)
@@ -621,7 +622,7 @@ export default function SessionsPage() {
         successCount++
       } catch (error: any) {
         console.error('Upload failed for group:', error)
-        toast.error(`Failed: ${error.message || 'Unknown error'}`)
+        toast.error(t('uploadMessages.uploadItemFailed', { error: error.message || t('uploadMessages.unknownError') }))
         errorCount++
       }
     }
@@ -629,12 +630,12 @@ export default function SessionsPage() {
     setPreviewOpen(false)
     setPreviewFiles([])
     if (successCount > 0) {
-      toast.success(`${successCount} session(s) uploaded successfully`)
+      toast.success(t('uploadMessages.uploadSuccess', { count: successCount }))
       setIsUploadOpen(false)
       await fetchSessions()
     }
     if (errorCount > 0 && successCount === 0) {
-      toast.error('All uploads failed')
+      toast.error(t('uploadMessages.allFailed'))
     }
   }
 
@@ -645,14 +646,12 @@ export default function SessionsPage() {
     /\.(webm|weba)$/i.test(f.name)
 
   const uploadGroup = async (files: File[]) => {
-    if (!user?.id) throw new Error('You must be logged in to upload files')
+    if (!user?.id) throw new Error(t('uploadMessages.loginRequired'))
     if (files.length === 0) return
 
     const webmFiles = files.filter(isWebM)
     if (webmFiles.length > 0) {
-      throw new Error(
-        `WebM format is not supported for transcription. Please convert to MP3 or MP4 first (e.g. cloudconvert.com). Or record on iPhone Safari which uses MP4.`
-      )
+      throw new Error(t('uploadMessages.webmError'))
     }
 
     const timestamp = new Date().toLocaleString('en-US', {
@@ -777,12 +776,12 @@ export default function SessionsPage() {
     )
     if (files.length === 0) {
       toast.error(Array.from(e.dataTransfer.files).some(isWebm)
-        ? 'WebM/WebA format cannot be transcribed. Convert to MP3 or MP4 first (e.g. cloudconvert.com).'
-        : 'Please drop audio files (MP3, WAV, MP4, M4A)')
+        ? t('uploadMessages.webmError')
+        : t('uploadMessages.dropAudio'))
       return
     }
     if (Array.from(e.dataTransfer.files).some(isWebm)) {
-      toast.error('WebM/WebA files were excluded. Convert to MP3 or MP4 first.')
+      toast.error(t('uploadMessages.webmExcluded'))
     }
     setPreviewFiles(files)
     setPreviewOpen(true)
@@ -874,7 +873,7 @@ export default function SessionsPage() {
       document.body.removeChild(a)
     } catch (error) {
       console.error('Error downloading transcript:', error)
-      alert('Failed to download transcript')
+      toast.error(t('downloadFailed'))
     }
   }
 
@@ -957,7 +956,7 @@ export default function SessionsPage() {
             <div>
               {isRecording ? (
                 <>
-                  <p className="text-sm font-medium text-foreground">Recording...</p>
+                  <p className="text-sm font-medium text-foreground">{t('recordingActive')}</p>
                   <p className="text-lg font-mono font-semibold text-destructive">
                     {formatDuration(recordingTime)}
                   </p>
@@ -977,7 +976,7 @@ export default function SessionsPage() {
             onClick={() => window.location.href = '/record'}
           >
             <Mic className="h-4 w-4 mr-2" />
-            Record
+            {t('record')}
           </Button>
         </div>
 
@@ -1016,7 +1015,7 @@ export default function SessionsPage() {
               {/* Content Hint */}
               <div>
                 <label htmlFor="upload-hint" className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  What type of content?
+                  {t('contentType.label')}
                 </label>
                 <select
                   id="upload-hint"
@@ -1025,18 +1024,18 @@ export default function SessionsPage() {
                   disabled={uploadingFiles}
                   className="w-full p-2 border rounded-md text-sm bg-background"
                 >
-                  <option value="">Let system decide</option>
-                  <option value="meeting">Meeting or call</option>
-                  <option value="presentation">Presentation or lecture</option>
-                  <option value="trade_show">Trade show / booth talk</option>
-                  <option value="voice_note">Voice note or dictation</option>
+                  <option value="">{t('contentType.auto')}</option>
+                  <option value="meeting">{t('contentType.meeting')}</option>
+                  <option value="presentation">{t('contentType.presentation')}</option>
+                  <option value="trade_show">{t('contentType.tradeShow')}</option>
+                  <option value="voice_note">{t('contentType.voiceNote')}</option>
                 </select>
               </div>
 
               {/* Language Selection */}
               <div>
                 <label htmlFor="upload-language" className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  Recording Language
+                  {t('recordingLanguage')}
                 </label>
                 <select
                   id="upload-language"
@@ -1045,15 +1044,15 @@ export default function SessionsPage() {
                   disabled={uploadingFiles}
                   className="w-full p-2 border rounded-md text-sm bg-background"
                 >
-                  <option value="auto">Auto-detect</option>
-                  <option value="en">English</option>
-                  <option value="de">German (Deutsch)</option>
-                  <option value="es">Spanish (Español)</option>
-                  <option value="fr">French (Français)</option>
-                  <option value="it">Italian (Italiano)</option>
-                  <option value="pt">Portuguese (Português)</option>
-                  <option value="nl">Dutch (Nederlands)</option>
-                  <option value="pl">Polish (Polski)</option>
+                  <option value="auto">{tl('auto')}</option>
+                  <option value="en">{tl('en')}</option>
+                  <option value="de">{tl('de')}</option>
+                  <option value="es">{tl('es')}</option>
+                  <option value="fr">{tl('fr')}</option>
+                  <option value="it">{tl('it')}</option>
+                  <option value="pt">{tl('pt')}</option>
+                  <option value="nl">{tl('nl')}</option>
+                  <option value="pl">{tl('pl')}</option>
                 </select>
               </div>
 
@@ -1086,17 +1085,17 @@ export default function SessionsPage() {
                     {uploadingFiles ? (
                       <>
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mb-2"></div>
-                        <p className="text-xs font-medium text-foreground">Uploading...</p>
+                        <p className="text-xs font-medium text-foreground">{t('uploadSheet.uploading')}</p>
                       </>
                     ) : (
                       <>
                         <FileAudio className="h-7 w-7 text-muted-foreground mb-2" />
-                        <p className="text-sm font-medium text-foreground">Upload audio</p>
+                        <p className="text-sm font-medium text-foreground">{t('uploadSheet.audioCardTitle')}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          MP3, WAV, MP4, M4A
+                          {t('uploadSheet.audioFormatsShort')}
                         </p>
                         <p className="text-xs text-primary font-medium mt-1">
-                          Tap to choose
+                          {t('uploadSheet.tapToChoose')}
                         </p>
                       </>
                     )}
@@ -1133,17 +1132,17 @@ export default function SessionsPage() {
                     {uploadingTranscript ? (
                       <>
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mb-2"></div>
-                        <p className="text-xs font-medium text-foreground">Importing...</p>
+                        <p className="text-xs font-medium text-foreground">{t('uploadSheet.processing')}</p>
                       </>
                     ) : (
                       <>
                         <FileText className="h-7 w-7 text-muted-foreground mb-2" />
-                        <p className="text-sm font-medium text-foreground">Upload file</p>
+                        <p className="text-sm font-medium text-foreground">{t('uploadSheet.transcriptCardTitle')}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          TXT, SRT, VTT • or paste chat
+                          {t('uploadSheet.transcriptFormatsShort')}
                         </p>
                         <p className="text-xs text-primary font-medium mt-1">
-                          Tap to choose • or paste (⌘V)
+                          {t('uploadSheet.tapToChooseOrPaste')}
                         </p>
                       </>
                     )}
@@ -1155,7 +1154,7 @@ export default function SessionsPage() {
                       size="sm"
                       onClick={handlePasteTranscript}
                     >
-                      Paste from clipboard
+                      {t('pasteSheet.pasteFromClipboard')}
                     </Button>
                   )}
                 </div>
@@ -1171,7 +1170,7 @@ export default function SessionsPage() {
         <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-sm font-medium text-foreground whitespace-nowrap">
-              Recent Sessions
+              {t('recentSessions')}
             </h2>
             {isAdmin && (
               <div className="flex items-center gap-2">
@@ -1183,7 +1182,7 @@ export default function SessionsPage() {
                   }}
                 />
                 <Label htmlFor="admin-view" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
-                  All users
+                  {t('allUsers')}
                 </Label>
               </div>
             )}
@@ -1205,11 +1204,11 @@ export default function SessionsPage() {
           {loading ? (
             <div className="p-8 text-center">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading sessions...</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t('loadingSessions')}</p>
             </div>
           ) : filteredSessions.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
-              No sessions found
+              {t('noSessionsFound')}
             </div>
           ) : (
             filteredSessions.map((session: Session) => {
@@ -1270,13 +1269,13 @@ export default function SessionsPage() {
                         {session.isFromCall && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
                             <Video className="h-3 w-3 mr-1" />
-                            From a call
+                            {t('fromCall')}
                           </Badge>
                         )}
                         {session.piiRedactionEnabled && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                             <Shield className="h-3 w-3 mr-1" />
-                            PII
+                            {t('pii')}
                           </Badge>
                         )}
                         {(session.outputCount ?? 0) > 0 && (
@@ -1295,14 +1294,14 @@ export default function SessionsPage() {
                           className="h-8 w-8 p-0 shrink-0"
                         >
                           <MoreHorizontal className="h-4 w-4" />
-                          <span className="hidden">Open menu</span>
+                          <span className="hidden">{t('actionsMenu')}</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild disabled={isProcessing(session)}>
                           <Link href={isProcessing(session) ? "#" : `/sessions/${session.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
-                            Details
+                            {t('details')}
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -1310,14 +1309,14 @@ export default function SessionsPage() {
                           onClick={() => !isProcessing(session) && handleDownloadTranscript(session)}
                         >
                           <Download className="mr-2 h-4 w-4" />
-                          Transcript
+                          {t('downloadTranscript')}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive"
                           onClick={() => handleDeleteSession(session.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          {tc('delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -1333,15 +1332,15 @@ export default function SessionsPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-muted-foreground">Name</TableHead>
+                <TableHead className="text-muted-foreground">{t('table.name')}</TableHead>
                 {adminView && (
-                  <TableHead className="text-muted-foreground">Owner</TableHead>
+                  <TableHead className="text-muted-foreground">{t('table.owner')}</TableHead>
                 )}
-                <TableHead className="text-muted-foreground">Duration</TableHead>
-                <TableHead className="text-muted-foreground">Language</TableHead>
-                <TableHead className="text-muted-foreground">Status</TableHead>
-                <TableHead className="text-muted-foreground">Created</TableHead>
-                <TableHead className="text-muted-foreground text-right">Actions</TableHead>
+                <TableHead className="text-muted-foreground">{t('table.duration')}</TableHead>
+                <TableHead className="text-muted-foreground">{t('table.language')}</TableHead>
+                <TableHead className="text-muted-foreground">{t('table.status')}</TableHead>
+                <TableHead className="text-muted-foreground">{t('table.created')}</TableHead>
+                <TableHead className="text-muted-foreground text-right">{t('table.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1349,13 +1348,13 @@ export default function SessionsPage() {
                 <TableRow>
                   <TableCell colSpan={adminView ? 7 : 6} className="text-center py-8">
                     <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-                    <p className="mt-2 text-sm text-muted-foreground">Loading sessions...</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{t('loadingSessions')}</p>
                   </TableCell>
                 </TableRow>
               ) : filteredSessions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={adminView ? 7 : 6} className="text-center text-sm text-muted-foreground py-8">
-                    No sessions found
+                    {t('noSessionsFound')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -1394,25 +1393,25 @@ export default function SessionsPage() {
                             {session.isFromCall && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
                                 <Video className="h-3 w-3 mr-1" />
-                                From a call
+                                {t('fromCall')}
                               </Badge>
                             )}
                             {session.piiRedactionEnabled && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                                 <Shield className="h-3 w-3 mr-1" />
-                                PII Redacted
+                                {t('piiRedacted')}
                               </Badge>
                             )}
                             {session.isOfflineCached && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                                 <WifiOff className="h-3 w-3 mr-1" />
-                                Cached
+                                {t('cached')}
                               </Badge>
                             )}
                             {(session.outputCount ?? 0) > 0 && (
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-info/20 text-info border-info/30">
                                 <FileText className="h-3 w-3 mr-1" />
-                                {session.outputCount} {session.outputCount === 1 ? 'Output' : 'Outputs'}
+                                {t('outputCount', { count: session.outputCount })}
                               </Badge>
                             )}
                           </div>
@@ -1458,14 +1457,14 @@ export default function SessionsPage() {
                               className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               <MoreHorizontal className="h-4 w-4" />
-                              <span className="hidden">Open menu</span>
+                              <span className="hidden">{t('actionsMenu')}</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild disabled={isProcessing(session)}>
                               <Link href={isProcessing(session) ? "#" : `/sessions/${session.id}`}>
                                 <Eye className="mr-2 h-4 w-4" />
-                                Details
+                                {t('details')}
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -1473,14 +1472,14 @@ export default function SessionsPage() {
                               onClick={() => !isProcessing(session) && handleDownloadTranscript(session)}
                             >
                               <Download className="mr-2 h-4 w-4" />
-                              Transcript
+                              {t('downloadTranscript')}
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive"
                               onClick={() => handleDeleteSession(session.id)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
+                              {tc('delete')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

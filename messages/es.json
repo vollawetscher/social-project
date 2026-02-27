@@ -87,9 +87,37 @@
     "title": "Sesiones",
     "subtitle": "De grabaciones, llamadas, subidas o texto pegado",
     "record": "Grabar",
+    "recordingActive": "Grabando...",
     "recordSubtitle": "Micrófono o reunión en vivo",
     "upload": "Subir o Pegar",
     "uploadSubtitle": "Audio, archivos de texto o portapapeles",
+    "recordingLanguage": "Idioma de grabación",
+    "recentSessions": "Sesiones recientes",
+    "allUsers": "Todos los usuarios",
+    "loadingSessions": "Cargando sesiones...",
+    "noSessionsFound": "No se encontraron sesiones",
+    "details": "Detalles",
+    "pii": "PII",
+    "piiRedacted": "PII redactado",
+    "cached": "En caché",
+    "actionsMenu": "Abrir menú",
+    "contentType": {
+      "label": "¿Qué tipo de contenido?",
+      "auto": "Dejar que el sistema decida",
+      "meeting": "Reunión o llamada",
+      "presentation": "Presentación o conferencia",
+      "tradeShow": "Feria / conversación en stand",
+      "voiceNote": "Nota de voz o dictado"
+    },
+    "table": {
+      "name": "Nombre",
+      "owner": "Propietario",
+      "duration": "Duración",
+      "language": "Idioma",
+      "status": "Estado",
+      "created": "Creado",
+      "actions": "Acciones"
+    },
     "searchPlaceholder": "Buscar sesiones...",
     "noSessions": "Aún no hay sesiones",
     "noSessionsHint": "Graba, sube o pega contenido para crear tu primera sesión",
@@ -117,7 +145,7 @@
       "autoDetect": "Detección automática",
       "label": "Idioma"
     },
-    "upload": {
+    "uploadMessages": {
       "webmError": "El formato WebM/WebA no se puede transcribir. Convierte primero a MP3 o MP4 (ej. cloudconvert.com).",
       "selectAudio": "Selecciona archivos de audio (MP3, WAV, MP4, M4A)",
       "dropAudio": "Arrastra archivos de audio aquí (MP3, WAV, MP4, M4A)",
@@ -133,6 +161,9 @@
       "clipboardFailed": "No se pudo leer el portapapeles",
       "uploadSuccess": "{count} sesión(es) subida(s) con éxito",
       "allFailed": "Todas las subidas fallaron",
+      "uploadItemFailed": "Error: {error}",
+      "unknownError": "Error desconocido",
+      "loginRequired": "Debes iniciar sesión para subir archivos",
       "webmExcluded": "Los archivos WebM/WebA fueron excluidos. Convierte primero a MP3 o MP4.",
       "fileTooLarge": "Archivo demasiado grande ({sizeMB} MB). Intenta con una grabación más corta.",
       "skippedFiles": "Se omitieron {count} archivo(s) que no son de transcripción"
@@ -400,8 +431,34 @@
     "dropHint": "Arrastra archivos aquí o haz clic para buscar",
     "supportedFormats": "Compatible: MP3, WAV, M4A, MP4, OGG, FLAC",
     "transcriptFormats": "O archivos de transcripción: TXT, SRT, VTT",
+    "audioFormatsShort": "MP3, WAV, MP4, M4A",
+    "transcriptFormatsShort": "TXT, SRT, VTT o pegar chat",
+    "audioCardTitle": "Subir audio",
+    "transcriptCardTitle": "Subir archivo",
+    "tapToChoose": "Toca para elegir",
+    "tapToChooseOrPaste": "Toca para elegir o pegar (Ctrl/Cmd+V)",
     "uploading": "Subiendo...",
     "processing": "Procesando..."
+  },
+  "uploadPreview": {
+    "title": "Subir audio",
+    "description": "Revisa el tamaño y la duración, y luego elige qué subir. Agrupa archivos para combinarlos en una sola sesión (por ejemplo, interrupciones de grabación).",
+    "loadingFileInfo": "Cargando información del archivo...",
+    "durationUnavailable": "Duración no disponible",
+    "ungroup": "Desagrupar",
+    "groupAll": "Agrupar todo en una sesión",
+    "groupAllHint": "Úsalo cuando las grabaciones se interrumpieron (por ejemplo, una llamada) y quieras una transcripción combinada.",
+    "cancel": "Cancelar",
+    "uploading": "Subiendo...",
+    "confirmButton": "Subir {count, plural, one {# sesión} other {# sesiones}}"
+  },
+  "pastePreview": {
+    "title": "Revisar texto pegado",
+    "description": "El formato y los emojis se han eliminado. Edita si hace falta y luego importa.",
+    "stats": "{words} palabras · {characters} caracteres",
+    "cancel": "Cancelar",
+    "import": "Importar",
+    "importing": "Importando..."
   },
   "pasteSheet": {
     "title": "Pegar Contenido",

@@ -87,9 +87,37 @@
     "title": "Sessions",
     "subtitle": "From recordings, calls, uploads, or pasted text",
     "record": "Record",
+    "recordingActive": "Recording...",
     "recordSubtitle": "Microphone or live meeting",
     "upload": "Upload or Paste",
     "uploadSubtitle": "Audio, text files, or clipboard",
+    "recordingLanguage": "Recording Language",
+    "recentSessions": "Recent Sessions",
+    "allUsers": "All users",
+    "loadingSessions": "Loading sessions...",
+    "noSessionsFound": "No sessions found",
+    "details": "Details",
+    "pii": "PII",
+    "piiRedacted": "PII Redacted",
+    "cached": "Cached",
+    "actionsMenu": "Open menu",
+    "contentType": {
+      "label": "What type of content?",
+      "auto": "Let system decide",
+      "meeting": "Meeting or call",
+      "presentation": "Presentation or lecture",
+      "tradeShow": "Trade show / booth talk",
+      "voiceNote": "Voice note or dictation"
+    },
+    "table": {
+      "name": "Name",
+      "owner": "Owner",
+      "duration": "Duration",
+      "language": "Language",
+      "status": "Status",
+      "created": "Created",
+      "actions": "Actions"
+    },
     "searchPlaceholder": "Search sessions...",
     "noSessions": "No sessions yet",
     "noSessionsHint": "Record, upload, or paste content to create your first session",
@@ -117,7 +145,7 @@
       "autoDetect": "Auto-detect",
       "label": "Language"
     },
-    "upload": {
+    "uploadMessages": {
       "webmError": "WebM/WebA format cannot be transcribed. Convert to MP3 or MP4 first (e.g. cloudconvert.com).",
       "selectAudio": "Please select audio files (MP3, WAV, MP4, M4A)",
       "dropAudio": "Please drop audio files (MP3, WAV, MP4, M4A)",
@@ -133,6 +161,9 @@
       "clipboardFailed": "Failed to read clipboard",
       "uploadSuccess": "{count} session(s) uploaded successfully",
       "allFailed": "All uploads failed",
+      "uploadItemFailed": "Failed: {error}",
+      "unknownError": "Unknown error",
+      "loginRequired": "You must be logged in to upload files",
       "webmExcluded": "WebM/WebA files were excluded. Convert to MP3 or MP4 first.",
       "fileTooLarge": "File too large ({sizeMB} MB). Please try a shorter recording.",
       "skippedFiles": "Skipped {count} non-transcript file(s)"
@@ -400,8 +431,34 @@
     "dropHint": "Drop files here or click to browse",
     "supportedFormats": "Supported: MP3, WAV, M4A, MP4, OGG, FLAC",
     "transcriptFormats": "Or transcript files: TXT, SRT, VTT",
+    "audioFormatsShort": "MP3, WAV, MP4, M4A",
+    "transcriptFormatsShort": "TXT, SRT, VTT or paste chat",
+    "audioCardTitle": "Upload audio",
+    "transcriptCardTitle": "Upload file",
+    "tapToChoose": "Tap to choose",
+    "tapToChooseOrPaste": "Tap to choose or paste (Ctrl/Cmd+V)",
     "uploading": "Uploading...",
     "processing": "Processing..."
+  },
+  "uploadPreview": {
+    "title": "Upload audio",
+    "description": "Check size and duration, then choose what to upload. Group files to combine into one session (e.g. recording interruptions).",
+    "loadingFileInfo": "Loading file info...",
+    "durationUnavailable": "Duration unavailable",
+    "ungroup": "Ungroup",
+    "groupAll": "Group all as one session",
+    "groupAllHint": "Use when recordings were interrupted (e.g. phone call) and you want one combined transcript.",
+    "cancel": "Cancel",
+    "uploading": "Uploading...",
+    "confirmButton": "Upload {count, plural, one {# session} other {# sessions}}"
+  },
+  "pastePreview": {
+    "title": "Review pasted text",
+    "description": "Formatting and emojis have been stripped. Edit if needed, then import.",
+    "stats": "{words} words · {characters} characters",
+    "cancel": "Cancel",
+    "import": "Import",
+    "importing": "Importing..."
   },
   "pasteSheet": {
     "title": "Paste Content",

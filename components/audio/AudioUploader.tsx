@@ -147,14 +147,14 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
             </h3>
 
             <p className="text-sm text-slate-600 mb-4">
-              Ziehen Sie eine Datei hierher oder klicken Sie zum Auswählen
+              Ziehen Sie eine Datei hierher oder tippen/klicken Sie zum Auswaehlen
             </p>
 
             <p className="text-xs text-slate-500">
               Unterstützte Formate: MP3, WAV, M4A, MP4, OGG, AAC, FLAC (max. 200MB)
             </p>
 
-            <Button type="button" className="mt-4">
+            <Button type="button" className="mt-4" onClick={() => fileInputRef.current?.click()}>
               Datei auswählen
             </Button>
           </div>
