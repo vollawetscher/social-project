@@ -237,6 +237,10 @@ export default function SessionsPage() {
   const [adminView, setAdminView] = useState(false)
   const [combiningSuggestion, setCombiningSuggestion] = useState(false)
   const [dismissedCombineSignatures, setDismissedCombineSignatures] = useState<string[]>([])
+  const [locallyHiddenSessionIds, setLocallyHiddenSessionIds] = useState<string[]>([])
+  const [newlyCreatedSessionIds, setNewlyCreatedSessionIds] = useState<string[]>([])
+  const knownSessionIdsRef = useRef<Set<string>>(new Set())
+  const initializedKnownSessionsRef = useRef(false)
   const supabase = createClient()
 
   const isTranscriptFile = (f: File) =>
@@ -927,7 +931,36 @@ export default function SessionsPage() {
     })
   }
 
-  const filteredSessions = sessions.filter(session => {
+  const visibleSessions = useMemo(
+    () => sessions.filter((s) => !locallyHiddenSessionIds.includes(s.id)),
+    [sessions, locallyHiddenSessionIds]
+  )
+
+  useEffect(() => {
+    if (adminView) return
+    const currentIds = new Set(visibleSessions.map((s) => s.id))
+
+    if (!initializedKnownSessionsRef.current) {
+      knownSessionIdsRef.current = currentIds
+      initializedKnownSessionsRef.current = true
+      return
+    }
+
+    const detectedNewIds = Array.from(currentIds).filter((id) => !knownSessionIdsRef.current.has(id))
+    knownSessionIdsRef.current = currentIds
+
+    if (detectedNewIds.length === 0) {
+      setNewlyCreatedSessionIds((prev) => prev.filter((id) => currentIds.has(id)))
+      return
+    }
+
+    setNewlyCreatedSessionIds((prev) => {
+      const merged = [...prev.filter((id) => currentIds.has(id)), ...detectedNewIds]
+      return Array.from(new Set(merged))
+    })
+  }, [visibleSessions, adminView])
+
+  const filteredSessions = visibleSessions.filter(session => {
     if (searchQuery === "") return true
     const q = searchQuery.toLowerCase()
     return (
@@ -946,7 +979,7 @@ export default function SessionsPage() {
   const combineSuggestion = useMemo<CombineSuggestion | null>(() => {
     if (adminView) return null
 
-    const candidates = sessions
+    const candidates = visibleSessions
       .filter((s) => s.status === 'ready')
       .filter((s) => {
         const name = s.filename.toLowerCase()
@@ -965,54 +998,42 @@ export default function SessionsPage() {
         .replace(/\s+/g, ' ')
         .trim()
 
-    let best: CombineSuggestion | null = null
-    let current: Session[] = []
-    let lastTime = 0
-    let currentKey = ''
+    const newlyCreatedReady = candidates
+      .filter((s) => newlyCreatedSessionIds.includes(s.id))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+
+    if (newlyCreatedReady.length === 0) return null
+
+    const newest = newlyCreatedReady[newlyCreatedReady.length - 1]
+    const newestCreatedMs = new Date(newest.createdAt).getTime()
+    const newestKey = normalizeName(newest.filename)
     const maxGapMs = 20 * 60 * 1000
 
-    for (const session of candidates) {
-      const createdMs = new Date(session.createdAt).getTime()
-      const key = normalizeName(session.filename)
-      const shouldStartNew =
-        current.length === 0 ||
-        key !== currentKey ||
-        createdMs - lastTime > maxGapMs
+    const previousMatch = [...candidates]
+      .reverse()
+      .find((s) => {
+        if (s.id === newest.id) return false
+        const createdMs = new Date(s.createdAt).getTime()
+        if (createdMs >= newestCreatedMs) return false
+        if (newestCreatedMs - createdMs > maxGapMs) return false
+        return normalizeName(s.filename) === newestKey
+      })
 
-      if (shouldStartNew) {
-        if (current.length >= 2) {
-          const suggestion: CombineSuggestion = {
-            sessionIds: current.map((s) => s.id),
-            baseName: current[0].filename,
-            count: current.length,
-            totalDuration: current.reduce((acc, s) => acc + (s.duration || 0), 0),
-            sessionNames: current.map((s) => s.filename),
-            signature: current.map((s) => s.id).join('|'),
-          }
-          if (!best || suggestion.count > best.count) best = suggestion
-        }
-        current = [session]
-        currentKey = key
-      } else {
-        current.push(session)
-      }
-      lastTime = createdMs
+    if (!previousMatch) return null
+
+    const pair = [previousMatch, newest].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+
+    return {
+      sessionIds: pair.map((s) => s.id),
+      baseName: pair[0].filename,
+      count: pair.length,
+      totalDuration: pair.reduce((acc, s) => acc + (s.duration || 0), 0),
+      sessionNames: pair.map((s) => s.filename),
+      signature: pair.map((s) => s.id).join('|'),
     }
-
-    if (current.length >= 2) {
-      const suggestion: CombineSuggestion = {
-        sessionIds: current.map((s) => s.id),
-        baseName: current[0].filename,
-        count: current.length,
-        totalDuration: current.reduce((acc, s) => acc + (s.duration || 0), 0),
-        sessionNames: current.map((s) => s.filename),
-        signature: current.map((s) => s.id).join('|'),
-      }
-      if (!best || suggestion.count > best.count) best = suggestion
-    }
-
-    return best
-  }, [sessions, adminView])
+  }, [visibleSessions, adminView, newlyCreatedSessionIds])
 
   const handleCombineSuggestedCalls = useCallback(async () => {
     if (!combineSuggestion || combiningSuggestion) return
@@ -1032,6 +1053,12 @@ export default function SessionsPage() {
       }
       setDismissedCombineSignatures((prev) =>
         prev.includes(combineSuggestion.signature) ? prev : [...prev, combineSuggestion.signature]
+      )
+      setLocallyHiddenSessionIds((prev) =>
+        Array.from(new Set([...prev, ...combineSuggestion.sessionIds]))
+      )
+      setNewlyCreatedSessionIds((prev) =>
+        prev.filter((id) => !combineSuggestion.sessionIds.includes(id))
       )
       toast.success(t('combineSuggested.success'))
       await fetchSessions()
@@ -1331,11 +1358,16 @@ export default function SessionsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  setDismissedCombineSignatures((prev) =>
-                    prev.includes(visibleCombineSuggestion.signature)
-                      ? prev
-                      : [...prev, visibleCombineSuggestion.signature]
-                  )
+                  {
+                    setDismissedCombineSignatures((prev) =>
+                      prev.includes(visibleCombineSuggestion.signature)
+                        ? prev
+                        : [...prev, visibleCombineSuggestion.signature]
+                    )
+                    setNewlyCreatedSessionIds((prev) =>
+                      prev.filter((id) => !visibleCombineSuggestion.sessionIds.includes(id))
+                    )
+                  }
                 }
                 aria-label={t('combineSuggested.dismiss')}
               >
