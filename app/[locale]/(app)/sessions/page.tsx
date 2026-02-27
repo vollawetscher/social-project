@@ -1411,7 +1411,7 @@ export default function SessionsPage() {
                             {(session.outputCount ?? 0) > 0 && (
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-info/20 text-info border-info/30">
                                 <FileText className="h-3 w-3 mr-1" />
-                                {t('outputCount', { count: session.outputCount })}
+                                {t('outputCount', { count: session.outputCount ?? 0 })}
                               </Badge>
                             )}
                           </div>
