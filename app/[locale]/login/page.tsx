@@ -2,7 +2,8 @@
 export const dynamic = 'force-dynamic'
 
 import * as React from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { Link, useRouter } from '@/i18n/navigation'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
@@ -47,7 +48,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
       router.refresh()
-      window.location.href = redirect
+      router.push(redirect)
     } catch (err: any) {
       setError(err.message || t('failedSignIn'))
       setLoading(false)
@@ -90,9 +91,9 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">{t('password')}</Label>
-                <a href="/reset-password" className="text-xs text-primary hover:underline">
+                <Link href="/reset-password" className="text-xs text-primary hover:underline">
                   {t('forgotPassword')}
-                </a>
+                </Link>
               </div>
               <Input
                 id="password"
@@ -119,9 +120,9 @@ export default function LoginPage() {
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
             {t('noAccount')}{' '}
-            <a href="/signup" className="text-primary underline-offset-2 hover:underline">
+            <Link href="/signup" className="text-primary underline-offset-2 hover:underline">
               {t('signUp')}
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

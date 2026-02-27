@@ -4,8 +4,8 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { useParams, useRouter } from "next/navigation"
-import Link from "next/link"
+import { useParams } from "next/navigation"
+import { Link, useRouter } from "@/i18n/navigation"
 import {
   ArrowLeft,
   FileText,

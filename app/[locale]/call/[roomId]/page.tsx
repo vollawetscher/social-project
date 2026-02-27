@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useTranslations } from "next-intl"
-import { useParams, useSearchParams, useRouter } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
+import { useRouter } from "@/i18n/navigation"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { CallSetup } from "@/components/call/CallSetup"
 import { IncomingCall } from "@/components/call/IncomingCall"

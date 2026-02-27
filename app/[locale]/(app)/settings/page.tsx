@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/alert"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth/AuthProvider"
-import Link from "next/link"
+import { Link } from "@/i18n/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { UserProfile, SUPPORTED_LANGUAGES, TIMEZONES } from "@/lib/types/profile"
 

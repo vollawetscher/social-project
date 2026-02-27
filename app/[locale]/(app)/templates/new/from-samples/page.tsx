@@ -4,8 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useRef } from "react"
 import { useTranslations } from "next-intl"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { Link, useRouter } from "@/i18n/navigation"
 import { toast } from "sonner"
 import {
   ArrowLeft,

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import React, { useState, useEffect } from "react"
-import Link from "next/link"
+import { Link } from "@/i18n/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import {
   FileText,

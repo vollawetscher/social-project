@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
-import Link from "next/link"
+import { Link } from "@/i18n/navigation"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {

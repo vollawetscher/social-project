@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import React from "react"
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { Link, useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -194,6 +194,7 @@ function EditableSessionName({
 export default function SessionsPage() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const t = useTranslations('sessions')
   const tc = useTranslations('common')
   const tl = useTranslations('languages')
@@ -305,7 +306,7 @@ export default function SessionsPage() {
   const startRecording = async (mode: 'batch' | 'realtime') => {
     // TODO: Implement real recording
     // For now, redirect to the recording page
-    window.location.href = '/record'
+    router.push('/record')
   }
 
   const stopRecording = () => {
@@ -973,7 +974,7 @@ export default function SessionsPage() {
           <Button 
             size="sm" 
             className="shrink-0"
-            onClick={() => window.location.href = '/record'}
+            onClick={() => router.push('/record')}
           >
             <Mic className="h-4 w-4 mr-2" />
             {t('record')}
@@ -1232,7 +1233,7 @@ export default function SessionsPage() {
                       !target.closest('[role="menu"]') &&
                       !target.closest('[role="menuitem"]')
                     ) {
-                      window.location.href = `/sessions/${session.id}`
+                      router.push(`/sessions/${session.id}`)
                     }
                   }}
                 >
@@ -1379,7 +1380,7 @@ export default function SessionsPage() {
                           !target.closest('[role="menu"]') &&
                           !target.closest('[role="menuitem"]')
                         ) {
-                          window.location.href = `/sessions/${session.id}`
+                          router.push(`/sessions/${session.id}`)
                         }
                       }}
                     >
