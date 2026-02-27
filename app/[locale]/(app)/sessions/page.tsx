@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import React from "react"
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Link, useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
@@ -65,6 +65,12 @@ import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
 type StatusDisplay = { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string; animated?: boolean }
+type CombineSuggestion = {
+  sessionIds: string[]
+  baseName: string
+  count: number
+  totalDuration: number
+}
 
 const statusConfig: Record<SessionStatus, StatusDisplay> = {
   recording: { labelKey: "recording", variant: "secondary", className: "bg-primary/20 text-primary border-primary/30 animate-pulse", animated: true },
@@ -196,6 +202,8 @@ export default function SessionsPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const t = useTranslations('sessions')
+  const tu = useTranslations('uploadSheet')
+  const tp = useTranslations('pasteSheet')
   const tc = useTranslations('common')
   const tl = useTranslations('languages')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
@@ -225,6 +233,7 @@ export default function SessionsPage() {
   const [isDraggingHeader, setIsDraggingHeader] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminView, setAdminView] = useState(false)
+  const [combiningSuggestion, setCombiningSuggestion] = useState(false)
   const supabase = createClient()
 
   const isTranscriptFile = (f: File) =>
@@ -921,6 +930,98 @@ export default function SessionsPage() {
     )
   })
 
+  const combineSuggestion = useMemo<CombineSuggestion | null>(() => {
+    if (adminView) return null
+
+    const candidates = sessions
+      .filter((s) => s.status === 'ready')
+      .filter((s) => {
+        const name = s.filename.toLowerCase()
+        return s.isFromCall || name.includes('call') || name.includes('quick record')
+      })
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+
+    if (candidates.length < 2) return null
+
+    const normalizeName = (name: string) =>
+      name
+        .toLowerCase()
+        .replace(/\(.*?\)/g, '')
+        .replace(/\d{1,2}[:._-]\d{2}(\s?(am|pm))?/gi, '')
+        .replace(/\d{1,2}[-/]\d{1,2}([-/]\d{2,4})?/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+    let best: CombineSuggestion | null = null
+    let current: Session[] = []
+    let lastTime = 0
+    let currentKey = ''
+    const maxGapMs = 20 * 60 * 1000
+
+    for (const session of candidates) {
+      const createdMs = new Date(session.createdAt).getTime()
+      const key = normalizeName(session.filename)
+      const shouldStartNew =
+        current.length === 0 ||
+        key !== currentKey ||
+        createdMs - lastTime > maxGapMs
+
+      if (shouldStartNew) {
+        if (current.length >= 2) {
+          const suggestion: CombineSuggestion = {
+            sessionIds: current.map((s) => s.id),
+            baseName: current[0].filename,
+            count: current.length,
+            totalDuration: current.reduce((acc, s) => acc + (s.duration || 0), 0),
+          }
+          if (!best || suggestion.count > best.count) best = suggestion
+        }
+        current = [session]
+        currentKey = key
+      } else {
+        current.push(session)
+      }
+      lastTime = createdMs
+    }
+
+    if (current.length >= 2) {
+      const suggestion: CombineSuggestion = {
+        sessionIds: current.map((s) => s.id),
+        baseName: current[0].filename,
+        count: current.length,
+        totalDuration: current.reduce((acc, s) => acc + (s.duration || 0), 0),
+      }
+      if (!best || suggestion.count > best.count) best = suggestion
+    }
+
+    return best
+  }, [sessions, adminView])
+
+  const handleCombineSuggestedCalls = useCallback(async () => {
+    if (!combineSuggestion || combiningSuggestion) return
+    setCombiningSuggestion(true)
+    try {
+      const response = await fetch('/api/sessions/combine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionIds: combineSuggestion.sessionIds,
+          name: `${combineSuggestion.baseName} (${t('combineSuggested.defaultCombinedSuffix')})`,
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload?.error || t('combineSuggested.error'))
+      }
+      toast.success(t('combineSuggested.success'))
+      await fetchSessions()
+    } catch (err: any) {
+      toast.error(err?.message || t('combineSuggested.error'))
+    } finally {
+      setCombiningSuggestion(false)
+    }
+  }, [combineSuggestion, combiningSuggestion, fetchSessions, t])
+
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden gap-4">
       {/* Header */}
@@ -1086,17 +1187,17 @@ export default function SessionsPage() {
                     {uploadingFiles ? (
                       <>
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mb-2"></div>
-                        <p className="text-xs font-medium text-foreground">{t('uploadSheet.uploading')}</p>
+                        <p className="text-xs font-medium text-foreground">{tu('uploading')}</p>
                       </>
                     ) : (
                       <>
                         <FileAudio className="h-7 w-7 text-muted-foreground mb-2" />
-                        <p className="text-sm font-medium text-foreground">{t('uploadSheet.audioCardTitle')}</p>
+                        <p className="text-sm font-medium text-foreground">{tu('audioCardTitle')}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {t('uploadSheet.audioFormatsShort')}
+                          {tu('audioFormatsShort')}
                         </p>
                         <p className="text-xs text-primary font-medium mt-1">
-                          {t('uploadSheet.tapToChoose')}
+                          {tu('tapToChoose')}
                         </p>
                       </>
                     )}
@@ -1133,17 +1234,17 @@ export default function SessionsPage() {
                     {uploadingTranscript ? (
                       <>
                         <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mb-2"></div>
-                        <p className="text-xs font-medium text-foreground">{t('uploadSheet.processing')}</p>
+                        <p className="text-xs font-medium text-foreground">{tu('processing')}</p>
                       </>
                     ) : (
                       <>
                         <FileText className="h-7 w-7 text-muted-foreground mb-2" />
-                        <p className="text-sm font-medium text-foreground">{t('uploadSheet.transcriptCardTitle')}</p>
+                        <p className="text-sm font-medium text-foreground">{tu('transcriptCardTitle')}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {t('uploadSheet.transcriptFormatsShort')}
+                          {tu('transcriptFormatsShort')}
                         </p>
                         <p className="text-xs text-primary font-medium mt-1">
-                          {t('uploadSheet.tapToChooseOrPaste')}
+                          {tu('tapToChooseOrPaste')}
                         </p>
                       </>
                     )}
@@ -1155,7 +1256,7 @@ export default function SessionsPage() {
                       size="sm"
                       onClick={handlePasteTranscript}
                     >
-                      {t('pasteSheet.pasteFromClipboard')}
+                      {tp('pasteFromClipboard')}
                     </Button>
                   )}
                 </div>
@@ -1167,6 +1268,26 @@ export default function SessionsPage() {
 
       {/* Sessions List */}
       <Card className="border-border flex-1 min-h-0 flex flex-col overflow-hidden">
+        {combineSuggestion && (
+          <div className="mx-4 mt-3 mb-0 rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">
+                {t('combineSuggested.title', { count: combineSuggestion.count })}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('combineSuggested.subtitle', { duration: formatDuration(combineSuggestion.totalDuration) })}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleCombineSuggestedCalls}
+              disabled={combiningSuggestion}
+            >
+              {combiningSuggestion ? t('combineSuggested.combining') : t('combineSuggested.action')}
+            </Button>
+          </div>
+        )}
+
         {/* Compact Header with Search + Admin Toggle */}
         <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border shrink-0">
           <div className="flex items-center gap-4">

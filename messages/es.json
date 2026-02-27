@@ -167,6 +167,15 @@
       "webmExcluded": "Los archivos WebM/WebA fueron excluidos. Convierte primero a MP3 o MP4.",
       "fileTooLarge": "Archivo demasiado grande ({sizeMB} MB). Intenta con una grabación más corta.",
       "skippedFiles": "Se omitieron {count} archivo(s) que no son de transcripción"
+    },
+    "combineSuggested": {
+      "title": "{count, plural, one {Posible llamada dividida detectada} other {Posibles llamadas divididas detectadas}}",
+      "subtitle": "Estas sesiones parecen relacionadas. Duracion combinada: {duration}",
+      "action": "Combinar sugeridas",
+      "combining": "Combinando...",
+      "success": "Sesiones combinadas",
+      "error": "No se pudieron combinar las sesiones",
+      "defaultCombinedSuffix": "combinada"
     }
   },
   "sessionDetail": {

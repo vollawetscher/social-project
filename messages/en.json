@@ -167,6 +167,15 @@
       "webmExcluded": "WebM/WebA files were excluded. Convert to MP3 or MP4 first.",
       "fileTooLarge": "File too large ({sizeMB} MB). Please try a shorter recording.",
       "skippedFiles": "Skipped {count} non-transcript file(s)"
+    },
+    "combineSuggested": {
+      "title": "{count, plural, one {Possible split call detected} other {Possible split calls detected}}",
+      "subtitle": "These sessions look related. Combined duration: {duration}",
+      "action": "Combine suggested",
+      "combining": "Combining...",
+      "success": "Sessions combined",
+      "error": "Failed to combine sessions",
+      "defaultCombinedSuffix": "combined"
     }
   },
   "sessionDetail": {
