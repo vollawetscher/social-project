@@ -1076,7 +1076,7 @@ export default function SessionsPage() {
   }, [combineSuggestion, dismissedCombineSignatures])
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden gap-4">
+    <div className="flex-1 min-h-0 flex flex-col overflow-y-auto gap-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>

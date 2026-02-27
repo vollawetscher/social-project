@@ -633,6 +633,7 @@ export default function SettingsPage() {
                   {t('serviceLiveKitDesc')}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceEuHosted')}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">E2E encrypted</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">DTLS/SRTP</Badge>
                 </div>
