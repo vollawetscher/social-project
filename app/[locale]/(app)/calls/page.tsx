@@ -485,12 +485,12 @@ export default function CallsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Video className="h-5 w-5 text-info" />
-              Start Video Call
+              {t('startVideoCall')}
             </DialogTitle>
             <DialogDescription>
               {videoDialogStep === "choose"
-                ? "How would you like to invite the other person?"
-                : "Enter a phone number or pick a contact. They'll receive a call and an SMS with the join link."}
+                ? t('invitePromptVideo')
+                : t('invitePromptPhone')}
             </DialogDescription>
           </DialogHeader>
 
@@ -508,8 +508,8 @@ export default function CallsPage() {
                   <Link2 className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Copy Link</p>
-                  <p className="text-xs text-muted-foreground">Share the invite link yourself</p>
+                  <p className="text-sm font-medium">{t('copyLink')}</p>
+                  <p className="text-xs text-muted-foreground">{t('copyLinkDescription')}</p>
                 </div>
               </button>
               <button
@@ -521,12 +521,12 @@ export default function CallsPage() {
                   <BellRing className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Ring + SMS</p>
-                  <p className="text-xs text-muted-foreground">Phone rings & SMS with link is sent</p>
+                  <p className="text-sm font-medium">{t('ringSms')}</p>
+                  <p className="text-xs text-muted-foreground">{t('ringSmsDescription')}</p>
                 </div>
               </button>
               <Button variant="ghost" size="sm" onClick={() => setPendingCallMode(null)} className="mt-1">
-                Cancel
+                {t('cancel')}
               </Button>
             </div>
           ) : (
@@ -566,7 +566,7 @@ export default function CallsPage() {
               )}
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setVideoDialogStep("choose")}>
-                  Back
+                  {t('back')}
                 </Button>
               </div>
             </div>
@@ -580,22 +580,22 @@ export default function CallsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5 text-primary" />
-              Start Audio Call
+              {t('startAudioCall')}
             </DialogTitle>
             <DialogDescription>
-              A new call room will be created. You can share the link with anyone you want to call.
+              {t('audioCallDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-row gap-3 justify-end pt-2">
             <Button variant="outline" onClick={() => setPendingCallMode(null)} disabled={creating}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               onClick={() => { setPendingCallMode(null); handleNewCall("audio") }}
               disabled={creating}
             >
               {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Phone className="h-4 w-4 mr-2" />}
-              Start Call
+              {t('startCall')}
             </Button>
           </div>
         </DialogContent>
@@ -637,7 +637,6 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
         const durationSec = call.ended_at && call.started_at
           ? Math.round((new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000)
           : 0
-        const isInProgress = call.status === "processing" || call.status === "transcribing"
         return (
           <button
             key={call.id}
@@ -653,9 +652,6 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
                 <p className="font-medium text-foreground text-sm truncate">{name}</p>
                 {call.status === "done" && (
                   <Badge variant="secondary" className="text-[9px] h-4 px-1.5 gap-0.5 bg-success/20 text-success border-0 shrink-0">Transcribed</Badge>
-                )}
-                {isInProgress && (
-                  <Badge variant="secondary" className="text-[9px] h-4 px-1.5 gap-0.5 bg-warning/20 text-warning border-0 shrink-0 animate-pulse">Processing</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
