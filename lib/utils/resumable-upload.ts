@@ -4,7 +4,7 @@ import * as tus from 'tus-js-client'
 import { SupabaseClient } from '@supabase/supabase-js'
 
 const RESUMABLE_THRESHOLD = 40 * 1024 * 1024 // 40 MB
-const CHUNK_SIZE = 6 * 1024 * 1024 // 6 MB
+const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB
 
 interface UploadOptions {
   contentType: string
@@ -13,7 +13,7 @@ interface UploadOptions {
 
 /**
  * Upload a file to Supabase Storage, automatically using TUS resumable
- * uploads for files above 40 MB to bypass the free-tier 50 MB limit.
+ * uploads for files above 40 MB for improved reliability on large files.
  */
 export async function uploadToStorage(
   supabase: SupabaseClient,
@@ -48,7 +48,8 @@ export async function uploadToStorage(
       headers: {
         authorization: `Bearer ${session.access_token}`,
       },
-      uploadDataDuringCreation: true,
+      // Keep creation request minimal; some environments reject create-with-upload.
+      uploadDataDuringCreation: false,
       removeFingerprintOnSuccess: true,
       metadata: {
         bucketName: bucket,
@@ -56,7 +57,14 @@ export async function uploadToStorage(
         contentType: opts.contentType,
       },
       chunkSize: CHUNK_SIZE,
-      onError: (error) => reject(error),
+      onError: (error) => {
+        const raw = String((error as Error)?.message || error)
+        if (raw.includes('response code: 413') || raw.toLowerCase().includes('maximum size exceeded')) {
+          reject(new Error('Upload rejected by storage size limits (HTTP 413). Check global Storage upload limit and bucket file size limit.'))
+          return
+        }
+        reject(error)
+      },
       onProgress: (bytesUploaded, bytesTotal) => {
         opts.onProgress?.(bytesUploaded / bytesTotal)
       },
