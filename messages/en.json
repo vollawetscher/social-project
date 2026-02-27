@@ -172,6 +172,7 @@
       "title": "{count, plural, one {Possible split call detected} other {Possible split calls detected}}",
       "subtitle": "These sessions look related. Combined duration: {duration}",
       "action": "Combine suggested",
+      "dismiss": "Dismiss suggestion",
       "combining": "Combining...",
       "success": "Sessions combined",
       "error": "Failed to combine sessions",

@@ -172,6 +172,7 @@
       "title": "{count, plural, one {Posible llamada dividida detectada} other {Posibles llamadas divididas detectadas}}",
       "subtitle": "Estas sesiones parecen relacionadas. Duracion combinada: {duration}",
       "action": "Combinar sugeridas",
+      "dismiss": "Ocultar sugerencia",
       "combining": "Combinando...",
       "success": "Sesiones combinadas",
       "error": "No se pudieron combinar las sesiones",

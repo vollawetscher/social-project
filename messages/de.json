@@ -172,6 +172,7 @@
       "title": "{count, plural, one {Moeglicherweise geteilten Anruf erkannt} other {Moeglicherweise geteilte Anrufe erkannt}}",
       "subtitle": "Diese Sitzungen scheinen zusammenzugehoeren. Kombinierte Dauer: {duration}",
       "action": "Vorgeschlagene kombinieren",
+      "dismiss": "Vorschlag ausblenden",
       "combining": "Wird kombiniert...",
       "success": "Sitzungen kombiniert",
       "error": "Sitzungen konnten nicht kombiniert werden",

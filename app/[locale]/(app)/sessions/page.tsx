@@ -70,6 +70,8 @@ type CombineSuggestion = {
   baseName: string
   count: number
   totalDuration: number
+  sessionNames: string[]
+  signature: string
 }
 
 const statusConfig: Record<SessionStatus, StatusDisplay> = {
@@ -234,6 +236,7 @@ export default function SessionsPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminView, setAdminView] = useState(false)
   const [combiningSuggestion, setCombiningSuggestion] = useState(false)
+  const [dismissedCombineSignatures, setDismissedCombineSignatures] = useState<string[]>([])
   const supabase = createClient()
 
   const isTranscriptFile = (f: File) =>
@@ -973,6 +976,8 @@ export default function SessionsPage() {
             baseName: current[0].filename,
             count: current.length,
             totalDuration: current.reduce((acc, s) => acc + (s.duration || 0), 0),
+            sessionNames: current.map((s) => s.filename),
+            signature: current.map((s) => s.id).join('|'),
           }
           if (!best || suggestion.count > best.count) best = suggestion
         }
@@ -990,6 +995,8 @@ export default function SessionsPage() {
         baseName: current[0].filename,
         count: current.length,
         totalDuration: current.reduce((acc, s) => acc + (s.duration || 0), 0),
+        sessionNames: current.map((s) => s.filename),
+        signature: current.map((s) => s.id).join('|'),
       }
       if (!best || suggestion.count > best.count) best = suggestion
     }
@@ -1013,6 +1020,9 @@ export default function SessionsPage() {
       if (!response.ok) {
         throw new Error(payload?.error || t('combineSuggested.error'))
       }
+      setDismissedCombineSignatures((prev) =>
+        prev.includes(combineSuggestion.signature) ? prev : [...prev, combineSuggestion.signature]
+      )
       toast.success(t('combineSuggested.success'))
       await fetchSessions()
     } catch (err: any) {
@@ -1021,6 +1031,12 @@ export default function SessionsPage() {
       setCombiningSuggestion(false)
     }
   }, [combineSuggestion, combiningSuggestion, fetchSessions, t])
+
+  const visibleCombineSuggestion = useMemo(() => {
+    if (!combineSuggestion) return null
+    if (dismissedCombineSignatures.includes(combineSuggestion.signature)) return null
+    return combineSuggestion
+  }, [combineSuggestion, dismissedCombineSignatures])
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden gap-4">
@@ -1268,23 +1284,42 @@ export default function SessionsPage() {
 
       {/* Sessions List */}
       <Card className="border-border flex-1 min-h-0 flex flex-col overflow-hidden">
-        {combineSuggestion && (
+        {visibleCombineSuggestion && (
           <div className="mx-4 mt-3 mb-0 rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium text-foreground">
-                {t('combineSuggested.title', { count: combineSuggestion.count })}
+                {t('combineSuggested.title', { count: visibleCombineSuggestion.count })}
               </p>
               <p className="text-xs text-muted-foreground">
-                {t('combineSuggested.subtitle', { duration: formatDuration(combineSuggestion.totalDuration) })}
+                {t('combineSuggested.subtitle', { duration: formatDuration(visibleCombineSuggestion.totalDuration) })}
+              </p>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {visibleCombineSuggestion.sessionNames.join(' + ')}
               </p>
             </div>
-            <Button
-              size="sm"
-              onClick={handleCombineSuggestedCalls}
-              disabled={combiningSuggestion}
-            >
-              {combiningSuggestion ? t('combineSuggested.combining') : t('combineSuggested.action')}
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setDismissedCombineSignatures((prev) =>
+                    prev.includes(visibleCombineSuggestion.signature)
+                      ? prev
+                      : [...prev, visibleCombineSuggestion.signature]
+                  )
+                }
+                aria-label={t('combineSuggested.dismiss')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleCombineSuggestedCalls}
+                disabled={combiningSuggestion}
+              >
+                {combiningSuggestion ? t('combineSuggested.combining') : t('combineSuggested.action')}
+              </Button>
+            </div>
           </div>
         )}
 
