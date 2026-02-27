@@ -105,7 +105,7 @@ export default function SettingsPage() {
         setAfterTranscriptTemplateId(data.after_transcript_template_id || '')
       } catch (error) {
         console.error('Error fetching profile:', error)
-        toast.error('Failed to load settings')
+        toast.error(t('loadFailed'))
       } finally {
         setLoading(false)
       }
@@ -142,10 +142,10 @@ export default function SettingsPage() {
       
       const updatedProfile = await response.json()
       setProfile(updatedProfile)
-      toast.success('Settings saved successfully')
+      toast.success(t('saveSuccess'))
     } catch (error) {
       console.error('Error saving settings:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save settings'
+      const errorMessage = error instanceof Error ? error.message : t('saveFailed')
       toast.error(errorMessage)
     } finally {
       setSaving(false)
@@ -155,11 +155,11 @@ export default function SettingsPage() {
   const handleChangePassword = async () => {
     if (!user?.email) return
     if (newPassword.length < 6) {
-      toast.error("Passwort muss mindestens 6 Zeichen haben")
+      toast.error(t('passwordTooShort'))
       return
     }
     if (newPassword !== confirmPassword) {
-      toast.error("Passwörter stimmen nicht überein")
+      toast.error(t('passwordMismatch'))
       return
     }
     setChangingPassword(true)
@@ -167,11 +167,11 @@ export default function SettingsPage() {
       const supabase = createClient()
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
-      toast.success("Passwort wurde geändert")
+      toast.success(t('passwordChanged'))
       setNewPassword("")
       setConfirmPassword("")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Passwort konnte nicht geändert werden"
+      const msg = err instanceof Error ? err.message : t('passwordChangeFailed')
       toast.error(msg)
     } finally {
       setChangingPassword(false)
@@ -182,7 +182,7 @@ export default function SettingsPage() {
     return (
       <div className="max-w-4xl mx-auto py-12 text-center">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-        <p className="text-sm text-muted-foreground mt-4">Loading settings...</p>
+        <p className="text-sm text-muted-foreground mt-4">{t('loadingSettings')}</p>
       </div>
     )
   }
@@ -191,33 +191,34 @@ export default function SettingsPage() {
     return (
       <div className="max-w-4xl mx-auto py-12 text-center">
         <AlertTriangle className="h-12 w-12 mx-auto text-warning mb-4" />
-        <h2 className="text-lg font-semibold">Authentication Required</h2>
-        <p className="text-sm text-muted-foreground mt-2">Please log in to access settings</p>
+        <h2 className="text-lg font-semibold">{t('authRequired')}</h2>
+        <p className="text-sm text-muted-foreground mt-2">{t('authRequiredHint')}</p>
       </div>
     )
   }
 
   return (
     <TooltipProvider>
-      <div className="max-w-4xl space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="max-w-4xl space-y-6 pb-8">
         {/* Header with Save Button */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage your language, workflow, and integration preferences
+              {t('subtitle')}
             </p>
           </div>
           <Button onClick={handleSave} disabled={saving}>
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                {t('saving')}
               </>
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Save Changes
+                {t('saveChanges')}
               </>
             )}
           </Button>
@@ -228,20 +229,20 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="h-5 w-5" />
-              Language Preferences
+              {t('languagePreferences')}
             </CardTitle>
             <CardDescription>
-              Set your default languages for transcription and reports
+              {t('languagePreferencesDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Default Recording Language */}
             <div className="space-y-2">
               <Label htmlFor="recording-language" className="font-medium">
-                Default Recording Language
+                {t('defaultRecordingLanguage')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Language used for audio transcription (you can override per session)
+                {t('defaultRecordingLanguageHint')}
               </p>
               <Select value={defaultRecordingLanguage} onValueChange={setDefaultRecordingLanguage}>
                 <SelectTrigger className="w-full bg-secondary border-border">
@@ -277,10 +278,10 @@ export default function SettingsPage() {
             {/* Preferred Report Language */}
             <div className="space-y-2">
               <Label htmlFor="report-language" className="font-medium">
-                Preferred Report Language
+                {t('preferredReportLanguage')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Language used for AI-generated reports and summaries
+                {t('preferredReportLanguageHint')}
               </p>
               <Select value={preferredReportLanguage} onValueChange={setPreferredReportLanguage}>
                 <SelectTrigger className="w-full bg-secondary border-border">
@@ -300,10 +301,10 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="timezone" className="font-medium flex items-center gap-2">
                 <Globe className="h-4 w-4" />
-                Timezone
+                {t('timezone')}
               </Label>
               <p className="text-sm text-muted-foreground">
-                Used for displaying timestamps in sessions and reports
+                {t('timezoneHint')}
               </p>
               <Select value={timezone} onValueChange={setTimezone}>
                 <SelectTrigger className="w-full bg-secondary border-border">
@@ -326,30 +327,30 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5" />
-              Workflow Automation
+              {t('workflowAutomation')}
             </CardTitle>
             <CardDescription>
-              Automatic actions after transcription completes
+              {t('workflowAutomationDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* After Transcript - Template Selector */}
             <div className="space-y-3">
               <Label htmlFor="after-transcript" className="font-medium">
-                After Transcript Completes
+                {t('afterTranscriptCompletes')}
               </Label>
               <p className="text-sm text-muted-foreground mb-3">
-                Automatically generate an output with the chosen template when a recording is transcribed
+                {t('afterTranscriptCompletesHint')}
               </p>
               <Select
                 value={afterTranscriptTemplateId || 'nothing'}
                 onValueChange={(v) => setAfterTranscriptTemplateId(v === 'nothing' ? '' : v)}
               >
                 <SelectTrigger id="after-transcript" className="w-full">
-                  <SelectValue placeholder="Do nothing (manual only)" />
+                  <SelectValue placeholder={t('doNothingManual')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nothing">Do nothing — generate manually</SelectItem>
+                  <SelectItem value="nothing">{t('doNothingManual')}</SelectItem>
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
@@ -358,19 +359,19 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                Create a template
+                {t('createTemplatePrefix')}
                 <Link
                   href="/templates/new/from-samples"
                   className="text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  from samples
+                  {t('createTemplateFromSamples')}
                 </Link>
-                or use the
+                {t('orUse')}
                 <Link
                   href="/templates"
                   className="text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  Templates page
+                  {t('templatesPageLink')}
                 </Link>
               </p>
             </div>
@@ -378,8 +379,7 @@ export default function SettingsPage() {
             <Alert className="border-info/30 bg-info/10">
               <Info className="h-4 w-4 text-info" />
               <AlertDescription className="text-foreground/80">
-                You can always manually generate additional reports or summaries from any session, 
-                regardless of this setting.
+                {t('workflowAutomationInfo')}
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -390,20 +390,19 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Security
+              {t('security')}
             </CardTitle>
             <CardDescription>
-              Authentication and access control settings
+              {t('securityDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* RLS/JWT Info Banner */}
             <Alert className="border-info/30 bg-info/10">
               <Lock className="h-4 w-4 text-info" />
-              <AlertTitle className="text-info">Row Level Security Enabled</AlertTitle>
+              <AlertTitle className="text-info">{t('rowLevelSecurityEnabled')}</AlertTitle>
               <AlertDescription className="text-foreground/80">
-                Your data is protected by Supabase Row Level Security (RLS). All database
-                access is authenticated via JWT tokens and scoped to your organization.
+                {t('rowLevelSecurityEnabledHint')}
               </AlertDescription>
             </Alert>
 
@@ -413,11 +412,11 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <Label htmlFor="session-timeout" className="font-medium">
-                    Session Timeout
+                    {t('sessionTimeout')}
                   </Label>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Automatically log out after 30 minutes of inactivity
+                  {t('sessionTimeoutHint')}
                 </p>
               </div>
               <Switch
@@ -430,7 +429,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
               <Check className="h-4 w-4 text-success" />
               <span className="text-sm text-foreground">
-                Two-factor authentication is enabled for your account
+                {t('twoFactorEnabled')}
               </span>
             </div>
           </CardContent>
@@ -441,10 +440,10 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Database className="h-5 w-5" />
-              Privacy & Data Retention
+              {t('privacyAndRetention')}
             </CardTitle>
             <CardDescription>
-              GDPR compliance and data handling preferences
+              {t('privacyAndRetentionDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -452,35 +451,34 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Label htmlFor="retention" className="font-medium">
-                  Data Retention Policy
+                  {t('dataRetentionPolicy')}
                 </Label>
                 <Badge variant="outline" className="text-[10px]">
                   GDPR
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mb-2">
-                Automatically delete sessions and outputs after this period
+                {t('dataRetentionPolicyHint')}
               </p>
               <Select value={retentionPolicy} onValueChange={setRetentionPolicy}>
                 <SelectTrigger className="w-[200px] bg-secondary border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="30">30 days</SelectItem>
-                  <SelectItem value="90">90 days</SelectItem>
-                  <SelectItem value="180">180 days</SelectItem>
-                  <SelectItem value="365">1 year</SelectItem>
-                  <SelectItem value="never">Never (manual only)</SelectItem>
+                  <SelectItem value="30">{t('retention30')}</SelectItem>
+                  <SelectItem value="90">{t('retention90')}</SelectItem>
+                  <SelectItem value="180">{t('retention180')}</SelectItem>
+                  <SelectItem value="365">{t('retention365')}</SelectItem>
+                  <SelectItem value="never">{t('retentionNever')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <Alert className="border-warning/30 bg-warning/10">
               <AlertTriangle className="h-4 w-4 text-warning" />
-              <AlertTitle className="text-warning">Data Subject Requests</AlertTitle>
+              <AlertTitle className="text-warning">{t('dataSubjectRequests')}</AlertTitle>
               <AlertDescription className="text-foreground/80">
-                To request data export or deletion under GDPR, please contact your
-                organization administrator or support@notissima.app
+                {t('dataSubjectRequestsHint')}
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -495,17 +493,17 @@ export default function SettingsPage() {
               {t('infrastructure')}
             </CardTitle>
             <CardDescription>
-              Connected services and their security measures
+              {t('infrastructureDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Security Overview */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { icon: <Globe className="h-4 w-4" />, label: 'EU Hosting', detail: 'All data in EU' },
-                { icon: <Lock className="h-4 w-4" />, label: 'Encryption', detail: 'TLS + AES-256' },
-                { icon: <Shield className="h-4 w-4" />, label: 'Row Level Security', detail: 'Per-user isolation' },
-                { icon: <Eye className="h-4 w-4" />, label: 'Consent Logging', detail: 'Timestamped records' },
+                { icon: <Globe className="h-4 w-4" />, label: t('euHosting'), detail: t('euHostingDetail') },
+                { icon: <Lock className="h-4 w-4" />, label: t('encryption'), detail: t('encryptionDetail') },
+                { icon: <Shield className="h-4 w-4" />, label: t('rowLevelSecurity'), detail: t('rowLevelSecurityDetail') },
+                { icon: <Eye className="h-4 w-4" />, label: t('consentLogging'), detail: t('consentLoggingDetail') },
               ].map((item) => (
                 <div key={item.label} className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-success/30 bg-success/5 text-center">
                   <div className="text-success">{item.icon}</div>
@@ -524,17 +522,17 @@ export default function SettingsPage() {
                     <span className="text-xs font-bold text-primary">TR</span>
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
-                    Connected
+                    {t('connected')}
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Speechmatics</h4>
+                <h4 className="font-medium text-foreground">{t('serviceSpeechmatics')}</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  GDPR-compliant transcription
+                  {t('serviceSpeechmaticsDesc')}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">EU hosted</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceEuHosted')}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">SOC 2</Badge>
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">No data retention</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceNoDataRetention')}</Badge>
                 </div>
               </div>
 
@@ -545,15 +543,15 @@ export default function SettingsPage() {
                     <span className="text-xs font-bold text-primary">AI</span>
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
-                    Connected
+                    {t('connected')}
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Anthropic Claude</h4>
+                <h4 className="font-medium text-foreground">{t('serviceClaude')}</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  AI-powered content generation
+                  {t('serviceClaudeDesc')}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">No training on data</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceNoTraining')}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">SOC 2</Badge>
                 </div>
               </div>
@@ -565,16 +563,16 @@ export default function SettingsPage() {
                     <Database className="h-4 w-4 text-primary" />
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
-                    Connected
+                    {t('connected')}
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Supabase</h4>
+                <h4 className="font-medium text-foreground">{t('serviceSupabase')}</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Database, auth & file storage
+                  {t('serviceSupabaseDesc')}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">EU region</Badge>
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">RLS enabled</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceEuRegion')}</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceRlsEnabled')}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">AES-256</Badge>
                 </div>
               </div>
@@ -586,15 +584,15 @@ export default function SettingsPage() {
                     <Wifi className="h-4 w-4 text-primary" />
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
-                    Connected
+                    {t('connected')}
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Railway</h4>
+                <h4 className="font-medium text-foreground">{t('serviceRailway')}</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Application hosting
+                  {t('serviceRailwayDesc')}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">EU region</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceEuRegion')}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">TLS 1.3</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">SOC 2</Badge>
                 </div>
@@ -607,15 +605,15 @@ export default function SettingsPage() {
                     <Phone className="h-4 w-4 text-primary" />
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
-                    Connected
+                    {t('connected')}
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">Twilio</h4>
+                <h4 className="font-medium text-foreground">{t('serviceTwilio')}</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  PSTN calls & SMS
+                  {t('serviceTwilioDesc')}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">Encrypted signaling</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceEncryptedSignaling')}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">GDPR DPA</Badge>
                 </div>
               </div>
@@ -627,12 +625,12 @@ export default function SettingsPage() {
                     <Video className="h-4 w-4 text-info" />
                   </div>
                   <Badge className="bg-success/20 text-success border-success/30">
-                    Connected
+                    {t('connected')}
                   </Badge>
                 </div>
-                <h4 className="font-medium text-foreground">LiveKit</h4>
+                <h4 className="font-medium text-foreground">{t('serviceLiveKit')}</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Video & audio conferencing
+                  {t('serviceLiveKitDesc')}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">E2E encrypted</Badge>
@@ -642,6 +640,7 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </TooltipProvider>
   )

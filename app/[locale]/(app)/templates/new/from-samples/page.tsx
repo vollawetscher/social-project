@@ -32,13 +32,6 @@ import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { participantRoleLabels } from "@/lib/mock/data"
 
-const steps = [
-  { id: 1, name: "Upload Samples", description: "Upload sample reports" },
-  { id: 2, name: "Analysis", description: "Review AI analysis" },
-  { id: 3, name: "Constraints", description: "Set constraints" },
-  { id: 4, name: "Save", description: "Name and save" },
-]
-
 interface UploadedFile {
   name: string
   size: string
@@ -46,6 +39,14 @@ interface UploadedFile {
 }
 
 export default function TemplateWizardPage() {
+  const t = useTranslations('templateFromSamples')
+  const tc = useTranslations('common')
+  const steps = [
+    { id: 1, name: t('uploadSamples'), description: t('uploadHint') },
+    { id: 2, name: t('analysisResults'), description: t('analysisReview') },
+    { id: 3, name: t('confirmConstraints'), description: t('constraintsHint') },
+    { id: 4, name: t('saveTemplate'), description: t('saveHint') },
+  ]
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [currentStep, setCurrentStep] = useState(1)
@@ -96,7 +97,7 @@ export default function TemplateWizardPage() {
 
   const handleAnalyze = async () => {
     if (uploadedFileData.length === 0) {
-      toast.error('Please upload at least one file')
+      toast.error(t('uploadAtLeastOne'))
       return
     }
 
@@ -115,7 +116,7 @@ export default function TemplateWizardPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to analyze samples')
+        throw new Error(t('analyzeFailed'))
       }
 
       const data = await response.json()
@@ -131,10 +132,10 @@ export default function TemplateWizardPage() {
 
       setIsAnalyzing(false)
       setAnalysisComplete(true)
-      toast.success(`Analysis complete! Analyzed ${data.filesAnalyzed} file(s)`)
+      toast.success(t('analysisComplete', { count: data.filesAnalyzed }))
     } catch (error) {
       console.error('Analysis failed:', error)
-      toast.error('Failed to analyze samples. Please try again.')
+      toast.error(t('analyzeFailed'))
       setIsAnalyzing(false)
     }
   }
@@ -149,7 +150,7 @@ export default function TemplateWizardPage() {
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
-      toast.error('Please enter a template name')
+      toast.error(t('nameRequired'))
       return
     }
 
@@ -190,11 +191,11 @@ export default function TemplateWizardPage() {
       }
 
       const data = await response.json()
-      toast.success(`Template "${templateName}" created`)
+      toast.success(t('templateCreated', { name: templateName }))
       router.push('/templates')
     } catch (error) {
       console.error('Error creating template:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create template'
+      const errorMessage = error instanceof Error ? error.message : t('createFailed')
       toast.error(errorMessage)
     } finally {
       setIsSaving(false)
@@ -239,9 +240,9 @@ export default function TemplateWizardPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Create Template from Samples</h1>
+          <h1 className="text-xl font-semibold text-foreground">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
-            Upload sample reports to create a new generation template
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -298,10 +299,10 @@ export default function TemplateWizardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Upload Sample Reports
+                {t('uploadSamples')}
               </CardTitle>
               <CardDescription>
-                Upload PDF, DOCX, or TXT files that represent the output style you want
+                {t('uploadHint')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -320,17 +321,17 @@ export default function TemplateWizardPage() {
                 />
                 <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                 <p className="text-sm text-foreground font-medium mb-1">
-                  Drag and drop files here
+                  {t('dragDrop')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  or click to browse (PDF, DOCX, TXT)
+                  {t('browseHint')}
                 </p>
               </div>
 
               {/* Uploaded Files */}
               {uploadedFiles.length > 0 && (
                 <div className="space-y-2">
-                  <Label className="text-sm">Uploaded Files</Label>
+                  <Label className="text-sm">{t('uploadedFiles')}</Label>
                   {uploadedFiles.map((file) => (
                     <div
                       key={file.name}
@@ -366,10 +367,10 @@ export default function TemplateWizardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
-                AI Analysis Results
+                {t('analysisResults')}
               </CardTitle>
               <CardDescription>
-                Review the detected structure, tone, and style from your samples
+                {t('analysisReview')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -377,7 +378,7 @@ export default function TemplateWizardPage() {
                 <div className="text-center py-8">
                   <Button onClick={handleAnalyze} size="lg">
                     <Sparkles className="h-4 w-4 mr-2" />
-                    Analyze Samples
+                    {t('analyzeSamples')}
                   </Button>
                 </div>
               )}
@@ -387,7 +388,7 @@ export default function TemplateWizardPage() {
                   <div className="flex justify-center">
                     <div className="h-12 w-12 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                   </div>
-                  <p className="text-sm text-muted-foreground">Analyzing your samples...</p>
+                  <p className="text-sm text-muted-foreground">{t('analyzing')}</p>
                   <Progress value={65} className="w-48 mx-auto" />
                 </div>
               )}
@@ -396,7 +397,7 @@ export default function TemplateWizardPage() {
                 <>
                   {/* Inferred Sections */}
                   <div className="space-y-3">
-                    <Label>Inferred Sections</Label>
+                    <Label>{t('inferredSections')}</Label>
                     <div className="grid gap-2">
                       {analysisResults.sections.map((section) => (
                         <div
@@ -407,7 +408,7 @@ export default function TemplateWizardPage() {
                             {section.name}
                           </span>
                           <Badge variant={section.detected ? "default" : "secondary"}>
-                            {section.detected ? "Detected" : "Optional"}
+                            {section.detected ? t('detected') : t('optional')}
                           </Badge>
                         </div>
                       ))}
@@ -417,19 +418,19 @@ export default function TemplateWizardPage() {
                   {/* Style Analysis */}
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-                      <p className="text-xs text-muted-foreground mb-1">Tone</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('tone')}</p>
                       <p className="text-sm font-medium text-foreground">
                         {analysisResults.tone}
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-                      <p className="text-xs text-muted-foreground mb-1">Perspective</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('perspective')}</p>
                       <p className="text-sm font-medium text-foreground">
                         {analysisResults.perspective}
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-                      <p className="text-xs text-muted-foreground mb-1">Language</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('language')}</p>
                       <p className="text-sm font-medium text-foreground">
                         {analysisResults.language}
                       </p>
@@ -447,10 +448,10 @@ export default function TemplateWizardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ListChecks className="h-5 w-5" />
-                Confirm Constraints
+                {t('confirmConstraints')}
               </CardTitle>
               <CardDescription>
-                Define who can use this template and what inputs are required
+                {t('constraintsHint')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -458,10 +459,10 @@ export default function TemplateWizardPage() {
               <div className="space-y-3">
                 <Label className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  Intended Perspectives
+                  {t('intendedPerspectives')}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Which participant viewpoints can this template generate outputs for?
+                  {t('intendedPerspectivesHint')}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(participantRoleLabels).map(([key, label]) => (
@@ -485,7 +486,7 @@ export default function TemplateWizardPage() {
               <div className="space-y-3">
                 <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Intended Audience
+                  {t('intendedAudience')}
                 </Label>
                 <div className="flex gap-2">
                   {["internal", "external"].map((audience) => (
@@ -499,7 +500,7 @@ export default function TemplateWizardPage() {
                           : "bg-secondary hover:bg-accent text-foreground"
                       )}
                     >
-                      {audience === "internal" ? "Internal (Team)" : "External (Third Parties)"}
+                      {audience === "internal" ? t('internalTeam') : t('externalThirdParties')}
                     </button>
                   ))}
                 </div>
@@ -515,58 +516,58 @@ export default function TemplateWizardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Save className="h-5 w-5" />
-                Save Template
+                {t('saveTemplate')}
               </CardTitle>
               <CardDescription>
-                Give your template a name and optional tags for easy discovery
+                {t('saveHint')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Template Name *</Label>
+                <Label htmlFor="name">{t('templateName')} *</Label>
                 <Input
                   id="name"
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
-                  placeholder="e.g., Client Consultation Summary"
+                  placeholder={t('templateNamePlaceholder')}
                   className="bg-secondary border-border"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('description')}</Label>
                 <Textarea
                   id="description"
                   value={templateDescription}
                   onChange={(e) => setTemplateDescription(e.target.value)}
-                  placeholder="Describe when and how to use this template..."
+                  placeholder={t('descriptionPlaceholder')}
                   className="bg-secondary border-border min-h-[100px]"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                <Label htmlFor="tags">{t('tags')}</Label>
                 <Input
                   id="tags"
                   value={templateTags}
                   onChange={(e) => setTemplateTags(e.target.value)}
-                  placeholder="e.g., legal, consultation, client"
+                  placeholder={t('tagsPlaceholder')}
                   className="bg-secondary border-border"
                 />
               </div>
 
               {/* Summary */}
               <div className="p-4 rounded-lg bg-secondary/30 border border-border mt-6">
-                <h4 className="text-sm font-medium text-foreground mb-3">Summary</h4>
+                <h4 className="text-sm font-medium text-foreground mb-3">{t('summary')}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Sections</span>
+                    <span className="text-muted-foreground">{t('sections')}</span>
                     <span className="font-medium">{analysisResults.sections.filter((s) => s.detected).length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Intended Perspectives</span>
+                    <span className="text-muted-foreground">{t('intendedPerspectives')}</span>
                     <span className="font-medium">{selectedPerspectives.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Audience</span>
+                    <span className="text-muted-foreground">{t('audience')}</span>
                     <span className="font-medium capitalize">{selectedAudience.join(", ")}</span>
                   </div>
                 </div>
@@ -584,11 +585,11 @@ export default function TemplateWizardPage() {
           disabled={currentStep === 1}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          {tc('back')}
         </Button>
         {currentStep < 4 ? (
           <Button onClick={() => setCurrentStep((s) => s + 1)} disabled={!canProceed()}>
-            Next
+            {tc('next')}
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         ) : (
@@ -599,12 +600,12 @@ export default function TemplateWizardPage() {
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                {t('saving')}
               </>
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Save Template
+                {t('saveTemplate')}
               </>
             )}
           </Button>

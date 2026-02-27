@@ -52,8 +52,8 @@ export function BugReporter({
   const handleSubmit = async () => {
     if (!description.trim()) {
       toast({
-        title: 'Description required',
-        description: 'Please describe the problem you encountered.',
+        title: t('descriptionRequiredTitle'),
+        description: t('descriptionRequiredText'),
         variant: 'destructive',
       })
       return
@@ -94,7 +94,7 @@ export function BugReporter({
       })
 
       if (!response.ok) {
-        throw new Error('Failed to submit bug report')
+        throw new Error(t('failedMessage'))
       }
 
       const data = await response.json()
@@ -102,8 +102,8 @@ export function BugReporter({
       setSubmitSuccess(true)
 
       toast({
-        title: 'Bug report sent',
-        description: 'Thank you for your feedback. We will investigate the issue.',
+        title: t('successTitle'),
+        description: t('successMessage'),
       })
 
       setTimeout(() => {
@@ -116,8 +116,8 @@ export function BugReporter({
     } catch (error) {
       console.error('Failed to submit bug report:', error)
       toast({
-        title: 'Error',
-        description: 'Could not send the bug report. Please try again later.',
+        title: t('failedTitle'),
+        description: t('failedMessage'),
         variant: 'destructive',
       })
     } finally {
@@ -130,14 +130,14 @@ export function BugReporter({
       <DialogTrigger asChild>
         <Button variant={variant} size={size} className={className} title={t('triggerTitle')}>
           <Bug className={iconOnly ? "h-4 w-4" : "h-4 w-4 mr-2"} />
-          {!iconOnly && 'Report Problem'}
+          {!iconOnly && t('triggerTitle')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Report a Problem</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>
-            Describe the issue you encountered. Your feedback helps us improve the application.
+            {t('descriptionText')}
           </DialogDescription>
         </DialogHeader>
 
@@ -145,10 +145,10 @@ export function BugReporter({
           <Alert className="bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900">
             <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             <AlertDescription className="text-green-800 dark:text-green-300">
-              Bug report sent successfully!
+              {t('successMessage')}
               {errorId && (
                 <p className="mt-2 text-xs text-green-600 dark:text-green-500">
-                  Reference ID: {errorId.substring(0, 8)}...
+                  {t('referenceId')}: {errorId.substring(0, 8)}...
                 </p>
               )}
             </AlertDescription>
@@ -157,7 +157,7 @@ export function BugReporter({
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="description">
-                What went wrong? <span className="text-red-500">*</span>
+                {t('descriptionLabel')} <span className="text-red-500">*</span>
               </Label>
               <Textarea
                 id="description"
@@ -171,11 +171,11 @@ export function BugReporter({
 
             <div className="grid gap-2">
               <Label htmlFor="reproduction">
-                Steps to reproduce (optional)
+                {t('stepsLabel')}
               </Label>
               <Textarea
                 id="reproduction"
-                placeholder={"1. Go to...\n2. Click on...\n3. See error..."}
+                placeholder={t('stepsPlaceholder')}
                 value={reproductionSteps}
                 onChange={(e) => setReproductionSteps(e.target.value)}
                 rows={4}
@@ -186,10 +186,10 @@ export function BugReporter({
             {(caseId || sessionId || fileId) && (
               <Alert>
                 <AlertDescription className="text-xs text-muted-foreground">
-                  <strong>Debug context will be included automatically:</strong>
-                  {caseId && <div>Case ID: {caseId.substring(0, 8)}...</div>}
-                  {sessionId && <div>Session ID: {sessionId.substring(0, 8)}...</div>}
-                  {fileId && <div>File ID: {fileId.substring(0, 8)}...</div>}
+                  <strong>{t('debugContextTitle')}</strong>
+                  {caseId && <div>{t('caseId')}: {caseId.substring(0, 8)}...</div>}
+                  {sessionId && <div>{t('sessionId')}: {sessionId.substring(0, 8)}...</div>}
+                  {fileId && <div>{t('fileId')}: {fileId.substring(0, 8)}...</div>}
                 </AlertDescription>
               </Alert>
             )}
@@ -204,16 +204,16 @@ export function BugReporter({
                 onClick={() => setOpen(false)}
                 disabled={isSubmitting}
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
+                    {t('sending')}
                   </>
                 ) : (
-                  'Send Report'
+                  t('submitButton')
                 )}
               </Button>
             </>

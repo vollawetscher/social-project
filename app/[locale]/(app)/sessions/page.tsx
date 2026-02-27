@@ -345,6 +345,16 @@ export default function SessionsPage() {
     setIsDraggingFile(false)
   }, [])
 
+  const openAudioPicker = useCallback(() => {
+    if (uploadingFiles) return
+    fileInputRef.current?.click()
+  }, [uploadingFiles])
+
+  const openTranscriptPicker = useCallback(() => {
+    if (uploadingTranscript) return
+    transcriptInputRef.current?.click()
+  }, [uploadingTranscript])
+
   const processTranscriptFile = useCallback(async (file: File): Promise<boolean> => {
     const rawFileContent = await file.text()
     const { segments, rawText } = parseTranscriptFile(rawFileContent, file.name)
@@ -1177,8 +1187,9 @@ export default function SessionsPage() {
               {/* Upload Areas - Split */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Upload Audio - label makes tap work on mobile without drag-drop */}
-                <label
-                  htmlFor="audio-file-input"
+                <div
+                  role="button"
+                  tabIndex={0}
                   className={cn(
                     "border-2 border-dashed rounded-lg p-4 min-h-[88px] flex flex-col items-center justify-center transition-colors cursor-pointer touch-manipulation block",
                     isDraggingAudio
@@ -1189,6 +1200,13 @@ export default function SessionsPage() {
                   onDragOver={handleAudioDragOver}
                   onDragLeave={handleAudioDragLeave}
                   onDrop={handleDrop}
+                  onClick={openAudioPicker}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      openAudioPicker()
+                    }
+                  }}
                 >
                   <input
                     ref={fileInputRef}
@@ -1218,7 +1236,7 @@ export default function SessionsPage() {
                       </>
                     )}
                   </div>
-                </label>
+                </div>
 
                 {/* Upload Transcript - label for tap; paste button separate for mobile */}
                 <div
@@ -1234,9 +1252,17 @@ export default function SessionsPage() {
                   onDrop={handleFileDrop}
                   onPaste={handleTranscriptPaste}
                 >
-                  <label
-                    htmlFor="transcript-file-input"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     className="flex flex-col items-center justify-center cursor-pointer touch-manipulation flex-1 min-h-0"
+                    onClick={openTranscriptPicker}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        openTranscriptPicker()
+                      }
+                    }}
                   >
                     <input
                       ref={transcriptInputRef}
@@ -1264,13 +1290,16 @@ export default function SessionsPage() {
                         </p>
                       </>
                     )}
-                  </label>
+                  </div>
                   {!uploadingTranscript && (
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={handlePasteTranscript}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handlePasteTranscript()
+                      }}
                     >
                       {tp('pasteFromClipboard')}
                     </Button>

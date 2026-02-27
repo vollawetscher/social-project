@@ -41,6 +41,7 @@ export interface Session {
   id: string
   user_id: string | null
   case_id: string | null
+  merged_into_session_id?: string | null
   created_at: string
   context_note: string  // Deprecated - use context_text instead
   context_text?: string  // New: transcribable/editable context

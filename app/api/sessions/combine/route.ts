@@ -39,11 +39,15 @@ export async function POST(request: Request) {
 
     const { data: sourceSessions, error: sessionsError } = await db
       .from('sessions')
-      .select('id, internal_case_id, language, created_at')
+      .select('id, internal_case_id, language, created_at, merged_into_session_id')
       .in('id', sessionIds)
 
     if (sessionsError || !sourceSessions || sourceSessions.length !== sessionIds.length) {
       return NextResponse.json({ error: 'Failed to load source sessions' }, { status: 500 })
+    }
+
+    if (sourceSessions.some((s: any) => s.merged_into_session_id)) {
+      return NextResponse.json({ error: 'One or more sessions are already merged' }, { status: 400 })
     }
 
     const orderedSessions = [...sourceSessions].sort(
@@ -133,6 +137,18 @@ export async function POST(request: Request) {
     if (transcriptInsertError) {
       await db.from('sessions').delete().eq('id', combinedSession.id)
       return NextResponse.json({ error: 'Failed to create combined transcript' }, { status: 500 })
+    }
+
+    const { error: sourceUpdateError } = await db
+      .from('sessions')
+      .update({ merged_into_session_id: combinedSession.id })
+      .in('id', sessionIds)
+
+    if (sourceUpdateError) {
+      // Roll back combined session so source sessions are not left visible and unlinked.
+      await db.from('transcripts').delete().eq('session_id', combinedSession.id)
+      await db.from('sessions').delete().eq('id', combinedSession.id)
+      return NextResponse.json({ error: 'Failed to finalize merge' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, sessionId: combinedSession.id }, { status: 201 })

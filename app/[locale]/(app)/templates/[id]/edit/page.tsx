@@ -28,6 +28,8 @@ const availableAudiences: Audience[] = ["internal", "external"]
 const availableDomains: Domain[] = ["legal", "sales", "hr", "medical", "education", "consulting", "general"]
 
 export default function EditTemplatePage() {
+  const t = useTranslations('templateEdit')
+  const tc = useTranslations('common')
   const params = useParams()
   const router = useRouter()
   const templateId = params.id as string
@@ -69,7 +71,7 @@ export default function EditTemplatePage() {
       setDefaultDontInstructions(data.default_dont_instructions || data.defaultDontInstructions || '')
     } catch (error) {
       console.error('Error fetching template:', error)
-      toast.error('Failed to load template')
+      toast.error(t('loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -77,7 +79,7 @@ export default function EditTemplatePage() {
 
   const handleEnhanceDescription = async () => {
     if (!name.trim() && !description.trim()) {
-      toast.error("Enter a template name or rough description first")
+      toast.error(t('enterNameOrDescription'))
       return
     }
     setEnhancingDescription(true)
@@ -87,11 +89,11 @@ export default function EditTemplatePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), description: description.trim() }),
       })
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to enhance")
+      if (!res.ok) throw new Error((await res.json()).error || t('enhanceFailed'))
       const { enhanced } = await res.json()
       if (enhanced) setDescription(enhanced)
     } catch (err: any) {
-      toast.error(err.message || "Failed to enhance description")
+      toast.error(err.message || t('enhanceFailed'))
     } finally {
       setEnhancingDescription(false)
     }
@@ -99,17 +101,17 @@ export default function EditTemplatePage() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error('Please enter a template name')
+      toast.error(t('nameRequired'))
       return
     }
 
     if (selectedPerspectives.length === 0) {
-      toast.error('Please select at least one perspective')
+      toast.error(t('perspectiveRequired'))
       return
     }
 
     if (selectedAudiences.length === 0) {
-      toast.error('Please select at least one audience')
+      toast.error(t('audienceRequired'))
       return
     }
 
@@ -132,14 +134,14 @@ export default function EditTemplatePage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update template')
+        throw new Error(errorData.error || t('saveFailed'))
       }
 
-      toast.success(`Template "${name}" updated`)
+      toast.success(t('saveSuccess'))
       router.push('/templates')
     } catch (error) {
       console.error('Error updating template:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update template'
+      const errorMessage = error instanceof Error ? error.message : t('saveFailed')
       toast.error(errorMessage)
     } finally {
       setSaving(false)
@@ -175,7 +177,7 @@ export default function EditTemplatePage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p className="mt-2 text-sm text-muted-foreground">Loading template...</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t('loadingTemplate')}</p>
         </div>
       </div>
     )
@@ -185,11 +187,11 @@ export default function EditTemplatePage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <p className="text-muted-foreground">Template not found</p>
+          <p className="text-muted-foreground">{t('notFound')}</p>
           <Link href="/templates">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Templates
+              {t('backToTemplates')}
             </Button>
           </Link>
         </div>
@@ -208,9 +210,9 @@ export default function EditTemplatePage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-semibold text-foreground">Edit Template</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{t('editTitle')}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Modify template settings and constraints
+              {t('editSubtitle')}
             </p>
           </div>
         </div>
@@ -218,12 +220,12 @@ export default function EditTemplatePage() {
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              {t('saving')}
             </>
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              Save Changes
+              {t('saveChanges')}
             </>
           )}
         </Button>
@@ -232,22 +234,22 @@ export default function EditTemplatePage() {
       {/* Basic Information */}
       <Card>
         <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-          <CardDescription>Template name and description</CardDescription>
+          <CardTitle>{t('basicInfo')}</CardTitle>
+          <CardDescription>{t('basicInfoDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Template Name</Label>
+            <Label htmlFor="name">{t('name')}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Client Meeting Summary"
+              placeholder={t('namePlaceholder')}
             />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t('description')}</Label>
               <Button
                 type="button"
                 variant="ghost"
@@ -257,7 +259,7 @@ export default function EditTemplatePage() {
                 disabled={enhancingDescription || (!name.trim() && !description.trim())}
               >
                 {enhancingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                Enhance with AI
+                {t('enhanceWithAI')}
               </Button>
             </div>
             <Textarea
@@ -277,8 +279,8 @@ export default function EditTemplatePage() {
       {/* Perspectives */}
       <Card>
         <CardHeader>
-          <CardTitle>Intended Perspectives</CardTitle>
-          <CardDescription>Select which perspectives this template is designed for</CardDescription>
+          <CardTitle>{t('perspectives')}</CardTitle>
+          <CardDescription>{t('perspectivesDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -304,8 +306,8 @@ export default function EditTemplatePage() {
       {/* Audience */}
       <Card>
         <CardHeader>
-          <CardTitle>Allowed Audience</CardTitle>
-          <CardDescription>Who can receive outputs from this template</CardDescription>
+          <CardTitle>{t('audience')}</CardTitle>
+          <CardDescription>{t('audienceDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -331,8 +333,8 @@ export default function EditTemplatePage() {
       {/* Domains */}
       <Card>
         <CardHeader>
-          <CardTitle>Domain Tags</CardTitle>
-          <CardDescription>Categorize this template by domain</CardDescription>
+          <CardTitle>{t('domainTags')}</CardTitle>
+          <CardDescription>{t('domainTagsDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -353,8 +355,8 @@ export default function EditTemplatePage() {
       {/* Style Rules */}
       <Card>
         <CardHeader>
-          <CardTitle>Style Rules</CardTitle>
-          <CardDescription>Enter each rule on a new line</CardDescription>
+          <CardTitle>{t('styleRules')}</CardTitle>
+          <CardDescription>{t('styleRulesDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
@@ -369,14 +371,14 @@ export default function EditTemplatePage() {
       {/* Default Generation Instructions */}
       <Card>
         <CardHeader>
-          <CardTitle>Default Generation Instructions</CardTitle>
+          <CardTitle>{t('defaultGenerationInstructions')}</CardTitle>
           <CardDescription>
-            Pre-fill the &quot;Do include&quot; and &quot;Do not include&quot; fields when this template is selected for generation
+            {t('defaultGenerationInstructionsDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="defaultDo">Do include...</Label>
+            <Label htmlFor="defaultDo">{t('defaultDoInstructions')}</Label>
             <Textarea
               id="defaultDo"
               value={defaultDoInstructions}
@@ -386,7 +388,7 @@ export default function EditTemplatePage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="defaultDont">Do not include...</Label>
+            <Label htmlFor="defaultDont">{t('defaultDontInstructions')}</Label>
             <Textarea
               id="defaultDont"
               value={defaultDontInstructions}
@@ -402,19 +404,19 @@ export default function EditTemplatePage() {
       <div className="flex items-center justify-between pt-6 border-t">
         <Link href="/templates">
           <Button variant="outline">
-            Cancel
+            {tc('cancel')}
           </Button>
         </Link>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              {t('saving')}
             </>
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              Save Changes
+              {t('saveChanges')}
             </>
           )}
         </Button>

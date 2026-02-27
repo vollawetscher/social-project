@@ -75,6 +75,9 @@ function formatDate(dateString: string): string {
 }
 
 function OutputDetailSheet({ output }: { output: Output }) {
+  const t = useTranslations('outputs')
+  const td = useTranslations('outputDetail')
+  const tc = useTranslations('common')
   const [copySuccess, setCopySuccess] = React.useState(false)
 
   const handleCopy = async (content: string) => {
@@ -84,7 +87,7 @@ function OutputDetailSheet({ output }: { output: Output }) {
       setTimeout(() => setCopySuccess(false), 2000)
     } catch (error) {
       console.error('Failed to copy:', error)
-      alert('Failed to copy to clipboard')
+      alert(t('copyFailed'))
     }
   }
 
@@ -105,14 +108,14 @@ function OutputDetailSheet({ output }: { output: Output }) {
       <SheetTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-1.5">
           <Eye className="h-4 w-4" />
-          <span className="hidden sm:inline">View</span>
+          <span className="hidden sm:inline">{t('view')}</span>
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:w-[600px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{output.templateName}</SheetTitle>
           <SheetDescription>
-            Generated from {output.sessionFilename}
+            {t('generatedFrom', { session: output.sessionFilename })}
           </SheetDescription>
         </SheetHeader>
 
@@ -121,43 +124,43 @@ function OutputDetailSheet({ output }: { output: Output }) {
           <Accordion type="single" collapsible defaultValue="">
             <AccordionItem value="metadata" className="border-border">
               <AccordionTrigger className="text-sm font-medium">
-                Output Metadata
+                {t('outputMetadata')}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Template</span>
+                    <span className="text-muted-foreground">{t('templateFilter')}</span>
                     <span className="font-medium">{output.templateName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Perspective</span>
+                    <span className="text-muted-foreground">{td('perspective')}</span>
                     <span className="font-medium">{participantRoleLabels[output.perspective]}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Audience</span>
+                    <span className="text-muted-foreground">{td('audience')}</span>
                     <Badge variant={output.audience === "internal" ? "secondary" : "outline"}>
                       {audienceLabels[output.audience]}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Language</span>
+                    <span className="text-muted-foreground">{t('language')}</span>
                     <span className="font-medium">{output.language}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Tone</span>
+                    <span className="text-muted-foreground">{t('tone')}</span>
                     <span className="font-medium capitalize">{output.tone}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Format</span>
+                    <span className="text-muted-foreground">{t('format')}</span>
                     <span className="font-mono text-xs">{output.format.toUpperCase()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Transcript Version</span>
+                    <span className="text-muted-foreground">{t('transcriptVersion')}</span>
                     <span className="font-mono text-xs">{output.transcriptVersionHash}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Timestamps Cited</span>
-                    <span className="font-medium">{output.citeTimestamps ? "Yes" : "No"}</span>
+                    <span className="text-muted-foreground">{td('timestamps')}</span>
+                    <span className="font-medium">{output.citeTimestamps ? tc('yes') : tc('no')}</span>
                   </div>
                 </div>
               </AccordionContent>
@@ -167,14 +170,14 @@ function OutputDetailSheet({ output }: { output: Output }) {
           {/* Content */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Content</h3>
+              <h3 className="text-sm font-medium">{t('content')}</h3>
               <div className="flex gap-1">
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   className="h-8" 
                   onClick={() => handleCopy(output.content)}
-                  title={copySuccess ? "Copied!" : "Copy to clipboard"}
+                  title={copySuccess ? tc('copied') : tc('copy')}
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
@@ -183,7 +186,7 @@ function OutputDetailSheet({ output }: { output: Output }) {
                   size="sm" 
                   className="h-8"
                   onClick={() => handleDownload(output)}
-                  title="Download"
+                  title={tc('download')}
                 >
                   <Download className="h-4 w-4" />
                 </Button>
@@ -203,6 +206,7 @@ function OutputDetailSheet({ output }: { output: Output }) {
 
 export default function OutputsPage() {
   const t = useTranslations('outputs')
+  const tc = useTranslations('common')
   const [outputs, setOutputs] = useState<Output[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -318,7 +322,7 @@ export default function OutputsPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Loading outputs...</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t('loadingOutputs')}</p>
         </div>
       </div>
     )
@@ -331,7 +335,7 @@ export default function OutputsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            View and manage generated outputs across all sessions
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -355,17 +359,17 @@ export default function OutputsPage() {
             <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">Filters:</span>
+                <span className="text-sm font-medium text-foreground">{t('filtersLabel')}</span>
               </div>
               
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <Select value={templateFilter} onValueChange={setTemplateFilter}>
                 <SelectTrigger className="w-full sm:w-[180px] bg-secondary border-border">
                   <LayoutTemplate className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Template" />
+                  <SelectValue placeholder={t('templateFilter')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Templates</SelectItem>
+                  <SelectItem value="all">{t('allTemplates')}</SelectItem>
                   {templates.map((t: any) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
@@ -377,22 +381,22 @@ export default function OutputsPage() {
               <Select value={audienceFilter} onValueChange={setAudienceFilter}>
                 <SelectTrigger className="w-[calc(50%-4px)] sm:w-[160px] bg-secondary border-border">
                   <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Audience" />
+                  <SelectValue placeholder={t('audienceFilter')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Audiences</SelectItem>
-                  <SelectItem value="internal">Internal</SelectItem>
-                  <SelectItem value="external">External</SelectItem>
+                  <SelectItem value="all">{t('allAudiences')}</SelectItem>
+                  <SelectItem value="internal">{tc('internal')}</SelectItem>
+                  <SelectItem value="external">{tc('external')}</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={perspectiveFilter} onValueChange={setPerspectiveFilter}>
                 <SelectTrigger className="w-[calc(50%-4px)] sm:w-[180px] bg-secondary border-border">
                   <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Perspective" />
+                  <SelectValue placeholder={t('perspectiveFilter')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Perspectives</SelectItem>
+                  <SelectItem value="all">{t('allPerspectives')}</SelectItem>
                   {Object.entries(participantRoleLabels).map(([key, label]) => (
                     <SelectItem key={key} value={key}>
                       {label}
@@ -412,7 +416,7 @@ export default function OutputsPage() {
                   className="self-start text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Clear All Filters
+                  {t('clearFilters')}
                 </Button>
               )}
             </div>
@@ -425,7 +429,7 @@ export default function OutputsPage() {
           <Card className="border-border">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="font-medium text-foreground mb-1">No outputs found</h3>
+              <h3 className="font-medium text-foreground mb-1">{t('noOutputsFound')}</h3>
               <p className="text-sm text-muted-foreground">
                 {outputs.length === 0
                   ? t('noOutputsHint')
@@ -447,7 +451,7 @@ export default function OutputsPage() {
                         variant={output.audience === "internal" ? "secondary" : "outline"}
                         className="shrink-0 text-xs"
                       >
-                        {output.audience === "internal" ? "Internal" : "External"}
+                        {output.audience === "internal" ? tc('internal') : tc('external')}
                       </Badge>
                     </div>
                     <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mb-2">
@@ -476,7 +480,7 @@ export default function OutputsPage() {
                     <Button variant="ghost" size="sm" className="gap-1.5" asChild>
                       <Link href={`/outputs/${output.id}`}>
                         <ExternalLink className="h-4 w-4" />
-                        <span className="hidden sm:inline">Open</span>
+                        <span className="hidden sm:inline">{t('open')}</span>
                       </Link>
                     </Button>
                     <AlertDialog>
@@ -496,23 +500,23 @@ export default function OutputsPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Output?</AlertDialogTitle>
+                          <AlertDialogTitle>{t('deleteDialog.title')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete "{output.templateName}"? This action cannot be undone.
+                            {t('deleteDialog.description', { name: output.templateName })}
                             {output.isPublic && (
                               <span className="block mt-2 text-destructive font-medium">
-                                Warning: This output is publicly shared and will no longer be accessible via its share link.
+                                {t('deleteDialog.sharedWarning')}
                               </span>
                             )}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDelete(output.id)}
                             className="bg-destructive hover:bg-destructive/90"
                           >
-                            Delete
+                            {tc('delete')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

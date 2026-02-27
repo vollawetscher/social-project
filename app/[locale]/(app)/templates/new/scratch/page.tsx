@@ -21,6 +21,8 @@ const availableAudiences: Audience[] = ["internal", "external"]
 const availableDomains: Domain[] = ["legal", "sales", "hr", "medical", "education", "consulting", "general"]
 
 export default function CreateTemplateFromScratchPage() {
+  const t = useTranslations('templateEdit')
+  const tc = useTranslations('common')
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [enhancingDescription, setEnhancingDescription] = useState(false)
@@ -51,7 +53,7 @@ export default function CreateTemplateFromScratchPage() {
 
   const handleEnhanceDescription = async () => {
     if (!name.trim() && !description.trim()) {
-      toast.error("Enter a template name or rough description first")
+      toast.error(t('enterNameOrDescription'))
       return
     }
     setEnhancingDescription(true)
@@ -61,11 +63,11 @@ export default function CreateTemplateFromScratchPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), description: description.trim() }),
       })
-      if (!res.ok) throw new Error((await res.json()).error || "Failed to enhance")
+      if (!res.ok) throw new Error((await res.json()).error || t('enhanceFailed'))
       const { enhanced } = await res.json()
       if (enhanced) setDescription(enhanced)
     } catch (err: any) {
-      toast.error(err.message || "Failed to enhance description")
+      toast.error(err.message || t('enhanceFailed'))
     } finally {
       setEnhancingDescription(false)
     }
@@ -73,15 +75,15 @@ export default function CreateTemplateFromScratchPage() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error("Please enter a template name")
+      toast.error(t('nameRequired'))
       return
     }
     if (selectedPerspectives.length === 0) {
-      toast.error("Please select at least one perspective")
+      toast.error(t('perspectiveRequired'))
       return
     }
     if (selectedAudiences.length === 0) {
-      toast.error("Please select at least one audience")
+      toast.error(t('audienceRequired'))
       return
     }
 
@@ -105,20 +107,20 @@ export default function CreateTemplateFromScratchPage() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || data.details || "Failed to create")
+      if (!response.ok) throw new Error(data.error || data.details || t('createFailed'))
 
-      toast.success("Template created")
+      toast.success(t('createSuccess'))
       router.push(`/templates/${data.id}/edit`)
     } catch (error) {
       console.error("Create template error:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to create template")
+      toast.error(error instanceof Error ? error.message : t('createFailed'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 pb-24">
       <div className="flex items-center gap-3">
         <Link href="/templates">
           <Button variant="ghost" size="sm">
@@ -126,31 +128,31 @@ export default function CreateTemplateFromScratchPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Create Template from Scratch</h1>
+          <h1 className="text-xl font-semibold text-foreground">{t('createFromScratchTitle')}</h1>
           <p className="text-sm text-muted-foreground">
-            Define a new template manually without sample documents
+            {t('createFromScratchSubtitle')}
           </p>
         </div>
       </div>
 
       <Card className="border-border">
         <CardHeader>
-          <CardTitle>Basic Info</CardTitle>
-          <CardDescription>Name and description for your template</CardDescription>
+          <CardTitle>{t('basicInfo')}</CardTitle>
+          <CardDescription>{t('basicInfoDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Template name *</Label>
+            <Label htmlFor="name">{t('name')} *</Label>
             <Input
               id="name"
-              placeholder="e.g. Meeting Minutes"
+              placeholder={t('namePlaceholderShort')}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t('description')}</Label>
               <Button
                 type="button"
                 variant="ghost"
@@ -160,12 +162,12 @@ export default function CreateTemplateFromScratchPage() {
                 disabled={enhancingDescription || (!name.trim() && !description.trim())}
               >
                 {enhancingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                Enhance with AI
+                {t('enhanceWithAI')}
               </Button>
             </div>
             <Textarea
               id="description"
-              placeholder="e.g. A structured protocol for client consultations, organized by topics discussed, with action items and follow-ups..."
+              placeholder={t('descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -179,12 +181,12 @@ export default function CreateTemplateFromScratchPage() {
 
       <Card className="border-border">
         <CardHeader>
-          <CardTitle>Constraints</CardTitle>
-          <CardDescription>Who can use this template and for whom</CardDescription>
+          <CardTitle>{t('constraints')}</CardTitle>
+          <CardDescription>{t('constraintsDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Perspectives *</Label>
+            <Label>{t('perspectives')} *</Label>
             <div className="flex flex-wrap gap-2">
               {availablePerspectives.map((p) => (
                 <label key={p} className="flex items-center gap-2 cursor-pointer">
@@ -198,7 +200,7 @@ export default function CreateTemplateFromScratchPage() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Audience *</Label>
+            <Label>{t('audience')} *</Label>
             <div className="flex flex-wrap gap-2">
               {availableAudiences.map((a) => (
                 <label key={a} className="flex items-center gap-2 cursor-pointer">
@@ -212,7 +214,7 @@ export default function CreateTemplateFromScratchPage() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Domain (optional)</Label>
+            <Label>{t('domainOptional')}</Label>
             <div className="flex flex-wrap gap-2">
               {availableDomains.map((d) => (
                 <label key={d} className="flex items-center gap-2 cursor-pointer">
@@ -225,7 +227,7 @@ export default function CreateTemplateFromScratchPage() {
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              If none selected, template will use &quot;general&quot;
+              {t('domainDefaultHint')}
             </p>
           </div>
         </CardContent>
@@ -233,12 +235,12 @@ export default function CreateTemplateFromScratchPage() {
 
       <Card className="border-border">
         <CardHeader>
-          <CardTitle>Generation instructions (optional)</CardTitle>
-          <CardDescription>Instructions for the AI when generating outputs with this template</CardDescription>
+          <CardTitle>{t('generationInstructionsOptional')}</CardTitle>
+          <CardDescription>{t('generationInstructionsDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
-            placeholder="e.g. Use bullet points for key findings. Include a summary at the top..."
+            placeholder={t('generationInstructionsPlaceholder')}
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
             rows={4}
@@ -247,26 +249,28 @@ export default function CreateTemplateFromScratchPage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-between">
-        <Button variant="outline" asChild>
+      <div className="sticky bottom-0 z-20 -mx-1 border-t bg-background/95 px-1 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+        <Button variant="outline" asChild className="w-full sm:w-auto">
           <Link href="/templates">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Cancel
+            {tc('cancel')}
           </Link>
         </Button>
-        <Button onClick={handleCreate} disabled={saving}>
+        <Button onClick={handleCreate} disabled={saving} className="w-full sm:w-auto">
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Creating...
+              {t('creating')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Create template
+              {t('createTemplate')}
             </>
           )}
         </Button>
+        </div>
       </div>
     </div>
   )

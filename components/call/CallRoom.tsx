@@ -35,6 +35,8 @@ import { toast } from "sonner"
 import { CallControls } from "@/components/call/CallControls"
 import type { CallMode, LayoutMode } from "@/lib/types/call"
 
+const RECONNECT_GRACE_MS = 30_000
+
 interface RingSmsParams {
   phoneNumber: string
   callerName: string
@@ -123,9 +125,6 @@ export function CallRoom(props: CallRoomProps) {
       connect={true}
       audio={true}
       video={props.mode === "video"}
-      onDisconnected={() => {
-        if (props.onLeave) props.onLeave()
-      }}
     >
       <RoomAudioRenderer />
       <CallRoomInner {...props} displayName={props.displayName} />
@@ -181,8 +180,14 @@ function CallRoomInner({
 
   const consentLoggedRef = useRef(false)
   const [remoteConsents, setRemoteConsents] = useState<{ name: string; granted: boolean }[]>([])
+  const [reconnectDeadline, setReconnectDeadline] = useState<number | null>(null)
+  const [reconnectSecondsLeft, setReconnectSecondsLeft] = useState(Math.floor(RECONNECT_GRACE_MS / 1000))
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectTickRef = useRef<NodeJS.Timeout | null>(null)
+  const endingCallRef = useRef(false)
+  const wakeLockRef = useRef<any>(null)
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
@@ -198,6 +203,38 @@ function CallRoomInner({
       : isConnected
         ? "ringing"
         : "connecting"
+
+  const clearReconnectTimers = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
+    if (reconnectTickRef.current) {
+      clearInterval(reconnectTickRef.current)
+      reconnectTickRef.current = null
+    }
+  }, [])
+
+  const releaseWakeLock = useCallback(async () => {
+    try {
+      if (wakeLockRef.current) {
+        await wakeLockRef.current.release()
+        wakeLockRef.current = null
+      }
+    } catch {
+      // Ignore wake lock release failures.
+    }
+  }, [])
+
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if (typeof navigator !== "undefined" && "wakeLock" in navigator && isConnected && !wakeLockRef.current) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request("screen")
+      }
+    } catch {
+      // Wake lock is best-effort and not available on all mobile browsers.
+    }
+  }, [isConnected])
 
   // Auto-log initiator consent on connect
   useEffect(() => {
@@ -291,7 +328,65 @@ function CallRoomInner({
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [callStatus])
 
+  useEffect(() => {
+    if (!callId || !isConnected) return
+    const interval = setInterval(() => {
+      fetch(`/api/calls/${callId}/heartbeat`, {
+        method: "POST",
+        keepalive: true,
+      }).catch(() => {})
+    }, 15_000)
+    return () => clearInterval(interval)
+  }, [callId, isConnected])
+
+  useEffect(() => {
+    if (isConnected) {
+      clearReconnectTimers()
+      setReconnectDeadline(null)
+      setReconnectSecondsLeft(Math.floor(RECONNECT_GRACE_MS / 1000))
+      return
+    }
+
+    if (!isDisconnected || endingCallRef.current) return
+
+    const deadline = Date.now() + RECONNECT_GRACE_MS
+    setReconnectDeadline(deadline)
+    setReconnectSecondsLeft(Math.floor(RECONNECT_GRACE_MS / 1000))
+
+    reconnectTickRef.current = setInterval(() => {
+      const leftMs = Math.max(0, deadline - Date.now())
+      setReconnectSecondsLeft(Math.ceil(leftMs / 1000))
+    }, 500)
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (onLeave) onLeave()
+      else router.push("/calls")
+    }, RECONNECT_GRACE_MS)
+
+    return () => clearReconnectTimers()
+  }, [isConnected, isDisconnected, onLeave, router, clearReconnectTimers])
+
+  useEffect(() => {
+    if (isConnected) requestWakeLock()
+    else releaseWakeLock()
+  }, [isConnected, requestWakeLock, releaseWakeLock])
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && isConnected) {
+        requestWakeLock()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => document.removeEventListener("visibilitychange", handleVisibility)
+  }, [isConnected, requestWakeLock])
+
   const endCall = useCallback(async () => {
+    endingCallRef.current = true
+    clearReconnectTimers()
+    setReconnectDeadline(null)
+    releaseWakeLock()
+
     // Delete the LiveKit room via API — this terminates SIP/Twilio legs too
     if (callId) {
       try {
@@ -305,7 +400,18 @@ function CallRoomInner({
       if (onLeave) onLeave()
       else router.push("/calls")
     }, 500)
-  }, [callId, room, router, onLeave])
+  }, [callId, room, router, onLeave, clearReconnectTimers, releaseWakeLock])
+
+  useEffect(() => {
+    return () => {
+      clearReconnectTimers()
+      releaseWakeLock()
+    }
+  }, [clearReconnectTimers, releaseWakeLock])
+
+  const retryConnection = useCallback(() => {
+    window.location.reload()
+  }, [])
 
   const saveNotesAndEnd = useCallback(async () => {
     setSavingNotes(true)
@@ -501,6 +607,17 @@ function CallRoomInner({
 
         {/* Main Area */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
+          {isDisconnected && reconnectDeadline && !endingCallRef.current && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 rounded-md border border-warning/40 bg-warning/15 px-3 py-1.5 text-xs text-warning-foreground">
+              Reconnecting... {reconnectSecondsLeft}s
+              <button
+                onClick={retryConnection}
+                className="ml-2 underline underline-offset-2 hover:no-underline"
+              >
+                Retry now
+              </button>
+            </div>
+          )}
           {viewMode === "simple" && (
             <div className="flex-1 flex flex-col items-center justify-center w-full">
               <div className={cn("rounded-full p-1", callStatus === "connected" && "ring-4 ring-primary/20")}>
@@ -721,6 +838,17 @@ function CallRoomInner({
 
       {/* Video Area */}
       <div className="flex-1 overflow-hidden relative">
+        {isDisconnected && reconnectDeadline && !endingCallRef.current && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 rounded-md border border-warning/40 bg-warning/15 px-3 py-1.5 text-xs text-warning-foreground">
+            Reconnecting... {reconnectSecondsLeft}s
+            <button
+              onClick={retryConnection}
+              className="ml-2 underline underline-offset-2 hover:no-underline"
+            >
+              Retry now
+            </button>
+          </div>
+        )}
         {activeScreenShare ? (
           /* Screen share layout: shared screen takes main area, camera tiles in corner */
           <div className="h-full p-2 flex flex-col">

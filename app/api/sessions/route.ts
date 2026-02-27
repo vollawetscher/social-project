@@ -70,6 +70,7 @@ export async function GET(request: Request) {
         .from('sessions')
         .select('*, outputs:outputs(count)')
         .order('created_at', { ascending: false })
+        .is('merged_into_session_id', null)
 
       if (calleeSessionIds.length > 0) {
         query = query.or(`user_id.eq.${user.id},id.in.(${calleeSessionIds.join(',')})`)

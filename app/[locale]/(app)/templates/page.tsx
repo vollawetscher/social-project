@@ -116,6 +116,8 @@ function TemplateSampleSheet({ template, open, onOpenChange }: { template: Templ
 }
 
 function TemplateDetailSheet({ template }: { template: Template }) {
+  const t = useTranslations('templates')
+  const tc = useTranslations('common')
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -134,7 +136,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              Sections
+              {t('sections')}
             </h3>
             <div className="space-y-2">
               {template.sections.map((section: any) => (
@@ -148,7 +150,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
                     </span>
                     {section.isRequired && (
                       <Badge variant="outline" className="text-[10px]">
-                        Required
+                        {tc('required')}
                       </Badge>
                     )}
                   </div>
@@ -162,7 +164,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
 
           {/* Style Rules */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground">Style Rules</h3>
+            <h3 className="text-sm font-medium text-foreground">{t('styleRules')}</h3>
             <ul className="space-y-1">
               {template.styleRules.map((rule: string, i: number) => (
                 <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -175,9 +177,9 @@ function TemplateDetailSheet({ template }: { template: Template }) {
 
           {/* Suggestion Triggers */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground">Suggestion Triggers</h3>
+            <h3 className="text-sm font-medium text-foreground">{t('suggestionTriggers')}</h3>
             <p className="text-xs text-muted-foreground mb-2">
-              This template is suggested when these keywords are detected:
+              {t('suggestionTriggersHint')}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {template.suggestionTriggers.map((trigger: string) => (
@@ -192,7 +194,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
-              Intended Perspectives
+              {t('perspectives')}
             </h3>
             <div className="flex flex-wrap gap-1.5">
               {template.intendedPerspectives.map((perspective: any) => (
@@ -207,7 +209,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              Allowed Audience
+              {t('audience')}
             </h3>
             <div className="flex flex-wrap gap-1.5">
               {template.allowedAudience.map((audience) => (
@@ -225,6 +227,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
 
 export default function TemplatesPage() {
   const t = useTranslations('templates')
+  const tc = useTranslations('common')
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [sampleTemplate, setSampleTemplate] = useState<Template | null>(null)
@@ -247,7 +250,7 @@ export default function TemplatesPage() {
   }
 
   const handleDelete = async (templateId: string, templateName: string) => {
-    if (!confirm(`Are you sure you want to delete "${templateName}"? This cannot be undone.`)) {
+    if (!confirm(t('deleteConfirm', { name: templateName }))) {
       return
     }
 
@@ -260,7 +263,7 @@ export default function TemplatesPage() {
       
       // Refresh templates list
       await fetchTemplates()
-      toast.success(`Template "${templateName}" deleted`)
+      toast.success(t('deleteSuccess', { name: templateName }))
     } catch (error) {
       console.error('Error deleting template:', error)
       toast.error(t('deleteFailed'))
@@ -281,7 +284,7 @@ export default function TemplatesPage() {
       await fetchTemplates()
       
       // Show success message
-      toast.success(`Created "${data.name}"`)
+      toast.success(t('duplicateSuccess', { name: data.name }))
     } catch (error) {
       console.error('Error duplicating template:', error)
       toast.error(t('duplicateFailed'))
@@ -293,7 +296,7 @@ export default function TemplatesPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Loading templates...</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t('loadingTemplates')}</p>
         </div>
       </div>
     )
@@ -313,20 +316,20 @@ export default function TemplatesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage generation recipes for your outputs
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild className="flex-1 sm:flex-initial bg-transparent">
             <Link href="/templates/new/from-samples">
               <FileText className="h-4 w-4 mr-2" />
-              <span className="hidden xs:inline">Create from</span> Samples
+              <span className="hidden xs:inline">{t('createFrom')}</span> {t('fromSamples')}
             </Link>
           </Button>
           <Button asChild className="flex-1 sm:flex-initial">
             <Link href="/templates/new/scratch">
               <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden xs:inline">Create from</span> New
+              <span className="hidden xs:inline">{t('createFrom')}</span> {t('newTemplate')}
             </Link>
           </Button>
         </div>
@@ -359,11 +362,11 @@ export default function TemplatesPage() {
                   <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      {template.intendedPerspectives.length} perspectives
+                      {t('perspectiveCount', { count: template.intendedPerspectives.length })}
                     </span>
                     <span className="flex items-center gap-1">
                       <BarChart3 className="h-3 w-3" />
-                      {template.usedCount} uses
+                      {t('usedCount', { count: template.usedCount })}
                     </span>
                   </div>
                 </div>
@@ -373,7 +376,7 @@ export default function TemplatesPage() {
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
+                        <span className="sr-only">{t('openMenu')}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -382,12 +385,12 @@ export default function TemplatesPage() {
                         className="cursor-pointer"
                       >
                         <FileOutput className="mr-2 h-4 w-4" />
-                        View Sample
+                        {t('viewSample')}
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href={`/templates/${template.id}/edit`} className="cursor-pointer">
                           <Pencil className="mr-2 h-4 w-4" />
-                          Edit
+                          {tc('edit')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
@@ -395,14 +398,14 @@ export default function TemplatesPage() {
                         className="cursor-pointer"
                       >
                         <Copy className="mr-2 h-4 w-4" />
-                        Duplicate
+                        {tc('duplicate')}
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-destructive cursor-pointer"
                         onClick={() => handleDelete(template.id, template.name)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        {tc('delete')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -418,12 +421,12 @@ export default function TemplatesPage() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="text-muted-foreground">Name</TableHead>
-              <TableHead className="text-muted-foreground">Perspectives</TableHead>
-              <TableHead className="text-muted-foreground">Audience</TableHead>
-              <TableHead className="text-muted-foreground">Domains</TableHead>
-              <TableHead className="text-muted-foreground text-center">Used</TableHead>
-              <TableHead className="text-muted-foreground text-right">Actions</TableHead>
+              <TableHead className="text-muted-foreground">{t('tableName')}</TableHead>
+              <TableHead className="text-muted-foreground">{t('perspectives')}</TableHead>
+              <TableHead className="text-muted-foreground">{t('audience')}</TableHead>
+              <TableHead className="text-muted-foreground">{t('domains')}</TableHead>
+              <TableHead className="text-muted-foreground text-center">{t('used')}</TableHead>
+              <TableHead className="text-muted-foreground text-right">{t('actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -492,7 +495,7 @@ export default function TemplatesPage() {
                           className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
+                          <span className="sr-only">{t('openMenu')}</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -501,12 +504,12 @@ export default function TemplatesPage() {
                           className="cursor-pointer"
                         >
                           <FileOutput className="mr-2 h-4 w-4" />
-                          View Sample
+                          {t('viewSample')}
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link href={`/templates/${template.id}/edit`} className="cursor-pointer">
                             <Pencil className="mr-2 h-4 w-4" />
-                            Edit
+                            {tc('edit')}
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
@@ -514,14 +517,14 @@ export default function TemplatesPage() {
                           className="cursor-pointer"
                         >
                           <Copy className="mr-2 h-4 w-4" />
-                          Duplicate
+                          {tc('duplicate')}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive cursor-pointer"
                           onClick={() => handleDelete(template.id, template.name)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          {tc('delete')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

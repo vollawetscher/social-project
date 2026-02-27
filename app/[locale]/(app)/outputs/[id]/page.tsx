@@ -103,6 +103,7 @@ export default function OutputDetailPage() {
   const router = useRouter()
   const outputId = params.id as string
   const t = useTranslations('outputDetail')
+  const tc = useTranslations('common')
 
   const [output, setOutput] = useState<Output | null>(null)
   const [loading, setLoading] = useState(true)
@@ -139,7 +140,7 @@ export default function OutputDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching output:', error)
-      toast.error('Failed to load output')
+      toast.error(t('loadFailed'))
       router.push('/outputs')
     } finally {
       setLoading(false)
@@ -149,7 +150,7 @@ export default function OutputDetailPage() {
   function markCopied() {
     setCopiedShareLink(true)
     setTimeout(() => setCopiedShareLink(false), 2000)
-    toast.success('Share link copied!')
+    toast.success(t('shareLinkCopied'))
   }
 
   function buildShareText(url: string) {
@@ -208,7 +209,7 @@ export default function OutputDetailPage() {
       const response = await fetch(`/api/outputs/${outputId}/share`, { method: 'POST' })
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to enable sharing')
+        throw new Error(errorData.error || t('shareFailed'))
       }
       const data = await response.json()
       setShareUrl(data.shareUrl)
@@ -226,10 +227,10 @@ export default function OutputDetailPage() {
       if (copied) {
         markCopied()
       } else {
-        toast.success('Share link created — tap again to copy')
+        toast.success(t('shareLinkCreated'))
       }
     } catch (error) {
-      toast.error('Failed to enable sharing: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      toast.error(`${t('shareFailed')}: ${error instanceof Error ? error.message : tc('unknown')}`)
     } finally {
       setIsSharing(false)
     }
@@ -246,7 +247,7 @@ export default function OutputDetailPage() {
       markCopied()
     } catch {
       if (execCopyFallback(shareText)) markCopied()
-      else toast.error('Could not copy link')
+      else toast.error(t('copyLinkFailed'))
     }
 
     fetch(`/api/outputs/${outputId}/share`, { method: 'POST' }).then(res => {
@@ -264,13 +265,13 @@ export default function OutputDetailPage() {
         method: 'DELETE',
       })
       
-      if (!response.ok) throw new Error('Failed to disable sharing')
+      if (!response.ok) throw new Error(t('shareFailed'))
       
       setIsPublic(false)
-      toast.success('Sharing disabled')
+      toast.success(t('stoppedSharing'))
     } catch (error) {
       console.error('Error disabling sharing:', error)
-      toast.error('Failed to disable sharing')
+      toast.error(t('shareFailed'))
     }
   }
 
@@ -300,7 +301,7 @@ export default function OutputDetailPage() {
           s.id === sectionId ? { ...s, copied: true } : s
         )
       )
-      toast.success('Section copied to clipboard')
+      toast.success(t('sectionCopied'))
       
       // Reset after 2 seconds
       setTimeout(() => {
@@ -311,7 +312,7 @@ export default function OutputDetailPage() {
         )
       }, 2000)
     } catch (error) {
-      toast.error('Failed to copy to clipboard')
+      toast.error(t('copyFailed'))
     }
   }
 
@@ -321,10 +322,10 @@ export default function OutputDetailPage() {
     try {
       await navigator.clipboard.writeText(output.content)
       setCopiedAll(true)
-      toast.success('Entire output copied to clipboard')
+      toast.success(t('contentCopied'))
       setTimeout(() => setCopiedAll(false), 2000)
     } catch (error) {
-      toast.error('Failed to copy to clipboard')
+      toast.error(t('copyFailed'))
     }
   }
 
@@ -332,7 +333,7 @@ export default function OutputDetailPage() {
     if (!output) return
     const name = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}-${new Date(output.createdAt).getTime()}`
     await exportOutput(output.content, name, format)
-    toast.success('Downloaded output')
+    toast.success(t('downloaded'))
   }
 
   async function handleDelete() {
@@ -346,14 +347,14 @@ export default function OutputDetailPage() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete output')
+        throw new Error(errorData.error || t('deleteFailed'))
       }
 
-      toast.success('Output deleted successfully')
+      toast.success(t('deleteSuccess'))
       router.push('/outputs')
     } catch (error) {
       console.error('Error deleting output:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to delete output')
+      toast.error(error instanceof Error ? error.message : t('deleteFailed'))
       setDeleting(false)
     }
   }
@@ -368,12 +369,12 @@ export default function OutputDetailPage() {
         body: JSON.stringify({ targetLanguage }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Translation failed')
-      toast.success(`Translated to ${TRANSLATE_LANGUAGES.find(l => l.code === targetLanguage)?.label || targetLanguage}`)
+      if (!response.ok) throw new Error(data.error || t('translateFailed'))
+      toast.success(t('translatedTo', { language: TRANSLATE_LANGUAGES.find(l => l.code === targetLanguage)?.label || targetLanguage }))
       router.push(`/outputs/${data.id}`)
     } catch (error) {
       console.error('Translate error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to translate output')
+      toast.error(error instanceof Error ? error.message : t('translateFailed'))
     } finally {
       setTranslating(false)
     }
@@ -387,7 +388,7 @@ export default function OutputDetailPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Loading output...</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t('loadingOutput')}</p>
         </div>
       </div>
     )
@@ -398,14 +399,14 @@ export default function OutputDetailPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-          <h3 className="font-medium text-foreground mb-1">Output not found</h3>
+          <h3 className="font-medium text-foreground mb-1">{t('notFound')}</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            This output may have been deleted
+            {t('notFoundHint')}
           </p>
           <Button asChild>
             <Link href="/outputs">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              {tc('back')}
             </Link>
           </Button>
         </div>
@@ -426,7 +427,7 @@ export default function OutputDetailPage() {
           >
             <Link href="/outputs">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              {tc('back')}
             </Link>
           </Button>
           
@@ -444,7 +445,7 @@ export default function OutputDetailPage() {
           
           <p className="text-sm text-muted-foreground flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5" />
-            Generated from {output.sessionFilename}
+            {t('generatedFromSession', { name: output.sessionFilename })}
           </p>
         </div>
 
@@ -456,22 +457,22 @@ export default function OutputDetailPage() {
             onClick={isPublic ? handleCopyShareLink : handleShare}
             disabled={isSharing}
             className="gap-2"
-            title="Share"
+            title={tc('share')}
           >
             {isSharing ? (
               <>
                 <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-                <span className="hidden md:inline">Sharing...</span>
+                <span className="hidden md:inline">{t('sharing')}</span>
               </>
             ) : copiedShareLink ? (
               <>
                 <Check className="h-4 w-4 text-success" />
-                <span className="hidden md:inline">Copied!</span>
+                <span className="hidden md:inline">{tc('copied')}</span>
               </>
             ) : (
               <>
                 {isPublic ? <LinkIcon className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-                <span className="hidden md:inline">Share</span>
+                <span className="hidden md:inline">{tc('share')}</span>
               </>
             )}
           </Button>
@@ -480,10 +481,10 @@ export default function OutputDetailPage() {
             size="sm"
             onClick={handleCopyAll}
             className="gap-2"
-            title="Copy"
+            title={tc('copy')}
           >
             <Copy className="h-4 w-4" />
-            <span className="hidden md:inline">Copy</span>
+            <span className="hidden md:inline">{tc('copy')}</span>
           </Button>
           <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -491,10 +492,10 @@ export default function OutputDetailPage() {
                   variant="outline"
                   size="sm"
                   className="gap-2"
-                  title="Download"
+                  title={tc('download')}
                 >
                   <Download className="h-4 w-4" />
-                  <span className="hidden md:inline">Download</span>
+                  <span className="hidden md:inline">{tc('download')}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -507,11 +508,11 @@ export default function OutputDetailPage() {
             variant="outline"
             size="sm"
             asChild
-            title="Go to Session"
+            title={t('goToSession')}
           >
             <Link href={`/sessions/${output.sessionId}`} className="gap-2">
               <ExternalLink className="h-4 w-4" />
-              <span className="hidden md:inline">Session</span>
+              <span className="hidden md:inline">{t('session')}</span>
             </Link>
           </Button>
           {otherLanguages.length > 0 && (
@@ -522,14 +523,14 @@ export default function OutputDetailPage() {
                   size="sm"
                   disabled={translating}
                   className="gap-2"
-                  title="Duplicate & translate to another language"
+                  title={t('translateTooltip')}
                 >
                   {translating ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Globe className="h-4 w-4" />
                   )}
-                  <span className="hidden md:inline">Translate</span>
+                  <span className="hidden md:inline">{t('translate')}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -539,7 +540,7 @@ export default function OutputDetailPage() {
                     onClick={() => handleTranslate(code)}
                     disabled={translating}
                   >
-                    Translate to {label}
+                    {t('translateTo', { language: label })}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -552,35 +553,35 @@ export default function OutputDetailPage() {
                 size="sm"
                 className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
                 disabled={deleting}
-                title="Delete Output"
+                title={tc('delete')}
               >
                 {deleting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Trash2 className="h-4 w-4" />
                 )}
-                <span className="hidden md:inline">Delete</span>
+                <span className="hidden md:inline">{tc('delete')}</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Output?</AlertDialogTitle>
+                <AlertDialogTitle>{t('deleteDialogTitle')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete "{output.templateName}"? This action cannot be undone.
+                  {t('deleteDialogDescription', { name: output.templateName })}
                   {isPublic && (
                     <span className="block mt-2 text-destructive font-medium">
-                      Warning: This output is publicly shared and will no longer be accessible via its share link.
+                      {t('deleteDialogSharedWarning')}
                     </span>
                   )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDelete}
                   className="bg-destructive hover:bg-destructive/90"
                 >
-                  Delete
+                  {tc('delete')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -594,7 +595,7 @@ export default function OutputDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-info">
               <Eye className="h-4 w-4" />
-              <span className="font-medium">Publicly shared • Expires in 3 days</span>
+              <span className="font-medium">{t('publiclyShared')}</span>
             </div>
           </CardContent>
         </Card>
@@ -607,28 +608,28 @@ export default function OutputDetailPage() {
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Perspective</p>
+                <p className="text-xs text-muted-foreground">{t('perspective')}</p>
                 <p className="font-medium">{participantRoleLabels[output.perspective]}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Audience</p>
+                <p className="text-xs text-muted-foreground">{t('audience')}</p>
                 <p className="font-medium capitalize">{output.audience}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Tone</p>
+                <p className="text-xs text-muted-foreground">{t('tone')}</p>
                 <p className="font-medium capitalize">{output.tone}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-xs text-muted-foreground">Generated</p>
+                <p className="text-xs text-muted-foreground">{t('createdAt')}</p>
                 <p className="font-medium">{formatDate(output.createdAt)}</p>
               </div>
             </div>
@@ -682,8 +683,8 @@ export default function OutputDetailPage() {
         <CardContent className="p-4 flex items-center gap-2 text-xs text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5" />
           <span>
-            Generated with {output.format.toUpperCase()} format
-            {output.citeTimestamps && " • Includes timestamp citations"}
+            {t('generatedWithFormat', { format: output.format.toUpperCase() })}
+            {output.citeTimestamps && ` • ${t('includesTimestampCitations')}`}
           </span>
         </CardContent>
       </Card>

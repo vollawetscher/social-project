@@ -427,22 +427,44 @@ export default function CallsPage() {
         ))}
       </div>
 
-      {/* === Desktop Content (two-column) === */}
-      <div className="hidden md:grid md:grid-cols-[1fr_380px] flex-1 min-h-0 divide-x divide-border">
-        <div className="flex flex-col min-h-0">
-          <div className="px-4 py-2.5 border-b border-border flex items-center gap-2 shrink-0">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">Recent Calls</span>
-          </div>
-          <div className="flex-1 overflow-y-auto">
+      {/* Desktop Tab Bar */}
+      <div className="hidden md:flex border-b border-border bg-card">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => { setActiveTab(tab.id); if (tab.id === "contacts") fetchContacts() }}
+            className={cn(
+              "px-4 py-3 flex items-center gap-2 text-sm font-medium transition-colors border-b-2",
+              activeTab === tab.id
+                ? "text-primary border-primary"
+                : "text-muted-foreground border-transparent hover:text-foreground"
+            )}
+          >
+            <tab.icon className="h-4 w-4" />
+            {t(tab.labelKey)}
+          </button>
+        ))}
+      </div>
+
+      {/* Desktop Tab Content */}
+      <div className="hidden md:flex flex-1 min-h-0 overflow-y-auto">
+        {activeTab === "recent" && (
+          <div className="w-full">
             <RecentCallsList calls={recentCalls} loading={loading} router={router} setAddPhone={setAddPhone} setActiveTab={setActiveTab} setShowAddForm={setShowAddForm} />
           </div>
-        </div>
-        <div className="flex flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto min-h-0">
+        )}
+        {activeTab === "contacts" && (
+          <div className="w-full">
             <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} />
           </div>
-        </div>
+        )}
+        {activeTab === "dialpad" && (
+          <div className="w-full px-6 py-4">
+            <div className="max-w-md mx-auto">
+              <DialPad key={dialpadNumber} initialNumber={dialpadNumber} onCall={(number, mode) => { setDialpadNumber(""); handleDialpadCall(number, mode) }} disabled={creating} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* === Mobile Content (tab-based) === */}
