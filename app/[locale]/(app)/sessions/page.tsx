@@ -227,6 +227,8 @@ export default function SessionsPage() {
   const [uploadingTranscript, setUploadingTranscript] = useState(false)
   const [pastePreviewText, setPastePreviewText] = useState('')
   const [pastePreviewOpen, setPastePreviewOpen] = useState(false)
+  const [pastePreviewSource, setPastePreviewSource] = useState<'clipboard' | 'file'>('clipboard')
+  const [pastePreviewFileName, setPastePreviewFileName] = useState<string | null>(null)
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const transcriptInputRef = useRef<HTMLInputElement>(null)
@@ -359,14 +361,13 @@ export default function SessionsPage() {
     transcriptInputRef.current?.click()
   }, [uploadingTranscript])
 
-  const processTranscriptFile = useCallback(async (file: File): Promise<boolean> => {
-    const rawFileContent = await file.text()
-    const { segments, rawText } = parseTranscriptFile(rawFileContent, file.name)
+  const importTranscriptContent = useCallback(async (rawFileContent: string, fileName: string): Promise<boolean> => {
+    const { segments, rawText } = parseTranscriptFile(rawFileContent, fileName)
     if (segments.length === 0) {
-      toast.error(t('uploadMessages.noContent', { fileName: file.name }))
+      toast.error(t('uploadMessages.noContent', { fileName }))
       return false
     }
-    const sessionName = file.name.replace(/\.[^/.]+$/, '') || file.name
+    const sessionName = fileName.replace(/\.[^/.]+$/, '') || fileName
     const uniqueSpeakers = new Set(segments.map(s => s.speaker))
     const parserProducedGoodSegments = segments.length >= 2 && uniqueSpeakers.size >= 1
 
@@ -383,7 +384,7 @@ export default function SessionsPage() {
           segments,
           rawText,
           ...(!parserProducedGoodSegments ? { rawFileContent } : {}),
-          filename: file.name,
+          filename: fileName,
         }),
         signal: controller.signal,
       })
@@ -400,7 +401,12 @@ export default function SessionsPage() {
       }
       throw err
     }
-  }, [language])
+  }, [language, t])
+
+  const processTranscriptFile = useCallback(async (file: File): Promise<boolean> => {
+    const rawFileContent = await file.text()
+    return importTranscriptContent(rawFileContent, file.name)
+  }, [importTranscriptContent])
 
   const processPastedTranscript = useCallback(async (rawContent: string): Promise<boolean> => {
     const trimmed = rawContent.trim()
@@ -458,11 +464,11 @@ export default function SessionsPage() {
   }, [language])
 
   const handleTranscriptFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
+    const selectedFiles = e.target.files ? Array.from(e.target.files) : []
     e.target.value = ''
-    if (!files || files.length === 0) return
-    const transcriptFiles = Array.from(files).filter(isTranscriptFile)
-    const skipped = files.length - transcriptFiles.length
+    if (selectedFiles.length === 0) return
+    const transcriptFiles = selectedFiles.filter(isTranscriptFile)
+    const skipped = selectedFiles.length - transcriptFiles.length
     if (transcriptFiles.length === 0) {
       toast.error(t('uploadMessages.selectTranscript'))
       return
@@ -470,6 +476,28 @@ export default function SessionsPage() {
     if (skipped > 0) {
       toast.info(t('uploadMessages.skippedFiles', { count: skipped }))
     }
+
+    if (transcriptFiles.length === 1) {
+      try {
+        const file = transcriptFiles[0]
+        const rawFileContent = await file.text()
+        const cleaned = cleanPastedContent(rawFileContent)
+        if (!cleaned || cleaned.length < 10) {
+          toast.error(t('uploadMessages.noContent', { fileName: file.name }))
+          return
+        }
+        setPastePreviewSource('file')
+        setPastePreviewFileName(file.name)
+        setPastePreviewText(cleaned)
+        setPastePreviewOpen(true)
+        return
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : t('uploadMessages.importFailed')
+        toast.error(msg)
+        return
+      }
+    }
+
     setUploadingTranscript(true)
     let success = 0
     for (const file of transcriptFiles) {
@@ -485,14 +513,16 @@ export default function SessionsPage() {
       setIsUploadOpen(false)
       await fetchSessions()
     }
-  }, [processTranscriptFile, fetchSessions])
+  }, [processTranscriptFile, fetchSessions, t])
 
-  const openPastePreview = useCallback((raw: string) => {
+  const openPastePreview = useCallback((raw: string, source: 'clipboard' | 'file' = 'clipboard', fileName: string | null = null) => {
     const cleaned = cleanPastedContent(raw)
     if (!cleaned || cleaned.length < 10) {
       toast.error(t('uploadMessages.emptyContent'))
       return
     }
+    setPastePreviewSource(source)
+    setPastePreviewFileName(fileName)
     setPastePreviewText(cleaned)
     setPastePreviewOpen(true)
   }, [])
@@ -500,9 +530,19 @@ export default function SessionsPage() {
   const handlePastePreviewConfirm = useCallback(async (text: string) => {
     setUploadingTranscript(true)
     try {
-      if (await processPastedTranscript(text)) {
-        toast.success(t('uploadMessages.pasteImported'))
+      const imported = pastePreviewSource === 'file' && pastePreviewFileName
+        ? await importTranscriptContent(text, pastePreviewFileName)
+        : await processPastedTranscript(text)
+
+      if (imported) {
+        toast.success(
+          pastePreviewSource === 'file'
+            ? t('uploadMessages.importSuccess', { count: 1 })
+            : t('uploadMessages.pasteImported')
+        )
         setPastePreviewOpen(false)
+        setPastePreviewFileName(null)
+        setPastePreviewSource('clipboard')
         setIsUploadOpen(false)
         await fetchSessions()
       }
@@ -512,7 +552,7 @@ export default function SessionsPage() {
     } finally {
       setUploadingTranscript(false)
     }
-  }, [processPastedTranscript, fetchSessions])
+  }, [processPastedTranscript, importTranscriptContent, fetchSessions, pastePreviewSource, pastePreviewFileName, t])
 
   const handlePasteTranscript = useCallback(async () => {
     try {
@@ -1721,7 +1761,13 @@ export default function SessionsPage() {
 
       <PastePreviewSheet
         open={pastePreviewOpen}
-        onOpenChange={setPastePreviewOpen}
+      onOpenChange={(open) => {
+        setPastePreviewOpen(open)
+        if (!open) {
+          setPastePreviewFileName(null)
+          setPastePreviewSource('clipboard')
+        }
+      }}
         initialText={pastePreviewText}
         onConfirm={handlePastePreviewConfirm}
         loading={uploadingTranscript}
