@@ -1,12 +1,14 @@
 import './globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://notissima.com'
 
 export const metadata: Metadata = {
   title: 'Notissima - Professional Meeting Documentation',
   description:
     'AI-powered transcription and documentation for meetings, consultations, and conversations',
+  metadataBase: new URL(appUrl),
   manifest: '/manifest.json',
-  themeColor: '#7C3AED',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -20,12 +22,6 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'default',
     title: 'Notissima',
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
   },
   openGraph: {
     title: 'Notissima - Professional Meeting Documentation',
@@ -51,6 +47,14 @@ export const metadata: Metadata = {
       'AI-powered transcription and documentation for meetings, consultations, and conversations',
     images: ['/og-image.png'],
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#7C3AED',
 }
 
 export default function RootLayout({
