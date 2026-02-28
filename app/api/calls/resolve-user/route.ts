@@ -26,10 +26,17 @@ export async function POST(request: Request) {
     }
 
     const db = createServiceRoleClient()
+    const fallbackCandidates = [
+      normalized,
+      normalized.startsWith('+') ? normalized.slice(1) : normalized,
+      normalized.startsWith('+') ? `00${normalized.slice(1)}` : normalized,
+    ]
+    const uniqueCandidates = Array.from(new Set(fallbackCandidates))
+
     const { data: profile, error } = await db
       .from('profiles')
       .select('id, display_name, email, phone_number')
-      .eq('phone_number', normalized)
+      .in('phone_number', uniqueCandidates)
       .maybeSingle()
 
     if (error) {

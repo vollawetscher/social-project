@@ -338,37 +338,34 @@ export default function CallsPage() {
 
       // If the phone number belongs to an existing Notissima user profile,
       // route to in-app invite calling instead of PSTN.
-      try {
-        const resolveRes = await fetch("/api/calls/resolve-user", {
+      const resolveRes = await fetch("/api/calls/resolve-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: normalized }),
+      })
+      const resolved = await resolveRes.json().catch(() => ({}))
+      if (!resolveRes.ok) {
+        throw new Error(resolved?.error || "Failed to resolve matching app user")
+      }
+
+      if (resolved?.matched && resolved?.user?.id) {
+        toast.info(`Matched Notissima user: ${resolved.user.displayName || "User"}`)
+        const inviteRes = await fetch("/api/calls", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: normalized }),
+          body: JSON.stringify({
+            callType: "web",
+            mode,
+            calleeUserId: resolved.user.id,
+            contactName: contactName || resolved?.user?.displayName || normalized,
+          }),
         })
-
-        if (resolveRes.ok) {
-          const resolved = await resolveRes.json()
-          if (resolved?.matched && resolved?.user?.id) {
-            const inviteRes = await fetch("/api/calls", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                callType: "web",
-                mode,
-                calleeUserId: resolved.user.id,
-                contactName: contactName || resolved?.user?.displayName || normalized,
-              }),
-            })
-            if (!inviteRes.ok) {
-              const inviteData = await inviteRes.json().catch(() => ({}))
-              throw new Error(inviteData.error || "Failed to start in-app call")
-            }
-            const inviteData = await inviteRes.json()
-            router.push(`/call/${inviteData.roomName}?callId=${inviteData.callId}&token=${encodeURIComponent(inviteData.token)}&mode=${mode}`)
-            return
-          }
+        const inviteData = await inviteRes.json().catch(() => ({}))
+        if (!inviteRes.ok) {
+          throw new Error(inviteData.error || "Failed to start in-app call")
         }
-      } catch {
-        // Fall through to existing PSTN path if resolve endpoint fails.
+        router.push(`/call/${inviteData.roomName}?callId=${inviteData.callId}&token=${encodeURIComponent(inviteData.token)}&mode=${mode}`)
+        return
       }
 
       const res = await fetch("/api/calls", {
