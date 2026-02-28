@@ -470,17 +470,23 @@ function CallRoomInner({
       if (!isCameraOn) {
         await localParticipant.setCameraEnabled(true)
       }
-      await refreshCameraDevices()
-      if (cameraDeviceIds.length < 2) {
+
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const cameras = devices.filter((d) => d.kind === "videoinput" && d.deviceId)
+      const ids = cameras.map((d) => d.deviceId)
+      setCameraDeviceIds(ids)
+
+      if (ids.length < 2) {
         toast.info("No alternative camera found")
         return
       }
 
-      const currentIndex = currentCameraDeviceId
-        ? cameraDeviceIds.findIndex((id) => id === currentCameraDeviceId)
+      const activeId = room.getActiveDevice("videoinput") || currentCameraDeviceId || ids[0]
+      const currentIndex = activeId
+        ? ids.findIndex((id) => id === activeId)
         : 0
-      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % cameraDeviceIds.length : 1
-      const nextDeviceId = cameraDeviceIds[nextIndex]
+      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % ids.length : 1
+      const nextDeviceId = ids[nextIndex]
       const switched = await room.switchActiveDevice("videoinput", nextDeviceId)
       if (!switched) {
         toast.error("Failed to switch camera")
@@ -490,7 +496,7 @@ function CallRoomInner({
     } catch {
       toast.error("Failed to switch camera")
     }
-  }, [mode, isCameraOn, localParticipant, refreshCameraDevices, cameraDeviceIds, currentCameraDeviceId, room])
+  }, [mode, isCameraOn, localParticipant, currentCameraDeviceId, room])
 
   const toggleScreenShare = useCallback(() => {
     localParticipant.setScreenShareEnabled(!isScreenSharing)

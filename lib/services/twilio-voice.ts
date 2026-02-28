@@ -11,6 +11,16 @@ interface TwilioCallResult {
   error?: string
 }
 
+type TwilioCallStatus =
+  | 'queued'
+  | 'ringing'
+  | 'in-progress'
+  | 'completed'
+  | 'busy'
+  | 'failed'
+  | 'no-answer'
+  | 'canceled'
+
 const voiceConfig: Record<SupportedLocale, { language: string; voice: string; message: (callerName: string) => string }> = {
   en: {
     language: 'en-US',
@@ -98,4 +108,58 @@ export async function placeNotificationCall(
     console.error('[TwilioVoice] Error placing call:', error)
     return { success: false, error: error.message || 'Network error' }
   }
+}
+
+/**
+ * Polls Twilio for call progress and returns true once the call appears answered.
+ * We treat "in-progress" as answered; "completed" may already be after a brief answered call.
+ */
+export async function waitForCallAnswered(
+  callSid: string,
+  opts?: { timeoutMs?: number; pollIntervalMs?: number }
+): Promise<{ answered: boolean; status?: string; error?: string }> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+
+  if (!accountSid || !authToken) {
+    return { answered: false, error: 'Twilio voice not configured' }
+  }
+
+  const timeoutMs = opts?.timeoutMs ?? 45_000
+  const pollIntervalMs = opts?.pollIntervalMs ?? 2_000
+  const startedAt = Date.now()
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${callSid}.json`
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        return { answered: false, error: errorData.message || `HTTP ${response.status}` }
+      }
+
+      const data = await response.json()
+      const status = (data?.status as TwilioCallStatus | undefined) || 'queued'
+
+      if (status === 'in-progress' || status === 'completed') {
+        return { answered: true, status }
+      }
+
+      if (status === 'busy' || status === 'failed' || status === 'no-answer' || status === 'canceled') {
+        return { answered: false, status }
+      }
+    } catch (error: any) {
+      return { answered: false, error: error?.message || 'Network error' }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+  }
+
+  return { answered: false, status: 'timeout' }
 }

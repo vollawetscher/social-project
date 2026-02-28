@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
 import { sendVideoCallInviteSMS } from '@/lib/services/sms'
-import { placeNotificationCall } from '@/lib/services/twilio-voice'
+import { placeNotificationCall, waitForCallAnswered } from '@/lib/services/twilio-voice'
+import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
 
 /**
  * POST /api/calls/[id]/ring-sms
- * Sends an SMS invite link + places a short Twilio voice notification call.
+ * Places a short Twilio notification call first, then sends SMS a few seconds
+ * after the callee answers.
  * Body: { phoneNumber: string, callerName?: string }
  */
 export async function POST(
@@ -31,13 +33,6 @@ export async function POST(
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('preferred_locale')
-      .eq('id', user.id)
-      .single()
-    const locale = (profile?.preferred_locale as 'en' | 'de' | 'es') || 'en'
-
     const body = await request.json()
     const phoneNumber: string = body.phoneNumber
     const callerName: string = body.callerName || 'Someone'
@@ -46,6 +41,7 @@ export async function POST(
     if (!phoneNumber || !/^\+[1-9]\d{6,14}$/.test(phoneNumber)) {
       return NextResponse.json({ error: 'Invalid phone number (E.164 required)' }, { status: 400 })
     }
+    const locale = inferLocaleFromPhone(phoneNumber)
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
@@ -54,17 +50,37 @@ export async function POST(
 
     const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${callId}`
 
-    // Send SMS first so the link is on the phone when it rings
+    // Place voice call first. SMS will be sent only after answer.
+    const voiceResult = await placeNotificationCall(phoneNumber, callerName, locale)
+    console.log('[RingSMS] Voice:', voiceResult.success ? voiceResult.callSid : voiceResult.error)
+
+    if (!voiceResult.success || !voiceResult.callSid) {
+      return NextResponse.json(
+        { error: 'Failed to place notification call', voiceError: voiceResult.error },
+        { status: 502 }
+      )
+    }
+
+    const answerResult = await waitForCallAnswered(voiceResult.callSid, {
+      timeoutMs: 45_000,
+      pollIntervalMs: 2_000,
+    })
+
+    if (!answerResult.answered) {
+      return NextResponse.json(
+        {
+          error: 'Call was not answered; SMS not sent',
+          callStatus: answerResult.status,
+          details: answerResult.error,
+        },
+        { status: 409 }
+      )
+    }
+
+    // Give the callee a short moment after answering before sending text.
+    await new Promise((resolve) => setTimeout(resolve, 3000))
     const smsResult = await sendVideoCallInviteSMS(phoneNumber, callerName, joinUrl, locale)
     console.log('[RingSMS] SMS:', smsResult.success ? 'sent' : smsResult.error)
-
-    let voiceResult: { success: boolean; callSid?: string; error?: string } = { success: false }
-    if (smsResult.success) {
-      voiceResult = await placeNotificationCall(phoneNumber, callerName, locale)
-      console.log('[RingSMS] Voice:', voiceResult.success ? voiceResult.callSid : voiceResult.error)
-    } else {
-      console.warn('[RingSMS] Skipping voice call — SMS failed, no link to click')
-    }
 
     if (call.session_id) {
       const label = contactName || phoneNumber
@@ -76,7 +92,7 @@ export async function POST(
 
     if (!smsResult.success) {
       return NextResponse.json({
-        error: 'SMS failed — no link sent, skipped voice call',
+        error: 'SMS failed after call was answered',
         smsError: smsResult.error,
       }, { status: 502 })
     }
@@ -85,6 +101,7 @@ export async function POST(
       smsSent: smsResult.success,
       voiceCallPlaced: voiceResult.success,
       voiceCallSid: voiceResult.callSid,
+      callAnswered: true,
     })
   } catch (error: any) {
     console.error('[RingSMS] Error:', error)
