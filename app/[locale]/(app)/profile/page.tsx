@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl"
 import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug, Smartphone, Share, Plus } from "lucide-react"
 import { BugReporter } from "@/components/error/BugReporter"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -98,6 +99,10 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
+  const [phoneNumberInput, setPhoneNumberInput] = useState('')
+  const [phoneSaving, setPhoneSaving] = useState(false)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [phoneSuccess, setPhoneSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchProfile() {
@@ -114,6 +119,7 @@ export default function ProfilePage() {
         if (!profileRes.ok) throw new Error('Failed to fetch profile')
         const data: UserProfile = await profileRes.json()
         setProfile(data)
+        setPhoneNumberInput(data.phone_number || '')
         if (templatesRes.ok) {
           const t = await templatesRes.json()
           setTemplates(t.map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })))
@@ -197,6 +203,30 @@ export default function ProfilePage() {
     return actions[action || 'nothing'] || 'Do nothing'
   }
 
+  const savePhoneNumber = async () => {
+    setPhoneError(null)
+    setPhoneSuccess(null)
+    setPhoneSaving(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone_number: phoneNumberInput }),
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(payload?.error || 'Failed to save phone number')
+      }
+      setProfile(payload)
+      setPhoneNumberInput(payload.phone_number || '')
+      setPhoneSuccess('Phone number saved')
+    } catch (error: any) {
+      setPhoneError(error?.message || 'Failed to save phone number')
+    } finally {
+      setPhoneSaving(false)
+    }
+  }
+
   return (
     <div className="max-w-4xl space-y-6">
       {/* Header */}
@@ -273,15 +303,34 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {profile.phone_number && (
-              <div className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Phone</p>
-                  <p className="text-sm text-muted-foreground">{profile.phone_number}</p>
+            <div className="flex items-start gap-3">
+              <Phone className="h-4 w-4 text-muted-foreground mt-2" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Phone</p>
+                <div className="mt-1 flex flex-col sm:flex-row gap-2">
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="+49 170 1234567"
+                    value={phoneNumberInput}
+                    onChange={(e) => setPhoneNumberInput(e.target.value)}
+                    className="max-w-sm"
+                    disabled={phoneSaving}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={savePhoneNumber}
+                    disabled={phoneSaving}
+                    className="sm:w-auto w-full"
+                  >
+                    {phoneSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save phone'}
+                  </Button>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Use international format (E.164), e.g. +491701234567</p>
+                {phoneError && <p className="text-xs text-destructive mt-1">{phoneError}</p>}
+                {phoneSuccess && <p className="text-xs text-success mt-1">{phoneSuccess}</p>}
               </div>
-            )}
+            </div>
 
             <div className="flex items-center gap-3">
               <Calendar className="h-4 w-4 text-muted-foreground" />

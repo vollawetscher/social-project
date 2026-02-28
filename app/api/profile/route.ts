@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+function normalizePhone(raw: string): string | null {
+  let cleaned = raw.replace(/[\s\-().]/g, '')
+  if (cleaned.startsWith('00')) cleaned = `+${cleaned.slice(2)}`
+  if (/^\d{7,15}$/.test(cleaned)) cleaned = `+${cleaned}`
+  return /^\+[1-9]\d{6,14}$/.test(cleaned) ? cleaned : null
+}
+
 export async function GET() {
   try {
     const supabase = await createClient()
@@ -47,7 +54,8 @@ export async function PATCH(request: Request) {
       'timezone',
       'after_transcript_action',
       'after_transcript_template_id',
-      'auto_generate_reports'
+      'auto_generate_reports',
+      'phone_number',
     ]
     
     const filteredUpdates = Object.keys(updates)
@@ -56,6 +64,22 @@ export async function PATCH(request: Request) {
         obj[key] = updates[key]
         return obj
       }, {})
+
+    if ('phone_number' in filteredUpdates) {
+      const rawPhone = filteredUpdates.phone_number
+      if (rawPhone === null || rawPhone === undefined || String(rawPhone).trim() === '') {
+        filteredUpdates.phone_number = null
+      } else {
+        const normalized = normalizePhone(String(rawPhone))
+        if (!normalized) {
+          return NextResponse.json(
+            { error: 'Invalid phone number. Use international format, e.g. +491701234567' },
+            { status: 400 }
+          )
+        }
+        filteredUpdates.phone_number = normalized
+      }
+    }
 
     if (Object.keys(filteredUpdates).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
@@ -71,6 +95,12 @@ export async function PATCH(request: Request) {
     if (error) {
       console.error('Error updating profile:', error)
       console.error('Error details:', JSON.stringify(error, null, 2))
+      if (error.code === '23505' && (error.message || '').includes('phone_number')) {
+        return NextResponse.json(
+          { error: 'This phone number is already used by another account' },
+          { status: 409 }
+        )
+      }
       return NextResponse.json({ 
         error: 'Failed to update profile', 
         details: error.message,
