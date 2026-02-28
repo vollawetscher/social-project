@@ -303,6 +303,7 @@ export default function TemplatesPage() {
   }
 
   return (
+    <div className="flex-1 min-h-0 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
     <div className="space-y-6">
       {sampleTemplate && (
         <TemplateSampleSheet
@@ -535,6 +536,7 @@ export default function TemplatesPage() {
           </TableBody>
         </Table>
       </Card>
+    </div>
     </div>
   )
 }

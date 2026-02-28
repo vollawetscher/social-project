@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     // Create the LiveKit room
     try {
-      const isVideoCall = callType === 'web'
+      const isVideoCall = mode === 'video'
       await createRoom(roomName, {
         maxParticipants: 2,
         emptyTimeout: isVideoCall ? 900 : 90,
@@ -41,9 +41,19 @@ export async function POST(request: Request) {
     }
 
     // Create a session for this call
-    const inputHint = callType === 'pstn_outbound' ? 'phone_call' : 'video_call'
+    const inputHint =
+      callType === 'pstn_outbound'
+        ? 'phone_call'
+        : mode === 'video'
+          ? 'video_call'
+          : 'phone_call'
 
-    const sessionLabel = callType === 'web' ? 'Video Call' : 'Call'
+    const sessionLabel =
+      callType === 'pstn_outbound'
+        ? 'Call'
+        : mode === 'video'
+          ? 'Video Call'
+          : 'Audio Call'
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')

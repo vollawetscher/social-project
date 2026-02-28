@@ -329,6 +329,7 @@ export default function OutputsPage() {
   }
 
   return (
+    <div className="flex-1 min-h-0 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -528,6 +529,7 @@ export default function OutputsPage() {
           ))
         )}
       </div>
+    </div>
     </div>
   )
 }

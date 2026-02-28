@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useParams, useSearchParams } from "next/navigation"
 import { useRouter } from "@/i18n/navigation"
 import { useAuth } from "@/lib/auth/AuthProvider"
@@ -14,6 +15,7 @@ import type { CallMode } from "@/lib/types/call"
 const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || ""
 
 export default function CallRoomPage() {
+  const tCallRoom = useTranslations('callRoom')
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -29,12 +31,13 @@ export default function CallRoomPage() {
   const ringCallerNameParam = searchParams?.get("ringCallerName") || null
   const ringContactNameParam = searchParams?.get("ringContactName") || null
 
-  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "active" | "ended" | "error">("loading")
+  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "consent" | "active" | "ended" | "error">("loading")
   const [callId, setCallId] = useState<string | null>(callIdParam)
   const [token, setToken] = useState<string | null>(tokenParam)
   const [callType, setCallType] = useState<"web" | "pstn_outbound">(callTypeParam)
   const [contactName, setContactName] = useState<string | undefined>()
   const [callerName, setCallerName] = useState<string>("Someone")
+  const [joinDisplayName, setJoinDisplayName] = useState<string>("Guest")
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -73,6 +76,7 @@ export default function CallRoomPage() {
 
   const handleJoin = useCallback(async (displayName: string) => {
     setPhase("joining")
+    setJoinDisplayName(displayName || "Guest")
     try {
       if (token) {
         setPhase("active")
@@ -98,8 +102,10 @@ export default function CallRoomPage() {
       const data = await res.json()
       setToken(data.token)
 
-      // Log callee/guest consent at join time so caller can see status in-room.
-      if (!tokenParam && callId) {
+      // For video calls, consent is implicit and only status is shown in-room.
+      // For audio calls, non-initiators must explicitly confirm.
+      const needsAudioConsent = !tokenParam && modeParam === "audio"
+      if (!needsAudioConsent && !tokenParam && callId) {
         fetch(`/api/calls/${callId}/consent`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -111,12 +117,12 @@ export default function CallRoomPage() {
         }).catch(() => {})
       }
 
-      setPhase("active")
+      setPhase(needsAudioConsent ? "consent" : "active")
     } catch (err: any) {
       setError(err.message || "Failed to join call")
       setPhase("error")
     }
-  }, [callId, token, tokenParam, user?.id])
+  }, [callId, token, tokenParam, user?.id, modeParam])
 
   const handleLeave = useCallback(async () => {
     if (user) {
@@ -201,6 +207,43 @@ export default function CallRoomPage() {
     )
   }
 
+  if (phase === "consent") {
+    const handleConsent = async (granted: boolean) => {
+      if (callId) {
+        fetch(`/api/calls/${callId}/consent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            granted,
+            participantName: joinDisplayName,
+            participantIdentity: user?.id || `guest-${Date.now()}`,
+          }),
+        }).catch(() => {})
+      }
+      if (granted) {
+        setPhase("active")
+      } else {
+        // Declined — switch to caller-only recording after connecting
+        setPhase("active")
+        setTimeout(() => {
+          if (callId) {
+            fetch(`/api/calls/${callId}/switch-egress`, { method: "POST" }).catch(() => {})
+          }
+        }, 3000)
+      }
+    }
+
+    return (
+      <AudioConsentGate
+        prompt={tCallRoom('consentPrompt')}
+        agreeLabel={tCallRoom('consentAgree')}
+        declineLabel={tCallRoom('consentDecline')}
+        onAgree={() => handleConsent(true)}
+        onDecline={() => handleConsent(false)}
+      />
+    )
+  }
+
   if (!token || !LIVEKIT_URL) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -230,5 +273,53 @@ export default function CallRoomPage() {
         contactName: ringContactNameParam || undefined,
       } : undefined}
     />
+  )
+}
+
+function AudioConsentGate({
+  prompt,
+  agreeLabel,
+  declineLabel,
+  onAgree,
+  onDecline,
+}: {
+  prompt: string
+  agreeLabel: string
+  declineLabel: string
+  onAgree: () => void
+  onDecline: () => void
+}) {
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return
+    const utterance = new SpeechSynthesisUtterance(prompt)
+    const navLang = navigator.language || "en-US"
+    if (navLang.toLowerCase().startsWith("de")) utterance.lang = "de-DE"
+    else if (navLang.toLowerCase().startsWith("es")) utterance.lang = "es-ES"
+    else utterance.lang = "en-US"
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utterance)
+    return () => window.speechSynthesis.cancel()
+  }, [prompt])
+
+  return (
+    <div className="flex items-center justify-center h-[100dvh] bg-background p-6">
+      <div className="w-full max-w-sm text-center space-y-5">
+        <p className="text-base text-foreground">{prompt}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onAgree}
+            className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
+          >
+            {agreeLabel}
+          </button>
+          <button
+            onClick={onDecline}
+            className="flex-1 py-2.5 rounded-lg border border-border text-foreground font-medium text-sm hover:bg-secondary transition-colors"
+          >
+            {declineLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
