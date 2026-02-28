@@ -481,7 +481,13 @@
     "importFailed": "Importación fallida",
     "namePlaceholder": "Nombre *",
     "phonePlaceholderShort": "Teléfono (+34600…)",
-    "emailPlaceholder": "Correo (opcional)"
+    "emailPlaceholder": "Correo (opcional)",
+    "incomingCallTitle": "Llamada entrante",
+    "incomingUnknownCaller": "Llamante desconocido",
+    "incomingCallDescription": "te está invitando a unirte a una llamada.",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
+    "realtimeFallback": "La señalización en tiempo real se está reconectando. Se usa una actualización periódica como respaldo."
   },
   "settings": {
     "title": "Ajustes",

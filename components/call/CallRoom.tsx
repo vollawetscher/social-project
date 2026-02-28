@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CallControls } from "@/components/call/CallControls"
 import type { CallMode, LayoutMode } from "@/lib/types/call"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 
 const RECONNECT_GRACE_MS = 30_000
 
@@ -179,7 +180,8 @@ function CallRoomInner({
   const ringSmsTriggered = useRef(false)
 
   const consentLoggedRef = useRef(false)
-  const [remoteConsents, setRemoteConsents] = useState<{ name: string; granted: boolean }[]>([])
+  const [remoteConsents, setRemoteConsents] = useState<{ identity: string; name: string; granted: boolean }[]>([])
+  const [remoteCallEnded, setRemoteCallEnded] = useState(false)
   const [cameraDeviceIds, setCameraDeviceIds] = useState<string[]>([])
   const [currentCameraDeviceId, setCurrentCameraDeviceId] = useState<string | null>(null)
   const [reconnectDeadline, setReconnectDeadline] = useState<number | null>(null)
@@ -254,26 +256,68 @@ function CallRoomInner({
     }
   }, [isInitiator, isConnected, callId, displayName, localParticipant.identity])
 
-  // Poll consent status for remote participants (initiator only)
+  // Realtime consent + call lifecycle updates.
   useEffect(() => {
-    if (!isInitiator || !callId || !hasRemote) return
-    let cancelled = false
-    const poll = async () => {
+    if (!callId) return
+    const supabase = createSupabaseClient()
+    if (!supabase) return
+
+    const syncConsents = async () => {
+      if (!isInitiator) return
       try {
         const r = await fetch(`/api/calls/${callId}/consent`)
-        if (r.ok && !cancelled) {
+        if (r.ok) {
           const data = await r.json()
           const others = (data.consents || [])
             .filter((c: any) => c.participant_identity !== localParticipant.identity)
-            .map((c: any) => ({ name: c.participant_name, granted: c.granted }))
+            .map((c: any) => ({ identity: c.participant_identity, name: c.participant_name, granted: c.granted }))
           setRemoteConsents(others)
         }
       } catch { /* ignore */ }
     }
-    poll()
-    const interval = setInterval(poll, 5000)
-    return () => { cancelled = true; clearInterval(interval) }
-  }, [isInitiator, callId, hasRemote, localParticipant.identity])
+    syncConsents()
+
+    const channel = supabase
+      .channel(`call-room-${callId}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "calls",
+        filter: `id=eq.${callId}`,
+      }, (payload: any) => {
+        const status = payload.new?.status as string | undefined
+        if (status && ["ended", "missed", "declined", "error"].includes(status)) {
+          setRemoteCallEnded(true)
+        }
+      })
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "consent_logs",
+        filter: `call_id=eq.${callId}`,
+      }, (payload: any) => {
+        if (!isInitiator) return
+        const row = payload.new
+        if (!row || row.participant_identity === localParticipant.identity) return
+        setRemoteConsents((prev) => {
+          const idx = prev.findIndex((item) => item.identity === row.participant_identity)
+          const next = {
+            identity: row.participant_identity,
+            name: row.participant_name || "Participant",
+            granted: Boolean(row.granted),
+          }
+          if (idx === -1) return [...prev, next]
+          const clone = [...prev]
+          clone[idx] = next
+          return clone
+        })
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [callId, isInitiator, localParticipant.identity])
 
   // Play soft ringtone only for outbound PSTN calls while waiting for callee to pick up.
   // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
@@ -391,6 +435,16 @@ function CallRoomInner({
 
     return () => clearReconnectTimers()
   }, [isConnected, isDisconnected, onLeave, router, clearReconnectTimers])
+
+  useEffect(() => {
+    if (!remoteCallEnded || endingCallRef.current) return
+    endingCallRef.current = true
+    room.disconnect()
+    setTimeout(() => {
+      if (onLeave) onLeave()
+      else router.push("/calls")
+    }, 300)
+  }, [remoteCallEnded, room, onLeave, router])
 
   useEffect(() => {
     if (isConnected) requestWakeLock()

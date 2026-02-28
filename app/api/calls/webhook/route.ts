@@ -51,6 +51,7 @@ export async function POST(request: Request) {
               participant_b_identity: identity,
               status: 'active',
               started_at: new Date().toISOString(),
+              accepted_at: call.status === 'invited' ? new Date().toISOString() : undefined,
             })
             .eq('id', call.id)
 
@@ -93,12 +94,14 @@ export async function POST(request: Request) {
 
         if (!call) break
 
-        if (call.status === 'active' || call.status === 'waiting') {
+        if (call.status === 'active' || call.status === 'waiting' || call.status === 'invited') {
+          const nextStatus = call.status === 'invited' ? 'missed' : 'ended'
           await supabase
             .from('calls')
             .update({
-              status: 'ended',
+              status: nextStatus,
               ended_at: new Date().toISOString(),
+              missed_at: nextStatus === 'missed' ? new Date().toISOString() : undefined,
             })
             .eq('id', call.id)
 

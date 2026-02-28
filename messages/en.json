@@ -481,7 +481,13 @@
     "importFailed": "Import failed",
     "namePlaceholder": "Name *",
     "phonePlaceholderShort": "Phone (+49171…)",
-    "emailPlaceholder": "Email (optional)"
+    "emailPlaceholder": "Email (optional)",
+    "incomingCallTitle": "Incoming call",
+    "incomingUnknownCaller": "Unknown caller",
+    "incomingCallDescription": "is inviting you to join a call.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "realtimeFallback": "Realtime signaling is reconnecting. Using periodic refresh fallback."
   },
   "settings": {
     "title": "Settings",

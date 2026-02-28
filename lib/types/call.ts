@@ -6,7 +6,17 @@
 // --- Database types (match calls table schema) ---
 
 export type CallType = 'web' | 'pstn_outbound'
-export type CallStatus = 'waiting' | 'active' | 'ended' | 'processing' | 'transcribing' | 'done' | 'error'
+export type CallStatus =
+  | 'waiting'
+  | 'invited'
+  | 'active'
+  | 'ended'
+  | 'declined'
+  | 'missed'
+  | 'processing'
+  | 'transcribing'
+  | 'done'
+  | 'error'
 
 export interface Call {
   id: string
@@ -14,6 +24,7 @@ export interface Call {
   user_id: string
   room_name: string
   call_type: CallType
+  call_mode?: CallMode | null
   status: CallStatus
   participant_a_identity: string | null
   participant_b_identity: string | null
@@ -28,6 +39,13 @@ export interface Call {
   track_b_egress_id: string | null
   track_b_started_at_ns: number | null
   last_error: string | null
+  callee_user_id?: string | null
+  callee_session_id?: string | null
+  invited_at?: string | null
+  accepted_at?: string | null
+  declined_at?: string | null
+  missed_at?: string | null
+  callee_declined?: boolean
   created_at: string
 }
 
@@ -91,6 +109,8 @@ export interface CreateCallRequest {
   mode: CallMode
   phoneNumber?: string        // Required for pstn_outbound
   participantName?: string    // Display name for the initiator
+  calleeUserId?: string       // Target user for in-app invite calls
+  contactName?: string        // Optional display name for invite target
 }
 
 export interface CreateCallResponse {

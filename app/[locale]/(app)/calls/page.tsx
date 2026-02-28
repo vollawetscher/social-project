@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
+import { useAuth } from "@/lib/auth/AuthProvider"
+import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import {
   Phone,
   Video,
@@ -93,6 +95,7 @@ function normalizePhone(raw: string): string | null {
 export default function CallsPage() {
   const router = useRouter()
   const t = useTranslations('calls')
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<TabType>("contacts")
   const [calls, setCalls] = useState<Call[]>([])
   const [loading, setLoading] = useState(true)
@@ -121,13 +124,95 @@ export default function CallsPage() {
   const [savingContact, setSavingContact] = useState(false)
   const [importingContacts, setImportingContacts] = useState(false)
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null)
+  const [incomingInvite, setIncomingInvite] = useState<Call | null>(null)
+  const [realtimeDegraded, setRealtimeDegraded] = useState(false)
+  const missedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const incomingInviteIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     fetchCalls()
-    // Poll every 8s so desktop sees new/updated calls without manual refresh
-    const interval = setInterval(fetchCalls, 8000)
-    return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    const supabase = createSupabaseClient()
+    if (!supabase) return
+
+    const upsertCall = (next: Call) => {
+      setCalls((prev) => {
+        const idx = prev.findIndex((c) => c.id === next.id)
+        if (idx === -1) return [next, ...prev].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+        const cloned = [...prev]
+        cloned[idx] = next
+        return cloned.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+      })
+
+      if (
+        next.callee_user_id === user.id &&
+        next.status === "invited" &&
+        !next.accepted_at &&
+        !next.declined_at &&
+        !next.missed_at
+      ) {
+        setIncomingInvite(next)
+      } else if (incomingInvite?.id === next.id) {
+        setIncomingInvite(null)
+      }
+    }
+
+    const channel = supabase
+      .channel(`calls-realtime-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "calls" },
+        (payload: any) => {
+          const row = (payload.new || payload.old) as Call | undefined
+          if (!row) return
+          if (row.user_id !== user.id && row.callee_user_id !== user.id) return
+          if (payload.eventType === "DELETE") {
+            setCalls((prev) => prev.filter((c) => c.id !== row.id))
+            if (incomingInviteIdRef.current === row.id) setIncomingInvite(null)
+            return
+          }
+          upsertCall(payload.new as Call)
+        }
+      )
+      .subscribe((status) => {
+        setRealtimeDegraded(status !== "SUBSCRIBED")
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!realtimeDegraded) return
+    const interval = setInterval(fetchCalls, 12_000)
+    return () => clearInterval(interval)
+  }, [realtimeDegraded])
+
+  useEffect(() => {
+    incomingInviteIdRef.current = incomingInvite?.id || null
+    if (!incomingInvite) return
+    if (missedTimerRef.current) clearTimeout(missedTimerRef.current)
+    missedTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch(`/api/calls/${incomingInvite.id}/miss`, { method: "POST" })
+      } catch {
+        // best-effort timeout fallback
+      } finally {
+        setIncomingInvite((curr) => (curr?.id === incomingInvite.id ? null : curr))
+      }
+    }, 45_000)
+
+    return () => {
+      if (missedTimerRef.current) {
+        clearTimeout(missedTimerRef.current)
+        missedTimerRef.current = null
+      }
+    }
+  }, [incomingInvite])
 
   useEffect(() => {
     fetchContacts()
@@ -148,6 +233,36 @@ export default function CallsPage() {
       console.error("[Calls] Failed to fetch calls:", err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleAcceptIncomingInvite() {
+    if (!incomingInvite) return
+    try {
+      const res = await fetch(`/api/calls/${incomingInvite.id}/accept`, { method: "POST" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to accept call")
+      }
+      const data = await res.json()
+      setIncomingInvite(null)
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${data.mode || "video"}`)
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to accept call")
+    }
+  }
+
+  async function handleDeclineIncomingInvite() {
+    if (!incomingInvite) return
+    try {
+      const res = await fetch(`/api/calls/${incomingInvite.id}/decline`, { method: "POST" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to decline call")
+      }
+      setIncomingInvite(null)
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to decline call")
     }
   }
 
@@ -410,6 +525,11 @@ export default function CallsPage() {
           <p className="text-sm text-destructive">{error}</p>
         </div>
       )}
+      {realtimeDegraded && (
+        <div className="px-4 py-2 bg-warning/10 border-b border-warning/20">
+          <p className="text-xs text-warning-foreground">{t('realtimeFallback')}</p>
+        </div>
+      )}
 
       {/* Mobile Tab Bar */}
       <div className="flex border-b border-border bg-card md:hidden">
@@ -596,6 +716,25 @@ export default function CallsPage() {
             >
               {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Phone className="h-4 w-4 mr-2" />}
               {t('startCall')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!incomingInvite} onOpenChange={(open) => { if (!open) setIncomingInvite(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('incomingCallTitle')}</DialogTitle>
+            <DialogDescription>
+              {(incomingInvite?.contact_name || t('incomingUnknownCaller'))} {t('incomingCallDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-row gap-3 justify-end pt-2">
+            <Button variant="outline" onClick={handleDeclineIncomingInvite}>
+              {t('decline')}
+            </Button>
+            <Button onClick={handleAcceptIncomingInvite}>
+              {t('accept')}
             </Button>
           </div>
         </DialogContent>

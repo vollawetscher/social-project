@@ -29,7 +29,7 @@ export async function POST(
     const db = createServiceRoleClient()
     const { data: call } = await db
       .from('calls')
-      .select('room_name, status, user_id')
+      .select('room_name, status, user_id, call_type, callee_user_id, accepted_at')
       .eq('id', callId)
       .maybeSingle()
 
@@ -38,7 +38,7 @@ export async function POST(
     }
 
     // Only allow joining if call is still joinable
-    const joinableStatuses = ['waiting', 'active', 'connected', 'recording']
+    const joinableStatuses = ['invited', 'waiting', 'active', 'connected', 'recording']
     if (!joinableStatuses.includes(call.status)) {
       return NextResponse.json({ error: 'Call is no longer active' }, { status: 410 })
     }
@@ -48,6 +48,16 @@ export async function POST(
     let displayName: string
 
     if (user) {
+      if (call.call_type === 'web' && call.callee_user_id && user.id !== call.user_id) {
+        if (call.callee_user_id !== user.id) {
+          return NextResponse.json({ error: 'You are not the invited participant for this call' }, { status: 403 })
+        }
+        // Guard: invited user can only get token after accepting invite.
+        if (!call.accepted_at && call.status !== 'active') {
+          return NextResponse.json({ error: 'Invite must be accepted before joining' }, { status: 409 })
+        }
+      }
+
       identity = user.id
       // Get display name from profile
       const { data: profile } = await supabase

@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const supabase = await createClient()
 
     const body: CreateCallRequest = await request.json()
-    const { callType = 'web', mode = 'audio', participantName } = body
+    const { callType = 'web', mode = 'audio', participantName, calleeUserId, contactName } = body
 
     // Get user profile for display name and preferred language
     const { data: profile } = await supabase
@@ -76,14 +76,19 @@ export async function POST(request: Request) {
     }
 
     // Create the call record
+    const isInvite = callType === 'web' && Boolean(calleeUserId)
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
         session_id: session.id,
         user_id: user.id,
+        callee_user_id: calleeUserId || null,
         room_name: roomName,
         call_type: callType,
-        status: 'waiting',
+        call_mode: mode,
+        contact_name: contactName || null,
+        status: isInvite ? 'invited' : 'waiting',
+        invited_at: isInvite ? new Date().toISOString() : null,
         participant_a_identity: user.id,
         room_created_at_ms: roomCreatedAtMs,
       })
@@ -110,6 +115,7 @@ export async function POST(request: Request) {
       token,
       sessionId: session.id,
       displayName,
+      invited: isInvite,
     })
   } catch (error: any) {
     console.error('[Calls] Error creating call:', error)
@@ -136,7 +142,7 @@ export async function GET() {
     const { data: calls, error } = await supabase
       .from('calls')
       .select('*')
-      .eq('user_id', user.id)
+      .or(`user_id.eq.${user.id},callee_user_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
       .limit(50)
 

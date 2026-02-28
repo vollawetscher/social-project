@@ -481,7 +481,13 @@
     "importFailed": "Import fehlgeschlagen",
     "namePlaceholder": "Name *",
     "phonePlaceholderShort": "Telefon (+49171…)",
-    "emailPlaceholder": "E-Mail (optional)"
+    "emailPlaceholder": "E-Mail (optional)",
+    "incomingCallTitle": "Eingehender Anruf",
+    "incomingUnknownCaller": "Unbekannter Anrufer",
+    "incomingCallDescription": "lädt Sie zu einem Anruf ein.",
+    "accept": "Annehmen",
+    "decline": "Ablehnen",
+    "realtimeFallback": "Realtime-Signalisierung verbindet neu. Es wird ein periodischer Aktualisierungs-Fallback verwendet."
   },
   "settings": {
     "title": "Einstellungen",
