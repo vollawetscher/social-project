@@ -131,8 +131,8 @@ export async function DELETE(
     const serviceDb = createServiceRoleClient()
 
     // Block deletion if a callee session is still waiting for the transcript.
-    // Deleting now would orphan the callee session in 'transcribing' forever
-    // (FK ON DELETE SET NULL nullifies calls.session_id, breaking the link).
+    // Exception: if source session already failed, allow deletion and mark the
+    // callee pending session as failed too (so it doesn't remain stuck forever).
     const { data: pendingCalleeCall } = await serviceDb
       .from('calls')
       .select('callee_session_id')
@@ -148,10 +148,31 @@ export async function DELETE(
         .maybeSingle()
 
       if (calleeSession?.is_callee_pending) {
-        return NextResponse.json(
-          { error: 'This session is shared with another user whose transcript is still being prepared. Please try again later.' },
-          { status: 409 }
-        )
+        const { data: sourceSession } = await serviceDb
+          .from('sessions')
+          .select('status, last_error')
+          .eq('id', params.id)
+          .maybeSingle()
+
+        const sourceFailed = sourceSession?.status === 'error'
+
+        if (!sourceFailed) {
+          return NextResponse.json(
+            { error: 'This session is shared with another user whose transcript is still being prepared. Please try again later.' },
+            { status: 409 }
+          )
+        }
+
+        // Source already failed (e.g. no audio). Resolve callee pending state
+        // before deleting source to avoid a permanently "transcribing" session.
+        await serviceDb
+          .from('sessions')
+          .update({
+            is_callee_pending: false,
+            status: 'error',
+            last_error: sourceSession?.last_error || 'Source session failed before transcript was available',
+          })
+          .eq('id', pendingCalleeCall.callee_session_id)
       }
     }
 

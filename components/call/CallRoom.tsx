@@ -180,6 +180,8 @@ function CallRoomInner({
 
   const consentLoggedRef = useRef(false)
   const [remoteConsents, setRemoteConsents] = useState<{ name: string; granted: boolean }[]>([])
+  const [cameraDeviceIds, setCameraDeviceIds] = useState<string[]>([])
+  const [currentCameraDeviceId, setCurrentCameraDeviceId] = useState<string | null>(null)
   const [reconnectDeadline, setReconnectDeadline] = useState<number | null>(null)
   const [reconnectSecondsLeft, setReconnectSecondsLeft] = useState(Math.floor(RECONNECT_GRACE_MS / 1000))
 
@@ -318,6 +320,30 @@ function CallRoomInner({
   const isScreenSharing = localParticipant.isScreenShareEnabled
   const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
 
+  const refreshCameraDevices = useCallback(async () => {
+    try {
+      if (!navigator.mediaDevices?.enumerateDevices) return
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const cameras = devices.filter((d) => d.kind === "videoinput")
+      setCameraDeviceIds(cameras.map((d) => d.deviceId).filter(Boolean))
+
+      const publication = localParticipant.getTrackPublication(Track.Source.Camera)
+      const activeDeviceId = publication?.track?.mediaStreamTrack?.getSettings()?.deviceId || null
+      if (activeDeviceId) {
+        setCurrentCameraDeviceId(activeDeviceId)
+      } else if (cameras[0]?.deviceId) {
+        setCurrentCameraDeviceId(cameras[0].deviceId)
+      }
+    } catch {
+      // Camera device listing is best-effort.
+    }
+  }, [localParticipant])
+
+  useEffect(() => {
+    if (mode !== "video") return
+    refreshCameraDevices()
+  }, [mode, isCameraOn, refreshCameraDevices])
+
   useEffect(() => {
     if (callStatus === "connected") {
       timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000)
@@ -438,6 +464,34 @@ function CallRoomInner({
     localParticipant.setCameraEnabled(!isCameraOn)
   }, [localParticipant, isCameraOn])
 
+  const switchCamera = useCallback(async () => {
+    if (mode !== "video") return
+    try {
+      if (!isCameraOn) {
+        await localParticipant.setCameraEnabled(true)
+      }
+      await refreshCameraDevices()
+      if (cameraDeviceIds.length < 2) {
+        toast.info("No alternative camera found")
+        return
+      }
+
+      const currentIndex = currentCameraDeviceId
+        ? cameraDeviceIds.findIndex((id) => id === currentCameraDeviceId)
+        : 0
+      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % cameraDeviceIds.length : 1
+      const nextDeviceId = cameraDeviceIds[nextIndex]
+      const switched = await room.switchActiveDevice("videoinput", nextDeviceId)
+      if (!switched) {
+        toast.error("Failed to switch camera")
+        return
+      }
+      setCurrentCameraDeviceId(nextDeviceId)
+    } catch {
+      toast.error("Failed to switch camera")
+    }
+  }, [mode, isCameraOn, localParticipant, refreshCameraDevices, cameraDeviceIds, currentCameraDeviceId, room])
+
   const toggleScreenShare = useCallback(() => {
     localParticipant.setScreenShareEnabled(!isScreenSharing)
   }, [localParticipant, isScreenSharing])
@@ -531,6 +585,22 @@ function CallRoomInner({
   }
 
   const isVideo = mode === "video"
+  const canSwitchCamera = isVideo && cameraDeviceIds.length > 1
+  const hasConsentEntry = remoteConsents.length > 0
+  const allRemoteGranted = hasConsentEntry && remoteConsents.every((c) => c.granted)
+  const remoteDeclined = hasConsentEntry && remoteConsents.some((c) => !c.granted)
+  const consentBadgeText = !hasRemote
+    ? "Awaiting participant"
+    : allRemoteGranted
+      ? "Consent granted"
+      : remoteDeclined
+        ? "Caller only"
+        : "Consent pending"
+  const consentBadgeTone = allRemoteGranted
+    ? "bg-success/20 text-success"
+    : remoteDeclined
+      ? "bg-warning/20 text-warning"
+      : "bg-info/20 text-info"
 
   const contactInitials = contactName
     ? contactName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -557,15 +627,13 @@ function CallRoomInner({
                 REC
               </Badge>
             )}
-            {isInitiator && remoteConsents.length > 0 && (
+            {isInitiator && (
               <Badge variant="secondary" className={cn(
                 "text-[10px] gap-1 border-0",
-                remoteConsents.every(c => c.granted)
-                  ? "bg-success/20 text-success"
-                  : "bg-warning/20 text-warning"
+                consentBadgeTone
               )}>
                 <Check className="h-3 w-3" />
-                {remoteConsents.every(c => c.granted) ? "Consent" : "Caller only"}
+                {consentBadgeText}
               </Badge>
             )}
             <Badge variant="secondary" className={cn(
@@ -775,6 +843,8 @@ function CallRoomInner({
                 onToggleScreenShare={toggleScreenShare}
                 onToggleNotes={() => setShowNotes(!showNotes)}
                 onToggleTranscript={() => setShowTranscript(!showTranscript)}
+                onSwitchCamera={switchCamera}
+                canSwitchCamera={canSwitchCamera}
                 onEndCall={endCall}
               />
             ) : (
@@ -814,13 +884,13 @@ function CallRoomInner({
             <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
             {formatDuration(duration)}
           </Badge>
-          {isInitiator && remoteConsents.length > 0 && (
+          {isInitiator && (
             <Badge variant="secondary" className={cn(
               "text-[10px] gap-1 border-0",
-              remoteConsents.every(c => c.granted) ? "bg-success/20 text-success" : "bg-warning/20 text-warning"
+              consentBadgeTone
             )}>
               <Check className="h-3 w-3" />
-              {remoteConsents.every(c => c.granted) ? "Consent" : "Caller only"}
+              {consentBadgeText}
             </Badge>
           )}
           <button
@@ -989,6 +1059,8 @@ function CallRoomInner({
         onToggleScreenShare={toggleScreenShare}
         onToggleNotes={() => setShowNotes(!showNotes)}
         onToggleTranscript={() => setShowTranscript(!showTranscript)}
+        onSwitchCamera={switchCamera}
+        canSwitchCamera={canSwitchCamera}
         onEndCall={endCall}
         dark
       />

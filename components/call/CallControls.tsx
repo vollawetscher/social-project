@@ -6,6 +6,7 @@ import {
   MicOff,
   Video,
   VideoOff,
+  RefreshCcw,
   MonitorUp,
   Volume2,
   Pause,
@@ -38,6 +39,8 @@ interface CallControlsProps {
   onToggleNotes: () => void
   onToggleTranscript: () => void
   onEndCall: () => void
+  onSwitchCamera?: () => void
+  canSwitchCamera?: boolean
   onDialPad?: () => void
   dark?: boolean
   variant?: "call" | "room"
@@ -61,6 +64,8 @@ export function CallControls({
   onToggleNotes,
   onToggleTranscript,
   onEndCall,
+  onSwitchCamera,
+  canSwitchCamera = false,
   onDialPad,
   dark = false,
   variant = "call",
@@ -82,6 +87,15 @@ export function CallControls({
           onClick={onToggleCamera}
           dark
         />
+        {mode === "video" && canSwitchCamera && onSwitchCamera && (
+          <ControlButton
+            icon={RefreshCcw}
+            label="Flip"
+            active={false}
+            onClick={onSwitchCamera}
+            dark
+          />
+        )}
         {canScreenShare && (
           <ControlButton
             icon={MonitorUp}
@@ -118,6 +132,9 @@ export function CallControls({
         <ControlButton icon={isMuted ? MicOff : Mic} label={isMuted ? "Unmute" : "Mute"} active={isMuted} onClick={onToggleMute} dark={dark} />
         {mode === "video" && (
           <ControlButton icon={isCameraOn ? Video : VideoOff} label={isCameraOn ? "Cam On" : "Cam Off"} active={!isCameraOn} onClick={onToggleCamera} dark={dark} />
+        )}
+        {mode === "video" && canSwitchCamera && onSwitchCamera && (
+          <ControlButton icon={RefreshCcw} label="Flip" active={false} onClick={onSwitchCamera} dark={dark} />
         )}
         <ControlButton icon={Volume2} label="Speaker" active={isSpeaker} onClick={onToggleSpeaker} dark={dark} />
         {mode === "video" && canScreenShare && (

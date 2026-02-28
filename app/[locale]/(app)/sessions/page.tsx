@@ -897,7 +897,8 @@ export default function SessionsPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete session')
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload?.error || t('deleteFailed'))
       }
       toast.success(t('deleteSuccess'))
     } catch (error) {
