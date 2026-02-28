@@ -336,6 +336,41 @@ export default function CallsPage() {
         throw new Error(`"${phoneNumber}" couldn't be converted to a valid phone number. Try adding the country code, e.g. +49171…`)
       }
 
+      // If the phone number belongs to an existing Notissima user profile,
+      // route to in-app invite calling instead of PSTN.
+      try {
+        const resolveRes = await fetch("/api/calls/resolve-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: normalized }),
+        })
+
+        if (resolveRes.ok) {
+          const resolved = await resolveRes.json()
+          if (resolved?.matched && resolved?.user?.id) {
+            const inviteRes = await fetch("/api/calls", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                callType: "web",
+                mode,
+                calleeUserId: resolved.user.id,
+                contactName: contactName || resolved?.user?.displayName || normalized,
+              }),
+            })
+            if (!inviteRes.ok) {
+              const inviteData = await inviteRes.json().catch(() => ({}))
+              throw new Error(inviteData.error || "Failed to start in-app call")
+            }
+            const inviteData = await inviteRes.json()
+            router.push(`/call/${inviteData.roomName}?callId=${inviteData.callId}&token=${encodeURIComponent(inviteData.token)}&mode=${mode}`)
+            return
+          }
+        }
+      } catch {
+        // Fall through to existing PSTN path if resolve endpoint fails.
+      }
+
       const res = await fetch("/api/calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
