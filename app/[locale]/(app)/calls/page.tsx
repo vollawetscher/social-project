@@ -177,7 +177,7 @@ export default function CallsPage() {
           upsertCall(payload.new as Call)
         }
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         setRealtimeDegraded(status !== "SUBSCRIBED")
       })
 
