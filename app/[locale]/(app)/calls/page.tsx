@@ -349,13 +349,14 @@ export default function CallsPage() {
       }
 
       if (resolved?.matched && resolved?.user?.id) {
+        const inAppMode: CallMode = "video"
         toast.info(`Matched Notissima user: ${resolved.user.displayName || "User"}`)
         const inviteRes = await fetch("/api/calls", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             callType: "web",
-            mode,
+            mode: inAppMode,
             calleeUserId: resolved.user.id,
             contactName: contactName || resolved?.user?.displayName || normalized,
           }),
@@ -364,7 +365,7 @@ export default function CallsPage() {
         if (!inviteRes.ok) {
           throw new Error(inviteData.error || "Failed to start in-app call")
         }
-        router.push(`/call/${inviteData.roomName}?callId=${inviteData.callId}&token=${encodeURIComponent(inviteData.token)}&mode=${mode}`)
+        router.push(`/call/${inviteData.roomName}?callId=${inviteData.callId}&token=${encodeURIComponent(inviteData.token)}&mode=${inAppMode}`)
         return
       }
 
