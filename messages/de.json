@@ -631,7 +631,10 @@
     "endCall": "Anruf beenden",
     "consentPrompt": "Dieser Anruf kann zu Dokumentationszwecken aufgezeichnet werden. Stimmen Sie zu?",
     "consentAgree": "Ich stimme zu",
-    "consentDecline": "Ablehnen"
+    "consentDecline": "Ablehnen",
+    "calleeDeclined": "Die andere Person hat den Anruf abgelehnt.",
+    "calleeMissed": "Die andere Person hat den Anruf verpasst.",
+    "callEndedUnexpectedly": "Anruf wurde unerwartet beendet."
   },
   "callSetup": {
     "title": "Anruf starten",

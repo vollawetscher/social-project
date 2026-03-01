@@ -146,6 +146,7 @@ function CallRoomInner({
   ringSmsParams,
 }: Omit<CallRoomProps, "token" | "serverUrl">) {
   const router = useRouter()
+  const tCallRoom = useTranslations("callRoom")
   const room = useRoomContext()
   const connectionState = useConnectionState()
   const { localParticipant } = useLocalParticipant()
@@ -182,6 +183,7 @@ function CallRoomInner({
   const consentLoggedRef = useRef(false)
   const [remoteConsents, setRemoteConsents] = useState<{ identity: string; name: string; granted: boolean }[]>([])
   const [remoteCallEnded, setRemoteCallEnded] = useState(false)
+  const [remoteEndReason, setRemoteEndReason] = useState<"declined" | "missed" | "ended" | "error" | null>(null)
   const [cameraDeviceIds, setCameraDeviceIds] = useState<string[]>([])
   const [currentCameraDeviceId, setCurrentCameraDeviceId] = useState<string | null>(null)
   const [reconnectDeadline, setReconnectDeadline] = useState<number | null>(null)
@@ -285,8 +287,9 @@ function CallRoomInner({
         table: "calls",
         filter: `id=eq.${callId}`,
       }, (payload: any) => {
-        const status = payload.new?.status as string | undefined
+        const status = payload.new?.status as "ended" | "missed" | "declined" | "error" | undefined
         if (status && ["ended", "missed", "declined", "error"].includes(status)) {
+          setRemoteEndReason(status)
           setRemoteCallEnded(true)
         }
       })
@@ -438,13 +441,18 @@ function CallRoomInner({
 
   useEffect(() => {
     if (!remoteCallEnded || endingCallRef.current) return
+    if (isInitiator) {
+      if (remoteEndReason === "declined") toast.info(tCallRoom("calleeDeclined"))
+      else if (remoteEndReason === "missed") toast.info(tCallRoom("calleeMissed"))
+      else if (remoteEndReason === "error") toast.error(tCallRoom("callEndedUnexpectedly"))
+    }
     endingCallRef.current = true
     room.disconnect()
     setTimeout(() => {
       if (onLeave) onLeave()
       else router.push("/calls")
     }, 300)
-  }, [remoteCallEnded, room, onLeave, router])
+  }, [remoteCallEnded, remoteEndReason, isInitiator, room, onLeave, router, tCallRoom])
 
   useEffect(() => {
     if (isConnected) requestWakeLock()

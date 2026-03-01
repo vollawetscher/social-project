@@ -13,11 +13,19 @@ import { Button } from "@/components/ui/button"
 function useIncomingRingtone(playing: boolean) {
   const ctxRef = useRef<AudioContext | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const vibrateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const stop = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current)
       timerRef.current = null
+    }
+    if (vibrateTimerRef.current) {
+      clearInterval(vibrateTimerRef.current)
+      vibrateTimerRef.current = null
+    }
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(0)
     }
     if (ctxRef.current) {
       ctxRef.current.close().catch(() => {})
@@ -51,14 +59,46 @@ function useIncomingRingtone(playing: boolean) {
       stop()
       return
     }
-    try {
-      const ctx = new AudioContext()
-      ctxRef.current = ctx
-      scheduleRing(ctx)
-    } catch {
-      // Best-effort ringtone only.
+
+    const startOrResume = async () => {
+      try {
+        if (!ctxRef.current) ctxRef.current = new AudioContext()
+        const ctx = ctxRef.current
+        if (ctx.state === "suspended") {
+          await ctx.resume().catch(() => {})
+        }
+        if (ctx.state === "running" && !timerRef.current) {
+          scheduleRing(ctx)
+        }
+      } catch {
+        // Best-effort ringtone only.
+      }
     }
-    return stop
+
+    startOrResume()
+
+    // Mobile autoplay policies often require user interaction before audio playback.
+    const resumeOnGesture = () => { void startOrResume() }
+    window.addEventListener("touchstart", resumeOnGesture, { passive: true })
+    window.addEventListener("pointerdown", resumeOnGesture)
+    window.addEventListener("keydown", resumeOnGesture)
+    document.addEventListener("visibilitychange", resumeOnGesture)
+
+    // Fallback haptic ring where available (e.g. Android).
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate([250, 120, 250])
+      vibrateTimerRef.current = setInterval(() => {
+        navigator.vibrate([250, 120, 250])
+      }, 1800)
+    }
+
+    return () => {
+      window.removeEventListener("touchstart", resumeOnGesture)
+      window.removeEventListener("pointerdown", resumeOnGesture)
+      window.removeEventListener("keydown", resumeOnGesture)
+      document.removeEventListener("visibilitychange", resumeOnGesture)
+      stop()
+    }
   }, [playing, scheduleRing, stop])
 }
 

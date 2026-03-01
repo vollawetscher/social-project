@@ -631,7 +631,10 @@
     "endCall": "Finalizar llamada",
     "consentPrompt": "Esta llamada puede ser grabada con fines de documentación. ¿Aceptas?",
     "consentAgree": "Acepto",
-    "consentDecline": "Rechazar"
+    "consentDecline": "Rechazar",
+    "calleeDeclined": "La otra persona rechazó la llamada.",
+    "calleeMissed": "La otra persona perdió la llamada.",
+    "callEndedUnexpectedly": "La llamada terminó inesperadamente."
   },
   "callSetup": {
     "title": "Iniciar una Llamada",

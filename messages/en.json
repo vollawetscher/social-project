@@ -631,7 +631,10 @@
     "endCall": "End call",
     "consentPrompt": "This call may be recorded for documentation purposes. Do you consent?",
     "consentAgree": "I Agree",
-    "consentDecline": "Decline"
+    "consentDecline": "Decline",
+    "calleeDeclined": "The other person declined the call.",
+    "calleeMissed": "The other person missed the call.",
+    "callEndedUnexpectedly": "Call ended unexpectedly."
   },
   "callSetup": {
     "title": "Start a Call",
