@@ -184,6 +184,8 @@ function CallRoomInner({
   const [remoteConsents, setRemoteConsents] = useState<{ identity: string; name: string; granted: boolean }[]>([])
   const [remoteCallEnded, setRemoteCallEnded] = useState(false)
   const [remoteEndReason, setRemoteEndReason] = useState<"declined" | "missed" | "ended" | "error" | null>(null)
+  const [isSpeaker, setIsSpeaker] = useState(true)
+  const [isOnHold, setIsOnHold] = useState(false)
   const [cameraDeviceIds, setCameraDeviceIds] = useState<string[]>([])
   const [currentCameraDeviceId, setCurrentCameraDeviceId] = useState<string | null>(null)
   const [reconnectDeadline, setReconnectDeadline] = useState<number | null>(null)
@@ -194,6 +196,7 @@ function CallRoomInner({
   const reconnectTickRef = useRef<NodeJS.Timeout | null>(null)
   const endingCallRef = useRef(false)
   const wakeLockRef = useRef<any>(null)
+  const micBeforeHoldRef = useRef<boolean>(true)
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
@@ -564,6 +567,43 @@ function CallRoomInner({
     localParticipant.setScreenShareEnabled(!isScreenSharing)
   }, [localParticipant, isScreenSharing])
 
+  const setRemoteVolume = useCallback((volume: number) => {
+    try {
+      remoteParticipants.forEach((p) => {
+        p.setVolume(volume)
+      })
+    } catch {
+      // Best-effort remote volume update.
+    }
+  }, [remoteParticipants])
+
+  const toggleSpeaker = useCallback(() => {
+    setIsSpeaker((prev) => {
+      const next = !prev
+      setRemoteVolume(next ? 1 : 0)
+      return next
+    })
+  }, [setRemoteVolume])
+
+  const toggleHold = useCallback(async () => {
+    if (!isOnHold) {
+      micBeforeHoldRef.current = localParticipant.isMicrophoneEnabled
+      await localParticipant.setMicrophoneEnabled(false)
+      setRemoteVolume(0)
+      setIsOnHold(true)
+      toast.info("Call on hold")
+      return
+    }
+    await localParticipant.setMicrophoneEnabled(micBeforeHoldRef.current)
+    setRemoteVolume(isSpeaker ? 1 : 0)
+    setIsOnHold(false)
+    toast.info("Call resumed")
+  }, [isOnHold, localParticipant, setRemoteVolume, isSpeaker])
+
+  useEffect(() => {
+    setRemoteVolume(isSpeaker && !isOnHold ? 1 : 0)
+  }, [remoteParticipants.length, isSpeaker, isOnHold, setRemoteVolume])
+
   const [linkCopied, setLinkCopied] = useState(false)
 
   const copyInviteLink = useCallback(async () => {
@@ -689,6 +729,16 @@ function CallRoomInner({
             <span>Back</span>
           </button>
           <div className="flex items-center gap-2">
+            {isInitiator && callId && (
+              <button
+                onClick={copyInviteLink}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                title="Copy invite link"
+              >
+                {linkCopied ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
+                {linkCopied ? "Copied" : "Invite"}
+              </button>
+            )}
             {callStatus === "connected" && (
               <Badge variant="secondary" className="text-[10px] gap-1 bg-destructive/20 text-destructive border-0">
                 <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
@@ -898,16 +948,16 @@ function CallRoomInner({
                 mode={mode}
                 isMuted={isMuted}
                 isCameraOn={isCameraOn}
-                isSpeaker={false}
-                isOnHold={false}
+                isSpeaker={isSpeaker}
+                isOnHold={isOnHold}
                 isScreenSharing={isScreenSharing}
                 canScreenShare={canScreenShare}
                 showNotes={showNotes}
                 showTranscript={showTranscript}
                 onToggleMute={toggleMute}
                 onToggleCamera={toggleCamera}
-                onToggleSpeaker={() => {}}
-                onToggleHold={() => {}}
+                onToggleSpeaker={toggleSpeaker}
+                onToggleHold={toggleHold}
                 onToggleScreenShare={toggleScreenShare}
                 onToggleNotes={() => setShowNotes(!showNotes)}
                 onToggleTranscript={() => setShowTranscript(!showTranscript)}
@@ -948,6 +998,16 @@ function CallRoomInner({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {isInitiator && callId && (
+            <button
+              onClick={copyInviteLink}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] bg-white/10 text-white/80 hover:bg-white/15 transition-colors"
+              title="Copy invite link"
+            >
+              {linkCopied ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
+              {linkCopied ? "Copied" : "Invite"}
+            </button>
+          )}
           <Badge variant="secondary" className="text-[10px] gap-1 bg-destructive/20 text-destructive border-0">
             <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
             {formatDuration(duration)}
@@ -1114,16 +1174,16 @@ function CallRoomInner({
         variant="room"
         isMuted={isMuted}
         isCameraOn={isCameraOn}
-        isSpeaker={false}
-        isOnHold={false}
+        isSpeaker={isSpeaker}
+        isOnHold={isOnHold}
         isScreenSharing={isScreenSharing}
         canScreenShare={canScreenShare}
         showNotes={showNotes}
         showTranscript={showTranscript}
         onToggleMute={toggleMute}
         onToggleCamera={toggleCamera}
-        onToggleSpeaker={() => {}}
-        onToggleHold={() => {}}
+        onToggleSpeaker={toggleSpeaker}
+        onToggleHold={toggleHold}
         onToggleScreenShare={toggleScreenShare}
         onToggleNotes={() => setShowNotes(!showNotes)}
         onToggleTranscript={() => setShowTranscript(!showTranscript)}
