@@ -444,18 +444,18 @@ export default function OutputsPage() {
               <CardContent className="p-3 sm:p-4">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <h3 className="font-medium text-foreground truncate text-sm sm:text-base">
+                    <div className="flex items-start gap-2 mb-1.5">
+                      <h3 className="font-medium text-foreground text-sm sm:text-base break-words line-clamp-2">
                         {output.templateName}
                       </h3>
                       <Badge
                         variant={output.audience === "internal" ? "secondary" : "outline"}
-                        className="shrink-0 text-xs"
+                        className="shrink-0 text-xs mt-0.5"
                       >
                         {output.audience === "internal" ? tc('internal') : tc('external')}
                       </Badge>
                     </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 mb-2">
+                    <p className="text-xs sm:text-sm text-foreground/80 flex items-center gap-1 mb-2">
                       <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
                       <span className="truncate">{output.sessionFilename}</span>
                     </p>

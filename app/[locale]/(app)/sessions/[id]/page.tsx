@@ -27,6 +27,7 @@ import {
   Mic,
   ShieldCheck,
   MessageSquare,
+  Trash2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -130,6 +131,7 @@ export default function SessionDetailPage() {
   const [savingCorrections, setSavingCorrections] = useState(false)
   const   [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
+  const [deletingOutputId, setDeletingOutputId] = useState<string | null>(null)
   const [retryingTranscribe, setRetryingTranscribe] = useState(false)
   const [profileLanguage, setProfileLanguage] = useState<string | null>(null)
   const [languageMismatch, setLanguageMismatch] = useState<{ sessionLang: string; transcriptLang: string } | null>(null)
@@ -319,6 +321,25 @@ export default function SessionDetailPage() {
       toast.error(error instanceof Error ? error.message : 'Failed to save as template')
     } finally {
       setSavingOutputAsTemplate(null)
+    }
+  }
+
+  const handleDeleteOutput = async (outputId: string, outputName: string) => {
+    if (!confirm(`Delete output "${outputName}"?`)) return
+    setDeletingOutputId(outputId)
+    try {
+      const response = await fetch(`/api/outputs/${outputId}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to delete output')
+      }
+      setOutputs((prev) => prev.filter((o) => o.id !== outputId))
+      toast.success('Output deleted')
+    } catch (error) {
+      console.error('Delete output error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to delete output')
+    } finally {
+      setDeletingOutputId(null)
     }
   }
 
@@ -1118,7 +1139,7 @@ export default function SessionDetailPage() {
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium truncate">{output.templateName}</h4>
+                          <h4 className="text-sm font-medium break-words line-clamp-2">{output.templateName}</h4>
                           <p className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>
                               {new Date(output.createdAt).toLocaleDateString('en-US', { 
@@ -1197,6 +1218,20 @@ export default function SessionDetailPage() {
                             <Link href={`/outputs/${output.id}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteOutput(output.id, output.templateName || 'Output')}
+                            disabled={deletingOutputId === output.id}
+                            title="Delete"
+                          >
+                            {deletingOutputId === output.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -1512,7 +1547,7 @@ export default function SessionDetailPage() {
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium truncate">{output.templateName}</h4>
+                          <h4 className="text-sm font-medium break-words line-clamp-2">{output.templateName}</h4>
                           <p className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>
                               {new Date(output.createdAt).toLocaleDateString('en-US', { 
@@ -1591,6 +1626,20 @@ export default function SessionDetailPage() {
                             <Link href={`/outputs/${output.id}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteOutput(output.id, output.templateName || 'Output')}
+                            disabled={deletingOutputId === output.id}
+                            title="Delete"
+                          >
+                            {deletingOutputId === output.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
                           </Button>
                         </div>
                       </div>
