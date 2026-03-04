@@ -96,7 +96,7 @@ export class SpeechmaticsService {
       const jobId = result.id
       console.log('[Speechmatics] Job created with ID:', jobId)
 
-      const transcript = await this.pollJobStatus(jobId)
+      const transcript = await this.pollJobStatus(jobId, audioBuffer.length)
       return transcript
     } catch (error: any) {
       console.error('[Speechmatics] Transcription error:', error.message, error.cause)
@@ -120,13 +120,23 @@ export class SpeechmaticsService {
     }
   }
 
-  private async pollJobStatus(jobId: string): Promise<SpeechmaticsTranscript> {
-    const maxAttempts = 60
-    const pollInterval = 10000
+  private async pollJobStatus(jobId: string, audioBytes: number): Promise<SpeechmaticsTranscript> {
+    const pollInterval = 15000
+    const timeoutMs = this.getPollingTimeoutMs(audioBytes)
+    const maxAttempts = Math.max(1, Math.ceil(timeoutMs / pollInterval))
     const maxNetworkRetries = 5
     let consecutiveNetworkErrors = 0
 
     console.log('[Speechmatics] Starting to poll job status, jobId:', jobId)
+    console.log(
+      '[Speechmatics] Poll configuration:',
+      JSON.stringify({
+        audioMB: Math.round((audioBytes / (1024 * 1024)) * 10) / 10,
+        pollIntervalMs: pollInterval,
+        timeoutMs,
+        maxAttempts,
+      })
+    )
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         console.log(`[Speechmatics] Poll attempt ${attempt + 1}/${maxAttempts}`)
@@ -205,7 +215,21 @@ export class SpeechmaticsService {
       }
     }
 
-    throw new Error('Transcription job timeout')
+    const timeoutMins = Math.round(timeoutMs / 60000)
+    throw new Error(
+      `Transcription job timeout after ${timeoutMins} minutes (audio size: ${Math.round(audioBytes / (1024 * 1024))}MB)`
+    )
+  }
+
+  private getPollingTimeoutMs(audioBytes: number): number {
+    const configured = Number(process.env.SPEECHMATICS_TRANSCRIBE_TIMEOUT_MS || 0)
+    if (Number.isFinite(configured) && configured > 0) return configured
+
+    const mb = audioBytes / (1024 * 1024)
+    if (mb >= 100) return 50 * 60 * 1000 // 50 min for very large files
+    if (mb >= 60) return 35 * 60 * 1000  // 35 min for large files
+    if (mb >= 25) return 25 * 60 * 1000  // 25 min for medium files
+    return 15 * 60 * 1000                // 15 min default
   }
 
   private getFileExtensionFromMimeType(mimeType: string): string {
