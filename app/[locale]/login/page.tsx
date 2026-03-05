@@ -60,6 +60,11 @@ export default function LoginPage() {
       <div className="absolute top-4 right-4">
         <LocaleSwitcher />
       </div>
+      <Link href="/" className="absolute top-4 left-4">
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+          &larr; Back to Home
+        </Button>
+      </Link>
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-6">
           <div className="flex flex-col items-center space-y-3">
