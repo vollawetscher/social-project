@@ -168,10 +168,7 @@ export default function LandingPage() {
             <Button
               variant="ghost"
               className="text-white/70 hover:text-white hover:bg-white/10"
-              onClick={() => {
-                const el = document.getElementById('signup')
-                el?.scrollIntoView({ behavior: 'smooth' })
-              }}
+              onClick={() => window.location.href = '/login'}
             >
               Get Early Access
             </Button>
@@ -191,7 +188,7 @@ export default function LandingPage() {
             <div className="px-6 py-4 flex flex-col gap-4">
               <a href="#features" className="text-sm text-white/60 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Features</a>
               <a href="#how-it-works" className="text-sm text-white/60 hover:text-white" onClick={() => setMobileMenuOpen(false)}>How it works</a>
-              <a href="#signup" className="text-sm text-white/60 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Early Access</a>
+              <a href="/login" className="text-sm text-white/60 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Early Access</a>
             </div>
           </div>
         )}
