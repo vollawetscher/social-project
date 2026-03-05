@@ -288,6 +288,7 @@ export default function SettingsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="session">{t('reportLanguageSessionOriginal')}</SelectItem>
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <SelectItem key={lang.value} value={lang.value}>
                       {lang.label}

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { sanitizeOutputText } from '@/lib/utils/output-text-sanitizer'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -13,10 +14,15 @@ const languageNames: Record<string, string> = {
   fr: 'French',
   es: 'Spanish',
   it: 'Italian',
-  pt: 'Portuguese',
   nl: 'Dutch',
+  pt: 'Portuguese',
   pl: 'Polish',
   th: 'Thai',
+  ru: 'Russian',
+  sv: 'Swedish',
+  no: 'Norwegian',
+  da: 'Danish',
+  cs: 'Czech',
 }
 
 export async function POST(
@@ -75,6 +81,7 @@ Critical rules:
 - Preserve ALL formatting: markdown headers, lists, bullet points, line breaks, structure
 - Preserve technical terms and proper nouns when appropriate
 - Maintain the same tone and register
+- Do NOT use any emojis or emoticons anywhere in the translated text
 - Output ONLY the translated text, no explanations or metadata`,
       messages: [
         {
@@ -86,9 +93,10 @@ Critical rules:
 
     const translatedContent =
       message.content[0].type === 'text' ? message.content[0].text : ''
+    const sanitizedTranslatedContent = sanitizeOutputText(translatedContent)
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
 
-    if (!translatedContent) {
+    if (!sanitizedTranslatedContent.trim()) {
       return NextResponse.json(
         { error: 'Failed to translate output' },
         { status: 500 }
@@ -107,7 +115,7 @@ Critical rules:
         language: targetLanguage,
         tone: output.tone,
         format: output.format,
-        content: translatedContent,
+        content: sanitizedTranslatedContent,
         transcript_version_hash: output.transcript_version_hash,
         cite_timestamps: output.cite_timestamps ?? false,
         created_by: user.id,

@@ -7,6 +7,7 @@ import { gfmFromMarkdown } from 'mdast-util-gfm'
 import { gfm } from 'micromark-extension-gfm'
 import type { Root, Content, PhrasingContent } from 'mdast'
 import { jsPDF } from 'jspdf'
+import { sanitizeOutputForPdf } from '@/lib/utils/output-text-sanitizer'
 import {
   Document,
   Packer,
@@ -99,7 +100,9 @@ export async function exportOutput(
     return
   }
 
-  const root = fromMarkdown(content, {
+  const pdfSafeContent = format === 'pdf' ? sanitizeOutputForPdf(content) : content
+
+  const root = fromMarkdown(pdfSafeContent, {
     extensions: [gfm()],
     mdastExtensions: [gfmFromMarkdown()],
   })

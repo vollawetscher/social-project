@@ -532,6 +532,7 @@
     "defaultRecordingLanguageHint": "Sprache fuer Audio-Transkription (pro Sitzung ueberschreibbar)",
     "preferredReportLanguage": "Bevorzugte Berichtssprache",
     "preferredReportLanguageHint": "Sprache fuer KI-generierte Berichte und Zusammenfassungen",
+    "reportLanguageSessionOriginal": "Sitzungssprache (Original)",
     "timezone": "Zeitzone",
     "timezoneHint": "Fuer Zeitstempel in Sitzungen und Berichten",
     "workflowAutomation": "Workflow-Automatisierung",
