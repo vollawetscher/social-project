@@ -70,19 +70,21 @@ export function CallControls({
   dark = false,
   variant = "call",
 }: CallControlsProps) {
+  const t = useTranslations('callRoom')
+
   if (variant === "room") {
     return (
       <div className="flex items-center justify-center gap-4 px-4 py-4 shrink-0">
         <ControlButton
           icon={isMuted ? MicOff : Mic}
-          label={isMuted ? "Unmute" : "Mute"}
+          label={isMuted ? t('unmute') : t('mute')}
           active={isMuted}
           onClick={onToggleMute}
           dark
         />
         <ControlButton
           icon={isCameraOn ? Video : VideoOff}
-          label={isCameraOn ? "Cam On" : "Cam Off"}
+          label={isCameraOn ? t('camOn') : t('camOff')}
           active={!isCameraOn}
           onClick={onToggleCamera}
           dark
@@ -90,7 +92,7 @@ export function CallControls({
         {mode === "video" && canSwitchCamera && onSwitchCamera && (
           <ControlButton
             icon={RefreshCcw}
-            label="Flip"
+            label={t('flip')}
             active={false}
             onClick={onSwitchCamera}
             dark
@@ -99,7 +101,7 @@ export function CallControls({
         {canScreenShare && (
           <ControlButton
             icon={MonitorUp}
-            label="Share"
+            label={t('shareScreen')}
             active={isScreenSharing}
             accent
             onClick={onToggleScreenShare}
@@ -108,7 +110,7 @@ export function CallControls({
         )}
         <ControlButton
           icon={MessageSquareText}
-          label="Transcript"
+          label={t('transcript')}
           active={showTranscript}
           onClick={onToggleTranscript}
           dark
@@ -117,7 +119,7 @@ export function CallControls({
           <div className="h-12 w-12 rounded-full flex items-center justify-center bg-destructive hover:bg-destructive/90 transition-colors">
             <PhoneOff className="h-5 w-5 text-destructive-foreground" />
           </div>
-          <span className="text-[10px] text-white/50">End</span>
+          <span className="text-[10px] text-white/50">{t('end')}</span>
         </button>
       </div>
     )
@@ -129,26 +131,26 @@ export function CallControls({
       dark ? "border-white/10 bg-[#111]" : "border-border bg-card"
     )}>
       <div className="flex items-center justify-center gap-4 mb-4 flex-wrap">
-        <ControlButton icon={isMuted ? MicOff : Mic} label={isMuted ? "Unmute" : "Mute"} active={isMuted} onClick={onToggleMute} dark={dark} />
+        <ControlButton icon={isMuted ? MicOff : Mic} label={isMuted ? t('unmute') : t('mute')} active={isMuted} onClick={onToggleMute} dark={dark} />
         {mode === "video" && (
-          <ControlButton icon={isCameraOn ? Video : VideoOff} label={isCameraOn ? "Cam On" : "Cam Off"} active={!isCameraOn} onClick={onToggleCamera} dark={dark} />
+          <ControlButton icon={isCameraOn ? Video : VideoOff} label={isCameraOn ? t('camOn') : t('camOff')} active={!isCameraOn} onClick={onToggleCamera} dark={dark} />
         )}
         {mode === "video" && canSwitchCamera && onSwitchCamera && (
-          <ControlButton icon={RefreshCcw} label="Flip" active={false} onClick={onSwitchCamera} dark={dark} />
+          <ControlButton icon={RefreshCcw} label={t('flip')} active={false} onClick={onSwitchCamera} dark={dark} />
         )}
-        <ControlButton icon={Volume2} label="Speaker" active={isSpeaker} onClick={onToggleSpeaker} dark={dark} />
+        <ControlButton icon={Volume2} label={t('speaker')} active={isSpeaker} onClick={onToggleSpeaker} dark={dark} />
         {mode === "video" && canScreenShare && (
-          <ControlButton icon={MonitorUp} label="Share" active={isScreenSharing} onClick={onToggleScreenShare} dark={dark} accent />
+          <ControlButton icon={MonitorUp} label={t('shareScreen')} active={isScreenSharing} onClick={onToggleScreenShare} dark={dark} accent />
         )}
-        <ControlButton icon={isOnHold ? Play : Pause} label={isOnHold ? "Resume" : "Hold"} active={isOnHold} onClick={onToggleHold} dark={dark} />
-        <ControlButton icon={StickyNote} label="Notes" active={showNotes} onClick={onToggleNotes} dark={dark} />
+        <ControlButton icon={isOnHold ? Play : Pause} label={isOnHold ? t('resume') : t('hold')} active={isOnHold} onClick={onToggleHold} dark={dark} />
+        <ControlButton icon={StickyNote} label={t('notes')} active={showNotes} onClick={onToggleNotes} dark={dark} />
         {onDialPad && (
-          <ControlButton icon={Phone} label="Dialpad" active={false} onClick={onDialPad} dark={dark} />
+          <ControlButton icon={Phone} label={t('dialpad')} active={false} onClick={onDialPad} dark={dark} />
         )}
       </div>
       <Button onClick={onEndCall} className="w-full h-12 rounded-full bg-destructive hover:bg-destructive/90 text-destructive-foreground">
         <PhoneOff className="h-5 w-5 mr-2" />
-        End Call
+        {t('endCall')}
       </Button>
     </div>
   )

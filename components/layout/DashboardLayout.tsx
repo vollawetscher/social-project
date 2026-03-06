@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from '@/i18n/navigation'
+import { useTranslations } from 'next-intl'
 import { FileText, Sparkles, User, LogOut, MessageSquarePlus, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/AuthProvider'
@@ -26,6 +27,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [showChangelog, setShowChangelog] = useState(false)
   const [showFeatureRequest, setShowFeatureRequest] = useState(false)
+  const tNav = useTranslations('nav')
+  const tSettings = useTranslations('settings')
+  const tProfile = useTranslations('profile')
 
   // Get display name: prioritize display_name, then email, then phone, then fallback
   const displayName = profile?.display_name || user?.email || profile?.phone_number || 'User'
@@ -66,19 +70,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>{tProfile('title')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push('/profile')}>
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>{tNav('profile')}</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowChangelog(true)}>
                 <Sparkles className="mr-2 h-4 w-4" />
-                <span>What's New</span>
+                <span>{tNav('whatsNew')}</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowFeatureRequest(true)}>
                 <MessageSquarePlus className="mr-2 h-4 w-4" />
-                <span>Feature Request</span>
+                <span>{tNav('featureRequest')}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -87,7 +91,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="text-red-600 focus:text-red-600"
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>{isLoggingOut ? 'Logging out…' : 'Logout'}</span>
+                <span>{isLoggingOut ? tSettings('signingOut') : tSettings('signOut')}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

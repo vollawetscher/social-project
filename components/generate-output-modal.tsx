@@ -45,7 +45,7 @@ import {
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { Template, Session, ParticipantRole, Audience, OutputTone, OutputFormat } from "@/lib/types-v0"
-import { participantRoleLabels, semanticRoleLabels, audienceLabels, languages, mockTemplates } from "@/lib/mock/data"
+import { mockTemplates } from "@/lib/mock/data"
 
 interface GenerateOutputModalProps {
   open: boolean
@@ -82,6 +82,7 @@ export function GenerateOutputModal({
   onSuccess,
 }: GenerateOutputModalProps) {
   const t = useTranslations('generateModal')
+  const tl = useTranslations('labels')
   const [templates, setTemplates] = useState<Template[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(true)
   const [selectedTemplate, setSelectedTemplate] = useState<string>(template?.id || initialTemplateId || "")
@@ -234,13 +235,13 @@ export function GenerateOutputModal({
     const speaker = session.speakers.find(s => s.participantRole === role)
     if (speaker) {
       const displayName = getDisplayName(speaker)
-      const semanticLabel = speaker.semanticRole ? semanticRoleLabels[speaker.semanticRole] : null
+      const semanticLabel = speaker.semanticRole ? tl('semanticRoles.' + speaker.semanticRole) : null
       if (semanticLabel) {
         return `${displayName} (${semanticLabel})`
       }
-      return `${displayName} (${participantRoleLabels[role]})`
+      return `${displayName} (${tl('perspectives.' + role)})`
     }
-    return participantRoleLabels[role]
+    return tl('perspectives.' + role)
   }
 
   const handlePerspectiveSelect = (perspective: ParticipantRole) => {
@@ -326,8 +327,8 @@ export function GenerateOutputModal({
       
       toast.success(
         data.createdTemplateId
-          ? 'Output generated and saved as template! View both in their tabs.'
-          : 'Output generated! View it in the Outputs tab.'
+          ? t('generateSuccessTemplate')
+          : t('generateSuccessOutput')
       )
       
       // Optional: Navigate to outputs page
@@ -353,9 +354,9 @@ export function GenerateOutputModal({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Generate Output</DialogTitle>
+            <DialogTitle>{t('title')}</DialogTitle>
             <DialogDescription>
-              Configure your output settings. Perspective and audience are required.
+              {t('description')}
             </DialogDescription>
           </DialogHeader>
 
@@ -364,17 +365,17 @@ export function GenerateOutputModal({
             <div className="flex items-start gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
               <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
               <p className="text-sm text-foreground">
-                <span className="font-medium">Perspective and audience affect tone, risk, and interpretation.</span>{" "}
-                Please confirm these selections before generating.
+                <span className="font-medium">{t('warningBanner')}</span>{" "}
+                {t('confirmBeforeGenerating')}
               </p>
             </div>
 
             {/* Template Selection */}
             <div className="space-y-2">
-              <Label>Template</Label>
+              <Label>{t('template')}</Label>
               <Select value={selectedTemplate} onValueChange={setSelectedTemplate} disabled={loadingTemplates}>
                 <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder={loadingTemplates ? "Loading templates..." : "Select a template..."} />
+                  <SelectValue placeholder={loadingTemplates ? t('loadingTemplates') : t('selectTemplate')} />
                 </SelectTrigger>
                 <SelectContent>
                   {templates.map((t) => (
@@ -393,19 +394,19 @@ export function GenerateOutputModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-1">
-                  Output Perspective
+                  {t('perspective')}
                   <span className="text-destructive">*</span>
                   <Tooltip>
                     <TooltipTrigger>
                       <Info className="h-3.5 w-3.5 text-muted-foreground" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[220px]">
-                      Choose from whose viewpoint the output should be generated. This affects how information is framed and what details are emphasized.
+                      {t('perspectiveTooltip')}
                     </TooltipContent>
                   </Tooltip>
                 </Label>
                 {!isPerspectiveValid && selectedPerspective && (
-                  <span className="text-xs text-warning">Confirmation required</span>
+                  <span className="text-xs text-warning">{t('confirmationRequired')}</span>
                 )}
               </div>
               
@@ -414,7 +415,7 @@ export function GenerateOutputModal({
                 <div className="p-2 rounded-md bg-secondary/50 border border-border">
                   <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
                     <Users className="h-3 w-3" />
-                    Participants in this session:
+                    {t('participants')}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {session.speakers.map((speaker) => (
@@ -426,7 +427,7 @@ export function GenerateOutputModal({
                         {getDisplayName(speaker)}
                         {speaker.semanticRole && (
                           <span className="text-muted-foreground ml-1">
-                            ({semanticRoleLabels[speaker.semanticRole]})
+                            ({tl('semanticRoles.' + speaker.semanticRole)})
                           </span>
                         )}
                       </Badge>
@@ -440,10 +441,10 @@ export function GenerateOutputModal({
                 <div className="flex items-center gap-2 p-2 rounded-md bg-info/10 border border-info/20">
                   <Sparkles className="h-4 w-4 text-info" />
                   <span className="text-sm text-foreground">
-                    AI suggests: <span className="font-medium">{getPerspectiveLabel(aiSuggestedPerspective)}</span>
+                    {t('aiSuggests')} <span className="font-medium">{getPerspectiveLabel(aiSuggestedPerspective)}</span>
                   </span>
                   <Badge variant="outline" className="text-[10px] border-info/50 text-info">
-                    {Math.round(aiPerspectiveConfidence * 100)}% confident
+                    {t('confident', { percent: Math.round(aiPerspectiveConfidence * 100) })}
                   </Badge>
                 </div>
               )}
@@ -458,7 +459,7 @@ export function GenerateOutputModal({
                     !isPerspectiveValid && selectedPerspective && "border-warning"
                   )}
                 >
-                  <SelectValue placeholder="Select perspective..." />
+                  <SelectValue placeholder={t('selectPerspective')} />
                 </SelectTrigger>
                 <SelectContent>
                   {sessionSpeakers.length > 0 ? (
@@ -469,18 +470,14 @@ export function GenerateOutputModal({
                       </SelectItem>
                     ))
                   ) : (
-                    // Fallback to generic options
-                    Object.entries(participantRoleLabels)
-                      .filter(([key]) => key !== 'observer')
-                      .map(([key, label]) => (
-                        <SelectItem key={key} value={key}>
-                          {label}
-                        </SelectItem>
-                      ))
+                    ['party_a', 'party_b'].map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {tl('perspectives.' + key)}
+                      </SelectItem>
+                    ))
                   )}
-                  {/* Always show observer option */}
                   <SelectItem value="observer">
-                    {participantRoleLabels.observer}
+                    {tl('perspectives.observer')}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -497,7 +494,7 @@ export function GenerateOutputModal({
                     htmlFor="confirm-perspective"
                     className="text-sm text-foreground cursor-pointer"
                   >
-                    I confirm this perspective selection
+                    {t('confirmPerspective')}
                   </label>
                 </div>
               )}
@@ -505,7 +502,7 @@ export function GenerateOutputModal({
               {isPerspectiveValid && (
                 <div className="flex items-center gap-1.5 text-success text-xs">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Perspective confirmed
+                  {t('perspectiveConfirmed')}
                 </div>
               )}
             </div>
@@ -514,19 +511,19 @@ export function GenerateOutputModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-1">
-                  Audience
+                  {t('audience')}
                   <span className="text-destructive">*</span>
                   <Tooltip>
                     <TooltipTrigger>
                       <Info className="h-3.5 w-3.5 text-muted-foreground" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[200px]">
-                      Internal: for team/organization use. External: for third parties, clients, or public.
+                      {t('audienceTooltip')}
                     </TooltipContent>
                   </Tooltip>
                 </Label>
                 {!isAudienceValid && selectedAudience && (
-                  <span className="text-xs text-warning">Confirmation required</span>
+                  <span className="text-xs text-warning">{t('confirmationRequired')}</span>
                 )}
               </div>
 
@@ -535,10 +532,10 @@ export function GenerateOutputModal({
                 <div className="flex items-center gap-2 p-2 rounded-md bg-info/10 border border-info/20">
                   <Sparkles className="h-4 w-4 text-info" />
                   <span className="text-sm text-foreground">
-                    AI suggests: <span className="font-medium">{audienceLabels[aiSuggestedAudience]}</span>
+                    {t('aiSuggests')} <span className="font-medium">{tl('audiences.' + aiSuggestedAudience)}</span>
                   </span>
                   <Badge variant="outline" className="text-[10px] border-info/50 text-info">
-                    {Math.round(aiAudienceConfidence * 100)}% confident
+                    {t('confident', { percent: Math.round(aiAudienceConfidence * 100) })}
                   </Badge>
                 </div>
               )}
@@ -553,12 +550,12 @@ export function GenerateOutputModal({
                     !isAudienceValid && selectedAudience && "border-warning"
                   )}
                 >
-                  <SelectValue placeholder="Select audience..." />
+                  <SelectValue placeholder={t('selectAudience')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(audienceLabels).map(([key, label]) => (
+                  {['internal', 'external', 'client', 'legal', 'executive'].map((key) => (
                     <SelectItem key={key} value={key}>
-                      {label}
+                      {tl('audiences.' + key)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -576,7 +573,7 @@ export function GenerateOutputModal({
                     htmlFor="confirm-audience"
                     className="text-sm text-foreground cursor-pointer"
                   >
-                    I confirm this audience selection
+                    {t('confirmAudience')}
                   </label>
                 </div>
               )}
@@ -584,20 +581,20 @@ export function GenerateOutputModal({
               {isAudienceValid && (
                 <div className="flex items-center gap-1.5 text-success text-xs">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Audience confirmed
+                  {t('audienceConfirmed')}
                 </div>
               )}
             </div>
 
             {/* Output Language */}
             <div className="space-y-2">
-              <Label>Output Language</Label>
+              <Label>{t('outputLanguage')}</Label>
               <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {languages.map((lang) => (
+                  {Object.keys(languageToConfig).map((lang) => (
                     <SelectItem key={lang} value={lang}>
                       {lang}
                     </SelectItem>
@@ -610,7 +607,7 @@ export function GenerateOutputModal({
             <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="w-full justify-between px-0 hover:bg-transparent">
-                  <span className="text-sm font-medium">Advanced Options</span>
+                  <span className="text-sm font-medium">{t('advancedOptions')}</span>
                   {advancedOpen ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
@@ -621,43 +618,45 @@ export function GenerateOutputModal({
               <CollapsibleContent className="space-y-4 pt-2">
                 {/* Tone */}
                 <div className="space-y-2">
-                  <Label>Tone</Label>
+                  <Label>{t('tone')}</Label>
                   <Select value={tone} onValueChange={(v) => setTone(v as OutputTone)}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="direct">Direct</SelectItem>
-                      <SelectItem value="neutral">Neutral</SelectItem>
-                      <SelectItem value="formal">Formal</SelectItem>
-                      <SelectItem value="casual">Casual</SelectItem>
-                      <SelectItem value="funny">Funny</SelectItem>
-                      <SelectItem value="technical">Technical</SelectItem>
+                      {['direct', 'neutral', 'formal', 'casual', 'funny', 'technical'].map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {tl('tones.' + key)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Format */}
                 <div className="space-y-2">
-                  <Label>Output Format</Label>
+                  <Label>{t('outputFormat')}</Label>
                   <Select value={format} onValueChange={(v) => setFormat(v as OutputFormat)}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="markdown">Markdown</SelectItem>
-                      <SelectItem value="json">JSON</SelectItem>
+                      {['markdown', 'json'].map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {tl('formats.' + key)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Do Instructions */}
                 <div className="space-y-2">
-                  <Label>Do include...</Label>
+                  <Label>{t('doInclude')}</Label>
                   <Textarea
                     value={doInstructions}
                     onChange={(e) => setDoInstructions(e.target.value)}
-                    placeholder={"e.g., Focus on action items and deadlines\nAnnotate if something is unclear or ambiguous\nInclude exact quotes for key decisions\nHighlight areas of disagreement"}
+                    placeholder={t('doIncludePlaceholder')}
                     className="bg-secondary border-border min-h-[80px]"
                   />
                   {previousInstructions?.doInstructions && doInstructions !== previousInstructions.doInstructions && (
@@ -667,18 +666,18 @@ export function GenerateOutputModal({
                       className="text-xs text-info hover:text-info/80 flex items-center gap-1"
                     >
                       <Sparkles className="h-3 w-3" />
-                      Use previous: &quot;{previousInstructions.doInstructions.slice(0, 60)}{previousInstructions.doInstructions.length > 60 ? '...' : ''}&quot;
+                      {t('usePreviousPrefix')} &quot;{previousInstructions.doInstructions.slice(0, 60)}{previousInstructions.doInstructions.length > 60 ? '...' : ''}&quot;
                     </button>
                   )}
                 </div>
 
                 {/* Don't Instructions */}
                 <div className="space-y-2">
-                  <Label>Do not include...</Label>
+                  <Label>{t('dontInclude')}</Label>
                   <Textarea
                     value={dontInstructions}
                     onChange={(e) => setDontInstructions(e.target.value)}
-                    placeholder={"e.g., Skip smalltalk and greetings\nLeave out off-topic tangents\nAvoid mentioning competitor names\nDon't include personal anecdotes"}
+                    placeholder={t('dontIncludePlaceholder')}
                     className="bg-secondary border-border min-h-[80px]"
                   />
                   {previousInstructions?.dontInstructions && dontInstructions !== previousInstructions.dontInstructions && (
@@ -688,7 +687,7 @@ export function GenerateOutputModal({
                       className="text-xs text-info hover:text-info/80 flex items-center gap-1"
                     >
                       <Sparkles className="h-3 w-3" />
-                      Use previous: &quot;{previousInstructions.dontInstructions.slice(0, 60)}{previousInstructions.dontInstructions.length > 60 ? '...' : ''}&quot;
+                      {t('usePreviousPrefix')} &quot;{previousInstructions.dontInstructions.slice(0, 60)}{previousInstructions.dontInstructions.length > 60 ? '...' : ''}&quot;
                     </button>
                   )}
                 </div>
@@ -701,7 +700,7 @@ export function GenerateOutputModal({
                     onCheckedChange={(checked) => setCreateTemplate(checked === true)}
                   />
                   <label htmlFor="create-template" className="text-sm text-foreground cursor-pointer">
-                    Create a template from this configuration
+                    {t('createTemplateFromConfig')}
                   </label>
                 </div>
               </CollapsibleContent>
@@ -710,18 +709,18 @@ export function GenerateOutputModal({
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={handleReset}>
-              Reset
+              {t('reset')}
             </Button>
             <Button onClick={handleGenerate} disabled={!canGenerate || generating}>
               {generating ? (
                 <>
                   <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></div>
-                  Generating...
+                  {t('generating')}
                 </>
               ) : canGenerate ? (
-                "Generate Output"
+                t('generateButton')
               ) : (
-                "Confirm Required Fields"
+                t('confirmFields')
               )}
             </Button>
           </DialogFooter>

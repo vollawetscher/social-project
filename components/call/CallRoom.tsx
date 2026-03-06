@@ -146,7 +146,8 @@ function CallRoomInner({
   ringSmsParams,
 }: Omit<CallRoomProps, "token" | "serverUrl">) {
   const router = useRouter()
-  const tCallRoom = useTranslations("callRoom")
+  const t = useTranslations("callRoom")
+  const tc = useTranslations("common")
   const room = useRoomContext()
   const connectionState = useConnectionState()
   const { localParticipant } = useLocalParticipant()
@@ -445,9 +446,9 @@ function CallRoomInner({
   useEffect(() => {
     if (!remoteCallEnded || endingCallRef.current) return
     if (isInitiator) {
-      if (remoteEndReason === "declined") toast.info(tCallRoom("calleeDeclined"))
-      else if (remoteEndReason === "missed") toast.info(tCallRoom("calleeMissed"))
-      else if (remoteEndReason === "error") toast.error(tCallRoom("callEndedUnexpectedly"))
+      if (remoteEndReason === "declined") toast.info(t("calleeDeclined"))
+      else if (remoteEndReason === "missed") toast.info(t("calleeMissed"))
+      else if (remoteEndReason === "error") toast.error(t("callEndedUnexpectedly"))
     }
     endingCallRef.current = true
     room.disconnect()
@@ -455,7 +456,7 @@ function CallRoomInner({
       if (onLeave) onLeave()
       else router.push("/calls")
     }, 300)
-  }, [remoteCallEnded, remoteEndReason, isInitiator, room, onLeave, router, tCallRoom])
+  }, [remoteCallEnded, remoteEndReason, isInitiator, room, onLeave, router, t])
 
   useEffect(() => {
     if (isConnected) requestWakeLock()
@@ -542,7 +543,7 @@ function CallRoomInner({
       setCameraDeviceIds(ids)
 
       if (ids.length < 2) {
-        toast.info("No alternative camera found")
+        toast.info(t("noAlternativeCamera"))
         return
       }
 
@@ -554,12 +555,12 @@ function CallRoomInner({
       const nextDeviceId = ids[nextIndex]
       const switched = await room.switchActiveDevice("videoinput", nextDeviceId)
       if (!switched) {
-        toast.error("Failed to switch camera")
+        toast.error(t("failedSwitchCamera"))
         return
       }
       setCurrentCameraDeviceId(nextDeviceId)
     } catch {
-      toast.error("Failed to switch camera")
+      toast.error(t("failedSwitchCamera"))
     }
   }, [mode, isCameraOn, localParticipant, currentCameraDeviceId, room])
 
@@ -591,13 +592,13 @@ function CallRoomInner({
       await localParticipant.setMicrophoneEnabled(false)
       setRemoteVolume(0)
       setIsOnHold(true)
-      toast.info("Call on hold")
+      toast.info(t("callOnHold"))
       return
     }
     await localParticipant.setMicrophoneEnabled(micBeforeHoldRef.current)
     setRemoteVolume(isSpeaker ? 1 : 0)
     setIsOnHold(false)
-    toast.info("Call resumed")
+    toast.info(t("callResumed"))
   }, [isOnHold, localParticipant, setRemoteVolume, isSpeaker])
 
   useEffect(() => {
@@ -670,26 +671,26 @@ function CallRoomInner({
         setLinkCopied(true)
         setTimeout(() => setLinkCopied(false), 2000)
       } catch {
-        toast.error("Could not copy link — long-press the URL bar to copy manually")
+        toast.error(t("couldNotCopyLink"))
       }
     }
   }, [callId, displayName, mode])
 
   const ringSmsLabel = ringSmsStatus === "sending"
-    ? "Sending SMS & calling phone..."
+    ? t("sendingSms")
     : ringSmsStatus === "sms_sent"
-      ? "SMS sent! Phone ringing..."
+      ? t("smsSentRinging")
       : ringSmsStatus === "done"
-        ? "Invitation sent! Waiting to join..."
+        ? t("invitationSentWaiting")
         : ringSmsStatus === "failed"
-          ? "Invitation failed — share link manually"
+          ? t("invitationFailed")
           : null
 
   const statusLabel = {
-    connecting: "Connecting...",
-    ringing: ringSmsLabel || "Waiting for others...",
+    connecting: t("connecting"),
+    ringing: ringSmsLabel || t("waitingForOther"),
     connected: formatDuration(duration),
-    ended: "Call Ended",
+    ended: t("callEnded"),
   }
 
   const isVideo = mode === "video"
@@ -698,12 +699,12 @@ function CallRoomInner({
   const allRemoteGranted = hasConsentEntry && remoteConsents.every((c) => c.granted)
   const remoteDeclined = hasConsentEntry && remoteConsents.some((c) => !c.granted)
   const consentBadgeText = !hasRemote
-    ? "Awaiting participant"
+    ? t("awaitingParticipant")
     : allRemoteGranted
-      ? "Consent granted"
+      ? t("consentGranted")
       : remoteDeclined
-        ? "Caller only"
-        : "Consent pending"
+        ? t("callerOnly")
+        : t("consentPending")
   const consentBadgeTone = allRemoteGranted
     ? "bg-success/20 text-success"
     : remoteDeclined
@@ -714,7 +715,7 @@ function CallRoomInner({
     ? contactName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : contactPhone?.slice(-2) || "?"
 
-  const remoteDisplayName = remoteParticipants[0]?.name || contactName || contactPhone || "Participant"
+  const remoteDisplayName = remoteParticipants[0]?.name || contactName || contactPhone || t("participant")
   const remoteInitials = remoteDisplayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
 
   // --- Audio-only or pre-connection view ---
@@ -726,17 +727,17 @@ function CallRoomInner({
         <div className="flex items-center justify-between px-4 py-3 z-10 shrink-0">
           <button onClick={endCall} className="flex items-center gap-1 text-sm opacity-80 hover:opacity-100 transition-opacity text-foreground">
             <ArrowLeft className="h-4 w-4" />
-            <span>Back</span>
+            <span>{tc('back')}</span>
           </button>
           <div className="flex items-center gap-2">
             {isInitiator && callId && (
               <button
                 onClick={copyInviteLink}
                 className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                title="Copy invite link"
+                title={t('copyInviteLink')}
               >
                 {linkCopied ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
-                {linkCopied ? "Copied" : "Invite"}
+                {linkCopied ? tc('copied') : t('invite')}
               </button>
             )}
             {callStatus === "connected" && (
@@ -775,7 +776,7 @@ function CallRoomInner({
                   viewMode === "simple" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                 )}
               >
-                Call
+                {t('call')}
               </button>
               <button
                 onClick={() => setViewMode("transcript")}
@@ -785,7 +786,7 @@ function CallRoomInner({
                 )}
               >
                 <MessageSquareText className="h-3 w-3" />
-                Transcript
+                {t('transcript')}
               </button>
             </div>
           </div>
@@ -795,12 +796,12 @@ function CallRoomInner({
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {isDisconnected && reconnectDeadline && !endingCallRef.current && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 rounded-md border border-warning/40 bg-warning/15 px-3 py-1.5 text-xs text-warning-foreground">
-              Reconnecting... {reconnectSecondsLeft}s
+              {t("reconnecting", { seconds: reconnectSecondsLeft })}
               <button
                 onClick={retryConnection}
                 className="ml-2 underline underline-offset-2 hover:no-underline"
               >
-                Retry now
+                {t("retryNow")}
               </button>
             </div>
           )}
@@ -840,14 +841,14 @@ function CallRoomInner({
                 >
                   {linkCopied ? <Check className="h-4 w-4 text-primary" /> : <Link2 className="h-4 w-4 text-primary" />}
                   <span className="text-sm text-primary font-medium">
-                    {linkCopied ? "Link copied!" : "Copy invite link"}
+                    {linkCopied ? t("linkCopied") : t("copyInviteLink")}
                   </span>
                 </button>
               )}
               {callStatus === "connected" && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 mt-4">
                   <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-xs text-primary font-medium">Recording & Transcribing</span>
+                  <span className="text-xs text-primary font-medium">{t("recordingTranscribing")}</span>
                 </div>
               )}
             </div>
@@ -869,7 +870,7 @@ function CallRoomInner({
                 </div>
               </div>
               <div className="flex items-center justify-center py-12">
-                <p className="text-sm text-muted-foreground">Transcript will be available after the call ends...</p>
+                <p className="text-sm text-muted-foreground">{t("transcriptAfterCall")}</p>
               </div>
             </div>
           )}
@@ -891,9 +892,9 @@ function CallRoomInner({
 
             {/* Instruction text */}
             <div className="text-center space-y-1.5">
-              <p className="text-base font-semibold text-foreground">Still recording — speak your notes</p>
+              <p className="text-base font-semibold text-foreground">{t("stillRecordingNotes")}</p>
               <p className="text-sm text-muted-foreground">
-                Say <span className="font-medium text-foreground">"Notissima:"</span> followed by a command
+                {t("sayCommand", { keyword: <span key="kw" className="font-medium text-foreground">&quot;Notissima:&quot;</span> })}
               </p>
             </div>
 
@@ -917,8 +918,8 @@ function CallRoomInner({
               className="w-full max-w-xs py-3.5 rounded-2xl bg-destructive text-white text-sm font-semibold hover:bg-destructive/90 transition-colors flex items-center justify-center gap-2 mt-2"
             >
               {savingNotes
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Ending…</>
-                : <>Stop Recording & End</>
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("ending")}</>
+                : <>{t("stopRecordingEnd")}</>
               }
             </button>
           </div>
@@ -928,7 +929,7 @@ function CallRoomInner({
             {showNotes && (
               <div className="border-t px-4 py-3 shrink-0 border-border bg-card">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-muted-foreground">Notes</span>
+                  <span className="text-xs font-medium text-muted-foreground">{t("notes")}</span>
                   <button onClick={() => setShowNotes(false)}>
                     <X className="h-4 w-4 text-muted-foreground" />
                   </button>
@@ -936,7 +937,7 @@ function CallRoomInner({
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add call notes..."
+                  placeholder={t("addCallNotes")}
                   className="w-full h-20 text-sm rounded-lg p-2 resize-none focus:outline-none focus:ring-1 bg-secondary text-foreground placeholder:text-muted-foreground focus:ring-primary"
                 />
               </div>
@@ -968,10 +969,10 @@ function CallRoomInner({
             ) : (
               <div className="px-4 pb-6 pt-3 border-t border-border bg-card text-center py-4">
                 <p className="text-sm text-muted-foreground">
-                  Call ended {duration > 0 && `· ${formatDuration(duration)}`}
+                  {t("callEnded")} {duration > 0 && `· ${formatDuration(duration)}`}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Transcript will be available in Sessions
+                  {t("transcriptInSessions")}
                 </p>
               </div>
             )}
@@ -1002,10 +1003,10 @@ function CallRoomInner({
             <button
               onClick={copyInviteLink}
               className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] bg-white/10 text-white/80 hover:bg-white/15 transition-colors"
-              title="Copy invite link"
+              title={t('copyInviteLink')}
             >
               {linkCopied ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
-              {linkCopied ? "Copied" : "Invite"}
+              {linkCopied ? tc('copied') : t('invite')}
             </button>
           )}
           <Badge variant="secondary" className="text-[10px] gap-1 bg-destructive/20 text-destructive border-0">
@@ -1038,12 +1039,12 @@ function CallRoomInner({
       <div className="flex-1 overflow-hidden relative">
         {isDisconnected && reconnectDeadline && !endingCallRef.current && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 rounded-md border border-warning/40 bg-warning/15 px-3 py-1.5 text-xs text-warning-foreground">
-            Reconnecting... {reconnectSecondsLeft}s
+            {t("reconnecting", { seconds: reconnectSecondsLeft })}
             <button
               onClick={retryConnection}
               className="ml-2 underline underline-offset-2 hover:no-underline"
             >
-              Retry now
+              {t("retryNow")}
             </button>
           </div>
         )}
@@ -1059,8 +1060,8 @@ function CallRoomInner({
                 <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
                   <span className="text-xs text-white font-medium">
                     {activeScreenShare.participant.sid === localParticipant.sid
-                      ? "You are sharing your screen"
-                      : `${activeScreenShare.participant.name || activeScreenShare.participant.identity} is sharing`}
+                      ? t("youAreSharing")
+                      : t("participantSharing", { name: activeScreenShare.participant.name || activeScreenShare.participant.identity })}
                   </span>
                 </div>
               </div>
@@ -1082,10 +1083,10 @@ function CallRoomInner({
               })}
               <div className="w-32 h-full">
                 <LiveParticipantTile
-                  name="You"
+                  name={t("you")}
                   isMuted={isMuted}
                   hasVideo={isCameraOn}
-                  videoTrack={cameraTracks.find(t => t.participant.sid === localParticipant.sid)}
+                  videoTrack={cameraTracks.find(tr => tr.participant.sid === localParticipant.sid)}
                   isLocal
                 />
               </div>
@@ -1122,13 +1123,13 @@ function CallRoomInner({
                       {contactInitials}
                     </AvatarFallback>
                   </Avatar>
-                  <p className="text-sm text-white/50 mb-4">Waiting for others...</p>
+                  <p className="text-sm text-white/50 mb-4">{t("waitingForOther")}</p>
                   <button
                     onClick={copyInviteLink}
                     className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 transition-colors"
                   >
                     {linkCopied ? <Check className="h-4 w-4 text-primary-foreground" /> : <Link2 className="h-4 w-4 text-primary-foreground" />}
-                    <span className="text-sm font-medium text-primary-foreground">{linkCopied ? "Copied!" : "Copy invite link"}</span>
+                    <span className="text-sm font-medium text-primary-foreground">{linkCopied ? tc("copied") : t("copyInviteLink")}</span>
                   </button>
                 </div>
               )}
@@ -1139,10 +1140,10 @@ function CallRoomInner({
             <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
               <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
               <LiveParticipantTile
-                name="You"
+                name={t("you")}
                 isMuted={isMuted}
                 hasVideo={isCameraOn}
-                videoTrack={cameraTracks.find(t => t.participant.sid === localParticipant.sid)}
+                videoTrack={cameraTracks.find(tr => tr.participant.sid === localParticipant.sid)}
                 isLocal
               />
               </div>
@@ -1154,14 +1155,14 @@ function CallRoomInner({
         {showTranscript && (
           <div className="absolute inset-x-0 bottom-0 top-1/3 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20 flex flex-col">
             <div className="flex items-center justify-between px-4 pt-8 pb-2">
-              <span className="text-xs font-medium text-white/60">Transcript</span>
+              <span className="text-xs font-medium text-white/60">{t("transcript")}</span>
               <button onClick={() => setShowTranscript(false)}>
                 <X className="h-4 w-4 text-white/40" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 pb-2">
               <p className="text-sm text-white/80 text-center py-8">
-                Transcript will be available after the call ends...
+                {t("transcriptAfterCall")}
               </p>
             </div>
           </div>
@@ -1208,7 +1209,7 @@ function LiveParticipantTile({ name, isMuted, hasVideo, videoTrack, isLocal }: {
   isLocal?: boolean
 }) {
   const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-  const displayName = isLocal ? "You" : name.split(" ")[0]
+  const displayName = isLocal ? name : name.split(" ")[0]
 
   return (
     <div className="relative rounded-xl overflow-hidden w-full h-full flex items-center justify-center bg-[#1a1a1a]">

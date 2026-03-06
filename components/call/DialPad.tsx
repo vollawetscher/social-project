@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { Phone, Delete } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -27,6 +28,7 @@ const DIALPAD_KEYS = [
 ]
 
 export function DialPad({ onCall, disabled, initialNumber = "" }: DialPadProps) {
+  const t = useTranslations('calls')
   const [number, setNumber] = useState(initialNumber)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -55,7 +57,7 @@ export function DialPad({ onCall, disabled, initialNumber = "" }: DialPadProps) 
           inputMode="none"
           value={number}
           onChange={handleInputChange}
-          placeholder="Enter number"
+          placeholder={t('enterNumber')}
           className={cn(
             "flex-1 bg-transparent text-center font-mono outline-none border-none",
             "placeholder:text-muted-foreground/50",
@@ -68,7 +70,7 @@ export function DialPad({ onCall, disabled, initialNumber = "" }: DialPadProps) 
           <button
             onClick={handleDelete}
             className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Delete"
+            aria-label={t('deleteDigit')}
           >
             <Delete className="h-5 w-5" />
           </button>

@@ -60,12 +60,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
-import { participantRoleLabels, participantRoleLabelsShort, audienceLabels } from "@/lib/mock/data"
 import { toast } from "sonner"
 import type { Output } from "@/lib/types-v0"
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
+function formatDate(dateString: string, locale: string): string {
+  return new Date(dateString).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -78,6 +77,7 @@ function OutputDetailSheet({ output }: { output: Output }) {
   const t = useTranslations('outputs')
   const td = useTranslations('outputDetail')
   const tc = useTranslations('common')
+  const tl = useTranslations('labels')
   const [copySuccess, setCopySuccess] = React.useState(false)
 
   const handleCopy = async (content: string) => {
@@ -134,12 +134,12 @@ function OutputDetailSheet({ output }: { output: Output }) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{td('perspective')}</span>
-                    <span className="font-medium">{participantRoleLabels[output.perspective]}</span>
+                    <span className="font-medium">{tl('perspectives.' + output.perspective)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{td('audience')}</span>
                     <Badge variant={output.audience === "internal" ? "secondary" : "outline"}>
-                      {audienceLabels[output.audience]}
+                      {tl('audiences.' + output.audience)}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
@@ -207,6 +207,8 @@ function OutputDetailSheet({ output }: { output: Output }) {
 export default function OutputsPage() {
   const t = useTranslations('outputs')
   const tc = useTranslations('common')
+  const tl = useTranslations('labels')
+  const locale = useLocale()
   const [outputs, setOutputs] = useState<Output[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -393,9 +395,9 @@ export default function OutputsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t('allPerspectives')}</SelectItem>
-                  {Object.entries(participantRoleLabels).map(([key, label]) => (
+                  {['party_a', 'party_b', 'observer'].map((key) => (
                     <SelectItem key={key} value={key}>
-                      {label}
+                      {tl('perspectives.' + key)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -457,13 +459,13 @@ export default function OutputsPage() {
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1 whitespace-nowrap">
                         <User className="h-3 w-3 shrink-0" />
-                        <span className="hidden sm:inline">{participantRoleLabels[output.perspective]}</span>
-                        <span className="sm:hidden">{participantRoleLabelsShort[output.perspective] || participantRoleLabels[output.perspective]}</span>
+                        <span className="hidden sm:inline">{tl('perspectives.' + output.perspective)}</span>
+                        <span className="sm:hidden">{tl('perspectivesShort.' + output.perspective)}</span>
                       </span>
                       <span className="flex items-center gap-1 whitespace-nowrap">
                         <Calendar className="h-3 w-3 shrink-0" />
-                        <span className="hidden sm:inline">{formatDate(output.createdAt)}</span>
-                        <span className="sm:hidden">{new Date(output.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                        <span className="hidden sm:inline">{formatDate(output.createdAt, locale)}</span>
+                        <span className="sm:hidden">{new Date(output.createdAt).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
                       </span>
                       <span className="flex items-center gap-1 whitespace-nowrap">
                         <Globe className="h-3 w-3 shrink-0" />

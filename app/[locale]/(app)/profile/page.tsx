@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "@/i18n/navigation"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug, Smartphone, Share, Plus } from "lucide-react"
 import { BugReporter } from "@/components/error/BugReporter"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 function InstallAppCard() {
+  const t = useTranslations('profile')
   const [isMobile, setIsMobile] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
@@ -62,29 +63,31 @@ function InstallAppCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Smartphone className="h-5 w-5" />
-          Install App
+          {t('installApp')}
         </CardTitle>
         <CardDescription>
-          Add Notissima to your home screen for quick access
+          {t('installAppDesc')}
         </CardDescription>
       </CardHeader>
       <CardContent>
         {canInstall ? (
           <Button onClick={handleInstall}>
             <Plus className="h-4 w-4 mr-2" />
-            Add to Home Screen
+            {t('addToHomeScreen')}
           </Button>
         ) : isIOS ? (
           <div className="flex items-start gap-3 text-sm text-muted-foreground">
             <Share className="h-5 w-5 shrink-0 mt-0.5" />
             <p>
-              Tap the <span className="font-medium text-foreground">Share</span> button in Safari, then choose{' '}
-              <span className="font-medium text-foreground">Add to Home Screen</span>.
+              {t.rich('iosInstallHint', {
+                shareButton: (chunks) => <span className="font-medium text-foreground">{t('shareButton')}</span>,
+                addToHome: (chunks) => <span className="font-medium text-foreground">{t('addToHomeScreen')}</span>,
+              })}
             </p>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Open this page in Chrome and tap the menu, then &quot;Add to Home Screen&quot;.
+            {t('chromeInstallHint')}
           </p>
         )}
       </CardContent>
@@ -95,6 +98,7 @@ function InstallAppCard() {
 export default function ProfilePage() {
   const t = useTranslations('profile')
   const tl = useTranslations('languages')
+  const locale = useLocale()
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -141,7 +145,7 @@ export default function ProfilePage() {
     return (
       <div className="max-w-4xl mx-auto py-12 text-center">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-        <p className="text-sm text-muted-foreground mt-4">Loading profile...</p>
+        <p className="text-sm text-muted-foreground mt-4">{t('loadingProfile')}</p>
       </div>
     )
   }
@@ -150,10 +154,10 @@ export default function ProfilePage() {
     return (
       <div className="max-w-4xl mx-auto py-12 text-center">
         <AlertTriangle className="h-12 w-12 mx-auto text-warning mb-4" />
-        <h2 className="text-lg font-semibold">Authentication Required</h2>
-        <p className="text-sm text-muted-foreground mt-2">Please log in to view your profile</p>
+        <h2 className="text-lg font-semibold">{t('authRequired')}</h2>
+        <p className="text-sm text-muted-foreground mt-2">{t('authRequiredHint')}</p>
         <Button onClick={() => router.push('/login')} className="mt-4">
-          Go to Login
+          {t('goToLogin')}
         </Button>
       </div>
     )
@@ -192,17 +196,17 @@ export default function ProfilePage() {
   const getAfterTranscriptLabel = () => {
     const templateId = (profile as any)?.after_transcript_template_id
     if (templateId) {
-      const t = templates.find((x) => x.id === templateId)
-      return t?.name || 'Custom template'
+      const tmpl = templates.find((x) => x.id === templateId)
+      return tmpl?.name || t('customTemplate')
     }
     const action = profile?.after_transcript_action
-    const actions: Record<string, string> = {
-      nothing: 'Do nothing',
-      short_summary: 'Short Summary',
-      long_summary: 'Long Summary',
-      full_report: 'Full Report',
+    const actionKeys: Record<string, string> = {
+      nothing: 'doNothing',
+      short_summary: 'shortSummary',
+      long_summary: 'longSummary',
+      full_report: 'fullReport',
     }
-    return actions[action || 'nothing'] || 'Do nothing'
+    return t(actionKeys[action || 'nothing'] || 'doNothing')
   }
 
   const savePhoneNumber = async () => {
@@ -221,9 +225,9 @@ export default function ProfilePage() {
       }
       setProfile(payload)
       setPhoneNumberInput(payload.phone_number || '')
-      setPhoneSuccess('Phone number saved')
+      setPhoneSuccess(t('phoneSaved'))
     } catch (error: any) {
-      setPhoneError(error?.message || 'Failed to save phone number')
+      setPhoneError(error?.message || t('phoneFailedSave'))
     } finally {
       setPhoneSaving(false)
     }
@@ -234,9 +238,9 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Profile</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            View your account information and preferences
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -245,7 +249,7 @@ export default function ProfilePage() {
           )}
           <Button onClick={() => router.push('/settings')} variant="outline">
             <Settings className="h-4 w-4 mr-2" />
-            Edit Settings
+            {t('editSettings')}
           </Button>
         </div>
       </div>
@@ -255,10 +259,10 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Account Information
+            {t('accountInfo')}
           </CardTitle>
           <CardDescription>
-            Your personal details and authentication method
+            {t('accountInfoDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -277,11 +281,11 @@ export default function ProfilePage() {
               )}
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-xs">
-                  {profile.role === 'admin' ? 'Administrator' : 'User'}
+                  {profile.role === 'admin' ? t('administrator') : t('user')}
                 </Badge>
                 {profile.auth_method && (
                   <Badge variant="secondary" className="text-xs">
-                    {profile.auth_method === 'email' ? 'Email Auth' : 'Phone Auth'}
+                    {profile.auth_method === 'email' ? t('emailAuth') : t('phoneAuth')}
                   </Badge>
                 )}
               </div>
@@ -294,12 +298,12 @@ export default function ProfilePage() {
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">Email</p>
+                  <p className="text-sm font-medium text-foreground">{t('email')}</p>
                   <p className="text-sm text-muted-foreground">{profile.email}</p>
                 </div>
                 {profile.email_verified && (
                   <Badge className="bg-success/20 text-success border-success/30 text-xs">
-                    Verified
+                    {t('verified')}
                   </Badge>
                 )}
               </div>
@@ -308,7 +312,7 @@ export default function ProfilePage() {
             <div className="flex items-start gap-3">
               <Phone className="h-4 w-4 text-muted-foreground mt-2" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Phone</p>
+                <p className="text-sm font-medium text-foreground">{t('phone')}</p>
                 <div className="mt-1 flex flex-col sm:flex-row gap-2">
                   <Input
                     type="tel"
@@ -325,10 +329,10 @@ export default function ProfilePage() {
                     disabled={phoneSaving}
                     className="sm:w-auto w-full"
                   >
-                    {phoneSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save phone'}
+                    {phoneSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('savePhone')}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Use international format (E.164), e.g. +491701234567</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('phoneFormat')}</p>
                 {phoneError && <p className="text-xs text-destructive mt-1">{phoneError}</p>}
                 {phoneSuccess && <p className="text-xs text-success mt-1">{phoneSuccess}</p>}
               </div>
@@ -337,9 +341,9 @@ export default function ProfilePage() {
             <div className="flex items-center gap-3">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Member Since</p>
+                <p className="text-sm font-medium text-foreground">{t('memberSince')}</p>
                 <p className="text-sm text-muted-foreground">
-                  {new Date(profile.created_at).toLocaleDateString('en-US', {
+                  {new Date(profile.created_at).toLocaleDateString(locale, {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric'
@@ -354,28 +358,28 @@ export default function ProfilePage() {
       {/* Language Preferences */}
       <Card className="border-border">
         <CardHeader>
-          <CardTitle>Language & Regional Settings</CardTitle>
+          <CardTitle>{t('languageRegional')}</CardTitle>
           <CardDescription>
-            Your default language and timezone preferences
+            {t('languageRegionalDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Recording Language</p>
+              <p className="text-sm font-medium text-muted-foreground">{t('recordingLanguage')}</p>
               <p className="text-sm text-foreground">
                 {getLanguageName(profile.default_recording_language)}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Report Language</p>
+              <p className="text-sm font-medium text-muted-foreground">{t('reportLanguage')}</p>
               <p className="text-sm text-foreground">
                 {getLanguageName(profile.preferred_report_language)}
               </p>
             </div>
           </div>
           <div className="space-y-1 pt-2 border-t border-border">
-            <p className="text-sm font-medium text-muted-foreground">Timezone</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('timezone')}</p>
             <p className="text-sm text-foreground">{profile.timezone}</p>
           </div>
         </CardContent>
@@ -384,14 +388,14 @@ export default function ProfilePage() {
       {/* Workflow Settings */}
       <Card className="border-border">
         <CardHeader>
-          <CardTitle>Workflow Automation</CardTitle>
+          <CardTitle>{t('workflowAutomation')}</CardTitle>
           <CardDescription>
-            Automatic actions after transcription
+            {t('workflowAutomationDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">After Transcript Completes</p>
+            <p className="text-sm font-medium text-muted-foreground">{t('afterTranscriptCompletes')}</p>
             <p className="text-sm text-foreground">
               {getAfterTranscriptLabel()}
             </p>
@@ -400,7 +404,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
               <Shield className="h-4 w-4 text-success" />
               <span className="text-sm text-foreground">
-                Automatic report generation is enabled
+                {t('autoReportEnabled')}
               </span>
             </div>
           )}
@@ -416,15 +420,15 @@ export default function ProfilePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bug className="h-5 w-5" />
-              Help & Feedback
+              {t('helpFeedback')}
             </CardTitle>
             <CardDescription>
-              Report issues or request new features
+              {t('helpFeedbackDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Found a bug or have a feature request? Let us know! Your feedback helps improve Notissima for everyone.
+              {t('helpFeedbackBody')}
             </p>
             <div className="flex gap-2">
               <BugReporter variant="default" size="default" />

@@ -14,6 +14,7 @@ interface CallEndedSignupProps {
 }
 
 export function CallEndedSignup({ callerName, callId }: CallEndedSignupProps) {
+  const t = useTranslations('callEnded')
   const [email, setEmail] = useState("")
 
   function saveAndRedirect(path: string) {
@@ -42,9 +43,9 @@ export function CallEndedSignup({ callerName, callId }: CallEndedSignupProps) {
               <Clock className="h-5 w-5 text-warning" />
             </div>
             <div>
-              <p className="font-medium text-foreground text-sm">Recording processing</p>
+              <p className="font-medium text-foreground text-sm">{t('recordingProcessing')}</p>
               <p className="text-xs text-muted-foreground">
-                Your call with <span className="font-medium text-foreground">{callerName}</span> is being transcribed
+                {t('callBeingTranscribed', { name: callerName })}
               </p>
             </div>
           </div>
@@ -53,22 +54,18 @@ export function CallEndedSignup({ callerName, callId }: CallEndedSignupProps) {
         {/* CTA card */}
         <div className="bg-card border border-border rounded-xl p-6 space-y-5">
           <div className="space-y-1">
-            <h1 className="text-xl font-bold text-foreground">Access your call recording</h1>
+            <h1 className="text-xl font-bold text-foreground">{t('accessRecording')}</h1>
             <p className="text-sm text-muted-foreground">
-              Create a free 5-day account to view the transcript and AI analysis of your conversation.
+              {t('freeAccountDescription')}
             </p>
           </div>
 
           {/* Benefits */}
           <ul className="space-y-2">
-            {[
-              "Full transcript with speaker labels",
-              "AI-generated meeting summary",
-              "Generate reports from the conversation",
-            ].map((benefit) => (
-              <li key={benefit} className="flex items-center gap-2 text-sm text-muted-foreground">
+            {(['featureTranscript', 'featureSummary', 'featureReports'] as const).map((key) => (
+              <li key={key} className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckCircle className="h-4 w-4 text-success shrink-0" />
-                {benefit}
+                {t(key)}
               </li>
             ))}
           </ul>
@@ -76,12 +73,12 @@ export function CallEndedSignup({ callerName, callId }: CallEndedSignupProps) {
           {/* Email input */}
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm">
-              Your email address
+              {t('yourEmail')}
             </Label>
             <Input
               id="email"
               type="email"
-              placeholder="name@example.com"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
@@ -96,23 +93,23 @@ export function CallEndedSignup({ callerName, callId }: CallEndedSignupProps) {
             onClick={() => saveAndRedirect("/signup")}
             disabled={!email}
           >
-            Create free account
+            {t('createAccount')}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
 
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            {t('alreadyHaveAccount')}{" "}
             <button
               className="text-primary hover:underline font-medium"
               onClick={() => saveAndRedirect("/login")}
             >
-              Log in
+              {t('logIn')}
             </button>
           </p>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          Your recording will be ready within a few minutes.
+          {t('recordingReady')}
         </p>
       </div>
     </div>

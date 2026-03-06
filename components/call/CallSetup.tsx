@@ -25,6 +25,7 @@ export function CallSetup({
   onCancel,
   joining = false,
 }: CallSetupProps) {
+  const t = useTranslations('callSetup')
   const [guestName, setGuestName] = useState("")
   const [isMicReady, setIsMicReady] = useState(false)
   const [isCameraReady, setIsCameraReady] = useState(false)
@@ -61,7 +62,7 @@ export function CallSetup({
       }
     } catch (err: any) {
       console.error("[CallSetup] Permission error:", err)
-      setMicError(err.message || "Could not access microphone")
+      setMicError(err.message || t('couldNotAccessMic'))
     }
   }
 
@@ -79,10 +80,10 @@ export function CallSetup({
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-xl font-semibold text-foreground">
-            {mode === "video" ? "Join Video Call" : "Join Audio Call"}
+            {mode === "video" ? t('joinVideoCall') : t('joinAudioCall')}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Check your devices before joining
+            {t('checkDevices')}
           </p>
         </div>
 
@@ -114,7 +115,7 @@ export function CallSetup({
             isMicReady ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"
           )}>
             {isMicReady ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            <span className="text-xs">{isMicReady ? "Mic ready" : "No mic"}</span>
+            <span className="text-xs">{isMicReady ? t('micReady') : t('noMic')}</span>
           </div>
           {mode === "video" && (
             <div className={cn(
@@ -122,7 +123,7 @@ export function CallSetup({
               isCameraReady ? "bg-info/10 text-info" : "bg-destructive/10 text-destructive"
             )}>
               {isCameraReady ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-              <span className="text-xs">{isCameraReady ? "Camera ready" : "No camera"}</span>
+              <span className="text-xs">{isCameraReady ? t('cameraReady') : t('noCamera')}</span>
             </div>
           )}
         </div>
@@ -135,12 +136,12 @@ export function CallSetup({
         {!isAuthenticated && (
           <div>
             <label className="text-sm font-medium text-foreground mb-1.5 block">
-              Your name
+              {t('yourName')}
             </label>
             <Input
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Enter your name to join"
+              placeholder={t('enterName')}
               className="text-center"
               autoFocus
             />
@@ -150,14 +151,14 @@ export function CallSetup({
         {/* Join / Cancel */}
         <div className="flex gap-3">
           <Button variant="outline" onClick={onCancel} className="flex-1">
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             onClick={() => onJoin(displayName)}
             disabled={!canJoin}
             className="flex-1"
           >
-            {joining ? "Joining..." : "Join Call"}
+            {joining ? t('joining') : t('joinCall')}
           </Button>
         </div>
       </div>

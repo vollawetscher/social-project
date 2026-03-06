@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useTranslations } from "next-intl"
 import { Phone, Video, Mic, MicOff, VideoOff, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Logo } from "@/components/ui/logo"
@@ -21,6 +22,7 @@ export function IncomingCall({
   onDecline,
   joining = false,
 }: IncomingCallProps) {
+  const t = useTranslations('callSetup')
   const [isMicReady, setIsMicReady] = useState(false)
   const [isCameraReady, setIsCameraReady] = useState(false)
   const [permissionError, setPermissionError] = useState<string | null>(null)
@@ -45,7 +47,7 @@ export function IncomingCall({
         setIsMicReady(true)
         if (mode === "video") setIsCameraReady(true)
       } catch (err: any) {
-        setPermissionError(err.message || "Could not access microphone")
+        setPermissionError(err.message || t('couldNotAccessMic'))
       } finally {
         setCheckingPermissions(false)
       }
@@ -72,7 +74,7 @@ export function IncomingCall({
         {/* Header band */}
         <div className="bg-primary/5 border-b border-border px-6 py-4 text-center">
           <p className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
-            {mode === "video" ? "Video call invitation" : "Audio call invitation"}
+            {mode === "video" ? t('videoInvitation') : t('audioInvitation')}
           </p>
         </div>
 
@@ -91,7 +93,7 @@ export function IncomingCall({
           </div>
 
           <h2 className="text-xl font-semibold text-foreground">{callerName}</h2>
-          <p className="text-sm text-muted-foreground mt-1">invites you to a call</p>
+          <p className="text-sm text-muted-foreground mt-1">{t('invitesToCall')}</p>
 
           {/* Device status pills */}
           {!checkingPermissions && (
@@ -103,7 +105,7 @@ export function IncomingCall({
                   : "bg-destructive/10 text-destructive"
               )}>
                 {isMicReady ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
-                {isMicReady ? "Mic ready" : "No mic"}
+                {isMicReady ? t('micReady') : t('noMic')}
               </span>
               {mode === "video" && (
                 <span className={cn(
@@ -113,7 +115,7 @@ export function IncomingCall({
                     : "bg-destructive/10 text-destructive"
                 )}>
                   {isCameraReady ? <Video className="h-3 w-3" /> : <VideoOff className="h-3 w-3" />}
-                  {isCameraReady ? "Camera ready" : "No camera"}
+                  {isCameraReady ? t('cameraReady') : t('noCamera')}
                 </span>
               )}
             </div>
@@ -134,7 +136,7 @@ export function IncomingCall({
             <div className="h-11 w-11 rounded-full bg-destructive/10 flex items-center justify-center">
               <Phone className="h-5 w-5 text-destructive rotate-[135deg]" />
             </div>
-            <span className="text-xs font-medium text-destructive">Decline</span>
+            <span className="text-xs font-medium text-destructive">{t('decline')}</span>
           </button>
 
           <button
@@ -160,7 +162,7 @@ export function IncomingCall({
               )}
             </div>
             <span className="text-xs font-medium text-success">
-              {joining ? "Joining..." : "Join"}
+              {joining ? t('joining') : t('join')}
             </span>
           </button>
         </div>
@@ -168,7 +170,7 @@ export function IncomingCall({
 
       {/* Powered by */}
       <p className="mt-8 text-xs text-muted-foreground/50">
-        Secured by Notissima
+        {t('securedBy')}
       </p>
     </div>
   )

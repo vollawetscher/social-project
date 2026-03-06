@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.12.0',
+    date: 'March 5, 2026',
+    entries: [
+      {
+        version: '1.12.0',
+        date: 'March 5, 2026',
+        category: 'improvement',
+        title: 'Complete Spanish & German Translations',
+        description: 'The entire app is now fully translated into Spanish and German. All buttons, labels, menus, call screens, and settings now appear in your selected language — no more mixed English text.',
+      },
+    ],
+  },
+  {
     version: '1.11.0',
     date: 'February 26, 2026',
     entries: [

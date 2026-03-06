@@ -47,7 +47,6 @@ import {
 } from "@/components/ui/sheet"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { participantRoleLabels, participantRoleLabelsShort } from "@/lib/mock/data"
 import type { Template } from "@/lib/types-v0"
 
 const domainColors: Record<string, string> = {
@@ -92,6 +91,7 @@ function getTemplateSample(template: Template): string {
 }
 
 function TemplateSampleSheet({ template, open, onOpenChange }: { template: Template; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useTranslations('templates')
   const sample = getTemplateSample(template)
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -99,12 +99,12 @@ function TemplateSampleSheet({ template, open, onOpenChange }: { template: Templ
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <FileOutput className="h-5 w-5" />
-            Sample: {template.name}
+            {t('viewSample')}: {template.name}
           </SheetTitle>
           <SheetDescription>
             {template.sampleContent
-              ? "Sample from a saved output — shows structure and format"
-              : "Preview with mock data — shows how an output would look using this template"}
+              ? t('samplePreview')
+              : t('mockPreview')}
           </SheetDescription>
         </SheetHeader>
         <div className="mt-6 prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground">
@@ -118,6 +118,7 @@ function TemplateSampleSheet({ template, open, onOpenChange }: { template: Templ
 function TemplateDetailSheet({ template }: { template: Template }) {
   const t = useTranslations('templates')
   const tc = useTranslations('common')
+  const tl = useTranslations('labels')
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -199,7 +200,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
             <div className="flex flex-wrap gap-1.5">
               {template.intendedPerspectives.map((perspective: any) => (
                 <Badge key={perspective} variant="secondary">
-                  {participantRoleLabels[perspective]}
+                  {tl('perspectives.' + perspective)}
                 </Badge>
               ))}
             </div>
@@ -214,7 +215,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
             <div className="flex flex-wrap gap-1.5">
               {template.allowedAudience.map((audience) => (
                 <Badge key={audience} variant="outline" className="capitalize">
-                  {audience}
+                  {tl('audiences.' + audience)}
                 </Badge>
               ))}
             </div>
@@ -228,6 +229,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
 export default function TemplatesPage() {
   const t = useTranslations('templates')
   const tc = useTranslations('common')
+  const tl = useTranslations('labels')
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [sampleTemplate, setSampleTemplate] = useState<Template | null>(null)
@@ -356,7 +358,7 @@ export default function TemplatesPage() {
                         variant="outline"
                         className={`text-[10px] capitalize ${domainColors[domain as keyof typeof domainColors] || ""}`}
                       >
-                        {domain}
+                        {domain in domainColors ? tl('domains.' + domain) : domain}
                       </Badge>
                     ))}
                   </div>
@@ -447,7 +449,7 @@ export default function TemplatesPage() {
                   <div className="flex flex-wrap gap-1 max-w-[150px]">
                     {template.intendedPerspectives.slice(0, 2).map((perspective: any) => (
                       <Badge key={perspective} variant="secondary" className="text-[10px]">
-                        {participantRoleLabelsShort[perspective] || participantRoleLabels[perspective]}
+                        {tl('perspectivesShort.' + perspective)}
                       </Badge>
                     ))}
                     {template.intendedPerspectives.length > 2 && (
@@ -461,7 +463,7 @@ export default function TemplatesPage() {
                   <div className="flex gap-1">
                     {template.allowedAudience.map((audience: string) => (
                       <Badge key={audience} variant="outline" className="text-[10px] capitalize">
-                        {audience}
+                        {tl('audiences.' + audience)}
                       </Badge>
                     ))}
                   </div>
@@ -474,7 +476,7 @@ export default function TemplatesPage() {
                         variant="outline"
                         className={`text-[10px] capitalize ${domainColors[domain as keyof typeof domainColors] || ""}`}
                       >
-                        {domain}
+                        {domain in domainColors ? tl('domains.' + domain) : domain}
                       </Badge>
                     ))}
                   </div>

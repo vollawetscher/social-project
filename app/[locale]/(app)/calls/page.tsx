@@ -61,17 +61,17 @@ function formatCallDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-function formatRelativeTime(timestamp: string): string {
+function formatRelativeTime(timestamp: string, td: (key: string, params?: Record<string, any>) => string): string {
   const date = new Date(timestamp)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const minutes = Math.floor(diff / (1000 * 60))
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (minutes < 60) return `${minutes}m ago`
-  if (hours < 24) return `${hours}h ago`
-  if (days === 1) return "Yesterday"
-  if (days < 7) return `${days}d ago`
+  if (minutes < 60) return td('minutesAgo', { count: minutes })
+  if (hours < 24) return td('hoursAgo', { count: hours })
+  if (days === 1) return td('yesterday')
+  if (days < 7) return td('daysAgo', { count: days })
   return date.toLocaleDateString()
 }
 
@@ -350,7 +350,7 @@ export default function CallsPage() {
 
       if (resolved?.matched && resolved?.user?.id) {
         const inAppMode: CallMode = "video"
-        toast.info(`Matched Notissima user: ${resolved.user.displayName || "User"}`)
+        toast.info(t('matchedUser', { name: resolved.user.displayName || t('someone') }))
         const inviteRes = await fetch("/api/calls", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -428,7 +428,7 @@ export default function CallsPage() {
       const contact = await res.json()
       setContacts((prev) => [...prev, contact].sort((a, b) => a.name.localeCompare(b.name)))
       setAddName(""); setAddPhone(""); setAddEmail(""); setShowAddForm(false)
-      toast.success(`Contact "${contact.name}" added`)
+      toast.success(t('contactAdded', { name: contact.name }))
     } catch {
       toast.error(t('contactAddFailed'))
     } finally {
@@ -442,7 +442,7 @@ export default function CallsPage() {
     try {
       await fetch(`/api/contacts/${id}`, { method: "DELETE" })
       setContacts((prev) => prev.filter((c) => c.id !== id))
-      toast.success(`"${name}" removed`)
+      toast.success(t('contactDeleted', { name }))
     } catch {
       toast.error(t('contactDeleteFailed'))
     } finally {
@@ -475,9 +475,9 @@ export default function CallsPage() {
         if (res.ok) { const contact = await res.json(); setContacts((prev) => [...prev, contact]); added++ }
       }
       setContacts((prev) => [...prev].sort((a, b) => a.name.localeCompare(b.name)))
-      toast.success(`Imported ${added} contact${added !== 1 ? "s" : ""}`)
+      toast.success(t('importSuccess', { count: added }))
     } catch (err: any) {
-      if (err?.name !== "AbortError") toast.error("Import failed")
+      if (err?.name !== "AbortError") toast.error(t('importFailed'))
     } finally {
       setImportingContacts(false)
     }
@@ -521,7 +521,7 @@ export default function CallsPage() {
     <div className="flex-1 min-h-0 flex flex-col bg-background overflow-hidden">
       {/* Quick Actions */}
       <div className="px-4 py-4 border-b border-border">
-        <h1 className="text-lg font-semibold text-foreground mb-3">Calls</h1>
+        <h1 className="text-lg font-semibold text-foreground mb-3">{t('title')}</h1>
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setPendingCallMode("audio")}
@@ -532,8 +532,8 @@ export default function CallsPage() {
               <Phone className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-foreground">Audio Call</p>
-              <p className="text-[11px] text-muted-foreground">Twilio + Transcription</p>
+              <p className="text-sm font-medium text-foreground">{t('audioCall')}</p>
+              <p className="text-[11px] text-muted-foreground">{t('audioCallSubtitle')}</p>
             </div>
           </button>
           <button
@@ -545,8 +545,8 @@ export default function CallsPage() {
               <Video className="h-5 w-5 text-info-foreground" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-foreground">Video Call</p>
-              <p className="text-[11px] text-muted-foreground">LiveKit + Transcription</p>
+              <p className="text-sm font-medium text-foreground">{t('videoCall')}</p>
+              <p className="text-[11px] text-muted-foreground">{t('videoCallSubtitle')}</p>
             </div>
           </button>
         </div>
@@ -688,7 +688,7 @@ export default function CallsPage() {
                 <Input
                   type="text"
                   inputMode="tel"
-                  placeholder="+49 170 1234567"
+                  placeholder={t('phonePlaceholder')}
                   value={ringPhone}
                   onChange={(e) => { setRingPhone(e.target.value); setRingContactName("") }}
                   className="flex-1"
@@ -784,10 +784,13 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
   setActiveTab: (v: TabType) => void
   setShowAddForm: (v: boolean) => void
 }) {
+  const t = useTranslations('calls')
+  const td = useTranslations('dates')
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <p className="text-sm text-muted-foreground">Loading calls...</p>
+        <p className="text-sm text-muted-foreground">{t('loadingCalls')}</p>
       </div>
     )
   }
@@ -795,16 +798,16 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <Clock className="h-12 w-12 text-muted-foreground/50 mb-4" />
-        <p className="text-muted-foreground">No recent calls</p>
-        <p className="text-xs text-muted-foreground mt-1">Your transcribed calls will appear here</p>
+        <p className="text-muted-foreground">{t('noRecentCalls')}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t('noRecentCallsHint')}</p>
       </div>
     )
   }
   return (
     <div className="divide-y divide-border">
       {calls.map((call) => {
-        const name = call.contact_name || call.phone_number || "Unknown"
-        const initials = name === "Unknown" ? "?" : name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+        const name = call.contact_name || call.phone_number || t('someone')
+        const initials = (!call.contact_name && !call.phone_number) ? "?" : name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
         const isUnknown = !call.contact_name
         const durationSec = call.ended_at && call.started_at
           ? Math.round((new Date(call.ended_at).getTime() - new Date(call.started_at).getTime()) / 1000)
@@ -823,13 +826,13 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
               <div className="flex items-center gap-2">
                 <p className="font-medium text-foreground text-sm truncate">{name}</p>
                 {call.status === "done" && (
-                  <Badge variant="secondary" className="text-[9px] h-4 px-1.5 gap-0.5 bg-success/20 text-success border-0 shrink-0">Transcribed</Badge>
+                  <Badge variant="secondary" className="text-[9px] h-4 px-1.5 gap-0.5 bg-success/20 text-success border-0 shrink-0">{t('transcribed')}</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <PhoneOutgoing className="h-3 w-3 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">
-                  {formatRelativeTime(call.created_at)}
+                  {formatRelativeTime(call.created_at, td)}
                   {durationSec > 0 && ` · ${formatCallDuration(durationSec)}`}
                 </span>
               </div>
@@ -838,7 +841,7 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
               <button
                 onClick={(e) => { e.stopPropagation(); setAddPhone(call.phone_number!); setActiveTab("contacts"); setShowAddForm(true) }}
                 className="shrink-0 p-2 text-muted-foreground hover:text-primary transition-colors"
-                title="Save to contacts"
+                title={t('saveToContacts')}
               >
                 <UserPlus className="h-4 w-4" />
               </button>
@@ -874,28 +877,31 @@ function ContactsPanel({ contacts, filteredContacts, contactsLoading, contactSea
   deletingContactId: string | null
   creating: boolean
 }) {
+  const t = useTranslations('calls')
+  const tc = useTranslations('common')
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-border flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input type="search" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} placeholder="Search contacts..." className="pl-9 bg-secondary border-border h-9" />
+          <Input type="search" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} placeholder={t('searchContacts')} className="pl-9 bg-secondary border-border h-9" />
         </div>
         <Button size="sm" variant="outline" className="h-9 gap-1.5 shrink-0" onClick={() => setShowAddForm((v: boolean) => !v)}>
           {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {showAddForm ? "Cancel" : "Add"}
+          {showAddForm ? tc('cancel') : t('addContact')}
         </Button>
-        <Button size="sm" variant="ghost" className="h-9 gap-1.5 shrink-0" onClick={handleImportContacts} disabled={importingContacts} title="Import from device contacts">
+        <Button size="sm" variant="ghost" className="h-9 gap-1.5 shrink-0" onClick={handleImportContacts} disabled={importingContacts} title={t('importContacts')}>
           {importingContacts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
         </Button>
       </div>
       {showAddForm && (
         <form onSubmit={handleAddContact} className="p-3 border-b border-border bg-secondary/40 flex flex-col gap-2">
-          <Input placeholder="Name *" value={addName} onChange={(e) => setAddName(e.target.value)} className="h-9 bg-background" required autoFocus />
-          <Input placeholder="Phone (+49171…)" value={addPhone} onChange={(e) => setAddPhone(e.target.value)} type="tel" className="h-9 bg-background" />
-          <Input placeholder="Email (optional)" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} type="email" className="h-9 bg-background" />
+          <Input placeholder={t('namePlaceholder')} value={addName} onChange={(e) => setAddName(e.target.value)} className="h-9 bg-background" required autoFocus />
+          <Input placeholder={t('phonePlaceholderShort')} value={addPhone} onChange={(e) => setAddPhone(e.target.value)} type="tel" className="h-9 bg-background" />
+          <Input placeholder={t('emailPlaceholder')} value={addEmail} onChange={(e) => setAddEmail(e.target.value)} type="email" className="h-9 bg-background" />
           <Button type="submit" size="sm" disabled={savingContact || !addName.trim()} className="h-9">
-            {savingContact ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save contact"}
+            {savingContact ? <Loader2 className="h-4 w-4 animate-spin" /> : t('saveContact')}
           </Button>
         </form>
       )}
@@ -907,11 +913,11 @@ function ContactsPanel({ contacts, filteredContacts, contactsLoading, contactSea
             <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
             {contacts.length === 0 ? (
               <>
-                <p className="text-muted-foreground font-medium">No contacts yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Tap + Add or Import to get started</p>
+                <p className="text-muted-foreground font-medium">{t('noContacts')}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('noContactsHint')}</p>
               </>
             ) : (
-              <p className="text-muted-foreground">No contacts match &quot;{contactSearch}&quot;</p>
+              <p className="text-muted-foreground">{t('noContactsMatch', { search: contactSearch })}</p>
             )}
           </div>
         ) : (
@@ -930,11 +936,11 @@ function ContactsPanel({ contacts, filteredContacts, contactsLoading, contactSea
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {contact.phone_number && (
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => handleCallContact(contact, "audio")} disabled={creating} title="Call">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => handleCallContact(contact, "audio")} disabled={creating} title={t('call')}>
                         <Phone className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteContact(contact.id, contact.name)} disabled={deletingContactId === contact.id} title="Delete">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteContact(contact.id, contact.name)} disabled={deletingContactId === contact.id} title={tc('delete')}>
                       {deletingContactId === contact.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
                   </div>

@@ -101,6 +101,9 @@ export default function SessionDetailPage() {
   const router = useRouter()
   const sessionId = params.id as string
   const t = useTranslations('sessionDetail')
+  const tCommon = useTranslations('common')
+  const tOutputs = useTranslations('outputs')
+  const tErrors = useTranslations('errors')
   const locale = useLocale()
   const { user, profile } = useAuth()
   const isAdmin = (profile as any)?.role === 'admin'
@@ -219,6 +222,7 @@ export default function SessionDetailPage() {
           transcriptCorrections: data.corrections
         } : null)
 
+        // TODO: i18n - "Corrections saved successfully" needs a new key
         toast.success('Corrections saved successfully')
       }
 
@@ -334,7 +338,7 @@ export default function SessionDetailPage() {
         throw new Error(data.error || 'Failed to delete output')
       }
       setOutputs((prev) => prev.filter((o) => o.id !== outputId))
-      toast.success('Output deleted')
+      toast.success(tOutputs('deleteSuccess'))
     } catch (error) {
       console.error('Delete output error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to delete output')
@@ -494,7 +498,7 @@ export default function SessionDetailPage() {
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Loading session...</p>
+          <p className="mt-2 text-sm text-muted-foreground">{tCommon('loading')}</p>
         </div>
       </div>
     )
@@ -504,11 +508,11 @@ export default function SessionDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <p className="text-muted-foreground">Session not found</p>
+          <p className="text-muted-foreground">{tErrors('sessionNotFound')}</p>
           <Link href="/sessions">
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Sessions
+              {tCommon('back')}
             </Button>
           </Link>
         </div>
@@ -659,7 +663,7 @@ export default function SessionDetailPage() {
           <Link href="/sessions">
             <Button variant="ghost" size="sm" className="gap-1.5">
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back</span>
+              <span className="hidden sm:inline">{tCommon('back')}</span>
             </Button>
           </Link>
           <div className="min-w-0">
@@ -670,6 +674,7 @@ export default function SessionDetailPage() {
               placeholder="Session name"
               className="text-lg font-semibold text-foreground truncate max-w-[300px] md:max-w-[500px]"
             />
+            {/* TODO: i18n - "Session Review" needs a new key */}
             <p className="text-xs text-muted-foreground">
               Session Review
             </p>
@@ -683,7 +688,7 @@ export default function SessionDetailPage() {
               <span className="text-destructive flex-1 min-w-0 break-words">{session.lastError}</span>
               {isRetryable && (session.audioUrl || isAdmin) ? (
                 <Button size="sm" variant="outline" className="shrink-0 self-end sm:self-auto" onClick={handleRetryTranscription} disabled={retryingTranscribe}>
-                  {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry'}
+                  {retryingTranscribe ? <Loader2 className="h-4 w-4 animate-spin" /> : tCommon('retry')}
                 </Button>
               ) : null}
             </div>
@@ -713,6 +718,7 @@ export default function SessionDetailPage() {
               className="gap-1.5"
             >
               <UserRoundPlus className="h-4 w-4" />
+              {/* TODO: i18n - "Hand off" needs a new key */}
               <span className="hidden sm:inline">Hand off</span>
             </Button>
           )}
@@ -784,6 +790,7 @@ export default function SessionDetailPage() {
       <Dialog open={handOffOpen} onOpenChange={setHandOffOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
+            {/* TODO: i18n - "Hand off session" needs a new key */}
             <DialogTitle>Hand off session</DialogTitle>
             <DialogDescription>
               Transfer this session to a colleague. Enter their email address. They will see it in their sessions.
@@ -805,9 +812,10 @@ export default function SessionDetailPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setHandOffOpen(false)} disabled={handOffLoading}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button onClick={handleHandOff} disabled={!handOffEmail.trim() || handOffLoading}>
+              {/* TODO: i18n - "Hand off" button needs a new key */}
               {handOffLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Hand off'}
             </Button>
           </DialogFooter>
@@ -825,7 +833,7 @@ export default function SessionDetailPage() {
               onClick={() => setActiveTab("transcript")}
             >
               <ScrollText className="h-4 w-4" />
-              Transcript
+              {t('transcript')}
             </Button>
             <Button
               variant={activeTab === "context" ? "default" : "ghost"}
@@ -833,7 +841,7 @@ export default function SessionDetailPage() {
               onClick={() => setActiveTab("context")}
             >
               <Settings2 className="h-4 w-4" />
-              Context
+              {t('context')}
             </Button>
             <Button
               variant={activeTab === "outputs" ? "default" : "ghost"}
@@ -841,7 +849,7 @@ export default function SessionDetailPage() {
               onClick={() => setActiveTab("outputs")}
             >
               <FileText className="h-4 w-4" />
-              Outputs
+              {t('outputs')}
             </Button>
           </div>
         </div>
@@ -872,6 +880,7 @@ export default function SessionDetailPage() {
                 {analyzing && (
                   <div className="flex items-center gap-2 p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                    {/* TODO: i18n - "Analyzing transcript..." / "Extracting participants, purpose, and context" need new keys */}
                     <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
                     <p className="text-xs text-muted-foreground">Extracting participants, purpose, and context</p>
                   </div>
@@ -879,9 +888,10 @@ export default function SessionDetailPage() {
                 {/* Recording date/time from audio metadata */}
                 {session?.recordedAt && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-foreground">Recording Info</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{t('recordedAt')}</h3>
                     <div className="p-3 rounded-lg bg-secondary/50">
                       <p className="text-sm text-foreground">{formatDetailDate(session.recordedAt)}</p>
+                      {/* TODO: i18n - "From audio file metadata" needs a new key */}
                       <p className="text-xs text-muted-foreground mt-0.5">From audio file metadata</p>
                     </div>
                   </div>
@@ -891,7 +901,7 @@ export default function SessionDetailPage() {
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <Sparkles className="h-4 w-4" />
-                      Session Summary
+                      {t('summary')}
                     </h3>
                     <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
                       <FormattedSummary text={session.speechmaticsSummary} />
@@ -902,11 +912,13 @@ export default function SessionDetailPage() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Settings2 className="h-4 w-4" />
+                    {/* TODO: i18n - "Recording Classification" needs a new key */}
                     Recording Classification
                   </h3>
                   <div className="space-y-2">
                     {session?.recordingType && (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                        {/* TODO: i18n - "Type" label needs a new key */}
                         <span className="text-sm text-muted-foreground">Type</span>
                         <Badge variant="outline" className="capitalize">
                           {session.recordingType.replace(/_/g, ' ')}
@@ -938,11 +950,11 @@ export default function SessionDetailPage() {
                 {/* Extracted Context */}
                 {session?.extractedContext && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-foreground">Extracted Context</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{t('context')}</h3>
                     
                     {session.extractedContext.participants?.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Participants</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t('speakers')}</p>
                         <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
                           {session.extractedContext.participants.map((participant: any, idx: number) => {
                             const name = typeof participant === 'string' ? participant : participant.name
@@ -952,6 +964,7 @@ export default function SessionDetailPage() {
                             return (
                               <div key={idx} className="flex items-center gap-2 flex-wrap">
                                 <span className="text-foreground font-medium">{name}</span>
+                                {/* TODO: i18n - "You" badge needs common.you key */}
                                 {isUser && <Badge variant="default" className="text-xs px-2 py-0">You</Badge>}
                                 {role && <span className="text-xs text-muted-foreground">• {role}</span>}
                               </div>
@@ -963,7 +976,7 @@ export default function SessionDetailPage() {
 
                     {session.extractedContext.purpose && (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Purpose</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t('purpose')}</p>
                         <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
                           {session.extractedContext.purpose}
                         </p>
@@ -972,6 +985,7 @@ export default function SessionDetailPage() {
 
                     {session.extractedContext.agenda?.length > 0 && (
                       <div className="space-y-2">
+                        {/* TODO: i18n - "Agenda" needs a new key */}
                         <p className="text-xs font-medium text-muted-foreground">Agenda</p>
                         <ul className="text-sm text-foreground p-3 rounded-lg bg-secondary/50 space-y-1">
                           {session.extractedContext.agenda.map((item, i) => (
@@ -986,6 +1000,7 @@ export default function SessionDetailPage() {
 
                     {session.extractedContext.venue && (
                       <div className="space-y-2">
+                        {/* TODO: i18n - "Venue" needs a new key */}
                         <p className="text-xs font-medium text-muted-foreground">Venue</p>
                         <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
                           {session.extractedContext.venue}
@@ -997,7 +1012,7 @@ export default function SessionDetailPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                           <ShieldCheck className="h-3.5 w-3.5" />
-                          Transcription Consent
+                          {t('consent')}
                         </p>
                         <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
                           {session.extractedContext.consent.summary && (
@@ -1005,6 +1020,7 @@ export default function SessionDetailPage() {
                           )}
                           {session.extractedContext.consent.participantsConsented && session.extractedContext.consent.participantsConsented.length > 0 && (
                             <p className="text-xs text-muted-foreground">
+                              {/* TODO: i18n - "Consented:" needs a new key */}
                               Consented: {session.extractedContext.consent.participantsConsented.join(", ")}
                             </p>
                           )}
@@ -1016,6 +1032,7 @@ export default function SessionDetailPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                           <MessageSquare className="h-3.5 w-3.5" />
+                          {/* TODO: i18n - "Spoken Commands" needs a new key */}
                           Spoken Commands
                         </p>
                         <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
@@ -1039,12 +1056,13 @@ export default function SessionDetailPage() {
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                       <ShieldCheck className="h-4 w-4" />
-                      Call Consent
+                      {t('consent')}
                     </h3>
                     <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
                       {session.consentLogs.map((log: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
+                            {/* TODO: i18n - "Participant" fallback needs a new key */}
                             <span className="text-foreground">{log.participant_name || log.participant_identity || "Participant"}</span>
                             {log.created_at && (
                               <p className="text-[10px] text-muted-foreground">
@@ -1053,7 +1071,7 @@ export default function SessionDetailPage() {
                             )}
                           </div>
                           <Badge variant={log.granted ? "default" : "outline"} className={cn("shrink-0", log.granted ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0")}>
-                            {log.granted ? "Agreed" : "Declined"}
+                            {log.granted ? t('agreed') : t('declined')}
                           </Badge>
                         </div>
                       ))}
@@ -1065,6 +1083,7 @@ export default function SessionDetailPage() {
                 {!analyzing && !session?.recordingType && !session?.domain && !session?.extractedContext && !((session?.consentLogs ?? []).length > 0) && (
                   <div className="text-center py-8">
                     <Settings2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
+                    {/* TODO: i18n - "No context extracted yet" / "Context will appear..." need new keys */}
                     <p className="text-sm text-muted-foreground mb-2">No context extracted yet</p>
                     <p className="text-xs text-muted-foreground">
                       Context will appear after AI analysis completes
@@ -1081,8 +1100,9 @@ export default function SessionDetailPage() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    Suggested for this session
+                    {t('suggestedFormats')}
                   </h3>
+                  {/* TODO: i18n - "Based on this conversation's topic and domain" needs a new key */}
                   <p className="text-xs text-muted-foreground">Based on this conversation&apos;s topic and domain</p>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {session.suggestedOutputFormats.map((suggestion, idx) => (
@@ -1103,10 +1123,11 @@ export default function SessionDetailPage() {
                           {generatingSuggestionIndex === idx ? (
                             <>
                               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                              {/* TODO: i18n - "Generating..." needs a new key */}
                               Generating...
                             </>
                           ) : (
-                            'Generate'
+                            t('generateOutput')
                           )}
                         </Button>
                       </div>
@@ -1116,23 +1137,23 @@ export default function SessionDetailPage() {
               )}
               {/* Your outputs */}
               {outputsLoading ? (
-                <p className="text-sm text-muted-foreground">Loading outputs...</p>
+                <p className="text-sm text-muted-foreground">{tOutputs('loadingOutputs')}</p>
               ) : outputs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 gap-4">
                   <p className="text-sm text-muted-foreground text-center">
-                    No outputs yet. Generate from suggestions above or choose a template.
+                    {t('noOutputs')}
                   </p>
                   <Button size="sm" onClick={() => { setSelectedTemplateId(null); setGenerateModalOpen(true) }}>
-                    Generate Output
+                    {t('generateOutput')}
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{t('outputs')}</h3>
                     <Button size="sm" variant="outline" onClick={() => { setSelectedTemplateId(null); setGenerateModalOpen(true) }}>
                       <LayoutTemplate className="h-3.5 w-3.5 mr-1.5" />
-                      Generate Output
+                      {t('generateOutput')}
                     </Button>
                   </div>
                   {outputs.map((output) => (
@@ -1142,7 +1163,7 @@ export default function SessionDetailPage() {
                           <h4 className="text-sm font-medium break-words line-clamp-2">{output.templateName}</h4>
                           <p className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>
-                              {new Date(output.createdAt).toLocaleDateString('en-US', { 
+                              {new Date(output.createdAt).toLocaleDateString(locale, { 
                                 month: 'short', 
                                 day: 'numeric',
                                 hour: '2-digit',
@@ -1166,7 +1187,7 @@ export default function SessionDetailPage() {
                             className="h-7 w-7"
                             onClick={() => handleSaveOutputAsTemplate(output.id)}
                             disabled={savingOutputAsTemplate === output.id}
-                            title="Save as template"
+                            title={tCommon('save')}
                           >
                             {savingOutputAsTemplate === output.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1181,31 +1202,31 @@ export default function SessionDetailPage() {
                             onClick={async () => {
                               try {
                                 await navigator.clipboard.writeText(output.content)
-                                toast.success('Output copied to clipboard')
+                                toast.success(tOutputs('copySuccess'))
                               } catch (err) {
-                                toast.error('Failed to copy to clipboard')
+                                toast.error(tOutputs('copyFailed'))
                               }
                             }}
-                            title="Copy"
+                            title={tCommon('copy')}
                           >
                             <Copy className="h-3.5 w-3.5" />
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Download">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={tCommon('download')}>
                                 <Download className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'md').then(() => toast.success('Output downloaded')); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'md').then(() => toast.success(tCommon('download'))); }}>
                                 MD
                               </DropdownMenuItem>
                               {isPdfExportSupportedLanguage(output.language) && (
-                                <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'pdf').then(() => toast.success('Output downloaded')); }}>
+                                <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'pdf').then(() => toast.success(tCommon('download'))); }}>
                                   PDF
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'docx').then(() => toast.success('Output downloaded')); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'docx').then(() => toast.success(tCommon('download'))); }}>
                                 DOCX
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -1215,7 +1236,7 @@ export default function SessionDetailPage() {
                             size="icon"
                             className="h-7 w-7"
                             asChild
-                            title="Open full page"
+                            title={tOutputs('open')}
                           >
                             <Link href={`/outputs/${output.id}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
@@ -1227,7 +1248,7 @@ export default function SessionDetailPage() {
                             className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => handleDeleteOutput(output.id, output.templateName || 'Output')}
                             disabled={deletingOutputId === output.id}
-                            title="Delete"
+                            title={tCommon('delete')}
                           >
                             {deletingOutputId === output.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1280,6 +1301,7 @@ export default function SessionDetailPage() {
                 {analyzing && (
                   <div className="flex items-center gap-2 p-4 rounded-lg bg-primary/10 border border-primary/20">
                     <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                    {/* TODO: i18n - "Analyzing transcript..." / "Extracting participants, purpose, and context" need new keys */}
                     <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
                     <p className="text-xs text-muted-foreground">Extracting participants, purpose, and context</p>
                   </div>
@@ -1287,9 +1309,10 @@ export default function SessionDetailPage() {
                 {/* Recording date/time from audio metadata */}
                 {session?.recordedAt && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-foreground">Recording Info</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{t('recordedAt')}</h3>
                     <div className="p-3 rounded-lg bg-secondary/50">
                       <p className="text-sm text-foreground">{formatDetailDate(session.recordedAt)}</p>
+                      {/* TODO: i18n - "From audio file metadata" needs a new key */}
                       <p className="text-xs text-muted-foreground mt-0.5">From audio file metadata</p>
                     </div>
                   </div>
@@ -1299,7 +1322,7 @@ export default function SessionDetailPage() {
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                       <Sparkles className="h-4 w-4" />
-                      Session Summary
+                      {t('summary')}
                     </h3>
                     <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
                       <FormattedSummary text={session.speechmaticsSummary} />
@@ -1310,11 +1333,13 @@ export default function SessionDetailPage() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Settings2 className="h-4 w-4" />
+                    {/* TODO: i18n - "Recording Classification" needs a new key */}
                     Recording Classification
                   </h3>
                   <div className="space-y-2">
                     {session?.recordingType && (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                        {/* TODO: i18n - "Type" label needs a new key */}
                         <span className="text-sm text-muted-foreground">Type</span>
                         <Badge variant="outline" className="capitalize">
                           {session.recordingType.replace(/_/g, ' ')}
@@ -1323,6 +1348,7 @@ export default function SessionDetailPage() {
                     )}
                     {session?.domains && session.domains.length > 0 && (
                       <div className="space-y-2">
+                        {/* TODO: i18n - "Domains" needs a new key */}
                         <span className="text-xs font-medium text-muted-foreground mb-2 block">Domains</span>
                         {session.domains.map((domain: any, idx: number) => (
                           <div key={idx} className="p-3 rounded-lg bg-secondary/50">
@@ -1347,11 +1373,11 @@ export default function SessionDetailPage() {
                 {/* Extracted Context */}
                 {session?.extractedContext && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-foreground">Extracted Context</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{t('context')}</h3>
                     
                     {session.extractedContext.participants?.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Participants</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t('speakers')}</p>
                         <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
                           {session.extractedContext.participants.map((participant: any, idx: number) => {
                             const name = typeof participant === 'string' ? participant : participant.name
@@ -1361,6 +1387,7 @@ export default function SessionDetailPage() {
                             return (
                               <div key={idx} className="flex items-center gap-2 flex-wrap">
                                 <span className="text-foreground font-medium">{name}</span>
+                                {/* TODO: i18n - "You" badge needs common.you key */}
                                 {isUser && <Badge variant="default" className="text-xs px-2 py-0">You</Badge>}
                                 {role && <span className="text-xs text-muted-foreground">• {role}</span>}
                               </div>
@@ -1372,7 +1399,7 @@ export default function SessionDetailPage() {
 
                     {session.extractedContext.purpose && (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Purpose</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t('purpose')}</p>
                         <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
                           {session.extractedContext.purpose}
                         </p>
@@ -1381,6 +1408,7 @@ export default function SessionDetailPage() {
 
                     {session.extractedContext.agenda?.length > 0 && (
                       <div className="space-y-2">
+                        {/* TODO: i18n - "Agenda" needs a new key */}
                         <p className="text-xs font-medium text-muted-foreground">Agenda</p>
                         <ul className="text-sm text-foreground p-3 rounded-lg bg-secondary/50 space-y-1">
                           {session.extractedContext.agenda.map((item, i) => (
@@ -1395,6 +1423,7 @@ export default function SessionDetailPage() {
 
                     {session.extractedContext.venue && (
                       <div className="space-y-2">
+                        {/* TODO: i18n - "Venue" needs a new key */}
                         <p className="text-xs font-medium text-muted-foreground">Venue</p>
                         <p className="text-sm text-foreground p-3 rounded-lg bg-secondary/50">
                           {session.extractedContext.venue}
@@ -1406,7 +1435,7 @@ export default function SessionDetailPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                           <ShieldCheck className="h-3.5 w-3.5" />
-                          Transcription Consent
+                          {t('consent')}
                         </p>
                         <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
                           {session.extractedContext.consent.summary && (
@@ -1414,6 +1443,7 @@ export default function SessionDetailPage() {
                           )}
                           {session.extractedContext.consent.participantsConsented && session.extractedContext.consent.participantsConsented.length > 0 && (
                             <p className="text-xs text-muted-foreground">
+                              {/* TODO: i18n - "Consented:" needs a new key */}
                               Consented: {session.extractedContext.consent.participantsConsented.join(", ")}
                             </p>
                           )}
@@ -1425,6 +1455,7 @@ export default function SessionDetailPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                           <MessageSquare className="h-3.5 w-3.5" />
+                          {/* TODO: i18n - "Spoken Commands" needs a new key */}
                           Spoken Commands
                         </p>
                         <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
@@ -1448,12 +1479,13 @@ export default function SessionDetailPage() {
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                       <ShieldCheck className="h-4 w-4" />
-                      Call Consent
+                      {t('consent')}
                     </h3>
                     <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-2">
                       {session.consentLogs.map((log: any, idx: number) => (
                         <div key={idx} className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
+                            {/* TODO: i18n - "Participant" fallback needs a new key */}
                             <span className="text-foreground">{log.participant_name || log.participant_identity || "Participant"}</span>
                             {log.created_at && (
                               <p className="text-[10px] text-muted-foreground">
@@ -1462,7 +1494,7 @@ export default function SessionDetailPage() {
                             )}
                           </div>
                           <Badge variant={log.granted ? "default" : "outline"} className={cn("shrink-0", log.granted ? "bg-success/20 text-success border-0" : "bg-destructive/20 text-destructive border-0")}>
-                            {log.granted ? "Agreed" : "Declined"}
+                            {log.granted ? t('agreed') : t('declined')}
                           </Badge>
                         </div>
                       ))}
@@ -1474,6 +1506,7 @@ export default function SessionDetailPage() {
                 {!analyzing && !session?.recordingType && !session?.domain && !session?.extractedContext && !((session?.consentLogs ?? []).length > 0) && (
                   <div className="text-center py-8">
                     <Settings2 className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
+                    {/* TODO: i18n - "No context extracted yet" / "Context will appear..." need new keys */}
                     <p className="text-sm text-muted-foreground mb-2">No context extracted yet</p>
                     <p className="text-xs text-muted-foreground">
                       Context will appear after AI analysis completes
@@ -1491,8 +1524,9 @@ export default function SessionDetailPage() {
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" />
-                    Suggested for this session
+                    {t('suggestedFormats')}
                   </h3>
+                  {/* TODO: i18n - "Based on this conversation's topic and domain" needs a new key */}
                   <p className="text-xs text-muted-foreground">Based on this conversation&apos;s topic and domain</p>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {session.suggestedOutputFormats.map((suggestion, idx) => (
@@ -1513,10 +1547,11 @@ export default function SessionDetailPage() {
                           {generatingSuggestionIndex === idx ? (
                             <>
                               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                              {/* TODO: i18n - "Generating..." needs a new key */}
                               Generating...
                             </>
                           ) : (
-                            'Generate'
+                            t('generateOutput')
                           )}
                         </Button>
                       </div>
@@ -1526,23 +1561,23 @@ export default function SessionDetailPage() {
               )}
               {/* Your outputs */}
               {outputsLoading ? (
-                <p className="text-sm text-muted-foreground">Loading outputs...</p>
+                <p className="text-sm text-muted-foreground">{tOutputs('loadingOutputs')}</p>
               ) : outputs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 gap-4">
                   <p className="text-sm text-muted-foreground text-center">
-                    No outputs yet. Generate from suggestions above or choose a template.
+                    {t('noOutputs')}
                   </p>
                   <Button size="sm" onClick={() => { setSelectedTemplateId(null); setGenerateModalOpen(true) }}>
-                    Generate Output
+                    {t('generateOutput')}
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground">Your outputs</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{t('outputs')}</h3>
                     <Button size="sm" variant="outline" onClick={() => { setSelectedTemplateId(null); setGenerateModalOpen(true) }}>
                       <LayoutTemplate className="h-3.5 w-3.5 mr-1.5" />
-                      Generate Output
+                      {t('generateOutput')}
                     </Button>
                   </div>
                   {outputs.map((output) => (
@@ -1552,7 +1587,7 @@ export default function SessionDetailPage() {
                           <h4 className="text-sm font-medium break-words line-clamp-2">{output.templateName}</h4>
                           <p className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>
-                              {new Date(output.createdAt).toLocaleDateString('en-US', { 
+                              {new Date(output.createdAt).toLocaleDateString(locale, { 
                                 month: 'short', 
                                 day: 'numeric',
                                 hour: '2-digit',
@@ -1576,7 +1611,7 @@ export default function SessionDetailPage() {
                             className="h-7 w-7"
                             onClick={() => handleSaveOutputAsTemplate(output.id)}
                             disabled={savingOutputAsTemplate === output.id}
-                            title="Save as template"
+                            title={tCommon('save')}
                           >
                             {savingOutputAsTemplate === output.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1591,31 +1626,31 @@ export default function SessionDetailPage() {
                             onClick={async () => {
                               try {
                                 await navigator.clipboard.writeText(output.content)
-                                toast.success('Output copied to clipboard')
+                                toast.success(tOutputs('copySuccess'))
                               } catch (err) {
-                                toast.error('Failed to copy to clipboard')
+                                toast.error(tOutputs('copyFailed'))
                               }
                             }}
-                            title="Copy"
+                            title={tCommon('copy')}
                           >
                             <Copy className="h-3.5 w-3.5" />
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Download">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title={tCommon('download')}>
                                 <Download className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'md').then(() => toast.success('Output downloaded')); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'md').then(() => toast.success(tCommon('download'))); }}>
                                 MD
                               </DropdownMenuItem>
                               {isPdfExportSupportedLanguage(output.language) && (
-                                <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'pdf').then(() => toast.success('Output downloaded')); }}>
+                                <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'pdf').then(() => toast.success(tCommon('download'))); }}>
                                   PDF
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'docx').then(() => toast.success('Output downloaded')); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'docx').then(() => toast.success(tCommon('download'))); }}>
                                 DOCX
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -1625,7 +1660,7 @@ export default function SessionDetailPage() {
                             size="icon"
                             className="h-7 w-7"
                             asChild
-                            title="Open full page"
+                            title={tOutputs('open')}
                           >
                             <Link href={`/outputs/${output.id}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
@@ -1637,7 +1672,7 @@ export default function SessionDetailPage() {
                             className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => handleDeleteOutput(output.id, output.templateName || 'Output')}
                             disabled={deletingOutputId === output.id}
-                            title="Delete"
+                            title={tCommon('delete')}
                           >
                             {deletingOutputId === output.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />

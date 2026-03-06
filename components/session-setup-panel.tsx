@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import {
   ChevronDown,
@@ -68,30 +69,24 @@ function getSpeakerIds(session: Session): string[] {
   return Array.from(speakers).sort()
 }
 
-const recordingTypeLabels: Record<RecordingType, string> = {
-  meeting: "Meeting",
-  interview: "Interview",
-  presentation: "Presentation",
-  consultation: "Consultation",
-  call_inbound: "Incoming Call",
-  call_outbound: "Outgoing Call",
-  dictation: "Dictation",
-  ai_agent_conversation: "AI Agent Conversation",
-  legal_deposition: "Legal Deposition",
-  sales_call: "Sales Call",
-  lecture: "Lecture",
-  other: "Other",
+const recordingTypeToLabelKey = (type: string): string => {
+  const map: Record<string, string> = {
+    call_inbound: 'incoming_call',
+    call_outbound: 'outgoing_call',
+    ai_agent_conversation: 'ai_agent',
+  }
+  return map[type] || type
 }
 
-const domainLabels: Record<Domain, string> = {
-  legal: "Legal",
-  sales: "Sales",
-  hr: "Human Resources",
-  medical: "Medical",
-  education: "Education",
-  consulting: "Consulting",
-  general: "General",
-}
+const RECORDING_TYPES: RecordingType[] = [
+  'meeting', 'interview', 'presentation', 'consultation',
+  'call_inbound', 'call_outbound', 'dictation', 'ai_agent_conversation',
+  'legal_deposition', 'sales_call', 'lecture', 'other',
+]
+
+const DOMAINS: Domain[] = [
+  'legal', 'sales', 'hr', 'medical', 'education', 'consulting', 'general',
+]
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
   const isHigh = confidence >= 0.8
@@ -118,6 +113,9 @@ export function SessionSetupPanel({
   onContextSaved,
   analyzing = false,
 }: SessionSetupPanelProps) {
+  const t = useTranslations('sessionSetup')
+  const tl = useTranslations('labels')
+
   const [isContextOpen, setIsContextOpen] = useState(false)
   const [selectedRecordingType, setSelectedRecordingType] = useState<RecordingType | undefined>(
     session.recordingType
@@ -298,10 +296,10 @@ export function SessionSetupPanel({
       })
       setHasChanges(false)
       
-      toast.success('Context saved successfully', {
+      toast.success(t('contextSaved'), {
         description: applyToTranscript 
-          ? 'Corrections applied to transcript' 
-          : 'Your selections won\'t be overwritten by AI analysis'
+          ? t('correctionsSaved') 
+          : t('selectionsLocked')
       })
       
       // Notify parent to refresh session data
@@ -310,8 +308,8 @@ export function SessionSetupPanel({
       }
     } catch (error) {
       console.error('Error saving context:', error)
-      toast.error('Failed to save context', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+      toast.error(t('saveFailed'), {
+        description: error instanceof Error ? error.message : t('unknownError')
       })
     } finally {
       setIsSaving(false)
@@ -330,10 +328,10 @@ export function SessionSetupPanel({
       if (!response.ok) throw new Error('Failed to save corrections')
       const data = await response.json()
       setWordCorrections(data.corrections.word_corrections || {})
-      toast.success('Word corrections saved')
+      toast.success(t('wordCorrectionsSaved'))
       onContextSaved?.()
     } catch (error) {
-      toast.error('Failed to save word corrections')
+      toast.error(t('wordCorrectionsFailed'))
     } finally {
       setSavingWordCorrections(false)
     }
@@ -371,12 +369,12 @@ export function SessionSetupPanel({
               {isSaving ? (
                 <>
                   <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></div>
-                  Saving...
+                  {t('saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-3.5 w-3.5 mr-2" />
-                  Save Context
+                  {t('saveContext')}
                 </>
               )}
             </Button>
@@ -389,8 +387,8 @@ export function SessionSetupPanel({
             {analyzing && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
                 <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-                <p className="text-sm font-medium text-foreground">Analyzing transcript...</p>
-                <p className="text-xs text-muted-foreground">Participants and context will appear shortly</p>
+                <p className="text-sm font-medium text-foreground">{t('analyzingTranscript')}</p>
+                <p className="text-xs text-muted-foreground">{t('analyzingHint')}</p>
               </div>
             )}
 
@@ -399,11 +397,11 @@ export function SessionSetupPanel({
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-info" />
-              AI Suggestions
+              {t('aiSuggestions')}
               {initialValues.recordingType && (
                 <Badge variant="outline" className="text-[10px] ml-auto">
                   <Check className="h-3 w-3 mr-1" />
-                  Locked
+                  {t('locked')}
                 </Badge>
               )}
             </CardTitle>
@@ -411,7 +409,7 @@ export function SessionSetupPanel({
           <CardContent className="space-y-4">
             {/* Recording Type */}
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Recording Type</Label>
+              <Label className="text-xs text-muted-foreground">{t('recordingType')}</Label>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {recordingTypeSuggestions.map((suggestion) => (
                   <button
@@ -434,12 +432,12 @@ export function SessionSetupPanel({
                 onValueChange={(v) => setSelectedRecordingType(v as RecordingType)}
               >
                 <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Override selection..." />
+                  <SelectValue placeholder={t('overrideSelection')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(recordingTypeLabels).map(([key, label]) => (
+                  {RECORDING_TYPES.map((key) => (
                     <SelectItem key={key} value={key}>
-                      {label}
+                      {tl('recordingTypes.' + recordingTypeToLabelKey(key))}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -448,7 +446,7 @@ export function SessionSetupPanel({
 
             {/* Domain */}
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Domain</Label>
+              <Label className="text-xs text-muted-foreground">{t('domain')}</Label>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {domainSuggestions.map((suggestion) => (
                   <button
@@ -471,12 +469,12 @@ export function SessionSetupPanel({
                 onValueChange={(v) => setSelectedDomain(v as Domain)}
               >
                 <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Override selection..." />
+                  <SelectValue placeholder={t('overrideSelection')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(domainLabels).map(([key, label]) => (
+                  {DOMAINS.map((key) => (
                     <SelectItem key={key} value={key}>
-                      {label}
+                      {tl('domains.' + key)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -493,7 +491,7 @@ export function SessionSetupPanel({
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
-                    Extracted Context
+                    {t('extractedContext')}
                   </span>
                   {isContextOpen ? (
                     <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -508,12 +506,12 @@ export function SessionSetupPanel({
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     <Users className="h-3 w-3" />
-                    Participants
+                    {t('participants')}
                   </Label>
                   <Input
                     value={participants}
                     onChange={(e) => setParticipants(e.target.value)}
-                    placeholder="Enter participant names..."
+                    placeholder={t('participantsPlaceholder')}
                     className="bg-secondary border-border text-sm"
                   />
                   <div className="space-y-2 pt-1">
@@ -529,22 +527,22 @@ export function SessionSetupPanel({
                         htmlFor="apply-to-transcript-slide" 
                         className="text-xs text-muted-foreground cursor-pointer font-normal"
                       >
-                        Apply name corrections to transcript
+                        {t('applyNameCorrections')}
                       </Label>
                     </div>
                     
                     {/* User Identity Selection */}
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">
-                        Which participant are you?
+                        {t('whichParticipant')}
                       </Label>
                       <Select value={userIdentity} onValueChange={setUserIdentity}>
                         <SelectTrigger className="h-8 text-xs bg-secondary border-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Not in conversation</SelectItem>
-                          <SelectItem value="listener">Listener only</SelectItem>
+                          <SelectItem value="none">{t('notInConversation')}</SelectItem>
+                          <SelectItem value="listener">{t('listenerOnly')}</SelectItem>
                           {getSpeakerIds(session).map((speaker) => (
                             <SelectItem key={speaker} value={speaker}>
                               {speaker}
@@ -558,36 +556,36 @@ export function SessionSetupPanel({
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     <Target className="h-3 w-3" />
-                    Purpose
+                    {t('purpose')}
                   </Label>
                   <Textarea
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
-                    placeholder="Describe the purpose..."
+                    placeholder={t('purposePlaceholder')}
                     className="bg-secondary border-border text-sm min-h-[60px]"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     <ListTodo className="h-3 w-3" />
-                    Agenda
+                    {t('agenda')}
                   </Label>
                   <Textarea
                     value={agenda}
                     onChange={(e) => setAgenda(e.target.value)}
-                    placeholder="One item per line..."
+                    placeholder={t('agendaPlaceholder')}
                     className="bg-secondary border-border text-sm min-h-[60px]"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
-                    Venue
+                    {t('venue')}
                   </Label>
                   <Input
                     value={venue}
                     onChange={(e) => setVenue(e.target.value)}
-                    placeholder="Location or meeting type..."
+                    placeholder={t('venuePlaceholder')}
                     className="bg-secondary border-border text-sm"
                   />
                 </div>
@@ -595,27 +593,27 @@ export function SessionSetupPanel({
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground flex items-center gap-1">
                       <Shield className="h-3 w-3" />
-                      Consent
+                      {t('consent')}
                     </Label>
                     <div className="rounded-md bg-secondary/50 border border-border px-3 py-2 text-sm">
                       {session.extractedContext.consent.discussed ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5 text-foreground">
                             <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                            <span>Consent discussed</span>
+                            <span>{t('consentDiscussed')}</span>
                           </div>
                           {session.extractedContext.consent.summary && (
                             <p className="text-muted-foreground text-xs pl-5">{session.extractedContext.consent.summary}</p>
                           )}
                           {session.extractedContext.consent.participantsConsented?.length ? (
                             <p className="text-muted-foreground text-xs pl-5">
-                              Participants: {session.extractedContext.consent.participantsConsented.join(', ')}
+                              {t('participants')}: {session.extractedContext.consent.participantsConsented.join(', ')}
                             </p>
                           ) : null}
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <span>No consent exchange detected</span>
+                          <span>{t('noConsentDetected')}</span>
                         </div>
                       )}
                     </div>
@@ -625,7 +623,7 @@ export function SessionSetupPanel({
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground flex items-center gap-1">
                       <Terminal className="h-3 w-3" />
-                      Extracted commands
+                      {t('extractedCommands')}
                     </Label>
                     <div className="space-y-2">
                       {session.extractedContext.spokenCommands.map((cmd, idx) => (
@@ -652,13 +650,13 @@ export function SessionSetupPanel({
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Edit3 className="h-4 w-4 text-muted-foreground" />
-              Word Corrections
+              {t('wordCorrections')}
               <Tooltip>
                 <TooltipTrigger>
                   <Info className="h-3.5 w-3.5 text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[220px]">
-                  Fix misheard words in the transcript (e.g. SPQR → speaker). Changes apply to display and AI output.
+                  {t('wordCorrectionsTooltip')}
                 </TooltipContent>
               </Tooltip>
             </CardTitle>
@@ -668,14 +666,14 @@ export function SessionSetupPanel({
               <Input
                 value={newOriginal}
                 onChange={(e) => setNewOriginal(e.target.value)}
-                placeholder="Misheard (e.g. SPQR)"
+                placeholder={t('misheardPlaceholder')}
                 className="bg-secondary border-border text-sm flex-1"
               />
               <span className="text-muted-foreground self-center text-xs">→</span>
               <Input
                 value={newCorrected}
                 onChange={(e) => setNewCorrected(e.target.value)}
-                placeholder="Correct (e.g. speaker)"
+                placeholder={t('correctPlaceholder')}
                 className="bg-secondary border-border text-sm flex-1"
               />
               <Button
@@ -715,21 +713,21 @@ export function SessionSetupPanel({
         {/* Controls */}
         <Card className="border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Output Controls</CardTitle>
+            <CardTitle className="text-sm">{t('outputControls')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4 text-muted-foreground" />
                 <Label htmlFor="pii-redaction" className="text-sm">
-                  PII Redaction
+                  {t('piiRedaction')}
                 </Label>
                 <Tooltip>
                   <TooltipTrigger>
                     <Info className="h-3.5 w-3.5 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[200px]">
-                    Automatically redact emails, phone numbers, and addresses from outputs
+                    {t('piiRedactionTooltip')}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -743,14 +741,14 @@ export function SessionSetupPanel({
               <div className="flex items-center gap-2">
                 <Quote className="h-4 w-4 text-muted-foreground" />
                 <Label htmlFor="cite-timestamps" className="text-sm">
-                  Cite Timestamps
+                  {t('citeTimestamps')}
                 </Label>
                 <Tooltip>
                   <TooltipTrigger>
                     <Info className="h-3.5 w-3.5 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[200px]">
-                    Include transcript timestamps in output citations
+                    {t('citeTimestampsTooltip')}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -778,12 +776,12 @@ export function SessionSetupPanel({
               {isSaving ? (
                 <>
                   <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent mr-2"></div>
-                  Saving...
+                  {t('saving')}
                 </>
               ) : (
                 <>
                   <Save className="h-3.5 w-3.5 mr-2" />
-                  Save Context
+                  {t('saveContext')}
                 </>
               )}
             </Button>
