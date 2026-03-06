@@ -6,41 +6,41 @@ import Link from 'next/link'
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <nav className="border-b border-white/5">
+    <div className="min-h-screen bg-white text-slate-900">
+      <nav className="border-b border-slate-100">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 text-white/50 hover:text-white transition-colors">
+          <Link href="/" className="flex items-center gap-3 text-slate-400 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm">Back to Home</span>
           </Link>
-          <Logo variant="full" className="h-6 brightness-0 invert opacity-50" />
+          <Logo variant="full" className="h-6 opacity-50" />
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto px-6 py-16">
         <h1 className="text-3xl sm:text-4xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-white/30 text-sm mb-12">Last updated: March 5, 2026</p>
+        <p className="text-slate-400 text-sm mb-12">Last updated: March 5, 2026</p>
 
-        <div className="space-y-10 text-white/60 leading-relaxed">
+        <div className="space-y-10 text-slate-600 leading-relaxed">
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">1. Introduction</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">1. Introduction</h2>
             <p>
               Notissima (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website and use our services.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">2. Information We Collect</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">2. Information We Collect</h2>
             <p className="mb-3">We may collect the following types of information:</p>
             <ul className="list-disc list-inside space-y-2 ml-2">
-              <li><span className="text-white/80">Personal Information:</span> Email address provided when signing up for beta access.</li>
-              <li><span className="text-white/80">Usage Data:</span> Information about how you interact with our website, including pages visited and time spent.</li>
-              <li><span className="text-white/80">Device Information:</span> Browser type, operating system, and device identifiers.</li>
+              <li><span className="text-slate-800 font-medium">Personal Information:</span> Email address provided when signing up for beta access.</li>
+              <li><span className="text-slate-800 font-medium">Usage Data:</span> Information about how you interact with our website, including pages visited and time spent.</li>
+              <li><span className="text-slate-800 font-medium">Device Information:</span> Browser type, operating system, and device identifiers.</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">3. How We Use Your Information</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">3. How We Use Your Information</h2>
             <p className="mb-3">We use the information we collect to:</p>
             <ul className="list-disc list-inside space-y-2 ml-2">
               <li>Notify you when Notissima launches</li>
@@ -51,21 +51,21 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">4. Data Storage & Security</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">4. Data Storage & Security</h2>
             <p>
               Your data is stored securely using industry-standard encryption and security practices. We use Supabase for our database infrastructure, which provides enterprise-grade security including row-level security and encrypted storage. We retain your data only as long as necessary to fulfill the purposes outlined in this policy.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">5. Third-Party Services</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">5. Third-Party Services</h2>
             <p>
               We may use third-party services for analytics and infrastructure. These services have their own privacy policies and we encourage you to review them. We do not sell your personal information to third parties.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">6. Your Rights (GDPR)</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">6. Your Rights (GDPR)</h2>
             <p className="mb-3">If you are in the European Economic Area, you have the right to:</p>
             <ul className="list-disc list-inside space-y-2 ml-2">
               <li>Access your personal data</li>
@@ -78,24 +78,24 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">7. Cookies</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">7. Cookies</h2>
             <p>
               We may use cookies and similar tracking technologies to enhance your experience. You can control cookie preferences through your browser settings.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">8. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">8. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the &quot;Last updated&quot; date.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">9. Contact Us</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">9. Contact Us</h2>
             <p>
               If you have any questions about this Privacy Policy, please contact us at:{' '}
-              <a href="mailto:privacy@notissima.com" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">
+              <a href="mailto:privacy@notissima.com" className="text-teal-600 hover:text-teal-500 underline underline-offset-2">
                 privacy@notissima.com
               </a>
             </p>
@@ -103,8 +103,8 @@ export default function PrivacyPage() {
         </div>
       </main>
 
-      <footer className="border-t border-white/5 py-8 px-6">
-        <div className="max-w-4xl mx-auto text-center text-sm text-white/20">
+      <footer className="border-t border-slate-100 py-8 px-6 bg-slate-50">
+        <div className="max-w-4xl mx-auto text-center text-sm text-slate-400">
           &copy; {new Date().getFullYear()} Notissima. All rights reserved.
         </div>
       </footer>

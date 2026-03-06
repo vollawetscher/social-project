@@ -17,27 +17,26 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    // Placeholder — will connect to backend later
     await new Promise((r) => setTimeout(r, 1000))
     setSubmitted(true)
     setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <nav className="border-b border-white/5">
+    <div className="min-h-screen bg-white text-slate-900">
+      <nav className="border-b border-slate-100">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 text-white/50 hover:text-white transition-colors">
+          <Link href="/" className="flex items-center gap-3 text-slate-400 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm">Back to Home</span>
           </Link>
-          <Logo variant="full" className="h-6 brightness-0 invert opacity-50" />
+          <Logo variant="full" className="h-6 opacity-50" />
         </div>
       </nav>
 
       <main className="max-w-4xl mx-auto px-6 py-16">
         <h1 className="text-3xl sm:text-4xl font-bold mb-2">Contact Us</h1>
-        <p className="text-white/50 mb-12">Have a question or want to get in touch? We&apos;d love to hear from you.</p>
+        <p className="text-slate-500 mb-12">Have a question or want to get in touch? We&apos;d love to hear from you.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Contact info */}
@@ -46,36 +45,36 @@ export default function ContactPage() {
               <h2 className="text-xl font-semibold mb-6">Get in Touch</h2>
               <div className="space-y-5">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-5 h-5 text-indigo-400" />
+                  <div className="w-10 h-10 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center flex-shrink-0">
+                    <Mail className="w-5 h-5 text-teal-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-white/40 mb-1">Email</p>
-                    <a href="mailto:hello@notissima.com" className="text-white/80 hover:text-indigo-400 transition-colors">
+                    <p className="text-sm text-slate-400 mb-1">Email</p>
+                    <a href="mailto:hello@notissima.com" className="text-slate-700 hover:text-teal-600 transition-colors">
                       hello@notissima.com
                     </a>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-5 h-5 text-indigo-400" />
+                  <div className="w-10 h-10 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center flex-shrink-0">
+                    <Phone className="w-5 h-5 text-teal-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-white/40 mb-1">Phone</p>
-                    <a href="tel:+4900000000" className="text-white/80 hover:text-indigo-400 transition-colors">
+                    <p className="text-sm text-slate-400 mb-1">Phone</p>
+                    <a href="tel:+4900000000" className="text-slate-700 hover:text-teal-600 transition-colors">
                       +49 (0) 000 000 0000
                     </a>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-indigo-400" />
+                  <div className="w-10 h-10 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-teal-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-white/40 mb-1">Address</p>
-                    <p className="text-white/80">
+                    <p className="text-sm text-slate-400 mb-1">Address</p>
+                    <p className="text-slate-700">
                       Notissima GmbH<br />
                       Musterstraße 1<br />
                       10115 Berlin, Germany
@@ -86,9 +85,9 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-medium text-white/40 uppercase tracking-wider mb-3">Business Hours</h3>
-              <p className="text-white/60">Monday – Friday: 9:00 – 18:00 CET</p>
-              <p className="text-white/60">Saturday – Sunday: Closed</p>
+              <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-3">Business Hours</h3>
+              <p className="text-slate-600">Monday – Friday: 9:00 – 18:00 CET</p>
+              <p className="text-slate-600">Saturday – Sunday: Closed</p>
             </div>
           </div>
 
@@ -98,7 +97,7 @@ export default function ContactPage() {
             {!submitted ? (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="text-sm text-white/40 block mb-1.5">Name</label>
+                  <label htmlFor="name" className="text-sm text-slate-500 block mb-1.5">Name</label>
                   <Input
                     id="name"
                     type="text"
@@ -106,11 +105,11 @@ export default function ContactPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50 rounded-xl"
+                    className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-teal-500/30 focus-visible:border-teal-400 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="text-sm text-white/40 block mb-1.5">Email</label>
+                  <label htmlFor="email" className="text-sm text-slate-500 block mb-1.5">Email</label>
                   <Input
                     id="email"
                     type="email"
@@ -118,11 +117,11 @@ export default function ContactPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50 rounded-xl"
+                    className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus-visible:ring-teal-500/30 focus-visible:border-teal-400 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label htmlFor="message" className="text-sm text-white/40 block mb-1.5">Message</label>
+                  <label htmlFor="message" className="text-sm text-slate-500 block mb-1.5">Message</label>
                   <textarea
                     id="message"
                     placeholder="How can we help?"
@@ -130,32 +129,32 @@ export default function ContactPage() {
                     onChange={(e) => setMessage(e.target.value)}
                     required
                     rows={5}
-                    className="flex w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50 resize-none"
+                    className="flex w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/30 focus-visible:border-teal-400 resize-none"
                   />
                 </div>
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:opacity-50"
+                  className="w-full h-11 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-medium rounded-xl shadow-lg shadow-teal-500/20 hover:shadow-teal-500/30 disabled:opacity-50"
                 >
                   {loading ? 'Sending...' : 'Send Message'}
                 </Button>
               </form>
             ) : (
-              <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-8 text-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-6 h-6 text-emerald-400" />
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-8 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto mb-4">
+                  <Mail className="w-6 h-6 text-emerald-600" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Message Sent!</h3>
-                <p className="text-white/50">Thanks for reaching out. We&apos;ll get back to you as soon as possible.</p>
+                <p className="text-slate-500">Thanks for reaching out. We&apos;ll get back to you as soon as possible.</p>
               </div>
             )}
           </div>
         </div>
       </main>
 
-      <footer className="border-t border-white/5 py-8 px-6 mt-16">
-        <div className="max-w-4xl mx-auto text-center text-sm text-white/20">
+      <footer className="border-t border-slate-100 py-8 px-6 mt-16 bg-slate-50">
+        <div className="max-w-4xl mx-auto text-center text-sm text-slate-400">
           &copy; {new Date().getFullYear()} Notissima. All rights reserved.
         </div>
       </footer>
