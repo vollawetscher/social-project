@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { Link } from "@/i18n/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import {
@@ -216,9 +216,20 @@ export default function OutputsPage() {
   const [perspectiveFilter, setPerspectiveFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState<string>("")
 
-  useEffect(() => {
-    async function fetchOutputs() {
+  const fetchOutputs = useCallback(async () => {
+    try {
+      const response = await fetch('/api/outputs', { cache: 'no-store' })
+      if (!response.ok) throw new Error('Failed to fetch outputs')
+      const data = await response.json()
+      setOutputs(data)
+    } catch (error) {
+      console.error('Error fetching outputs:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
+  useEffect(() => {
     async function fetchTemplates() {
       try {
         const response = await fetch("/api/templates")
@@ -228,35 +239,19 @@ export default function OutputsPage() {
         }
       } catch (error) {
         console.error("Error fetching templates:", error)
-      }
-    }
-    fetchTemplates()
-      try {
-        const response = await fetch('/api/outputs')
-        if (!response.ok) throw new Error('Failed to fetch outputs')
-        const data = await response.json()
-        setOutputs(data)
-      } catch (error) {
-        console.error('Error fetching outputs:', error)
-      } finally {
-        setLoading(false)
       }
     }
     fetchOutputs()
-
-    async function fetchTemplates() {
-      try {
-        const response = await fetch("/api/templates")
-        if (response.ok) {
-          const data = await response.json()
-          setTemplates(data)
-        }
-      } catch (error) {
-        console.error("Error fetching templates:", error)
-      }
-    }
     fetchTemplates()
-  }, [])
+  }, [fetchOutputs])
+
+  useEffect(() => {
+    const handleOutputsUpdated = () => {
+      fetchOutputs()
+    }
+    window.addEventListener('notissima:outputs-updated', handleOutputsUpdated)
+    return () => window.removeEventListener('notissima:outputs-updated', handleOutputsUpdated)
+  }, [fetchOutputs])
 
   const filteredOutputs = outputs.filter((output: Output) => {
     // Template filter

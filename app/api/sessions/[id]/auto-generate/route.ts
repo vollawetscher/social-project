@@ -74,9 +74,27 @@ export async function POST(
       return NextResponse.json({ error: 'No template selected for auto-generation' }, { status: 400 })
     }
 
+    const resolveOutputLanguageCode = (requested: string, sessionLanguage?: string | null): string => {
+      const req = (requested || '').toLowerCase()
+      if (req && req !== 'session' && req !== 'auto') return req.slice(0, 2)
+      const detected = (sessionLanguage || '').toLowerCase()
+      if (detected && detected !== 'auto') return detected.slice(0, 2)
+      return 'de'
+    }
+
+    // Session language fallback when request uses "session" option
+    const { data: sessionForLanguage } = await supabase
+      .from('sessions')
+      .select('language')
+      .eq('id', params.id)
+      .maybeSingle()
+
     // Call the outputs/generate API with proper config
     const baseUrl = new URL(request.url).origin
-    const languageCode = typeof language === 'string' ? language.slice(0, 2) : 'de'
+    const languageCode = resolveOutputLanguageCode(
+      typeof language === 'string' ? language : 'de',
+      (sessionForLanguage as any)?.language
+    )
     
     const genHeaders: Record<string, string> = {
       'Content-Type': 'application/json',

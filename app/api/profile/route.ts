@@ -81,6 +81,20 @@ export async function PATCH(request: Request) {
       }
     }
 
+    if ('preferred_report_language' in filteredUpdates) {
+      const value = filteredUpdates.preferred_report_language
+      if (value !== null && value !== undefined && String(value).trim() !== '') {
+        const normalized = String(value).trim().toLowerCase()
+        if (normalized !== 'session' && !/^[a-z]{2}$/.test(normalized)) {
+          return NextResponse.json(
+            { error: 'Invalid preferred report language' },
+            { status: 400 }
+          )
+        }
+        filteredUpdates.preferred_report_language = normalized
+      }
+    }
+
     if (Object.keys(filteredUpdates).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }

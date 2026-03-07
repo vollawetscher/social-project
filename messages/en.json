@@ -532,6 +532,7 @@
     "defaultRecordingLanguageHint": "Language used for audio transcription (you can override per session)",
     "preferredReportLanguage": "Preferred Report Language",
     "preferredReportLanguageHint": "Language used for AI-generated reports and summaries",
+    "reportLanguageSessionOriginal": "Session language (original)",
     "timezone": "Timezone",
     "timezoneHint": "Used for displaying timestamps in sessions and reports",
     "workflowAutomation": "Workflow Automation",

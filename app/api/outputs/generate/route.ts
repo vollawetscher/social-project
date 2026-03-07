@@ -6,6 +6,7 @@ import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { applyTranscriptCorrections } from '@/lib/utils/transcript-corrections'
 import { mergeTranscripts } from '@/lib/utils/merge-transcripts'
 import { logError } from '@/lib/services/error-logger'
+import { sanitizeOutputText } from '@/lib/utils/output-text-sanitizer'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -159,6 +160,16 @@ export async function POST(request: Request) {
       technical: 'technical and detailed',
     }
 
+    const resolveOutputLanguageCode = (requested: string | undefined, sessionLang: string | undefined): string => {
+      const req = (requested || '').toLowerCase()
+      if (req && req !== 'session' && req !== 'auto') return req.slice(0, 2)
+      const detected = (sessionLang || '').toLowerCase()
+      if (detected && detected !== 'auto') return detected.slice(0, 2)
+      return 'de'
+    }
+
+    const resolvedLanguageCode = resolveOutputLanguageCode(config.language, (session as any).language)
+
     const languageMap: Record<string, string> = {
       en: 'English',
       de: 'German',
@@ -178,7 +189,7 @@ export async function POST(request: Request) {
       vi: 'Vietnamese',
       hi: 'Hindi',
     }
-    const outputLanguage = languageMap[config.language || 'en'] || config.language || 'English'
+    const outputLanguage = languageMap[resolvedLanguageCode] || 'English'
 
     const formatMap: Record<string, string> = {
       email: 'an email',
@@ -196,6 +207,7 @@ Key requirements:
 - Audience: The output is intended for ${audienceMap[config.audience || 'internal'] || 'internal use'}
 - Tone: Use a ${toneMap[config.tone] || 'professional'} tone
 - Language: Generate the ENTIRE output in ${outputLanguage}, including all section headers, titles, labels, and body text. Do NOT leave any headers or structural elements in another language.
+- Do NOT use any emojis or emoticons anywhere in the output.
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
     if (template) {
@@ -246,13 +258,14 @@ Please generate the requested output following all requirements and guidelines.`
       system: systemPrompt,
     })
 
-    const generatedContent = message.content[0].type === 'text' 
+    const generatedContent = message.content[0].type === 'text'
       ? message.content[0].text 
       : ''
+    const sanitizedContent = sanitizeOutputText(generatedContent)
 
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
 
-    if (!generatedContent) {
+    if (!sanitizedContent.trim()) {
       return NextResponse.json({ error: 'Failed to generate output' }, { status: 500 })
     }
 
@@ -269,10 +282,10 @@ Please generate the requested output following all requirements and guidelines.`
       template_name: template?.name || 'Custom Output',
       perspective: config.perspective || 'observer',
       audience: config.audience || 'internal',
-      language: config.language || 'en',
+      language: resolvedLanguageCode,
       tone: config.tone,
       format: config.format,
-      content_length: generatedContent.length,
+      content_length: sanitizedContent.length,
       created_by: userId,
     })
     
@@ -284,10 +297,10 @@ Please generate the requested output following all requirements and guidelines.`
         template_name: template?.name || config.templateName || 'Custom Output',
         perspective: config.perspective || 'observer',
         audience: config.audience || 'internal',
-        language: config.language || 'en',
+        language: resolvedLanguageCode,
         tone: config.tone,
         format: config.format,
-        content: generatedContent,
+        content: sanitizedContent,
         transcript_version_hash: transcript.id,
         cite_timestamps: config.citeTimestamps || false,
         do_instructions: config.doInstructions || '',
@@ -310,7 +323,7 @@ Please generate the requested output following all requirements and guidelines.`
         errorCode: insertError?.code,
         metadata: {
           step: 'output_insert',
-          contentLength: generatedContent.length,
+          contentLength: sanitizedContent.length,
           templateId: config.templateId,
           dbError: insertError,
         },

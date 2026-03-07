@@ -38,6 +38,94 @@ Multi-domain, multi-language transcription and report generation system with aut
 - **AI**: Anthropic Claude Sonnet 4.5 (domain detection, report generation)
 - **PDF**: jsPDF
 
+## Landing Page (Notissima) - Implementation Playbook
+
+This section documents everything relevant to create and maintain a public Notissima landing page in this codebase.
+
+### Current Behavior (Important)
+
+- `app/[locale]/page.tsx` currently redirects to `/sessions`.
+- `/sessions` is protected by auth in `middleware.ts`, so unauthenticated users end up on `/login`.
+- Result: there is no standalone public marketing/landing page yet.
+
+### File Map You Need
+
+- **Landing route**: `app/[locale]/page.tsx`
+- **Global metadata/OG/Twitter/manifest**: `app/layout.tsx`
+- **Locale layout and provider**: `app/[locale]/layout.tsx`
+- **Locale routing config**: `i18n/routing.ts`
+- **Locale-aware navigation helpers**: `i18n/navigation.ts`
+- **Route protection + public asset handling**: `middleware.ts`
+- **Translations**: `messages/en.json`, `messages/de.json`, `messages/es.json`
+- **Brand assets**: `public/` (for example `og-image.png`, `logo.svg`, `icon-192.png`, `icon-512.png`)
+
+### How To Create the Landing Page
+
+1. Replace the redirect in `app/[locale]/page.tsx` with actual page content (hero, value props, CTA, trust section, etc.).
+2. Use `next-intl` strings (for example `useTranslations('landing')`) instead of hardcoded copy.
+3. Use locale-aware links from `@/i18n/navigation` (`Link`, `useRouter`) for CTA buttons (`/signup`, `/login`).
+4. Keep the landing page public (do not add `/` to protected patterns in `middleware.ts`).
+5. Ensure responsive behavior on mobile first (`sm/md/lg` breakpoints, safe spacing, readable heading line lengths).
+
+### Localization Rules for Landing Updates
+
+- Add/update landing copy in:
+  - `messages/en.json`
+  - `messages/de.json`
+  - `messages/es.json`
+- Keep key structure identical across all locales.
+- Use explicit namespaces (recommended: `landing`) and avoid reusing app-internal keys to prevent coupling.
+- For buttons and shared labels, prefer existing `common` keys when appropriate.
+
+### SEO and Social Preview
+
+- Base metadata is defined in `app/layout.tsx`:
+  - `metadataBase`
+  - `openGraph`
+  - `twitter`
+  - `manifest`
+- If landing-specific SEO is needed (for example per locale title/description), add metadata in `app/[locale]/page.tsx` via Next.js metadata APIs.
+- Keep `public/og-image.png` up to date with current landing messaging and visual identity.
+- Confirm icon and manifest references in `public/manifest.json` remain valid after brand updates.
+
+### Branding and Content Update Checklist
+
+- Update logo/icon assets in `public/` when branding changes.
+- Verify tagline consistency across:
+  - landing page copy
+  - login/signup pages (`app/[locale]/login/page.tsx`, `app/[locale]/signup/page.tsx`)
+  - global metadata in `app/layout.tsx`
+- Confirm CTA targets are correct (`/signup`, `/login`, optionally `/record` if publicly intended).
+
+### Environment Variables Relevant to Landing
+
+- `NEXT_PUBLIC_APP_URL`: used for metadata base URL and multiple backend-generated links.
+- `NEXT_PUBLIC_SITE_URL`: used by some auth flows (for example signup redirect logic).
+
+For production, keep both aligned to the same canonical domain to avoid inconsistent callback and preview URLs.
+
+### Safe Update Workflow (Recommended)
+
+1. Edit landing markup/styles in `app/[locale]/page.tsx`.
+2. Update copy in all three locale files.
+3. Validate:
+   - `npm run lint`
+   - `npm run typecheck`
+   - `npm run build`
+4. Manual checks:
+   - `/`, `/de`, `/es` render correct localized content
+   - CTA navigation works and preserves locale
+   - OG image, title, and description render correctly when sharing
+   - Mobile layout has no clipping/overflow
+
+### Common Pitfalls
+
+- Hardcoded English strings in JSX (breaks i18n consistency).
+- Using `next/navigation` links for localized routes instead of `@/i18n/navigation`.
+- Updating only `en` messages and forgetting `de`/`es`.
+- Mismatch between `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_SITE_URL`.
+- Accidentally making landing page auth-protected by changing `middleware.ts` patterns.
+
 ## Architecture
 
 ### Processing Pipeline

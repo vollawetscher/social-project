@@ -175,6 +175,7 @@ export default function ProfilePage() {
   const getLanguageName = (code: string) => {
     const languages: Record<string, string> = {
       auto: 'Auto-detect',
+      session: 'Session language (original)',
       de: 'German (Deutsch)',
       en: 'English',
       es: 'Spanish (Español)',

@@ -249,7 +249,7 @@ export default function SessionDetailPage() {
   const fetchOutputs = useCallback(async () => {
     try {
       setOutputsLoading(true)
-      const response = await fetch(`/api/outputs?sessionId=${sessionId}`)
+      const response = await fetch(`/api/outputs?sessionId=${sessionId}`, { cache: 'no-store' })
       if (response.ok) {
         const data = await response.json()
         setOutputs(data)

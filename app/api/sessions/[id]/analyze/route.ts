@@ -8,6 +8,14 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
 
+function resolveOutputLanguageCode(preferredReportLanguage: string | null | undefined, sessionLanguage: string | null | undefined): string {
+  const pref = (preferredReportLanguage || '').toLowerCase()
+  if (pref && pref !== 'session' && pref !== 'auto') return pref.slice(0, 2)
+  const sessionLang = (sessionLanguage || '').toLowerCase()
+  if (sessionLang && sessionLang !== 'auto') return sessionLang.slice(0, 2)
+  return 'de'
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -330,13 +338,17 @@ Respond in this exact JSON format:
         autoGenHeaders['x-internal-secret'] = process.env.INTERNAL_API_SECRET
         autoGenHeaders['x-internal-user-id'] = userId
       }
+      const preferredOutputLanguage = resolveOutputLanguageCode(
+        profile?.preferred_report_language,
+        (session as any)?.language
+      )
       fetch(`${request.url.split('/analyze')[0]}/auto-generate`, {
         method: 'POST',
         headers: autoGenHeaders,
         body: JSON.stringify({
           templateId: templateId || undefined,
           action: legacyAction ? profile?.after_transcript_action : undefined,
-          language: profile?.preferred_report_language || 'de'
+          language: preferredOutputLanguage,
         })
       }).catch(err => console.error('[Analyze API] Auto-generation failed:', err))
       
@@ -406,7 +418,7 @@ Respond in this exact JSON format:
                 templateId: commandTemplateId,
                 perspective: 'observer',
                 audience: 'internal',
-                language: profile?.preferred_report_language?.slice(0, 2) || 'de',
+                language: resolveOutputLanguageCode(profile?.preferred_report_language, (session as any)?.language),
                 tone: 'neutral',
                 format: 'markdown',
                 // Use the exact spoken phrase as the generation instruction

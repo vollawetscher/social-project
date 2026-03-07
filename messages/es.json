@@ -532,6 +532,7 @@
     "defaultRecordingLanguageHint": "Idioma para transcripcion de audio (puedes cambiarlo por sesion)",
     "preferredReportLanguage": "Idioma preferido de informes",
     "preferredReportLanguageHint": "Idioma para informes y resúmenes generados por IA",
+    "reportLanguageSessionOriginal": "Idioma de la sesion (original)",
     "timezone": "Zona horaria",
     "timezoneHint": "Se usa para mostrar marcas de tiempo",
     "workflowAutomation": "Automatizacion del flujo de trabajo",

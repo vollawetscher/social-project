@@ -92,10 +92,15 @@ const TRANSLATE_LANGUAGES: { code: string; label: string }[] = [
   { code: 'fr', label: 'French' },
   { code: 'es', label: 'Spanish' },
   { code: 'it', label: 'Italian' },
-  { code: 'pt', label: 'Portuguese' },
   { code: 'nl', label: 'Dutch' },
+  { code: 'pt', label: 'Portuguese' },
   { code: 'pl', label: 'Polish' },
   { code: 'th', label: 'Thai' },
+  { code: 'ru', label: 'Russian' },
+  { code: 'sv', label: 'Swedish' },
+  { code: 'no', label: 'Norwegian' },
+  { code: 'da', label: 'Danish' },
+  { code: 'cs', label: 'Czech' },
 ]
 
 export default function OutputDetailPage() {

@@ -54,7 +54,7 @@ interface GenerateOutputModalProps {
   /** When template is not provided, use this ID to pre-select (works for user templates) */
   initialTemplateId?: string | null
   session: Session
-  onSuccess?: () => void // Called after output generated - use to refresh outputs list
+  onSuccess?: () => void | Promise<void> // Called after output generated - use to refresh outputs list
 }
 
 // Map display language name to ISO code and AI instruction
@@ -104,9 +104,19 @@ export function GenerateOutputModal({
   // Default output language: user profile preference > session (from transcript) > English
   // Profile wins because user explicitly set it; session language can be misdetected (e.g. German audio → "en")
   useEffect(() => {
-    const code = profileLanguage || session?.languageCode
-    if (code && codeToLanguage[code]) {
-      setSelectedLanguage(codeToLanguage[code])
+    const normalize = (code?: string | null): string | null => {
+      if (!code) return null
+      const lower = code.toLowerCase()
+      if (lower === 'session') return null
+      if (lower === 'auto') return null
+      return lower.slice(0, 2)
+    }
+
+    const preferredCode = normalize(profileLanguage)
+    const sessionCode = normalize(session?.languageCode)
+    const effectiveCode = preferredCode || sessionCode
+    if (effectiveCode && codeToLanguage[effectiveCode]) {
+      setSelectedLanguage(codeToLanguage[effectiveCode])
     }
   }, [session?.id, session?.languageCode, profileLanguage])
   const [tone, setTone] = useState<OutputTone>("neutral")
@@ -289,7 +299,10 @@ export function GenerateOutputModal({
       const data = await response.json()
       
       // Success! Refresh outputs list and close modal
-      onSuccess?.()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('notissima:outputs-updated'))
+      }
+      await Promise.resolve(onSuccess?.())
       onOpenChange(false)
       
       toast.success(
