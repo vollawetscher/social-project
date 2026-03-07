@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { exportOutput } from "@/lib/utils/output-export"
+import { exportOutput, isPdfExportSupportedLanguage } from "@/lib/utils/output-export"
 
 interface SharedOutput {
   id: string
@@ -173,6 +173,10 @@ export default function SharedOutputPage() {
 
   async function handleDownload(format: 'md' | 'pdf' | 'docx') {
     if (!output) return
+    if (format === 'pdf' && !isPdfExportSupportedLanguage(output.language)) {
+      toast.error('PDF export is not available for this output language. Use DOCX instead.')
+      return
+    }
     await exportOutput(output.content, output.templateName, format)
     toast.success('Downloaded output')
   }
@@ -321,7 +325,9 @@ export default function SharedOutputPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => handleDownload('md')}>MD</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDownload('pdf')}>PDF</DropdownMenuItem>
+                  {isPdfExportSupportedLanguage(output.language) && (
+                    <DropdownMenuItem onClick={() => handleDownload('pdf')}>PDF</DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => handleDownload('docx')}>DOCX</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

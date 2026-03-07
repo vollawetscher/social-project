@@ -109,6 +109,51 @@ function formatDate(dateString: string): string {
   })
 }
 
+type SessionOriginKind = "call" | "quick_record" | "upload"
+
+function getSessionOriginKind(session: Session): SessionOriginKind {
+  if (session.isFromCall || session.recordingType === 'call_inbound' || session.recordingType === 'call_outbound' || session.recordingType === 'sales_call') {
+    return "call"
+  }
+  if (session.recordingType === 'dictation') {
+    return "quick_record"
+  }
+  return "upload"
+}
+
+function getSessionTopicSnippet(session: Session): string {
+  const purpose = session.extractedContext?.purpose?.trim()
+  if (purpose) return purpose
+  const firstAgenda = session.extractedContext?.agenda?.[0]?.trim()
+  if (firstAgenda) return firstAgenda
+  const firstTranscript = session.transcript?.[0]?.text?.trim()
+  if (firstTranscript) return firstTranscript
+  return session.filename
+}
+
+function truncateSummary(text: string, maxLength = 58): string {
+  const normalized = text.replace(/\s+/g, " ").trim()
+  if (normalized.length <= maxLength) return normalized
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
+}
+
+function getOriginSummary(session: Session, t: (key: string) => string): string {
+  const origin = getSessionOriginKind(session)
+  const sourceLabel =
+    origin === "call"
+      ? t('source.call')
+      : origin === "quick_record"
+        ? t('source.quickRecord')
+        : t('source.upload')
+  return `${sourceLabel}: ${truncateSummary(getSessionTopicSnippet(session))}`
+}
+
+function getOriginBadgeClass(origin: SessionOriginKind): string {
+  if (origin === "call") return "bg-primary/10 text-primary border-primary/30"
+  if (origin === "quick_record") return "bg-success/10 text-success border-success/30"
+  return "bg-warning/10 text-warning border-warning/30"
+}
+
 // Inline editable session name component
 function EditableSessionName({ 
   session, 
@@ -1472,6 +1517,8 @@ export default function SessionsPage() {
           ) : (
             filteredSessions.map((session: Session) => {
               const status = getStatusDisplay(session)
+              const origin = getSessionOriginKind(session)
+              const originSummary = getOriginSummary(session, t)
               return (
                 <div
                   key={session.id}
@@ -1501,7 +1548,13 @@ export default function SessionsPage() {
                         session={session} 
                         onSave={handleRenameSession} 
                       />
+                      <p className="mt-1 text-xs text-foreground/80 truncate">
+                        {originSummary}
+                      </p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", getOriginBadgeClass(origin))}>
+                          {origin === "call" ? t('source.call') : origin === "quick_record" ? t('source.quickRecord') : t('source.upload')}
+                        </Badge>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {formatDuration(session.duration)}
@@ -1619,6 +1672,8 @@ export default function SessionsPage() {
               ) : (
                 filteredSessions.map((session: Session) => {
                   const status = getStatusDisplay(session)
+                  const origin = getSessionOriginKind(session)
+                  const originSummary = getOriginSummary(session, t)
                   return (
                     <TableRow 
                       key={session.id} 
@@ -1648,7 +1703,13 @@ export default function SessionsPage() {
                             session={session} 
                             onSave={handleRenameSession} 
                           />
+                          <p className="mt-1 text-xs text-foreground/80 truncate max-w-[34rem]">
+                            {originSummary}
+                          </p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", getOriginBadgeClass(origin))}>
+                              {origin === "call" ? t('source.call') : origin === "quick_record" ? t('source.quickRecord') : t('source.upload')}
+                            </Badge>
                             {session.isFromCall && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
                                 <Video className="h-3 w-3 mr-1" />

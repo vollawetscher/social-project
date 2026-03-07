@@ -131,6 +131,11 @@
     "outputCount": "{count, plural, one {# Informe} other {# Informes}}",
     "fromCall": "De una llamada",
     "sharedSession": "Compartida",
+    "source": {
+      "call": "Llamada",
+      "quickRecord": "Grabacion rapida",
+      "upload": "Subida"
+    },
     "status": {
       "recording": "Grabando",
       "uploading": "Subiendo",

@@ -131,6 +131,11 @@
     "outputCount": "{count, plural, one {# Output} other {# Outputs}}",
     "fromCall": "From a call",
     "sharedSession": "Shared",
+    "source": {
+      "call": "Call",
+      "quickRecord": "Quick Record",
+      "upload": "Upload"
+    },
     "status": {
       "recording": "Recording",
       "uploading": "Uploading",

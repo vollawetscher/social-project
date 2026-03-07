@@ -364,6 +364,7 @@ export const languages = [
   'Portuguese',
   'Dutch',
   'Polish',
+  'Thai',
 ]
 
 // Participant role labels (transcription-level)

@@ -131,6 +131,11 @@
     "outputCount": "{count, plural, one {# Ausgabe} other {# Ausgaben}}",
     "fromCall": "Aus einem Anruf",
     "sharedSession": "Geteilt",
+    "source": {
+      "call": "Anruf",
+      "quickRecord": "Schnellaufnahme",
+      "upload": "Upload"
+    },
     "status": {
       "recording": "Aufnahme",
       "uploading": "Wird hochgeladen",

@@ -67,6 +67,7 @@ const languageToConfig: Record<string, { code: string; instruction: string }> = 
   Portuguese: { code: 'pt', instruction: 'Portuguese' },
   Dutch: { code: 'nl', instruction: 'Dutch' },
   Polish: { code: 'pl', instruction: 'Polish' },
+  Thai: { code: 'th', instruction: 'Thai' },
 }
 const codeToLanguage = Object.fromEntries(
   Object.entries(languageToConfig).map(([name, { code }]) => [code, name])
@@ -96,7 +97,10 @@ export function GenerateOutputModal({
       .then((r) => r.ok ? r.json() : null)
       .then((profile) => {
         const lang = profile?.preferred_report_language
-        if (lang && typeof lang === 'string') setProfileLanguage(lang.slice(0, 2).toLowerCase())
+        if (lang && typeof lang === 'string') {
+          const normalized = lang.toLowerCase()
+          setProfileLanguage(normalized === 'session' ? 'session' : normalized.slice(0, 2))
+        }
       })
       .catch(() => {})
   }, [open])
@@ -259,6 +263,21 @@ export function GenerateOutputModal({
     }
   }
 
+  const resolveLanguageCodeForRequest = (): string => {
+    const mapped = languageToConfig[selectedLanguage]?.code
+    if (mapped) return mapped
+
+    const sessionCode = (session?.languageCode || '').toLowerCase()
+    if (sessionCode && sessionCode !== 'auto') return sessionCode.slice(0, 2)
+
+    const preferredCode = (profileLanguage || '').toLowerCase()
+    if (preferredCode && preferredCode !== 'session' && preferredCode !== 'auto') {
+      return preferredCode.slice(0, 2)
+    }
+
+    return 'de'
+  }
+
   const handleGenerate = async () => {
     if (!canGenerate || generating) return
     
@@ -280,7 +299,7 @@ export function GenerateOutputModal({
               return speaker ? getDisplayName(speaker) : undefined
             })(),
             audience: selectedAudience,
-            language: languageToConfig[selectedLanguage]?.code ?? 'en',
+            language: resolveLanguageCodeForRequest(),
             tone,
             format,
             doInstructions,

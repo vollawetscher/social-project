@@ -14,7 +14,6 @@ import {
   Info,
   Check,
   AlertTriangle,
-  Languages,
   Globe,
   Zap,
   Loader2,
@@ -63,7 +62,6 @@ export default function SettingsPage() {
   // Form state
   const [defaultRecordingLanguage, setDefaultRecordingLanguage] = useState("auto")
   const [preferredReportLanguage, setPreferredReportLanguage] = useState("de")
-  const [preferredLocale, setPreferredLocale] = useState("en")
   const [timezone, setTimezone] = useState("Europe/Berlin")
   const [afterTranscriptTemplateId, setAfterTranscriptTemplateId] = useState<string>("")
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
@@ -100,7 +98,6 @@ export default function SettingsPage() {
         // Populate form with profile data
         setDefaultRecordingLanguage(data.default_recording_language || 'auto')
         setPreferredReportLanguage(data.preferred_report_language || 'de')
-        setPreferredLocale(data.preferred_locale || 'en')
         setTimezone(data.timezone || 'Europe/Berlin')
         setAfterTranscriptTemplateId(data.after_transcript_template_id || '')
       } catch (error) {
@@ -128,7 +125,6 @@ export default function SettingsPage() {
         body: JSON.stringify({
           default_recording_language: defaultRecordingLanguage,
           preferred_report_language: preferredReportLanguage,
-          preferred_locale: preferredLocale,
           timezone: timezone,
           after_transcript_template_id: afterTranscriptTemplateId || null,
         })
@@ -254,23 +250,6 @@ export default function SettingsPage() {
                       {lang.label}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Interface Language */}
-            <div className="space-y-2">
-              <Label htmlFor="interface-language" className="font-medium">
-                {t('preferredLocale')}
-              </Label>
-              <Select value={preferredLocale} onValueChange={setPreferredLocale}>
-                <SelectTrigger className="w-full bg-secondary border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="de">Deutsch</SelectItem>
-                  <SelectItem value="es">Español</SelectItem>
                 </SelectContent>
               </Select>
             </div>

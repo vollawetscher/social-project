@@ -51,7 +51,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { exportOutput } from "@/lib/utils/output-export"
+import { exportOutput, isPdfExportSupportedLanguage } from "@/lib/utils/output-export"
 import type { Output } from "@/lib/types-v0"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
 
@@ -336,6 +336,10 @@ export default function OutputDetailPage() {
 
   async function handleDownload(format: 'md' | 'pdf' | 'docx') {
     if (!output) return
+    if (format === 'pdf' && !isPdfExportSupportedLanguage(output.language)) {
+      toast.error('PDF export is not available for this output language. Use DOCX instead.')
+      return
+    }
     const name = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}-${new Date(output.createdAt).getTime()}`
     await exportOutput(output.content, name, format)
     toast.success(t('downloaded'))
@@ -387,6 +391,7 @@ export default function OutputDetailPage() {
 
   const currentLangCode = output?.language || 'en'
   const otherLanguages = TRANSLATE_LANGUAGES.filter(l => l.code !== currentLangCode)
+  const canExportPdf = isPdfExportSupportedLanguage(output?.language)
 
   if (loading) {
     return (
@@ -505,7 +510,7 @@ export default function OutputDetailPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleDownload('md')}>MD</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleDownload('pdf')}>PDF</DropdownMenuItem>
+                {canExportPdf && <DropdownMenuItem onClick={() => handleDownload('pdf')}>PDF</DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => handleDownload('docx')}>DOCX</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

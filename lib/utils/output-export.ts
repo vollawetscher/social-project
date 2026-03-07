@@ -17,6 +17,16 @@ import {
   convertInchesToTwip,
 } from 'docx'
 
+const PDF_SUPPORTED_LANGUAGE_CODES = new Set(['en', 'de', 'fr', 'es', 'it', 'pt', 'nl'])
+
+export function isPdfExportSupportedLanguage(language?: string | null): boolean {
+  if (!language) return true
+  const normalized = String(language).trim().toLowerCase()
+  if (!normalized) return true
+  const code = normalized.slice(0, 2)
+  return PDF_SUPPORTED_LANGUAGE_CODES.has(code)
+}
+
 type Block =
   | { type: 'heading'; depth: 1 | 2 | 3 | 4 | 5 | 6; children: Inline[] }
   | { type: 'paragraph'; children: Inline[] }
