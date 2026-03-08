@@ -23,7 +23,6 @@ export default function LoginPage() {
   const { user } = useAuth()
   const supabase = createClient()
   const t = useTranslations('auth')
-  const tc = useTranslations('common')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -69,10 +68,6 @@ export default function LoginPage() {
         <CardHeader className="space-y-6">
           <div className="flex flex-col items-center space-y-3">
             <Logo className="h-10" />
-            <div className="text-center space-y-1">
-              <p className="text-lg font-medium text-foreground">{tc('tagline')}</p>
-              <p className="text-xs text-muted-foreground">{tc('madeInGermany')}</p>
-            </div>
           </div>
           <div className="text-center space-y-1 pt-2">
             <CardTitle className="text-2xl font-bold">{t('signInTitle')}</CardTitle>
@@ -129,6 +124,9 @@ export default function LoginPage() {
               {t('signUp')}
             </Link>
           </div>
+          <p className="mt-5 text-center text-[11px] text-muted-foreground/80">
+            Engineered in Germany
+          </p>
         </CardContent>
       </Card>
     </div>

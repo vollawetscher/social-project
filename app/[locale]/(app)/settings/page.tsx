@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
 import {
   Shield,
@@ -72,6 +72,14 @@ export default function SettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  const reportLanguageOptions = useMemo(
+    () => [
+      { value: 'session', label: t('reportLanguageSessionOriginal') },
+      ...SUPPORTED_LANGUAGES.filter((lang) => lang.value !== 'auto'),
+    ],
+    [t]
+  )
 
   // Fetch user profile and templates on mount
   useEffect(() => {
@@ -267,8 +275,7 @@ export default function SettingsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="session">{t('reportLanguageSessionOriginal')}</SelectItem>
-                  {SUPPORTED_LANGUAGES.map((lang) => (
+                  {reportLanguageOptions.map((lang) => (
                     <SelectItem key={lang.value} value={lang.value}>
                       {lang.label}
                     </SelectItem>
