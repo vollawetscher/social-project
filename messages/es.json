@@ -44,7 +44,7 @@
     "profile": "Perfil",
     "adminSessions": "Todas las sesiones",
     "adminBugs": "Reportes de errores",
-    "searchPlaceholder": "Buscar sesiones, informes...",
+    "searchPlaceholder": "Buscar",
     "connected": "Conectado",
     "offline": "Sin conexión — los cambios se sincronizarán cuando haya conexión",
     "syncing": "Sincronizando...",
@@ -118,7 +118,7 @@
       "created": "Creado",
       "actions": "Acciones"
     },
-    "searchPlaceholder": "Buscar sesiones...",
+    "searchPlaceholder": "Buscar",
     "noSessions": "Aún no hay sesiones",
     "noSessionsHint": "Graba, sube o pega contenido para crear tu primera sesión",
     "noMatchingHint": "Intenta ajustar tu búsqueda",
@@ -147,7 +147,7 @@
       "processing": "Procesando"
     },
     "language": {
-      "autoDetect": "Detección automática",
+      "autoDetect": "Auto",
       "label": "Idioma"
     },
     "uploadMessages": {
@@ -763,9 +763,9 @@
     "sessionSharedPending": "Esta sesión se comparte con otro usuario cuya transcripción aún se está preparando. Inténtalo más tarde."
   },
   "languages": {
-    "auto": "Detección automática",
-    "en": "Inglés (English)",
-    "de": "Alemán (Deutsch)",
+    "auto": "Auto",
+    "en": "Inglés",
+    "de": "Alemán",
     "es": "Español",
     "fr": "Francés (Français)",
     "it": "Italiano",

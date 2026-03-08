@@ -54,6 +54,7 @@ import { UserProfile, SUPPORTED_LANGUAGES, TIMEZONES } from "@/lib/types/profile
 
 export default function SettingsPage() {
   const t = useTranslations('settings')
+  const tl = useTranslations('languages')
   const { user, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -73,12 +74,17 @@ export default function SettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  const localizedSupportedLanguages = useMemo(
+    () => SUPPORTED_LANGUAGES.map((lang) => ({ value: lang.value, label: tl(lang.value) })),
+    [tl]
+  )
+
   const reportLanguageOptions = useMemo(
     () => [
       { value: 'session', label: t('reportLanguageSessionOriginal') },
-      ...SUPPORTED_LANGUAGES.filter((lang) => lang.value !== 'auto'),
+      ...localizedSupportedLanguages.filter((lang) => lang.value !== 'auto'),
     ],
-    [t]
+    [localizedSupportedLanguages, t]
   )
 
   // Fetch user profile and templates on mount
@@ -253,7 +259,7 @@ export default function SettingsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SUPPORTED_LANGUAGES.map((lang) => (
+                  {localizedSupportedLanguages.map((lang) => (
                     <SelectItem key={lang.value} value={lang.value}>
                       {lang.label}
                     </SelectItem>

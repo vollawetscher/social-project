@@ -749,7 +749,7 @@ export default function SessionDetailPage() {
       {/* Language mismatch banner */}
       {languageMismatch && (() => {
         const langNames: Record<string, string> = {
-          auto: 'Auto-detect', de: 'German', en: 'English', fr: 'French', es: 'Spanish',
+          auto: 'Auto', de: 'German', en: 'English', fr: 'French', es: 'Spanish',
           it: 'Italian', pt: 'Portuguese', nl: 'Dutch', pl: 'Polish',
         }
         const sessionLabel = langNames[languageMismatch.sessionLang] || languageMismatch.sessionLang.toUpperCase()

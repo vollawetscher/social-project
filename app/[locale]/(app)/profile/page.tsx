@@ -94,6 +94,7 @@ function InstallAppCard() {
 
 export default function ProfilePage() {
   const t = useTranslations('profile')
+  const tl = useTranslations('languages')
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -174,16 +175,16 @@ export default function ProfilePage() {
 
   const getLanguageName = (code: string) => {
     const languages: Record<string, string> = {
-      auto: 'Auto-detect',
+      auto: tl('auto'),
       session: 'Session language (original)',
-      de: 'German (Deutsch)',
-      en: 'English',
-      es: 'Spanish (Español)',
-      fr: 'French (Français)',
-      it: 'Italian (Italiano)',
-      pt: 'Portuguese (Português)',
-      nl: 'Dutch (Nederlands)',
-      pl: 'Polish (Polski)',
+      de: tl('de'),
+      en: tl('en'),
+      es: tl('es'),
+      fr: tl('fr'),
+      it: tl('it'),
+      pt: tl('pt'),
+      nl: tl('nl'),
+      pl: tl('pl'),
     }
     return languages[code] || code.toUpperCase()
   }

@@ -81,7 +81,7 @@ export default function LandingPage() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-teal-200 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
             Get more out of your most valuable asset. Communication.
           </h1>
-          <div className="max-w-3xl mx-auto rounded-2xl bg-black/60 border border-white/25 px-5 py-4 sm:px-7 sm:py-5 backdrop-blur-sm shadow-2xl">
+          <div className="max-w-3xl mx-auto rounded-2xl bg-black/40 border border-white/25 px-5 py-4 sm:px-7 sm:py-5 backdrop-blur-sm shadow-2xl">
             <p className="text-lg sm:text-xl text-white leading-relaxed">
               Every call, meeting, and email your team makes holds decisions, risks, and commitments.
               Right now, most of it disappears — trapped in someone&apos;s memory, buried in a thread, or reduced to a few lines nobody will read.

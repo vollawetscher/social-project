@@ -29,6 +29,7 @@ export default function UploadRecordingsPage() {
   const [uploading, setUploading] = useState(false)
   const [language, setLanguage] = useState<string>('auto')
   const router = useRouter()
+  const tl = useTranslations('languages')
   const { user, loading } = useAuth()
 
   useEffect(() => {
@@ -336,15 +337,15 @@ export default function UploadRecordingsPage() {
               disabled={uploading}
               className="w-full p-2 border rounded-md text-sm"
             >
-              <option value="auto">Auto-detect</option>
-              <option value="en">English</option>
-              <option value="de">German (Deutsch)</option>
-              <option value="es">Spanish (Español)</option>
-              <option value="fr">French (Français)</option>
-              <option value="it">Italian (Italiano)</option>
-              <option value="pt">Portuguese (Português)</option>
-              <option value="nl">Dutch (Nederlands)</option>
-              <option value="pl">Polish (Polski)</option>
+              <option value="auto">{tl('auto')}</option>
+              <option value="en">{tl('en')}</option>
+              <option value="de">{tl('de')}</option>
+              <option value="es">{tl('es')}</option>
+              <option value="fr">{tl('fr')}</option>
+              <option value="it">{tl('it')}</option>
+              <option value="pt">{tl('pt')}</option>
+              <option value="nl">{tl('nl')}</option>
+              <option value="pl">{tl('pl')}</option>
             </select>
           </Card>
         )}

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import React from "react"
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
-import { Link, useRouter } from "@/i18n/navigation"
+import { Link, usePathname, useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -247,6 +247,7 @@ function EditableSessionName({
 export default function SessionsPage() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const router = useRouter()
   const t = useTranslations('sessions')
   const tu = useTranslations('uploadSheet')
@@ -289,6 +290,10 @@ export default function SessionsPage() {
   const knownSessionIdsRef = useRef<Set<string>>(new Set())
   const initializedKnownSessionsRef = useRef(false)
   const supabase = createClient()
+  const selectedSessionId = useMemo(() => {
+    const match = pathname.match(/\/sessions\/([^/]+)/)
+    return match?.[1] ?? null
+  }, [pathname])
 
   const isTranscriptFile = (f: File) =>
     /\.(txt|srt|vtt)$/i.test(f.name) ||
@@ -1524,9 +1529,10 @@ export default function SessionsPage() {
                   key={session.id}
                   className={cn(
                     "p-3 transition-colors",
+                    selectedSessionId === session.id && "bg-teal-500/50",
                     isProcessing(session)
                       ? "cursor-not-allowed opacity-70"
-                      : "hover:bg-secondary/50 cursor-pointer"
+                      : "hover:bg-secondary/50 active:bg-teal-500/50 cursor-pointer"
                   )}
                   onClick={(e) => {
                     if (isProcessing(session)) return
@@ -1677,11 +1683,13 @@ export default function SessionsPage() {
                   return (
                     <TableRow 
                       key={session.id} 
+                      data-state={selectedSessionId === session.id ? "selected" : undefined}
                       className={cn(
                         "group",
+                        selectedSessionId === session.id && "data-[state=selected]:bg-teal-500/50 data-[state=selected]:hover:bg-teal-500/50",
                         isProcessing(session)
                           ? "cursor-not-allowed opacity-70"
-                          : "cursor-pointer"
+                          : "cursor-pointer active:bg-teal-500/50"
                       )}
                       onClick={(e) => {
                         if (isProcessing(session)) return

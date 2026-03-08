@@ -44,7 +44,7 @@
     "profile": "Profil",
     "adminSessions": "Alle Sitzungen",
     "adminBugs": "Fehlerberichte",
-    "searchPlaceholder": "Sitzungen, Ausgaben durchsuchen...",
+    "searchPlaceholder": "Suchen",
     "connected": "Verbunden",
     "offline": "Offline — Änderungen werden synchronisiert, sobald eine Verbindung besteht",
     "syncing": "Wird synchronisiert...",
@@ -118,7 +118,7 @@
       "created": "Erstellt",
       "actions": "Aktionen"
     },
-    "searchPlaceholder": "Sitzungen durchsuchen...",
+    "searchPlaceholder": "Suchen",
     "noSessions": "Noch keine Sitzungen",
     "noSessionsHint": "Nehmen Sie auf, laden Sie hoch oder fügen Sie Inhalte ein, um Ihre erste Sitzung zu erstellen",
     "noMatchingHint": "Versuchen Sie Ihre Suche anzupassen",
@@ -147,7 +147,7 @@
       "processing": "Wird verarbeitet"
     },
     "language": {
-      "autoDetect": "Automatisch erkennen",
+      "autoDetect": "Auto",
       "label": "Sprache"
     },
     "uploadMessages": {
@@ -763,10 +763,10 @@
     "sessionSharedPending": "Diese Sitzung wird mit einem anderen Benutzer geteilt, dessen Transkript noch vorbereitet wird. Bitte versuchen Sie es später erneut."
   },
   "languages": {
-    "auto": "Automatisch erkennen",
+    "auto": "Auto",
     "en": "English",
     "de": "Deutsch",
-    "es": "Spanisch (Español)",
+    "es": "Spanisch",
     "fr": "Französisch (Français)",
     "it": "Italienisch (Italiano)",
     "pt": "Portugiesisch (Português)",

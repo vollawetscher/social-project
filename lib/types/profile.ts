@@ -27,15 +27,15 @@ export interface UserProfile {
 }
 
 export const SUPPORTED_LANGUAGES = [
-  { value: 'auto', label: 'Auto-detect' },
-  { value: 'de', label: 'German (Deutsch)' },
+  { value: 'auto', label: 'Auto' },
+  { value: 'de', label: 'German' },
   { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish (Español)' },
-  { value: 'fr', label: 'French (Français)' },
-  { value: 'it', label: 'Italian (Italiano)' },
-  { value: 'pt', label: 'Portuguese (Português)' },
-  { value: 'nl', label: 'Dutch (Nederlands)' },
-  { value: 'pl', label: 'Polish (Polski)' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'fr', label: 'French' },
+  { value: 'it', label: 'Italian' },
+  { value: 'pt', label: 'Portuguese' },
+  { value: 'nl', label: 'Dutch' },
+  { value: 'pl', label: 'Polish' },
 ] as const
 
 export const TIMEZONES = [

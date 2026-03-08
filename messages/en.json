@@ -44,7 +44,7 @@
     "profile": "Profile",
     "adminSessions": "All Sessions",
     "adminBugs": "Bug Reports",
-    "searchPlaceholder": "Search sessions, outputs...",
+    "searchPlaceholder": "Search",
     "connected": "Connected",
     "offline": "Working offline - changes will sync when connected",
     "syncing": "Syncing...",
@@ -118,7 +118,7 @@
       "created": "Created",
       "actions": "Actions"
     },
-    "searchPlaceholder": "Search sessions...",
+    "searchPlaceholder": "Search",
     "noSessions": "No sessions yet",
     "noSessionsHint": "Record, upload, or paste content to create your first session",
     "noMatchingHint": "Try adjusting your search",
@@ -147,7 +147,7 @@
       "processing": "Processing"
     },
     "language": {
-      "autoDetect": "Auto-detect",
+      "autoDetect": "Auto",
       "label": "Language"
     },
     "uploadMessages": {
@@ -763,10 +763,10 @@
     "sessionSharedPending": "This session is shared with another user whose transcript is still being prepared. Please try again later."
   },
   "languages": {
-    "auto": "Auto-detect",
+    "auto": "Auto",
     "en": "English",
-    "de": "German (Deutsch)",
-    "es": "Spanish (Español)",
+    "de": "German",
+    "es": "Spanish",
     "fr": "French (Français)",
     "it": "Italian (Italiano)",
     "pt": "Portuguese (Português)",
