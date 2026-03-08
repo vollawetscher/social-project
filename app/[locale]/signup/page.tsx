@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useRouter } from '@/i18n/navigation'
+import { Link, useRouter } from '@/i18n/navigation'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/logo'
 import { LocaleSwitcher } from '@/components/locale-switcher'
@@ -82,6 +82,12 @@ export default function SignupPage() {
       <div className="absolute top-4 right-4">
         <LocaleSwitcher />
       </div>
+      <Link href="/" className="absolute top-4 left-4">
+        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Home
+        </Button>
+      </Link>
       <Card className="w-full max-w-xl shadow-lg">
         <CardHeader className="space-y-6">
           <div className="flex flex-col items-center space-y-3">
