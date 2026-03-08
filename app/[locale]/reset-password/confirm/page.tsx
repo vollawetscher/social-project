@@ -168,14 +168,6 @@ export default function ResetPasswordConfirmPage() {
           {/* Logo and Branding */}
           <div className="flex flex-col items-center space-y-3">
             <Logo className="h-10" />
-            <div className="text-center space-y-1">
-              <p className="text-lg font-medium text-foreground">
-                When words carry weight
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Made in Germany
-              </p>
-            </div>
           </div>
           
           {/* Set New Password Header */}
@@ -265,6 +257,9 @@ export default function ResetPasswordConfirmPage() {
               Reset Password
             </Button>
           </form>
+          <p className="mt-5 text-center text-[11px] text-muted-foreground/80">
+            Engineered in Germany
+          </p>
         </CardContent>
       </Card>
     </div>

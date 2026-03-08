@@ -39,7 +39,7 @@ export default function LandingPage() {
 
           <div className="hidden md:flex items-center gap-3">
             <Button asChild className="bg-slate-900 hover:bg-slate-800 text-white">
-              <Link href="/login">Join the Beta</Link>
+              <Link href="/login">Log in</Link>
             </Button>
           </div>
 
@@ -61,7 +61,7 @@ export default function LandingPage() {
               <a href="#your-world" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Your world
               </a>
-              <Link href="/login" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/signup" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Join the Beta
               </Link>
             </div>
@@ -79,20 +79,20 @@ export default function LandingPage() {
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center pt-20">
           <p className="text-xs font-semibold tracking-[0.18em] uppercase text-white/80 mb-4">Page 1 — The Hook</p>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-white">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-teal-300">
             Get more out of your most valuable asset. Communication.
           </h1>
-          <p className="text-base sm:text-lg text-white/90 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
             Every call, meeting, and email your team makes holds decisions, risks, and commitments.
             Right now, most of it disappears — trapped in someone&apos;s memory, buried in a thread, or reduced to a few lines nobody will read.
           </p>
-          <p className="text-base sm:text-lg text-white/90 max-w-3xl mx-auto leading-relaxed mt-4">
+          <p className="text-lg sm:text-xl text-white/90 max-w-3xl mx-auto leading-relaxed mt-4">
             Notissima captures it all. Not as transcripts. As intelligence.
           </p>
 
           <div className="mt-10">
             <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100 font-semibold px-8">
-              <Link href="/login" className="inline-flex items-center gap-2">
+              <Link href="/signup" className="inline-flex items-center gap-2">
                 Join the Beta
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -109,30 +109,33 @@ export default function LandingPage() {
           </h2>
 
           <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">In — from wherever it happens.</h3>
-              <p className="text-slate-700 leading-relaxed">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 text-center">
+              <div className="text-7xl sm:text-8xl font-bold leading-none text-slate-200">01</div>
+              <h3 className="text-2xl font-semibold text-slate-900 mt-3 mb-4">Ingest</h3>
+              <p className="text-slate-700 leading-relaxed text-left">
                 Paste text. Upload a file. Record audio. Or start a call right inside Notissima — video, audio, or phone.
                 However your communication exists, Notissima takes it. In 50+ languages, auto-detected and translated.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Understood — not just processed.</h3>
-              <p className="text-slate-700 leading-relaxed">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 text-center">
+              <div className="text-7xl sm:text-8xl font-bold leading-none text-slate-200">02</div>
+              <h3 className="text-2xl font-semibold text-slate-900 mt-3 mb-4">Comprehend</h3>
+              <p className="text-slate-700 leading-relaxed text-left">
                 Notissima doesn&apos;t ask what you need. It comprehends the type of communication — a client call,
                 a project standup, a patient session, a legal review — and knows what outputs your project requires.
                 Before you do.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Out — multiple documents, one conversation.</h3>
-              <p className="text-slate-700 leading-relaxed">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 text-center">
+              <div className="text-7xl sm:text-8xl font-bold leading-none text-slate-200">03</div>
+              <h3 className="text-2xl font-semibold text-slate-900 mt-3 mb-4">Create</h3>
+              <p className="text-slate-700 leading-relaxed text-left">
                 A project meeting becomes a decision log, a risk summary, and an action plan. A client call becomes a strategic memo,
                 a follow-up checklist, and a project brief. Auto-suggested in the format that fits: md, pdf, docx, or JSON.
               </p>
-              <p className="text-slate-700 leading-relaxed mt-3">
+              <p className="text-slate-700 leading-relaxed mt-3 text-left">
                 Every output is built on domain-tested templates — structured for how professionals actually work.
                 Not generic AI summaries. Professional documentation, ready to use.
               </p>
@@ -195,7 +198,7 @@ export default function LandingPage() {
           </h2>
           <div className="mt-8">
             <Button asChild size="lg" className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8">
-              <Link href="/login" className="inline-flex items-center gap-2">
+              <Link href="/signup" className="inline-flex items-center gap-2">
                 Join the Beta
                 <ArrowRight className="h-4 w-4" />
               </Link>
