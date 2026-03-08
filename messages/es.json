@@ -744,7 +744,7 @@
     "recordingTranscribing": "Grabando y transcribiendo",
     "transcriptAfterCall": "La transcripción estará disponible después de la llamada...",
     "stillRecordingNotes": "Aún grabando — dicte sus notas",
-    "sayCommand": "Diga {keyword} seguido de un comando",
+    "sayCommand": "Diga <keyword>\"Notissima:\"</keyword> seguido de un comando",
     "ending": "Finalizando…",
     "stopRecordingEnd": "Detener grabación y finalizar",
     "addCallNotes": "Agregar notas de llamada...",

@@ -744,7 +744,7 @@
     "recordingTranscribing": "Aufnahme & Transkription",
     "transcriptAfterCall": "Das Transkript ist nach dem Anruf verfügbar...",
     "stillRecordingNotes": "Aufnahme läuft — sprechen Sie Ihre Notizen",
-    "sayCommand": "Sagen Sie {keyword} gefolgt von einem Befehl",
+    "sayCommand": "Sagen Sie <keyword>\"Notissima:\"</keyword> gefolgt von einem Befehl",
     "ending": "Wird beendet…",
     "stopRecordingEnd": "Aufnahme stoppen & beenden",
     "addCallNotes": "Anrufnotizen hinzufügen...",

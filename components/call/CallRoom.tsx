@@ -894,7 +894,9 @@ function CallRoomInner({
             <div className="text-center space-y-1.5">
               <p className="text-base font-semibold text-foreground">{t("stillRecordingNotes")}</p>
               <p className="text-sm text-muted-foreground">
-                {t("sayCommand", { keyword: <span key="kw" className="font-medium text-foreground">&quot;Notissima:&quot;</span> })}
+                {t.rich("sayCommand", {
+                  keyword: (chunks) => <span className="font-medium text-foreground">{chunks}</span>,
+                })}
               </p>
             </div>
 
