@@ -82,13 +82,15 @@ export default function LandingPage() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-teal-300">
             Get more out of your most valuable asset. Communication.
           </h1>
-          <p className="text-lg sm:text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
-            Every call, meeting, and email your team makes holds decisions, risks, and commitments.
-            Right now, most of it disappears — trapped in someone&apos;s memory, buried in a thread, or reduced to a few lines nobody will read.
-          </p>
-          <p className="text-lg sm:text-xl text-white/90 max-w-3xl mx-auto leading-relaxed mt-4">
-            Notissima captures it all. Not as transcripts. As intelligence.
-          </p>
+          <div className="max-w-3xl mx-auto rounded-2xl bg-black/35 border border-white/15 px-5 py-4 sm:px-7 sm:py-5 backdrop-blur-[2px]">
+            <p className="text-lg sm:text-xl text-white/95 leading-relaxed">
+              Every call, meeting, and email your team makes holds decisions, risks, and commitments.
+              Right now, most of it disappears — trapped in someone&apos;s memory, buried in a thread, or reduced to a few lines nobody will read.
+            </p>
+            <p className="text-lg sm:text-xl text-white/95 leading-relaxed mt-4">
+              Notissima captures it all. Not as transcripts. As intelligence.
+            </p>
+          </div>
 
           <div className="mt-10">
             <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100 font-semibold px-8">
