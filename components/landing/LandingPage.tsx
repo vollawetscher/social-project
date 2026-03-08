@@ -214,9 +214,20 @@ export default function LandingPage() {
               &copy; {new Date().getFullYear()} Notissima
             </span>
           </div>
-          <p className="text-sm text-slate-500">
-            Communication Intelligence — a new category, pioneered by Notissima.
-          </p>
+          <div className="flex items-center gap-5 text-sm text-slate-500">
+            <Link href="/imprint" className="hover:text-slate-700 transition-colors">
+              Imprint
+            </Link>
+            <Link href="/privacy" className="hover:text-slate-700 transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-slate-700 transition-colors">
+              Terms
+            </Link>
+            <Link href="/contact" className="hover:text-slate-700 transition-colors">
+              Contact
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

@@ -1532,7 +1532,7 @@ export default function SessionsPage() {
                     selectedSessionId === session.id && "bg-teal-500/50",
                     isProcessing(session)
                       ? "cursor-not-allowed opacity-70"
-                      : "hover:bg-secondary/50 active:bg-teal-500/50 cursor-pointer"
+                      : "hover:bg-teal-500/50 active:bg-teal-500/50 cursor-pointer"
                   )}
                   onClick={(e) => {
                     if (isProcessing(session)) return
@@ -1689,7 +1689,7 @@ export default function SessionsPage() {
                         selectedSessionId === session.id && "data-[state=selected]:bg-teal-500/50 data-[state=selected]:hover:bg-teal-500/50",
                         isProcessing(session)
                           ? "cursor-not-allowed opacity-70"
-                          : "cursor-pointer active:bg-teal-500/50"
+                          : "cursor-pointer hover:bg-teal-500/50 active:bg-teal-500/50"
                       )}
                       onClick={(e) => {
                         if (isProcessing(session)) return
