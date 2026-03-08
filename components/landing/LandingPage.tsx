@@ -74,20 +74,19 @@ export default function LandingPage() {
           <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-90">
             <source src="/notissima-hero.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/45 to-black/55" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/60 to-black/70" />
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center pt-20">
-          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-white/80 mb-4">Page 1 — The Hook</p>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-teal-300">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-teal-200 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
             Get more out of your most valuable asset. Communication.
           </h1>
-          <div className="max-w-3xl mx-auto rounded-2xl bg-black/35 border border-white/15 px-5 py-4 sm:px-7 sm:py-5 backdrop-blur-[2px]">
-            <p className="text-lg sm:text-xl text-white/95 leading-relaxed">
+          <div className="max-w-3xl mx-auto rounded-2xl bg-black/60 border border-white/25 px-5 py-4 sm:px-7 sm:py-5 backdrop-blur-sm shadow-2xl">
+            <p className="text-lg sm:text-xl text-white leading-relaxed">
               Every call, meeting, and email your team makes holds decisions, risks, and commitments.
               Right now, most of it disappears — trapped in someone&apos;s memory, buried in a thread, or reduced to a few lines nobody will read.
             </p>
-            <p className="text-lg sm:text-xl text-white/95 leading-relaxed mt-4">
+            <p className="text-lg sm:text-xl text-white leading-relaxed mt-4">
               Notissima captures it all. Not as transcripts. As intelligence.
             </p>
           </div>
@@ -105,7 +104,6 @@ export default function LandingPage() {
 
       <section id="how-it-works" className="py-24 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 mb-4 text-center">Page 2 — How It Works</p>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-center text-slate-900 max-w-4xl mx-auto">
             Bring your communication. Get exactly the documentation your project needed.
           </h2>
@@ -158,7 +156,6 @@ export default function LandingPage() {
         </div>
 
         <div className="relative max-w-5xl mx-auto">
-          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 mb-4 text-center">Page 3 — Your World</p>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-center text-slate-900 max-w-4xl mx-auto">
             Communication Intelligence leads to world-class decision making.
           </h2>
