@@ -241,7 +241,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               <Link href="/login">
                 <LogIn className="h-4 w-4 mr-2" />
                 {t('explore.loginToInstall')}
-              </NavLink>
+              </Link>
             </Button>
           )}
           <Tooltip>
