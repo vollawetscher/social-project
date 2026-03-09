@@ -2,18 +2,20 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
-import { Search, Plus, Loader2 } from 'lucide-react'
+import { Search, Plus, Loader2, LogIn } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PostCard } from '@/components/marketplace/PostCard'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import type { CommunityPost, PostType, MarketplaceProfile } from '@/lib/types/marketplace'
 import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
 
 export default function CommunityPage() {
   const t = useTranslations('marketplace')
+  const { user } = useAuth()
   const supabase = createClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | PostType>('all')
@@ -78,12 +80,21 @@ export default function CommunityPage() {
           <h1 className="text-2xl font-semibold text-foreground">{t('community.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t('community.subtitle')}</p>
         </div>
-        <Button asChild size="sm">
-          <Link href="/marketplace/community/new">
-            <Plus className="h-4 w-4 mr-2" />
-            {t('community.newPost')}
-          </Link>
-        </Button>
+        {user ? (
+          <Button asChild size="sm">
+            <Link href="/marketplace/community/new">
+              <Plus className="h-4 w-4 mr-2" />
+              {t('community.newPost')}
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild size="sm" variant="outline" className="bg-transparent">
+            <Link href="/login">
+              <LogIn className="h-4 w-4 mr-2" />
+              {t('community.loginToPost')}
+            </Link>
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | PostType)}>

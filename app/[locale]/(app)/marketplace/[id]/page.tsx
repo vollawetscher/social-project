@@ -5,7 +5,7 @@ import { Link } from '@/i18n/navigation'
 import {
   ArrowLeft, Star, Download, User, Copy, FileDown,
   Eye, Users, MessageSquare, Globe, Briefcase, FileText,
-  Sparkles, Loader2, CheckCircle2, XCircle,
+  Sparkles, Loader2, CheckCircle2, XCircle, Plus, LogIn,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import { copyExportJSON, downloadExportJSON } from '@/lib/utils/marketplace-export'
 import type {
   MarketplaceTemplate, MarketplaceProfile, MarketplaceCategory,
@@ -50,9 +51,12 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const { id } = params
   const t = useTranslations('marketplace')
   const supabase = createClient()
+  const { user } = useAuth()
   const [template, setTemplate] = useState<MarketplaceTemplate | null>(null)
   const [loading, setLoading] = useState(true)
   const [customizing, setCustomizing] = useState(false)
+  const [installing, setInstalling] = useState(false)
+  const [installed, setInstalled] = useState(false)
 
   const [perspectives, setPerspectives] = useState<Perspective[]>([])
   const [audiences, setAudiences] = useState<Audience[]>([])
@@ -143,6 +147,22 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     toast.success(t('explore.downloadedJSON'))
   }
 
+  async function handleInstall() {
+    if (!template) return
+    setInstalling(true)
+    try {
+      const res = await fetch(`/api/marketplace/templates/${template.id}/install`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Install failed')
+      setInstalled(true)
+      toast.success(t('explore.installedSuccess'))
+    } catch (err: any) {
+      toast.error(err.message || t('explore.installFailed'))
+    } finally {
+      setInstalling(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -205,9 +225,28 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         </div>
 
         <div className="flex flex-wrap gap-3">
+          {user ? (
+            <Button onClick={handleInstall} disabled={installing || installed}>
+              {installing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : installed ? (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              {installed ? t('explore.addedToTemplates') : t('explore.addToMyTemplates')}
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href="/login">
+                <LogIn className="h-4 w-4 mr-2" />
+                {t('explore.loginToInstall')}
+              </NavLink>
+            </Button>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button onClick={handleCopyJSON}>
+              <Button variant="outline" className="bg-transparent" onClick={handleCopyJSON}>
                 <Copy className="h-4 w-4 mr-2" />
                 {t('explore.copyJSON')}
               </Button>

@@ -23,26 +23,50 @@ export async function POST(
     return NextResponse.json({ error: 'Template not found' }, { status: 404 })
   }
 
-  const { error: dlError } = await supabase.from('marketplace_downloads').insert({
+  await supabase.from('marketplace_downloads').insert({
     template_id: params.id,
     user_id: user.id,
   })
 
-  if (dlError) {
-    return NextResponse.json({ error: dlError.message }, { status: 500 })
+  const cfg = template.template_config || {}
+
+  const sectionFromPrompt = cfg.generation_prompt
+    ? [{
+        id: 'generated-output',
+        name: 'Generated Output',
+        description: cfg.generation_prompt,
+        isRequired: true,
+      }]
+    : []
+
+  const styleRules: string[] = []
+  if (cfg.do_include) {
+    styleRules.push(...cfg.do_include.split('\n').filter(Boolean).map((s: string) => `DO: ${s.trim()}`))
+  }
+  if (cfg.do_not_include) {
+    styleRules.push(...cfg.do_not_include.split('\n').filter(Boolean).map((s: string) => `DON'T: ${s.trim()}`))
   }
 
-  const { error: cloneError } = await supabase.from('templates').insert({
-    user_id: user.id,
+  const { data: cloned, error: cloneError } = await supabase.from('templates').insert({
     name: template.title,
-    description: template.description,
-    template_config: template.template_config,
-    is_default: false,
-  })
+    description: template.description || '',
+    intended_perspectives: cfg.perspectives || [],
+    allowed_audience: cfg.audiences || [],
+    domain_tags: cfg.domains || [],
+    sections: sectionFromPrompt,
+    required_inputs: [],
+    style_rules: styleRules,
+    suggestion_triggers: template.tags || [],
+    default_do_instructions: cfg.do_include || '',
+    default_dont_instructions: cfg.do_not_include || '',
+    created_by: user.id,
+    is_system: false,
+  }).select('id, name').single()
 
   if (cloneError) {
+    console.error('Error cloning template:', cloneError)
     return NextResponse.json({ error: cloneError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, template_id: cloned.id, name: cloned.name })
 }

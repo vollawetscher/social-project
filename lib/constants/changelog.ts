@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.14.0',
+    date: 'March 9, 2026',
+    entries: [
+      {
+        version: '1.14.0',
+        date: 'March 9, 2026',
+        category: 'feature',
+        title: 'Share Templates to Marketplace',
+        description: 'Publish your personal templates directly to the marketplace with one click. Import templates from the marketplace into your collection. The marketplace and community are now browsable by anyone — no account required.',
+      },
+    ],
+  },
+  {
     version: '1.13.0',
     date: 'March 9, 2026',
     entries: [

@@ -370,7 +370,14 @@
     "suggestionTriggers": "Disparadores de sugerencia",
     "suggestionTriggersHint": "Esta plantilla se sugiere cuando se detectan estas palabras clave:",
     "samplePreview": "Ejemplo de un informe guardado — muestra estructura y formato",
-    "mockPreview": "Vista previa con datos de prueba — muestra cómo se vería un informe con esta plantilla"
+    "mockPreview": "Vista previa con datos de prueba — muestra cómo se vería un informe con esta plantilla",
+    "shareToMarketplace": "Compartir en Marketplace",
+    "shareToMarketplaceDesc": "Publica esta plantilla en el marketplace para que otros puedan descubrirla y usarla.",
+    "published": "Publicado",
+    "alreadyPublished": "Esta plantilla ya está publicada en el marketplace.",
+    "publishSuccess": "¡Plantilla publicada en el marketplace!",
+    "publishFailed": "No se pudo publicar la plantilla",
+    "deletePublishedWarning": "Esta plantilla tiene una versión publicada en el marketplace. Eliminar tu copia personal NO eliminará la versión del marketplace. ¿Estás seguro de que quieres eliminar \"{name}\"?"
   },
   "templateEdit": {
     "editTitle": "Editar Plantilla",
@@ -1079,7 +1086,12 @@
       "copiedJSON": "¡JSON copiado al portapapeles!",
       "downloadJSON": "Descargar",
       "downloadJSONTooltip": "Descargar como archivo .notissima.json",
-      "downloadedJSON": "¡Plantilla descargada!"
+      "downloadedJSON": "¡Plantilla descargada!",
+      "addToMyTemplates": "Agregar a mis plantillas",
+      "addedToTemplates": "Agregado a plantillas",
+      "loginToInstall": "Inicia sesión para agregar plantilla",
+      "installedSuccess": "¡Plantilla agregada a tu colección!",
+      "installFailed": "No se pudo agregar la plantilla"
     },
     "template": {
       "by": "por",
@@ -1110,6 +1122,13 @@
     "upload": {
       "title": "Compartir una Plantilla",
       "subtitle": "Comparte tu plantilla de Notissima con la comunidad",
+      "shareFromTemplates": "Compartir desde mis plantillas",
+      "shareFromTemplatesDesc": "Selecciona una de tus plantillas personales para publicarla en el marketplace.",
+      "noTemplates": "Aún no tienes plantillas creadas.",
+      "createTemplate": "Crear una plantilla",
+      "importJson": "Importar JSON",
+      "importJsonDesc": "Pega un JSON exportado de Notissima para crear y compartir una plantilla.",
+      "publishButton": "Publicar",
       "import": {
         "title": "Importar desde Notissima",
         "description": "Pega el JSON exportado de Notissima para completar todos los campos automáticamente.",
@@ -1209,6 +1228,7 @@
         "tips": "Consejos"
       },
       "newPost": "Nuevo Post",
+      "loginToPost": "Inicia sesión para publicar",
       "search": "Buscar posts...",
       "noResults": "No hay posts aún. ¡Sé el primero en compartir!",
       "postTypes": {

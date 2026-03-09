@@ -370,7 +370,14 @@
     "suggestionTriggers": "Suggestion Triggers",
     "suggestionTriggersHint": "This template is suggested when these keywords are detected:",
     "samplePreview": "Sample from a saved output — shows structure and format",
-    "mockPreview": "Preview with mock data — shows how an output would look using this template"
+    "mockPreview": "Preview with mock data — shows how an output would look using this template",
+    "shareToMarketplace": "Share to Marketplace",
+    "shareToMarketplaceDesc": "Publish this template to the marketplace so others can discover and use it.",
+    "published": "Published",
+    "alreadyPublished": "This template is already published on the marketplace.",
+    "publishSuccess": "Template published to the marketplace!",
+    "publishFailed": "Failed to publish template",
+    "deletePublishedWarning": "This template has a published version on the marketplace. Deleting your personal copy will NOT remove the marketplace version. Are you sure you want to delete \"{name}\"?"
   },
   "templateEdit": {
     "editTitle": "Edit Template",
@@ -1079,7 +1086,12 @@
       "copiedJSON": "JSON copied to clipboard!",
       "downloadJSON": "Download",
       "downloadJSONTooltip": "Download as .notissima.json file",
-      "downloadedJSON": "Template downloaded!"
+      "downloadedJSON": "Template downloaded!",
+      "addToMyTemplates": "Add to My Templates",
+      "addedToTemplates": "Added to Templates",
+      "loginToInstall": "Log in to add to your templates",
+      "installedSuccess": "Template added to your collection!",
+      "installFailed": "Failed to add template"
     },
     "template": {
       "by": "by",
@@ -1110,6 +1122,13 @@
     "upload": {
       "title": "Share a Template",
       "subtitle": "Share your Notissima template with the community",
+      "shareFromTemplates": "Share from My Templates",
+      "shareFromTemplatesDesc": "Select one of your personal templates to publish to the marketplace.",
+      "noTemplates": "You don't have any templates yet.",
+      "createTemplate": "Create a Template",
+      "importJson": "Import JSON",
+      "importJsonDesc": "Paste a Notissima-compatible JSON export to create and share a template.",
+      "publishButton": "Publish",
       "import": {
         "title": "Import from Notissima",
         "description": "Paste the JSON export from Notissima to auto-fill all fields.",
@@ -1209,6 +1228,7 @@
         "tips": "Tips"
       },
       "newPost": "New Post",
+      "loginToPost": "Log in to post",
       "search": "Search posts...",
       "noResults": "No posts yet. Be the first to share!",
       "postTypes": {

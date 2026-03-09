@@ -35,6 +35,9 @@ export default function LandingPage() {
             <a href="#your-world" className="text-sm text-slate-900 hover:text-slate-600 transition-colors">
               Your world
             </a>
+            <Link href="/marketplace" className="text-sm text-slate-900 hover:text-slate-600 transition-colors">
+              Marketplace
+            </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -61,6 +64,9 @@ export default function LandingPage() {
               <a href="#your-world" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Your world
               </a>
+              <Link href="/marketplace" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
+                Marketplace
+              </Link>
               <Link href="/signup" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Join the Beta
               </Link>

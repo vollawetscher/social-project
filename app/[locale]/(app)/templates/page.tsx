@@ -19,6 +19,7 @@ import {
   Trash2,
   MoreHorizontal,
   FileOutput,
+  Store,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -48,6 +49,18 @@ import {
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import type { Template } from "@/lib/types-v0"
+import { ShareToMarketplaceDialog } from "@/components/marketplace/ShareToMarketplaceDialog"
+import { createClient } from "@/lib/supabase/client"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const domainColors: Record<string, string> = {
   legal: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -233,10 +246,28 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [sampleTemplate, setSampleTemplate] = useState<Template | null>(null)
+  const [shareTemplate, setShareTemplate] = useState<Template | null>(null)
+  const [publishedIds, setPublishedIds] = useState<Set<string>>(new Set())
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; isPublished: boolean } | null>(null)
 
   useEffect(() => {
     fetchTemplates()
   }, [])
+
+  useEffect(() => {
+    async function checkPublished() {
+      if (templates.length === 0) return
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('marketplace_templates')
+        .select('source_template_id')
+        .in('source_template_id', templates.map((t) => t.id))
+      if (data) {
+        setPublishedIds(new Set(data.map((d: any) => d.source_template_id)))
+      }
+    }
+    checkPublished()
+  }, [templates])
 
   async function fetchTemplates() {
     try {
@@ -251,24 +282,24 @@ export default function TemplatesPage() {
     }
   }
 
-  const handleDelete = async (templateId: string, templateName: string) => {
-    if (!confirm(t('deleteConfirm', { name: templateName }))) {
-      return
-    }
+  const requestDelete = (templateId: string, templateName: string) => {
+    setDeleteTarget({ id: templateId, name: templateName, isPublished: publishedIds.has(templateId) })
+  }
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
     try {
-      const response = await fetch(`/api/templates/${templateId}`, {
+      const response = await fetch(`/api/templates/${deleteTarget.id}`, {
         method: 'DELETE',
       })
-      
       if (!response.ok) throw new Error('Failed to delete template')
-      
-      // Refresh templates list
       await fetchTemplates()
-      toast.success(t('deleteSuccess', { name: templateName }))
+      toast.success(t('deleteSuccess', { name: deleteTarget.name }))
     } catch (error) {
       console.error('Error deleting template:', error)
       toast.error(t('deleteFailed'))
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -314,6 +345,32 @@ export default function TemplatesPage() {
           onOpenChange={(open) => !open && setSampleTemplate(null)}
         />
       )}
+      <ShareToMarketplaceDialog
+        template={shareTemplate}
+        open={!!shareTemplate}
+        onOpenChange={(open) => !open && setShareTemplate(null)}
+        onSuccess={() => {
+          fetchTemplates()
+        }}
+      />
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tc('delete')} &ldquo;{deleteTarget?.name}&rdquo;</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.isPublished
+                ? t('deletePublishedWarning', { name: deleteTarget.name })
+                : t('deleteConfirm', { name: deleteTarget?.name ?? '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {tc('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -403,9 +460,19 @@ export default function TemplatesPage() {
                         <Copy className="mr-2 h-4 w-4" />
                         {tc('duplicate')}
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setShareTemplate(template)}
+                        className="cursor-pointer"
+                      >
+                        <Store className="mr-2 h-4 w-4" />
+                        {t('shareToMarketplace')}
+                        {publishedIds.has(template.id) && (
+                          <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 py-0">{t('published')}</Badge>
+                        )}
+                      </DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-destructive cursor-pointer"
-                        onClick={() => handleDelete(template.id, template.name)}
+                        onClick={() => requestDelete(template.id, template.name)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         {tc('delete')}
@@ -522,9 +589,19 @@ export default function TemplatesPage() {
                           <Copy className="mr-2 h-4 w-4" />
                           {tc('duplicate')}
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setShareTemplate(template)}
+                          className="cursor-pointer"
+                        >
+                          <Store className="mr-2 h-4 w-4" />
+                          {t('shareToMarketplace')}
+                          {publishedIds.has(template.id) && (
+                            <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 py-0">{t('published')}</Badge>
+                          )}
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-destructive cursor-pointer"
-                          onClick={() => handleDelete(template.id, template.name)}
+                          onClick={() => requestDelete(template.id, template.name)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           {tc('delete')}

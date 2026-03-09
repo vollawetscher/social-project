@@ -370,7 +370,14 @@
     "suggestionTriggers": "Vorschlags-Trigger",
     "suggestionTriggersHint": "Diese Vorlage wird vorgeschlagen, wenn diese Schluesselwoerter erkannt werden:",
     "samplePreview": "Beispiel aus einer gespeicherten Ausgabe — zeigt Struktur und Format",
-    "mockPreview": "Vorschau mit Testdaten — zeigt wie eine Ausgabe mit dieser Vorlage aussehen würde"
+    "mockPreview": "Vorschau mit Testdaten — zeigt wie eine Ausgabe mit dieser Vorlage aussehen würde",
+    "shareToMarketplace": "Im Marketplace teilen",
+    "shareToMarketplaceDesc": "Veröffentliche diese Vorlage im Marketplace, damit andere sie entdecken und nutzen können.",
+    "published": "Veröffentlicht",
+    "alreadyPublished": "Diese Vorlage ist bereits im Marketplace veröffentlicht.",
+    "publishSuccess": "Vorlage im Marketplace veröffentlicht!",
+    "publishFailed": "Vorlage konnte nicht veröffentlicht werden",
+    "deletePublishedWarning": "Diese Vorlage hat eine veröffentlichte Version im Marketplace. Das Löschen deiner persönlichen Kopie entfernt NICHT die Marketplace-Version. Möchtest du \"{name}\" wirklich löschen?"
   },
   "templateEdit": {
     "editTitle": "Vorlage bearbeiten",
@@ -1079,7 +1086,12 @@
       "copiedJSON": "JSON in die Zwischenablage kopiert!",
       "downloadJSON": "Download",
       "downloadJSONTooltip": "Als .notissima.json-Datei herunterladen",
-      "downloadedJSON": "Vorlage heruntergeladen!"
+      "downloadedJSON": "Vorlage heruntergeladen!",
+      "addToMyTemplates": "Zu meinen Vorlagen hinzufügen",
+      "addedToTemplates": "Zu Vorlagen hinzugefügt",
+      "loginToInstall": "Anmelden um Vorlage hinzuzufügen",
+      "installedSuccess": "Vorlage zu deiner Sammlung hinzugefügt!",
+      "installFailed": "Vorlage konnte nicht hinzugefügt werden"
     },
     "template": {
       "by": "von",
@@ -1110,6 +1122,13 @@
     "upload": {
       "title": "Vorlage teilen",
       "subtitle": "Teile deine Notissima-Vorlage mit der Community",
+      "shareFromTemplates": "Aus meinen Vorlagen teilen",
+      "shareFromTemplatesDesc": "Wähle eine deiner persönlichen Vorlagen, um sie im Marketplace zu veröffentlichen.",
+      "noTemplates": "Du hast noch keine Vorlagen erstellt.",
+      "createTemplate": "Vorlage erstellen",
+      "importJson": "JSON importieren",
+      "importJsonDesc": "Füge einen Notissima-kompatiblen JSON-Export ein, um eine Vorlage zu erstellen und zu teilen.",
+      "publishButton": "Veröffentlichen",
       "import": {
         "title": "Aus Notissima importieren",
         "description": "Füge den JSON-Export aus Notissima ein, um alle Felder automatisch auszufüllen.",
@@ -1209,6 +1228,7 @@
         "tips": "Tipps"
       },
       "newPost": "Neuer Beitrag",
+      "loginToPost": "Anmelden um zu posten",
       "search": "Beiträge suchen...",
       "noResults": "Noch keine Beiträge. Sei der Erste!",
       "postTypes": {
