@@ -24,6 +24,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Template Marketplace',
         description: 'Discover, share, and download AI transcription templates created by the community. Browse templates by category, customize them before export, and publish your own. Includes a community section with articles, Q&A, and tips.',
       },
+      {
+        version: '1.13.0',
+        date: 'March 9, 2026',
+        category: 'feature',
+        title: 'Admin Dashboard',
+        description: 'Administrators can now monitor all sessions across users and review bug reports in a dedicated dashboard. Filter by status, severity, or type — and resolve issues directly from the interface.',
+      },
     ],
   },
   {
