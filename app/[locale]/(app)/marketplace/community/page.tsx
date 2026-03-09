@@ -10,6 +10,7 @@ import { PostCard } from '@/components/marketplace/PostCard'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import type { CommunityPost, PostType, MarketplaceProfile } from '@/lib/types/marketplace'
+import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
 
 export default function CommunityPage() {
   const t = useTranslations('marketplace')
@@ -71,6 +72,7 @@ export default function CommunityPage() {
 
   return (
     <div className="space-y-6">
+      <MarketplaceNav />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">{t('community.title')}</h1>

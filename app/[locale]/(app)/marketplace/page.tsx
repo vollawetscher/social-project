@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { copyExportJSON, downloadExportJSON } from '@/lib/utils/marketplace-export'
 import type { MarketplaceTemplate, MarketplaceCategory, MarketplaceProfile } from '@/lib/types/marketplace'
+import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
 
 const categoryColors: Record<string, string> = {
   psychology: 'bg-purple-500/20 text-purple-600 border-purple-500/30',
@@ -119,6 +120,7 @@ export default function MarketplacePage() {
   return (
     <TooltipProvider delayDuration={0}>
       <div className="space-y-6">
+        <MarketplaceNav />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">{t('explore.title')}</h1>

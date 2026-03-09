@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import type {
   Perspective, Audience, Tone, OutputFormat, OutputLanguage, MarketplaceDomain, NotissimaExportJSON,
 } from '@/lib/types/marketplace'
+import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
 
 const CATEGORIES = [
   { value: 'psychology', label: 'Psychology' },
@@ -263,6 +264,7 @@ export default function UploadTemplatePage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      <MarketplaceNav />
       <div>
         <h1 className="text-2xl font-semibold text-foreground">{t('upload.title')}</h1>
         <p className="text-sm text-muted-foreground mt-1">{t('upload.subtitle')}</p>
