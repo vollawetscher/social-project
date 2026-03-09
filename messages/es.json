@@ -40,6 +40,7 @@
     "outputs": "Informes",
     "calls": "Llamadas",
     "templates": "Plantillas",
+    "marketplace": "Marketplace",
     "settings": "Ajustes",
     "profile": "Perfil",
     "adminSessions": "Todas las sesiones",
@@ -1057,5 +1058,233 @@
     "en": "English",
     "de": "Deutsch",
     "es": "Español"
+  },
+  "marketplace": {
+    "explore": {
+      "title": "Explorar Plantillas",
+      "subtitle": "Navega plantillas creadas por la comunidad para cada caso de uso",
+      "search": "Buscar plantillas...",
+      "filter": "Filtrar",
+      "all": "Todas",
+      "sort": "Ordenar por",
+      "sortOptions": {
+        "popular": "Más Popular",
+        "recent": "Más Reciente",
+        "rating": "Mejor Valorada",
+        "downloads": "Más Descargas"
+      },
+      "noResults": "No se encontraron plantillas",
+      "copyJSON": "Copiar JSON",
+      "copyJSONTooltip": "Copiar JSON compatible con Notissima al portapapeles",
+      "copiedJSON": "¡JSON copiado al portapapeles!",
+      "downloadJSON": "Descargar",
+      "downloadJSONTooltip": "Descargar como archivo .notissima.json",
+      "downloadedJSON": "¡Plantilla descargada!"
+    },
+    "template": {
+      "by": "por",
+      "downloads": "descargas",
+      "rating": "valoración",
+      "reviews": "reseñas",
+      "download": "Descargar Plantilla",
+      "share": "Compartir",
+      "report": "Reportar",
+      "notFound": "Plantilla no encontrada.",
+      "backToExplore": "Volver a Explorar",
+      "unknown": "Desconocido",
+      "customizeExport": "Personalizar y Exportar",
+      "closeCustomizer": "Cerrar Personalizador",
+      "generationPrompt": "Prompt de Generación",
+      "doInclude": "Incluir",
+      "doNotInclude": "No incluir",
+      "noInstructions": "Sin instrucciones específicas",
+      "noExclusions": "Sin exclusiones específicas",
+      "notissimaConfig": "Configuración Notissima",
+      "exportReady": "Tu plantilla personalizada está lista para exportar a Notissima.",
+      "tabs": {
+        "overview": "Descripción",
+        "reviews": "Reseñas",
+        "comments": "Comentarios"
+      }
+    },
+    "upload": {
+      "title": "Compartir una Plantilla",
+      "subtitle": "Comparte tu plantilla de Notissima con la comunidad",
+      "import": {
+        "title": "Importar desde Notissima",
+        "description": "Pega el JSON exportado de Notissima para completar todos los campos automáticamente.",
+        "placeholder": "{\n  \"v\": 1,\n  \"name\": \"Mi Plantilla\",\n  ...\n}",
+        "button": "Importar JSON",
+        "success": "¡Plantilla importada exitosamente!",
+        "error": "Formato JSON inválido. Usa la exportación de Notissima.",
+        "orManual": "o completa manualmente"
+      },
+      "published": "¡Plantilla publicada!",
+      "draftSaved": "¡Borrador guardado!",
+      "safety": {
+        "checking": "Verificando seguridad...",
+        "blocked": "Plantilla bloqueada por verificación de seguridad",
+        "warning": "Advertencia de seguridad",
+        "accountBlocked": "Publicación bloqueada",
+        "contactSupport": "Por favor contacta al soporte para restaurar el acceso.",
+        "permanentBlock": "Tu cuenta ha sido bloqueada permanentemente para publicaciones debido a violaciones de seguridad repetidas. Por favor contacta al soporte.",
+        "strikeWarning": "Tu prompt fue detectado como potencialmente dañino. Estás bloqueado por {hours} hora(s). Infracción {count} de 3."
+      },
+      "sectionMarketplace": "Info del Marketplace",
+      "sectionMarketplaceDesc": "Cómo aparece tu plantilla en el hub",
+      "sectionConfig": "Configuración de Notissima",
+      "sectionConfigDesc": "Los ajustes de la plantilla de Notissima",
+      "sectionInstructions": "Instrucciones de Generación",
+      "sectionInstructionsDesc": "Lo que la IA debe y no debe incluir",
+      "form": {
+        "title": "Nombre de la Plantilla",
+        "titlePlaceholder": "ej. Informe de Ventas MEDDIC",
+        "description": "Descripción",
+        "descriptionPlaceholder": "Describe qué hace esta plantilla y cuándo usarla...",
+        "category": "Categoría",
+        "categoryPlaceholder": "Selecciona una categoría",
+        "tags": "Etiquetas",
+        "tagsPlaceholder": "Agregar etiquetas (presiona Enter)",
+        "perspective": "Perspectiva de Salida",
+        "perspectiveOptions": {
+          "party_a": "Parte A (Orador Principal)",
+          "party_b": "Parte B (Orador Secundario)",
+          "observer": "Observador / Oyente"
+        },
+        "audience": "Audiencia",
+        "audienceOptions": {
+          "internal": "Interna (Equipo / Organización)",
+          "external": "Externa (Terceros)",
+          "client_facing": "Para el Cliente",
+          "legal": "Legal",
+          "executive": "Ejecutivo"
+        },
+        "tone": "Tono",
+        "toneOptions": {
+          "direct": "Directo",
+          "neutral": "Neutral",
+          "formal": "Formal",
+          "casual": "Casual",
+          "funny": "Divertido",
+          "technical": "Técnico"
+        },
+        "outputFormat": "Formato de Salida",
+        "formatOptions": {
+          "markdown": "Markdown",
+          "json": "JSON"
+        },
+        "languages": "Idiomas Soportados",
+        "languageOptions": {
+          "en": "Inglés",
+          "de": "Alemán",
+          "fr": "Francés",
+          "es": "Español",
+          "it": "Italiano",
+          "pt": "Portugués",
+          "nl": "Holandés",
+          "pl": "Polaco"
+        },
+        "domains": "Dominios",
+        "generationPrompt": "Prompt de Generación",
+        "generationPromptPlaceholder": "ej. Crea un análisis de ventas MEDDIC estructurado a partir de esta conversación.",
+        "generationPromptHint": "La instrucción principal que le dice a la IA cómo procesar la transcripción.",
+        "doInclude": "Incluir...",
+        "doIncludePlaceholder": "ej. Enfocarse en elementos de acción y plazos\nIncluir citas exactas",
+        "doNotInclude": "No incluir...",
+        "doNotIncludePlaceholder": "ej. Omitir charla casual y saludos\nExcluir tangentes fuera de tema",
+        "publish": "Publicar Plantilla",
+        "saveDraft": "Guardar como Borrador",
+        "requiredField": "Este campo es obligatorio",
+        "loginRequired": "Inicia sesión para compartir una plantilla.",
+        "signIn": "Iniciar Sesión"
+      }
+    },
+    "community": {
+      "title": "Comunidad",
+      "subtitle": "Comparte conocimiento, haz preguntas y ayuda a otros usuarios de Notissima",
+      "tabs": {
+        "all": "Todo",
+        "articles": "Artículos",
+        "questions": "Preguntas",
+        "tips": "Consejos"
+      },
+      "newPost": "Nuevo Post",
+      "search": "Buscar posts...",
+      "noResults": "No hay posts aún. ¡Sé el primero en compartir!",
+      "postTypes": {
+        "article": "Artículo",
+        "question": "Pregunta",
+        "tip": "Consejo"
+      },
+      "postTypeDesc": {
+        "article": "Comparte experiencias, guías o mejores prácticas",
+        "question": "Pide ayuda o consejo a la comunidad",
+        "tip": "Comparte un consejo rápido y práctico"
+      },
+      "card": {
+        "votes": "votos",
+        "comments": "comentarios",
+        "answers": "respuestas",
+        "views": "vistas",
+        "resolved": "Resuelto"
+      },
+      "newPostPage": {
+        "title": "Crear un Post",
+        "subtitle": "Comparte tu conocimiento o pregunta a la comunidad",
+        "typeLabel": "Tipo de Post",
+        "titleLabel": "Título",
+        "titlePlaceholder": "Dale un título claro a tu post...",
+        "contentLabel": "Contenido",
+        "contentPlaceholder": "Escribe tu post en Markdown...",
+        "categoryLabel": "Categoría",
+        "categoryPlaceholder": "Selecciona una categoría",
+        "tagsLabel": "Etiquetas",
+        "tagsPlaceholder": "Agregar etiquetas (presiona Enter)",
+        "preview": "Vista Previa",
+        "write": "Escribir",
+        "publish": "Publicar Post",
+        "loginRequired": "Inicia sesión para crear un post.",
+        "requiredFields": "Título y contenido son obligatorios",
+        "published": "¡Post publicado!"
+      },
+      "detail": {
+        "writeAnswer": "Escribe una respuesta...",
+        "writeComment": "Escribe un comentario...",
+        "submitAnswer": "Publicar Respuesta",
+        "submitComment": "Publicar Comentario",
+        "acceptAnswer": "Aceptar Respuesta",
+        "acceptedAnswer": "Respuesta Aceptada",
+        "markResolved": "Marcar como Resuelto",
+        "resolved": "Esta pregunta ha sido resuelta",
+        "loginToComment": "Inicia sesión para comentar",
+        "loginToAnswer": "Inicia sesión para responder",
+        "noComments": "No hay comentarios aún",
+        "noAnswers": "¡No hay respuestas aún. Sé el primero en ayudar!",
+        "reply": "Responder",
+        "deleteConfirm": "¿Estás seguro de que quieres eliminar esto?",
+        "notFound": "Post no encontrado"
+      },
+      "vote": {
+        "upvote": "Votar",
+        "removeVote": "Quitar voto"
+      },
+      "timeAgo": {
+        "now": "ahora",
+        "minutes": "hace {count}m",
+        "hours": "hace {count}h",
+        "days": "hace {count}d",
+        "weeks": "hace {count}sem"
+      }
+    },
+    "common": {
+      "loading": "Cargando...",
+      "error": "Algo salió mal",
+      "retry": "Intentar de nuevo",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "edit": "Editar",
+      "back": "Volver"
+    }
   }
 }

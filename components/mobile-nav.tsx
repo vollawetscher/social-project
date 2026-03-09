@@ -2,7 +2,7 @@
 
 import { Link, usePathname } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
-import { Mic, FileText, LayoutTemplate, Settings, Phone } from "lucide-react"
+import { Mic, FileText, LayoutTemplate, Settings, Phone, Store } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItemDefs = [
@@ -10,6 +10,7 @@ const navItemDefs = [
   { nameKey: "outputs", href: "/outputs", icon: FileText },
   { nameKey: "calls", href: "/calls", icon: Phone },
   { nameKey: "templates", href: "/templates", icon: LayoutTemplate },
+  { nameKey: "marketplace", href: "/marketplace", icon: Store },
   { nameKey: "settings", href: "/settings", icon: Settings },
 ]
 

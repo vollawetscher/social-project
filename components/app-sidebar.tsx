@@ -12,6 +12,7 @@ import {
   Bug,
   Phone,
   Shield,
+  Store,
 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { cn } from "@/lib/utils"
@@ -34,6 +35,7 @@ const navItemDefs = [
   { nameKey: "outputs", href: "/outputs", icon: FileText },
   { nameKey: "calls", href: "/calls", icon: Phone },
   { nameKey: "templates", href: "/templates", icon: LayoutTemplate },
+  { nameKey: "marketplace", href: "/marketplace", icon: Store },
   { nameKey: "settings", href: "/settings", icon: Settings },
 ]
 

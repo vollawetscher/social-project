@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.13.0',
+    date: 'March 9, 2026',
+    entries: [
+      {
+        version: '1.13.0',
+        date: 'March 9, 2026',
+        category: 'feature',
+        title: 'Template Marketplace',
+        description: 'Discover, share, and download AI transcription templates created by the community. Browse templates by category, customize them before export, and publish your own. Includes a community section with articles, Q&A, and tips.',
+      },
+    ],
+  },
+  {
     version: '1.12.0',
     date: 'March 5, 2026',
     entries: [

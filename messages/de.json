@@ -40,6 +40,7 @@
     "outputs": "Ausgaben",
     "calls": "Anrufe",
     "templates": "Vorlagen",
+    "marketplace": "Marketplace",
     "settings": "Einstellungen",
     "profile": "Profil",
     "adminSessions": "Alle Sitzungen",
@@ -1057,5 +1058,233 @@
     "en": "English",
     "de": "Deutsch",
     "es": "Español"
+  },
+  "marketplace": {
+    "explore": {
+      "title": "Vorlagen entdecken",
+      "subtitle": "Community-erstellte Vorlagen für jeden Anwendungsfall",
+      "search": "Vorlagen suchen...",
+      "filter": "Filter",
+      "all": "Alle",
+      "sort": "Sortieren",
+      "sortOptions": {
+        "popular": "Beliebteste",
+        "recent": "Neueste",
+        "rating": "Bestbewertet",
+        "downloads": "Meiste Downloads"
+      },
+      "noResults": "Keine Vorlagen gefunden",
+      "copyJSON": "JSON kopieren",
+      "copyJSONTooltip": "Notissima-kompatibles JSON in die Zwischenablage kopieren",
+      "copiedJSON": "JSON in die Zwischenablage kopiert!",
+      "downloadJSON": "Download",
+      "downloadJSONTooltip": "Als .notissima.json-Datei herunterladen",
+      "downloadedJSON": "Vorlage heruntergeladen!"
+    },
+    "template": {
+      "by": "von",
+      "downloads": "Downloads",
+      "rating": "Bewertung",
+      "reviews": "Bewertungen",
+      "download": "Vorlage herunterladen",
+      "share": "Teilen",
+      "report": "Melden",
+      "notFound": "Vorlage nicht gefunden.",
+      "backToExplore": "Zurück zu Entdecken",
+      "unknown": "Unbekannt",
+      "customizeExport": "Anpassen & Exportieren",
+      "closeCustomizer": "Anpassung schließen",
+      "generationPrompt": "Generierungs-Prompt",
+      "doInclude": "Einbeziehen",
+      "doNotInclude": "Nicht einbeziehen",
+      "noInstructions": "Keine besonderen Anweisungen",
+      "noExclusions": "Keine besonderen Ausschlüsse",
+      "notissimaConfig": "Notissima-Konfiguration",
+      "exportReady": "Deine angepasste Vorlage ist bereit zum Export nach Notissima.",
+      "tabs": {
+        "overview": "Übersicht",
+        "reviews": "Bewertungen",
+        "comments": "Kommentare"
+      }
+    },
+    "upload": {
+      "title": "Vorlage teilen",
+      "subtitle": "Teile deine Notissima-Vorlage mit der Community",
+      "import": {
+        "title": "Aus Notissima importieren",
+        "description": "Füge den JSON-Export aus Notissima ein, um alle Felder automatisch auszufüllen.",
+        "placeholder": "{\n  \"v\": 1,\n  \"name\": \"Meine Vorlage\",\n  ...\n}",
+        "button": "JSON importieren",
+        "success": "Vorlage erfolgreich importiert!",
+        "error": "Ungültiges JSON-Format. Bitte verwende den Notissima-Export.",
+        "orManual": "oder manuell ausfüllen"
+      },
+      "published": "Vorlage veröffentlicht!",
+      "draftSaved": "Entwurf gespeichert!",
+      "safety": {
+        "checking": "Sicherheitsprüfung...",
+        "blocked": "Vorlage durch Sicherheitsprüfung blockiert",
+        "warning": "Sicherheitswarnung",
+        "accountBlocked": "Veröffentlichung gesperrt",
+        "contactSupport": "Bitte kontaktiere den Support um den Zugang wiederherzustellen.",
+        "permanentBlock": "Dein Account wurde wegen wiederholter Sicherheitsverstöße dauerhaft für Veröffentlichungen gesperrt. Bitte kontaktiere den Support.",
+        "strikeWarning": "Dein Prompt wurde als potenziell schädlich erkannt. Du bist für {hours} Stunde(n) gesperrt. Verstoß {count} von 3."
+      },
+      "sectionMarketplace": "Marketplace-Info",
+      "sectionMarketplaceDesc": "So erscheint deine Vorlage im Hub",
+      "sectionConfig": "Notissima-Konfiguration",
+      "sectionConfigDesc": "Die Vorlagen-Einstellungen aus Notissima",
+      "sectionInstructions": "Generierungs-Anweisungen",
+      "sectionInstructionsDesc": "Was die KI ein- und ausschließen soll",
+      "form": {
+        "title": "Vorlagenname",
+        "titlePlaceholder": "z.B. MEDDIC-Vertriebsbericht",
+        "description": "Beschreibung",
+        "descriptionPlaceholder": "Beschreibe, was diese Vorlage macht und wann man sie einsetzt...",
+        "category": "Kategorie",
+        "categoryPlaceholder": "Kategorie wählen",
+        "tags": "Tags",
+        "tagsPlaceholder": "Tags hinzufügen (Enter drücken)",
+        "perspective": "Ausgabe-Perspektive",
+        "perspectiveOptions": {
+          "party_a": "Partei A (Hauptsprecher)",
+          "party_b": "Partei B (Zweitsprecher)",
+          "observer": "Beobachter / Zuhörer"
+        },
+        "audience": "Zielgruppe",
+        "audienceOptions": {
+          "internal": "Intern (Team / Organisation)",
+          "external": "Extern (Dritte)",
+          "client_facing": "Kundenorientiert",
+          "legal": "Rechtlich",
+          "executive": "Führungsebene"
+        },
+        "tone": "Tonalität",
+        "toneOptions": {
+          "direct": "Direkt",
+          "neutral": "Neutral",
+          "formal": "Formell",
+          "casual": "Locker",
+          "funny": "Humorvoll",
+          "technical": "Technisch"
+        },
+        "outputFormat": "Ausgabeformat",
+        "formatOptions": {
+          "markdown": "Markdown",
+          "json": "JSON"
+        },
+        "languages": "Unterstützte Sprachen",
+        "languageOptions": {
+          "en": "Englisch",
+          "de": "Deutsch",
+          "fr": "Französisch",
+          "es": "Spanisch",
+          "it": "Italienisch",
+          "pt": "Portugiesisch",
+          "nl": "Niederländisch",
+          "pl": "Polnisch"
+        },
+        "domains": "Fachgebiete",
+        "generationPrompt": "Generierungs-Prompt",
+        "generationPromptPlaceholder": "z.B. Erstelle eine strukturierte MEDDIC-Vertriebsanalyse aus diesem Gespräch. Identifiziere die Entscheider, Schmerzpunkte, Metriken und nächste Schritte.",
+        "generationPromptHint": "Die Hauptanweisung, die der KI sagt, wie die Transkription verarbeitet werden soll. Das ist der Kern deiner Vorlage.",
+        "doInclude": "Einbeziehen...",
+        "doIncludePlaceholder": "z.B. Fokus auf Aktionspunkte und Deadlines\nExakte Zitate für wichtige Entscheidungen einbeziehen",
+        "doNotInclude": "Nicht einbeziehen...",
+        "doNotIncludePlaceholder": "z.B. Smalltalk und Begrüßungen weglassen\nAbschweifungen vom Thema auslassen",
+        "publish": "Vorlage veröffentlichen",
+        "saveDraft": "Als Entwurf speichern",
+        "requiredField": "Dieses Feld ist erforderlich",
+        "loginRequired": "Bitte melde dich an, um eine Vorlage zu teilen.",
+        "signIn": "Anmelden"
+      }
+    },
+    "community": {
+      "title": "Community",
+      "subtitle": "Wissen teilen, Fragen stellen und anderen Notissima-Nutzern helfen",
+      "tabs": {
+        "all": "Alle",
+        "articles": "Artikel",
+        "questions": "Fragen",
+        "tips": "Tipps"
+      },
+      "newPost": "Neuer Beitrag",
+      "search": "Beiträge suchen...",
+      "noResults": "Noch keine Beiträge. Sei der Erste!",
+      "postTypes": {
+        "article": "Artikel",
+        "question": "Frage",
+        "tip": "Tipp"
+      },
+      "postTypeDesc": {
+        "article": "Teile Erfahrungen, Anleitungen oder Best Practices",
+        "question": "Bitte die Community um Hilfe oder Rat",
+        "tip": "Teile einen schnellen, umsetzbaren Tipp"
+      },
+      "card": {
+        "votes": "Stimmen",
+        "comments": "Kommentare",
+        "answers": "Antworten",
+        "views": "Aufrufe",
+        "resolved": "Gelöst"
+      },
+      "newPostPage": {
+        "title": "Beitrag erstellen",
+        "subtitle": "Teile dein Wissen oder frage die Community",
+        "typeLabel": "Beitragstyp",
+        "titleLabel": "Titel",
+        "titlePlaceholder": "Gib deinem Beitrag einen klaren Titel...",
+        "contentLabel": "Inhalt",
+        "contentPlaceholder": "Schreibe deinen Beitrag in Markdown...",
+        "categoryLabel": "Kategorie",
+        "categoryPlaceholder": "Kategorie wählen",
+        "tagsLabel": "Tags",
+        "tagsPlaceholder": "Tags hinzufügen (Enter drücken)",
+        "preview": "Vorschau",
+        "write": "Schreiben",
+        "publish": "Beitrag veröffentlichen",
+        "loginRequired": "Bitte melde dich an, um einen Beitrag zu erstellen.",
+        "requiredFields": "Titel und Inhalt sind erforderlich",
+        "published": "Beitrag veröffentlicht!"
+      },
+      "detail": {
+        "writeAnswer": "Antwort schreiben...",
+        "writeComment": "Kommentar schreiben...",
+        "submitAnswer": "Antwort senden",
+        "submitComment": "Kommentar senden",
+        "acceptAnswer": "Antwort akzeptieren",
+        "acceptedAnswer": "Akzeptierte Antwort",
+        "markResolved": "Als gelöst markieren",
+        "resolved": "Diese Frage wurde gelöst",
+        "loginToComment": "Anmelden zum Kommentieren",
+        "loginToAnswer": "Anmelden zum Antworten",
+        "noComments": "Noch keine Kommentare",
+        "noAnswers": "Noch keine Antworten. Sei der Erste!",
+        "reply": "Antworten",
+        "deleteConfirm": "Bist du sicher, dass du das löschen möchtest?",
+        "notFound": "Beitrag nicht gefunden"
+      },
+      "vote": {
+        "upvote": "Upvote",
+        "removeVote": "Stimme entfernen"
+      },
+      "timeAgo": {
+        "now": "gerade eben",
+        "minutes": "vor {count}min",
+        "hours": "vor {count}h",
+        "days": "vor {count}T",
+        "weeks": "vor {count}W"
+      }
+    },
+    "common": {
+      "loading": "Laden...",
+      "error": "Etwas ist schiefgelaufen",
+      "retry": "Erneut versuchen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "delete": "Löschen",
+      "edit": "Bearbeiten",
+      "back": "Zurück"
+    }
   }
 }

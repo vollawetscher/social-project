@@ -1,0 +1,255 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { Link } from '@/i18n/navigation'
+import { Search, Star, Download, User, SlidersHorizontal, Copy, FileDown, Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
+import { copyExportJSON, downloadExportJSON } from '@/lib/utils/marketplace-export'
+import type { MarketplaceTemplate, MarketplaceCategory, MarketplaceProfile } from '@/lib/types/marketplace'
+
+const categoryColors: Record<string, string> = {
+  psychology: 'bg-purple-500/20 text-purple-600 border-purple-500/30',
+  sales: 'bg-green-500/20 text-green-600 border-green-500/30',
+  medical: 'bg-red-500/20 text-red-600 border-red-500/30',
+  'it-support': 'bg-blue-500/20 text-blue-600 border-blue-500/30',
+  legal: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
+  education: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30',
+  consulting: 'bg-teal-500/20 text-teal-600 border-teal-500/30',
+  hr: 'bg-pink-500/20 text-pink-600 border-pink-500/30',
+  general: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+}
+
+export default function MarketplacePage() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [templates, setTemplates] = useState<MarketplaceTemplate[]>([])
+  const [categories, setCategories] = useState<MarketplaceCategory[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [showFilters, setShowFilters] = useState(false)
+  const t = useTranslations('marketplace')
+  const supabase = createClient()
+
+  const fetchTemplates = useCallback(async () => {
+    setLoading(true)
+
+    let query = supabase
+      .from('marketplace_templates')
+      .select('*')
+      .eq('is_published', true)
+      .order('download_count', { ascending: false })
+
+    if (selectedCategory) {
+      query = query.eq('category_id', selectedCategory)
+    }
+
+    if (searchQuery.trim()) {
+      query = query.or(
+        `title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`
+      )
+    }
+
+    const { data: tplData } = await query
+
+    if (!tplData || tplData.length === 0) {
+      setTemplates([])
+      setLoading(false)
+      return
+    }
+
+    const authorIds = Array.from(new Set(tplData.map((t: any) => t.author_id as string)))
+    const categoryIds = Array.from(new Set(tplData.map((t: any) => t.category_id as string).filter(Boolean)))
+
+    const [profilesRes, categoriesRes] = await Promise.all([
+      supabase.from('profiles').select('id, display_name, marketplace_username, marketplace_avatar_url, marketplace_bio').in('id', authorIds),
+      categoryIds.length > 0
+        ? supabase.from('marketplace_categories').select('*').in('id', categoryIds)
+        : Promise.resolve({ data: [] }),
+    ])
+
+    const profileMap = new Map<string, MarketplaceProfile>(
+      (profilesRes.data ?? []).map((p: any) => [p.id, p])
+    )
+    const categoryMap = new Map<string, MarketplaceCategory>(
+      (categoriesRes.data ?? []).map((c: any) => [c.id, c])
+    )
+
+    setTemplates(
+      tplData.map((t: any) => ({
+        ...t,
+        author: profileMap.get(t.author_id),
+        category: categoryMap.get(t.category_id),
+      }))
+    )
+    setLoading(false)
+  }, [searchQuery, selectedCategory, supabase])
+
+  useEffect(() => {
+    fetchTemplates()
+  }, [fetchTemplates])
+
+  useEffect(() => {
+    supabase
+      .from('marketplace_categories')
+      .select('*')
+      .order('sort_order')
+      .then(({ data }: { data: any }) => setCategories(data ?? []))
+  }, [supabase])
+
+  async function handleCopyJSON(e: React.MouseEvent, tpl: MarketplaceTemplate) {
+    e.preventDefault()
+    e.stopPropagation()
+    await copyExportJSON(tpl)
+    toast.success(t('explore.copiedJSON'))
+  }
+
+  function handleDownloadJSON(e: React.MouseEvent, tpl: MarketplaceTemplate) {
+    e.preventDefault()
+    e.stopPropagation()
+    downloadExportJSON(tpl)
+    toast.success(t('explore.downloadedJSON'))
+  }
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">{t('explore.title')}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{t('explore.subtitle')}</p>
+          </div>
+          <Button
+            variant={showFilters ? 'secondary' : 'outline'}
+            size="sm"
+            className="bg-transparent"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <SlidersHorizontal className="h-4 w-4 mr-2" />
+            {t('explore.filter')}
+          </Button>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder={t('explore.search')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-secondary border-border"
+          />
+        </div>
+
+        {showFilters && categories.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <Badge
+              variant={selectedCategory === null ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => setSelectedCategory(null)}
+            >
+              {t('explore.all')}
+            </Badge>
+            {categories.map((cat) => (
+              <Badge
+                key={cat.id}
+                variant={selectedCategory === cat.id ? 'default' : 'outline'}
+                className={`cursor-pointer ${selectedCategory !== cat.id ? (categoryColors[cat.slug] ?? '') : ''}`}
+                onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+              >
+                {cat.name}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : templates.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <p>{t('explore.noResults')}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {templates.map((tpl) => (
+              <Link key={tpl.id} href={`/marketplace/${tpl.id}`}>
+                <Card className="border-border hover:border-primary/50 transition-colors h-full">
+                  <CardContent className="p-5 flex flex-col h-full">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      {tpl.category && (
+                        <Badge
+                          variant="outline"
+                          className={categoryColors[tpl.category.slug] || ''}
+                        >
+                          {tpl.category.name}
+                        </Badge>
+                      )}
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+                        <span>{Number(tpl.avg_rating).toFixed(1)}</span>
+                      </div>
+                    </div>
+
+                    <h3 className="font-medium text-foreground mb-1">{tpl.title}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-4 flex-1">
+                      {tpl.description}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {tpl.author?.display_name}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Download className="h-3 w-3" />
+                        {tpl.download_count}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 flex-1 text-xs"
+                            onClick={(e) => handleCopyJSON(e, tpl)}
+                          >
+                            <Copy className="h-3.5 w-3.5 mr-1.5" />
+                            {t('explore.copyJSON')}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('explore.copyJSONTooltip')}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 flex-1 text-xs"
+                            onClick={(e) => handleDownloadJSON(e, tpl)}
+                          >
+                            <FileDown className="h-3.5 w-3.5 mr-1.5" />
+                            {t('explore.downloadJSON')}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('explore.downloadJSONTooltip')}</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </TooltipProvider>
+  )
+}
