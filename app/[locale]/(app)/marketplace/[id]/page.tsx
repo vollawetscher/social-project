@@ -146,13 +146,13 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
 
   async function handleCopyJSON() {
     const tpl = customizing ? buildCustomTemplate() : template!
-    await copyExportJSON(tpl)
+    await copyExportJSON(tpl, !!isAuthor)
     toast.success(t('explore.copiedJSON'))
   }
 
   function handleDownloadJSON() {
     const tpl = customizing ? buildCustomTemplate() : template!
-    downloadExportJSON(tpl)
+    downloadExportJSON(tpl, !!isAuthor)
     toast.success(t('explore.downloadedJSON'))
   }
 
