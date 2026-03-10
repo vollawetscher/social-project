@@ -1137,6 +1137,7 @@
         "reviews": "Reseñas",
         "comments": "Comentarios"
       },
+      "descriptionProtected": "La descripción de la plantilla está oculta para proteger la propiedad intelectual del creador.",
       "removeFromCommunity": "Eliminar de la comunidad",
       "removeConfirmTitle": "¿Eliminar plantilla de la comunidad?",
       "removeConfirmDescription": "Esto eliminará tu plantilla del hub comunitario. Los usuarios que ya la instalaron conservarán su copia. Esta acción no se puede deshacer.",

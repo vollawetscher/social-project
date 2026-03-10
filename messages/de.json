@@ -1137,6 +1137,7 @@
         "reviews": "Bewertungen",
         "comments": "Kommentare"
       },
+      "descriptionProtected": "Die Template-Beschreibung ist zum Schutz des geistigen Eigentums des Erstellers ausgeblendet.",
       "removeFromCommunity": "Aus Community entfernen",
       "removeConfirmTitle": "Vorlage aus Community entfernen?",
       "removeConfirmDescription": "Damit wird deine Vorlage aus dem Community Hub entfernt. Nutzer, die sie bereits installiert haben, behalten ihre Kopie. Diese Aktion kann nicht rückgängig gemacht werden.",

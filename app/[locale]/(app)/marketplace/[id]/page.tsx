@@ -232,7 +232,11 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               ))}
             </div>
             <h1 className="text-2xl font-semibold text-foreground">{template.title}</h1>
-            <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+            {isAuthor ? (
+              <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-1 italic">{t('template.descriptionProtected')}</p>
+            )}
 
             <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
