@@ -72,7 +72,7 @@ export async function POST(
       tags: tags || template.domain_tags || [],
       is_published: true,
       source_template_id: params.id,
-      language: language || 'en',
+      language: language || null,
     })
     .select('id, title')
     .single()

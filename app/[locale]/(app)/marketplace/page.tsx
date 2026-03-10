@@ -83,7 +83,7 @@ export default function MarketplacePage() {
     }
 
     if (languageFilter) {
-      query = query.eq('language', languageFilter)
+      query = query.or(`language.eq.${languageFilter},language.is.null`)
     }
 
     if (searchQuery.trim()) {
