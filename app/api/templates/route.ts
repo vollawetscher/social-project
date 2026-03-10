@@ -74,6 +74,7 @@ export async function POST(request: Request) {
       instructions,
       defaultDoInstructions,
       defaultDontInstructions,
+      language,
     } = body
 
     // Validate required fields
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
         instructions: instructions || `Generate a ${name} following the defined structure and style.`,
         default_do_instructions: defaultDoInstructions || '',
         default_dont_instructions: defaultDontInstructions || '',
+        language: language || null,
         created_by: user.id,
         is_system: false,
       })

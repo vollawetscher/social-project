@@ -101,7 +101,7 @@ export function ShareToMarketplaceDialog({
           category_id: categoryId || null,
           tags,
           description_override: description !== template.description ? description : undefined,
-          language: locale,
+          language: template.language || locale,
         }),
       })
 

@@ -44,6 +44,7 @@ export async function GET(
       defaultDontInstructions: template.default_dont_instructions || '',
       marketplaceSourceId: template.marketplace_source_id || null,
       customInstructions: template.custom_instructions || '',
+      language: template.language || null,
     }
 
     return NextResponse.json(formattedTemplate)
@@ -79,6 +80,7 @@ export async function PUT(
       defaultDoInstructions,
       defaultDontInstructions,
       customInstructions,
+      language,
     } = body
 
     const { data: existing } = await supabase
@@ -101,6 +103,7 @@ export async function PUT(
       default_do_instructions: defaultDoInstructions ?? '',
       default_dont_instructions: defaultDontInstructions ?? '',
       custom_instructions: customInstructions ?? '',
+      language: language || null,
     }
 
     if (!isInstalled) {
@@ -137,6 +140,7 @@ export async function PUT(
       defaultDontInstructions: template.default_dont_instructions || '',
       marketplaceSourceId: template.marketplace_source_id || null,
       customInstructions: template.custom_instructions || '',
+      language: template.language || null,
     }
 
     return NextResponse.json(formattedTemplate)

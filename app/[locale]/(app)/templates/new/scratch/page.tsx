@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import type { ParticipantRole, Audience, Domain } from "@/lib/types-v0"
 import { participantRoleLabels } from "@/lib/mock/data"
 
@@ -31,6 +32,7 @@ export default function CreateTemplateFromScratchPage() {
   const [selectedPerspectives, setSelectedPerspectives] = useState<ParticipantRole[]>(["party_a", "party_b", "observer"])
   const [selectedAudiences, setSelectedAudiences] = useState<Audience[]>(["internal"])
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null)
   const [instructions, setInstructions] = useState("")
 
   const togglePerspective = (p: ParticipantRole) => {
@@ -103,6 +105,7 @@ export default function CreateTemplateFromScratchPage() {
           styleRules: [],
           suggestionTriggers: [],
           instructions: instructions.trim() || undefined,
+          language: selectedLanguage,
         }),
       })
 
@@ -229,6 +232,28 @@ export default function CreateTemplateFromScratchPage() {
             <p className="text-xs text-muted-foreground">
               {t('domainDefaultHint')}
             </p>
+          </div>
+          <div className="space-y-2">
+            <Label>{t('templateLanguage')}</Label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { code: 'de', label: 'Deutsch' },
+                { code: 'en', label: 'English' },
+                { code: 'es', label: 'Español' },
+              ].map(({ code, label }) => (
+                <Badge
+                  key={code}
+                  variant={selectedLanguage === code ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedLanguage(selectedLanguage === code ? null : code)}
+                >
+                  {label}
+                </Badge>
+              ))}
+            </div>
+            {!selectedLanguage && (
+              <p className="text-xs text-muted-foreground">{t('templateLanguageHint')}</p>
+            )}
           </div>
         </CardContent>
       </Card>
