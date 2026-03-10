@@ -575,7 +575,7 @@
     "scheduleInvalidDate": "Elige una fecha y hora validas.",
     "scheduleTooEarly": "Esta llamada se puede abrir 10 minutos antes del inicio.",
     "copyInvite": "Copiar invitacion",
-    "copyInviteSuccess": "Invitacion copiada y archivo ICS descargado.",
+    "copyInviteSuccess": "Invitacion copiada y panel de compartir abierto.",
     "copyInviteFailed": "No se pudo preparar la invitacion.",
     "joinNow": "Unirse",
     "joinScheduledFailed": "No se pudo unir a la llamada programada",

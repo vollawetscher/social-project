@@ -387,7 +387,7 @@ export default function CallsPage() {
 
       if (scheduleInviteEmail.trim()) {
         const mailto = `mailto:${encodeURIComponent(scheduleInviteEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-        window.location.href = mailto
+        window.location.assign(mailto)
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(`${subject}\n\n${body}`)
       }
@@ -426,31 +426,21 @@ export default function CallsPage() {
       if (!call.scheduled_for) throw new Error(t('copyInviteFailed'))
       const joinUrl = `${window.location.origin}/call/${call.room_name}?callId=${call.id}`
       const scheduledIso = call.scheduled_for
-      const endIso = new Date(new Date(scheduledIso).getTime() + 30 * 60 * 1000).toISOString()
       const subject = t('inviteEmailSubject')
-      const body = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteJoinLink')}: ${joinUrl}\n\n${t('inviteAttachIcsHint')}`
-      const ics = buildInviteIcs({
-        uid: `${call.id}@notissima.app`,
-        startIso: scheduledIso,
-        endIso,
-        title: call.contact_name || t('scheduledCallDefaultTitle'),
-        description: `${t('inviteEmailBodyIntro')}\n${joinUrl}`,
-        joinUrl,
-      })
-      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `notissima-invite-${call.id}.ics`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
+      const body = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteJoinLink')}: ${joinUrl}`
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(`${subject}\n\n${body}`)
       }
+      if (navigator.share) {
+        await navigator.share({
+          title: subject,
+          text: `${body}\n\n${joinUrl}`,
+          url: joinUrl,
+        })
+      }
       toast.success(t('copyInviteSuccess'))
     } catch (err: any) {
+      if (err?.name === 'AbortError') return
       toast.error(err?.message || t('copyInviteFailed'))
     }
   }

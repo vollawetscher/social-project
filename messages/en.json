@@ -576,7 +576,7 @@
     "scheduleInvalidDate": "Please choose a valid date and time.",
     "scheduleTooEarly": "This call can be joined 10 minutes before start.",
     "copyInvite": "Copy invite",
-    "copyInviteSuccess": "Invite copied and ICS downloaded.",
+    "copyInviteSuccess": "Invite copied and share sheet opened.",
     "copyInviteFailed": "Failed to prepare invite.",
     "joinNow": "Join",
     "joinScheduledFailed": "Failed to join scheduled call",
