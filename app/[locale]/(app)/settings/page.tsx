@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
+import { useRouter } from "@/i18n/navigation"
 import {
   Shield,
   Lock,
@@ -28,6 +29,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -56,6 +58,7 @@ export default function SettingsPage() {
   const t = useTranslations('settings')
   const tl = useTranslations('languages')
   const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -73,6 +76,8 @@ export default function SettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   const localizedSupportedLanguages = useMemo(
     () => SUPPORTED_LANGUAGES.map((lang) => ({ value: lang.value, label: tl(lang.value) })),
@@ -185,6 +190,38 @@ export default function SettingsPage() {
       toast.error(msg)
     } finally {
       setChangingPassword(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!user) return
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') {
+      toast.error(t('deleteAccountTypeToConfirm'))
+      return
+    }
+
+    setDeletingAccount(true)
+    try {
+      const response = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmText: deleteConfirmText.trim() }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || t('deleteAccountFailed'))
+      }
+
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      toast.success(t('deleteAccountSuccess'))
+      router.replace('/')
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t('deleteAccountFailed')
+      toast.error(errorMessage)
+    } finally {
+      setDeletingAccount(false)
     }
   }
 
@@ -632,6 +669,58 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="border-destructive/40 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              {t('dangerZone')}
+            </CardTitle>
+            <CardDescription className="text-foreground/80">
+              {t('dangerZoneDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert className="border-destructive/40 bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertTitle className="text-destructive">{t('deleteAccount')}</AlertTitle>
+              <AlertDescription className="text-foreground/80">
+                {t('deleteAccountWarning')}
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <Label htmlFor="delete-confirm" className="font-medium">
+                {t('deleteAccountConfirmLabel')}
+              </Label>
+              <Input
+                id="delete-confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={t('deleteAccountConfirmPlaceholder')}
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">{t('deleteAccountTypeToConfirm')}</p>
+            </div>
+
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount || deleteConfirmText.trim().toUpperCase() !== 'DELETE'}
+            >
+              {deletingAccount ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t('deleteAccountDeleting')}
+                </>
+              ) : (
+                t('deleteAccount')
+              )}
+            </Button>
           </CardContent>
         </Card>
       </div>

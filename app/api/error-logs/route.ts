@@ -188,8 +188,35 @@ export async function GET(request: Request) {
       throw error
     }
 
+    let errorsWithOwnerEmail = data || []
+
+    // For admin view, attach owner email to each bug/error row.
+    if (isAdmin && data && data.length > 0) {
+      const userIds = Array.from(
+        new Set(
+          data
+            .map((row) => row.user_id)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        )
+      )
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', userIds)
+
+        const emailByUserId = new Map((profiles || []).map((p) => [p.id, p.email || null]))
+
+        errorsWithOwnerEmail = data.map((row) => ({
+          ...row,
+          owner_email: row.user_id ? emailByUserId.get(row.user_id) || null : null,
+        }))
+      }
+    }
+
     return NextResponse.json({
-      errors: data,
+      errors: errorsWithOwnerEmail,
       isAdmin,
     })
   } catch (error) {

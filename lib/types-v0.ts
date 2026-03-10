@@ -112,6 +112,8 @@ export interface Session {
   lastError?: string // Transcription or processing error message
   isFromCall?: boolean // True when this session was forked from a caller's session (callee claim)
   consentLogs?: Array<{ participant_name: string; participant_identity: string; granted: boolean; created_at: string }>
+  uploadSizeBytes?: number
+  textUploadSizeBytes?: number
 }
 
 export interface ParticipantInfo {

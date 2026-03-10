@@ -41,6 +41,7 @@ interface ErrorLog {
   session_id: string | null
   file_id: string | null
   user_id: string | null
+  owner_email?: string | null
   error_type: string
   severity: string
   message: string
@@ -366,6 +367,9 @@ export default function AdminBugsPage() {
                         {err.session_id && (
                           <span className="font-mono">session:{err.session_id.substring(0, 8)}</span>
                         )}
+                        {err.owner_email && (
+                          <span className="truncate max-w-[220px]">{err.owner_email}</span>
+                        )}
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-2">
@@ -408,6 +412,12 @@ export default function AdminBugsPage() {
                           <div>
                             <span className="text-muted-foreground">User ID</span>
                             <p className="font-mono text-foreground">{err.user_id.substring(0, 12)}...</p>
+                          </div>
+                        )}
+                        {err.owner_email && (
+                          <div>
+                            <span className="text-muted-foreground">Owner Email</span>
+                            <p className="text-foreground">{err.owner_email}</p>
                           </div>
                         )}
                         {err.session_id && (

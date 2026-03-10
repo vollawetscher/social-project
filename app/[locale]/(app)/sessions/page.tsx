@@ -100,6 +100,14 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+}
+
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString("en-US", {
     month: "short",
@@ -112,7 +120,13 @@ function formatDate(dateString: string): string {
 type SessionOriginKind = "call" | "quick_record" | "upload"
 
 function getSessionOriginKind(session: Session): SessionOriginKind {
-  if (session.isFromCall || session.recordingType === 'call_inbound' || session.recordingType === 'call_outbound' || session.recordingType === 'sales_call') {
+  if (
+    session.isFromCall ||
+    session.recordingType === 'call_inbound' ||
+    session.recordingType === 'call_outbound' ||
+    session.recordingType === 'sales_call' ||
+    (session.recordingType as string) === 'phone_call'
+  ) {
     return "call"
   }
   if (session.recordingType === 'dictation') {
@@ -1524,6 +1538,7 @@ export default function SessionsPage() {
               const status = getStatusDisplay(session)
               const origin = getSessionOriginKind(session)
               const originSummary = getOriginSummary(session, t)
+              const showTextUploadSize = origin === "upload" && (session.textUploadSizeBytes ?? 0) > 0
               return (
                 <div
                   key={session.id}
@@ -1562,8 +1577,17 @@ export default function SessionsPage() {
                           {origin === "call" ? t('source.call') : origin === "quick_record" ? t('source.quickRecord') : t('source.upload')}
                         </Badge>
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDuration(session.duration)}
+                          {showTextUploadSize ? (
+                            <>
+                              <FileText className="h-3 w-3" />
+                              {formatFileSize(session.textUploadSizeBytes ?? 0)}
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="h-3 w-3" />
+                              {formatDuration(session.duration)}
+                            </>
+                          )}
                         </span>
                         <span className="flex items-center gap-1">
                           <Globe className="h-3 w-3" />
@@ -1680,6 +1704,7 @@ export default function SessionsPage() {
                   const status = getStatusDisplay(session)
                   const origin = getSessionOriginKind(session)
                   const originSummary = getOriginSummary(session, t)
+                  const showTextUploadSize = origin === "upload" && (session.textUploadSizeBytes ?? 0) > 0
                   return (
                     <TableRow 
                       key={session.id} 
@@ -1752,8 +1777,17 @@ export default function SessionsPage() {
                       )}
                       <TableCell>
                         <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span className="text-sm">{formatDuration(session.duration)}</span>
+                          {showTextUploadSize ? (
+                            <>
+                              <FileText className="h-3.5 w-3.5" />
+                              <span className="text-sm">{formatFileSize(session.textUploadSizeBytes ?? 0)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="h-3.5 w-3.5" />
+                              <span className="text-sm">{formatDuration(session.duration)}</span>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>

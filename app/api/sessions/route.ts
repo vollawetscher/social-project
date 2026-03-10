@@ -32,7 +32,8 @@ export async function GET(request: Request) {
         .from('sessions')
         .select(`
           *,
-          outputs:outputs(count)
+          outputs:outputs(count),
+          files:files(size_bytes,mime_type,original_filename,file_purpose)
         `)
         .order('created_at', { ascending: false })
 
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
       const runUserSessionsQuery = async (excludeMerged: boolean) => {
         let query = supabase
           .from('sessions')
-          .select('*, outputs:outputs(count)')
+          .select('*, outputs:outputs(count), files:files(size_bytes,mime_type,original_filename,file_purpose)')
           .order('created_at', { ascending: false })
 
         if (excludeMerged) {
@@ -111,8 +112,30 @@ export async function GET(request: Request) {
 
     const sessionsWithCount = sessions?.map((session: any) => {
       const outputCount = session.outputs?.[0]?.count || 0
-      const { outputs, ...rest } = session
-      const out = { ...rest, output_count: outputCount }
+      const files = Array.isArray(session.files) ? session.files : []
+      const totalSizeBytes = files.reduce((acc: number, f: any) => acc + (Number(f?.size_bytes) || 0), 0)
+      const textUploadSizeBytes = files
+        .filter((f: any) => {
+          const mime = String(f?.mime_type || '').toLowerCase()
+          const filename = String(f?.original_filename || '').toLowerCase()
+          return (
+            mime.startsWith('text/') ||
+            mime.includes('subrip') ||
+            mime.includes('vtt') ||
+            filename.endsWith('.txt') ||
+            filename.endsWith('.srt') ||
+            filename.endsWith('.vtt')
+          )
+        })
+        .reduce((acc: number, f: any) => acc + (Number(f?.size_bytes) || 0), 0)
+
+      const { outputs, files: _files, ...rest } = session
+      const out = {
+        ...rest,
+        output_count: outputCount,
+        upload_size_bytes: totalSizeBytes,
+        text_upload_size_bytes: textUploadSizeBytes,
+      }
       if (adminView && session.user_id && ownerEmails[session.user_id]) {
         (out as any).owner_email = ownerEmails[session.user_id]
       }
