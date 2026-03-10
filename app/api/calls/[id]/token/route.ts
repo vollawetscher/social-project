@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createRoom } from '@/lib/services/livekit'
 import { createRoomToken } from '@/lib/services/livekit'
 
 /**
@@ -29,7 +30,7 @@ export async function POST(
     const db = createServiceRoleClient()
     const { data: call } = await db
       .from('calls')
-      .select('room_name, status, user_id, call_type, callee_user_id, accepted_at')
+      .select('room_name, status, user_id, call_type, callee_user_id, accepted_at, scheduled_for, session_id, room_created_at_ms, call_mode, contact_name')
       .eq('id', callId)
       .maybeSingle()
 
@@ -37,8 +38,73 @@ export async function POST(
       return NextResponse.json({ error: 'Call not found' }, { status: 404 })
     }
 
+    if (
+      call.status === 'scheduled' &&
+      call.scheduled_for &&
+      new Date(call.scheduled_for).getTime() - Date.now() > 10 * 60 * 1000
+    ) {
+      return NextResponse.json(
+        {
+          error: 'This scheduled call is not open yet',
+          scheduledFor: call.scheduled_for,
+          joinWindowMinutes: 10,
+        },
+        { status: 409 }
+      )
+    }
+
+    // Lazily initialize room and session for scheduled calls on first join.
+    if (call.status === 'scheduled' && !call.session_id) {
+      try {
+        await createRoom(call.room_name, {
+          maxParticipants: 2,
+          emptyTimeout: 900,
+          metadata: JSON.stringify({ callType: 'web', mode: call.call_mode || 'video', scheduled: true, createdBy: call.user_id }),
+        })
+      } catch (lkError: any) {
+        const msg = String(lkError?.message || '')
+        // Race-safe: if another participant created it first, continue.
+        if (!msg.toLowerCase().includes('already exists')) {
+          console.error('[Calls Token] LiveKit createRoom failed for scheduled call:', lkError)
+          return NextResponse.json({ error: `LiveKit room creation failed: ${lkError.message}` }, { status: 500 })
+        }
+      }
+
+      const sessionLabel = call.contact_name?.trim() || 'Scheduled Video Call'
+      const { data: session, error: sessionError } = await db
+        .from('sessions')
+        .insert({
+          user_id: call.user_id,
+          status: 'created',
+          context_note: '',
+          internal_case_id: sessionLabel,
+          duration_sec: 0,
+          last_error: '',
+          input_hint: 'video_call',
+          language: 'auto',
+        })
+        .select('id')
+        .single()
+
+      if (sessionError) {
+        console.error('[Calls Token] Failed to create session for scheduled call:', sessionError)
+        return NextResponse.json({ error: `Session creation failed: ${sessionError.message}` }, { status: 500 })
+      }
+
+      await db
+        .from('calls')
+        .update({
+          session_id: session.id,
+          status: call.callee_user_id ? 'invited' : 'waiting',
+          room_created_at_ms: Date.now(),
+          invited_at: call.callee_user_id ? new Date().toISOString() : null,
+        })
+        .eq('id', callId)
+        .is('session_id', null)
+    }
+
     // Only allow joining if call is still joinable
-    const joinableStatuses = ['invited', 'waiting', 'active', 'connected', 'recording']
+    const joinableStatuses = ['scheduled', 'invited', 'waiting', 'active', 'connected', 'recording']
     if (!joinableStatuses.includes(call.status)) {
       return NextResponse.json({ error: 'Call is no longer active' }, { status: 410 })
     }

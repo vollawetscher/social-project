@@ -22,6 +22,7 @@ import {
   X,
   UserPlus,
   BellRing,
+  Calendar,
   Link2,
   Send,
   User,
@@ -75,6 +76,16 @@ function formatRelativeTime(timestamp: string, td: (key: string, params?: Record
   return date.toLocaleDateString()
 }
 
+function formatScheduledLocal(timestamp: string): string {
+  return new Date(timestamp).toLocaleString([], {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 /**
  * Normalize a phone number to E.164 format.
  * Handles: spaces/dashes/parens, leading 00 (international prefix), missing +.
@@ -107,6 +118,9 @@ export default function CallsPage() {
   const [ringPhone, setRingPhone] = useState("")
   const [ringContactName, setRingContactName] = useState("")
   const [ringSending, setRingSending] = useState(false)
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
+  const [scheduleAtLocal, setScheduleAtLocal] = useState("")
+  const [scheduleSaving, setScheduleSaving] = useState(false)
   // Save-to-contacts prompt: stores the phone number to save
   const [savingNumber, setSavingNumber] = useState<string | null>(null)
   const [saveContactName, setSaveContactName] = useState("")
@@ -287,6 +301,60 @@ export default function CallsPage() {
       setError(err.message || "Failed to create call")
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handleScheduleVideoCall() {
+    if (scheduleSaving || !scheduleAtLocal.trim()) return
+
+    const date = new Date(scheduleAtLocal)
+    if (Number.isNaN(date.getTime())) {
+      toast.error(t('scheduleInvalidDate'))
+      return
+    }
+
+    setScheduleSaving(true)
+    try {
+      const res = await fetch("/api/calls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callType: "web",
+          mode: "video",
+          scheduledFor: date.toISOString(),
+          scheduledTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || t('scheduleFailed'))
+      }
+
+      setScheduleDialogOpen(false)
+      setScheduleAtLocal("")
+      await fetchCalls()
+      toast.success(t('scheduleSuccess'))
+    } catch (err: any) {
+      toast.error(err?.message || t('scheduleFailed'))
+    } finally {
+      setScheduleSaving(false)
+    }
+  }
+
+  async function handleJoinScheduledCall(call: Call) {
+    try {
+      const res = await fetch(`/api/calls/${call.id}/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || t('joinScheduledFailed'))
+      }
+      router.push(`/call/${call.room_name}?callId=${call.id}&token=${encodeURIComponent(data.token)}&mode=${call.call_mode || "video"}`)
+    } catch (err: any) {
+      toast.error(err?.message || t('joinScheduledFailed'))
     }
   }
 
@@ -517,12 +585,20 @@ export default function CallsPage() {
     )
   }, [calls])
 
+  const upcomingScheduledCalls = useMemo(() => {
+    const now = Date.now()
+    return calls
+      .filter((c) => c.status === "scheduled" && c.scheduled_for && new Date(c.scheduled_for).getTime() > now - (60 * 60 * 1000))
+      .sort((a, b) => new Date(a.scheduled_for || 0).getTime() - new Date(b.scheduled_for || 0).getTime())
+      .slice(0, 5)
+  }, [calls])
+
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-background overflow-hidden">
       {/* Quick Actions */}
       <div className="px-4 py-4 border-b border-border">
         <h1 className="text-lg font-semibold text-foreground mb-3">{t('title')}</h1>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => setPendingCallMode("audio")}
             disabled={creating}
@@ -549,8 +625,48 @@ export default function CallsPage() {
               <p className="text-[11px] text-muted-foreground">{t('videoCallSubtitle')}</p>
             </div>
           </button>
+          <button
+            onClick={() => setScheduleDialogOpen(true)}
+            disabled={creating || scheduleSaving}
+            className="flex items-center gap-3 p-3 rounded-xl bg-violet-500/10 hover:bg-violet-500/15 transition-colors disabled:opacity-50"
+          >
+            <div className="h-10 w-10 rounded-full bg-violet-600 flex items-center justify-center shrink-0">
+              <Calendar className="h-5 w-5 text-white" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-medium text-foreground">{t('scheduleVideoCall')}</p>
+              <p className="text-[11px] text-muted-foreground">{t('scheduleVideoSubtitle')}</p>
+            </div>
+          </button>
         </div>
       </div>
+
+      {upcomingScheduledCalls.length > 0 && (
+        <div className="px-4 py-3 border-b border-border bg-card/60">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t('upcomingScheduled')}</p>
+          <div className="space-y-2">
+            {upcomingScheduledCalls.map((call) => {
+              const startsInMs = call.scheduled_for ? (new Date(call.scheduled_for).getTime() - Date.now()) : 0
+              const canJoin = startsInMs <= 10 * 60 * 1000
+              return (
+                <div key={call.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{call.contact_name || t('scheduledCallDefaultTitle')}</p>
+                    <p className="text-xs text-muted-foreground">{call.scheduled_for ? formatScheduledLocal(call.scheduled_for) : "-"}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={canJoin ? "default" : "outline"}
+                    onClick={() => canJoin ? handleJoinScheduledCall(call) : toast.info(t('scheduleTooEarly'))}
+                  >
+                    {t('joinNow')}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Error Banner */}
       {error && (
@@ -629,6 +745,33 @@ export default function CallsPage() {
         {activeTab === "contacts" && <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} />}
         {activeTab === "dialpad" && <DialPad key={dialpadNumber} initialNumber={dialpadNumber} onCall={(number, mode) => { setDialpadNumber(""); handleDialpadCall(number, mode) }} disabled={creating} />}
       </div>
+
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-violet-600" />
+              {t('scheduleVideoCall')}
+            </DialogTitle>
+            <DialogDescription>{t('scheduleDialogHint')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              type="datetime-local"
+              value={scheduleAtLocal}
+              onChange={(e) => setScheduleAtLocal(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">{t('scheduleJoinWindowHint')}</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>{t('cancel')}</Button>
+            <Button onClick={handleScheduleVideoCall} disabled={scheduleSaving || !scheduleAtLocal}>
+              {scheduleSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {t('scheduleSave')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Video call dialog — choose Copy Link or Ring + SMS */}
       <Dialog open={pendingCallMode === "video"} onOpenChange={(open) => {

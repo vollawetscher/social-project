@@ -7,6 +7,7 @@
 
 export type CallType = 'web' | 'pstn_outbound'
 export type CallStatus =
+  | 'scheduled'
   | 'waiting'
   | 'invited'
   | 'active'
@@ -46,6 +47,8 @@ export interface Call {
   declined_at?: string | null
   missed_at?: string | null
   callee_declined?: boolean
+  scheduled_for?: string | null
+  scheduled_timezone?: string | null
   created_at: string
 }
 
@@ -111,12 +114,16 @@ export interface CreateCallRequest {
   participantName?: string    // Display name for the initiator
   calleeUserId?: string       // Target user for in-app invite calls
   contactName?: string        // Optional display name for invite target
+  scheduledFor?: string       // Optional ISO datetime for scheduled calls
+  scheduledTimezone?: string  // Optional IANA timezone name
 }
 
 export interface CreateCallResponse {
   callId: string
   roomName: string
-  token: string               // LiveKit access token for the initiator
+  token?: string              // LiveKit access token for instant calls
+  scheduled?: boolean
+  scheduledFor?: string
 }
 
 export interface CallTokenRequest {

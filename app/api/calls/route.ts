@@ -14,7 +14,15 @@ export async function POST(request: Request) {
     const supabase = await createClient()
 
     const body: CreateCallRequest = await request.json()
-    const { callType = 'web', mode = 'audio', participantName, calleeUserId, contactName } = body
+    const {
+      callType = 'web',
+      mode = 'audio',
+      participantName,
+      calleeUserId,
+      contactName,
+      scheduledFor,
+      scheduledTimezone,
+    } = body
 
     // Get user profile for display name and preferred language
     const { data: profile } = await supabase
@@ -25,19 +33,30 @@ export async function POST(request: Request) {
 
     const displayName = participantName || profile?.display_name || profile?.email || 'User'
     const roomName = generateRoomName()
-    const roomCreatedAtMs = Date.now()
+    const isScheduled = Boolean(scheduledFor && callType === 'web' && mode === 'video')
+    const roomCreatedAtMs = isScheduled ? null : Date.now()
+    let scheduledForIso: string | null = null
+    if (isScheduled) {
+      const parsedSchedule = new Date(String(scheduledFor))
+      if (Number.isNaN(parsedSchedule.getTime())) {
+        return NextResponse.json({ error: 'Invalid scheduledFor datetime' }, { status: 400 })
+      }
+      scheduledForIso = parsedSchedule.toISOString()
+    }
 
-    // Create the LiveKit room
-    try {
-      const isVideoCall = mode === 'video'
-      await createRoom(roomName, {
-        maxParticipants: 2,
-        emptyTimeout: isVideoCall ? 900 : 90,
-        metadata: JSON.stringify({ callType, mode, createdBy: user.id }),
-      })
-    } catch (lkError: any) {
-      console.error('[Calls] LiveKit createRoom failed:', lkError)
-      return NextResponse.json({ error: `LiveKit room creation failed: ${lkError.message}` }, { status: 500 })
+    // Create the LiveKit room immediately only for instant calls.
+    if (!isScheduled) {
+      try {
+        const isVideoCall = mode === 'video'
+        await createRoom(roomName, {
+          maxParticipants: 2,
+          emptyTimeout: isVideoCall ? 900 : 90,
+          metadata: JSON.stringify({ callType, mode, createdBy: user.id }),
+        })
+      } catch (lkError: any) {
+        console.error('[Calls] LiveKit createRoom failed:', lkError)
+        return NextResponse.json({ error: `LiveKit room creation failed: ${lkError.message}` }, { status: 500 })
+      }
     }
 
     // Create a session for this call
@@ -55,42 +74,48 @@ export async function POST(request: Request) {
           ? 'Video Call'
           : 'Audio Call'
 
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .insert({
-        user_id: user.id,
-        status: 'created',
-        context_note: '',
-        internal_case_id: sessionLabel,
-        duration_sec: 0,
-        last_error: '',
-        input_hint: inputHint,
-        language: 'auto',
-      })
-      .select('id')
-      .single()
+    const session = !isScheduled
+      ? await (async () => {
+          const { data: createdSession, error: sessionError } = await supabase
+            .from('sessions')
+            .insert({
+              user_id: user.id,
+              status: 'created',
+              context_note: '',
+              internal_case_id: sessionLabel,
+              duration_sec: 0,
+              last_error: '',
+              input_hint: inputHint,
+              language: 'auto',
+            })
+            .select('id')
+            .single()
 
-    if (sessionError) {
-      console.error('[Calls] Failed to create session:', sessionError)
-      return NextResponse.json({ error: `Session creation failed: ${sessionError.message}` }, { status: 500 })
-    }
+          if (sessionError) {
+            throw new Error(`Session creation failed: ${sessionError.message}`)
+          }
+          return createdSession
+        })()
+      : null
 
     // Create the call record
-    const isInvite = callType === 'web' && Boolean(calleeUserId)
+    const isInvite = !isScheduled && callType === 'web' && Boolean(calleeUserId)
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
-        session_id: session.id,
+        session_id: session?.id ?? null,
         user_id: user.id,
         callee_user_id: calleeUserId || null,
         room_name: roomName,
         call_type: callType,
         call_mode: mode,
         contact_name: contactName || null,
-        status: isInvite ? 'invited' : 'waiting',
+        status: isScheduled ? 'scheduled' : (isInvite ? 'invited' : 'waiting'),
         invited_at: isInvite ? new Date().toISOString() : null,
         participant_a_identity: user.id,
         room_created_at_ms: roomCreatedAtMs,
+        scheduled_for: scheduledForIso,
+        scheduled_timezone: scheduledTimezone || null,
       })
       .select('*')
       .single()
@@ -98,6 +123,18 @@ export async function POST(request: Request) {
     if (callError) {
       console.error('[Calls] Failed to create call record:', callError)
       return NextResponse.json({ error: `Call record creation failed: ${callError.message}` }, { status: 500 })
+    }
+
+    if (isScheduled) {
+      return NextResponse.json({
+        callId: call.id,
+        roomName,
+        sessionId: null,
+        displayName,
+        invited: false,
+        scheduled: true,
+        scheduledFor: scheduledForIso,
+      })
     }
 
     // Generate a LiveKit access token for the initiator
@@ -113,7 +150,7 @@ export async function POST(request: Request) {
       callId: call.id,
       roomName,
       token,
-      sessionId: session.id,
+      sessionId: session?.id ?? null,
       displayName,
       invited: isInvite,
     })
