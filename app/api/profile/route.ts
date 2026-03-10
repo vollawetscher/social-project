@@ -56,6 +56,7 @@ export async function PATCH(request: Request) {
       'after_transcript_template_id',
       'auto_generate_reports',
       'phone_number',
+      'preferences',
     ]
     
     const filteredUpdates = Object.keys(updates)
@@ -92,6 +93,16 @@ export async function PATCH(request: Request) {
           )
         }
         filteredUpdates.preferred_report_language = normalized
+      }
+    }
+
+    if ('preferences' in filteredUpdates) {
+      const value = filteredUpdates.preferences
+      if (value !== null && (typeof value !== 'object' || Array.isArray(value))) {
+        return NextResponse.json(
+          { error: 'Invalid preferences payload' },
+          { status: 400 }
+        )
       }
     }
 

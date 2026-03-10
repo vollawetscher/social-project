@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="Office background">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f3f4f6"/>
+      <stop offset="100%" stop-color="#e5e7eb"/>
+    </linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d6d3d1"/>
+      <stop offset="100%" stop-color="#bdb7af"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="760" fill="url(#wall)"/>
+  <rect y="760" width="1920" height="320" fill="url(#floor)"/>
+  <rect x="210" y="190" width="540" height="330" rx="10" fill="#cbd5e1"/>
+  <rect x="230" y="210" width="500" height="290" rx="6" fill="#93c5fd"/>
+  <rect x="1320" y="210" width="410" height="470" rx="14" fill="#334155"/>
+  <rect x="1348" y="238" width="354" height="414" rx="8" fill="#0f172a"/>
+  <rect x="580" y="620" width="760" height="60" rx="10" fill="#8b5e3c"/>
+  <rect x="530" y="680" width="860" height="42" rx="8" fill="#7a4f2e"/>
+  <rect x="360" y="722" width="1200" height="18" rx="8" fill="#6b4428"/>
+  <circle cx="1560" cy="320" r="70" fill="#f8fafc" opacity="0.9"/>
+  <rect x="1478" y="390" width="164" height="210" rx="14" fill="#94a3b8"/>
+  <rect x="80" y="560" width="260" height="190" rx="14" fill="#64748b"/>
+  <rect x="108" y="590" width="204" height="132" rx="10" fill="#1e293b"/>
+</svg>

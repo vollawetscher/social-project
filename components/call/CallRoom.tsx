@@ -16,6 +16,11 @@ import {
 import { ConnectionState, Track } from "livekit-client"
 import { isTrackReference } from "@livekit/components-core"
 import {
+  BackgroundProcessor,
+  supportsBackgroundProcessors,
+  type BackgroundProcessorWrapper,
+} from "@livekit/track-processors"
+import {
   Phone,
   Video,
   Users,
@@ -57,6 +62,22 @@ interface CallRoomProps {
   isInitiator?: boolean
   onLeave?: () => void
   ringSmsParams?: RingSmsParams
+}
+
+type VideoBackgroundChoice = "none" | "blur" | "office" | "abstract"
+
+const VIDEO_BACKGROUND_CHOICES: Array<{ value: VideoBackgroundChoice; labelKey: string }> = [
+  { value: "none", labelKey: "backgroundNone" },
+  { value: "blur", labelKey: "backgroundBlur" },
+  { value: "office", labelKey: "backgroundOffice" },
+  { value: "abstract", labelKey: "backgroundAbstract" },
+]
+const VIDEO_BACKGROUND_STORAGE_KEY = "notissima.video_background"
+
+function getBackgroundImagePath(choice: VideoBackgroundChoice): string | null {
+  if (choice === "office") return "/backgrounds/office.svg"
+  if (choice === "abstract") return "/backgrounds/abstract.svg"
+  return null
 }
 
 function formatDuration(seconds: number): string {
@@ -191,6 +212,7 @@ function CallRoomInner({
   const [currentCameraDeviceId, setCurrentCameraDeviceId] = useState<string | null>(null)
   const [reconnectDeadline, setReconnectDeadline] = useState<number | null>(null)
   const [reconnectSecondsLeft, setReconnectSecondsLeft] = useState(Math.floor(RECONNECT_GRACE_MS / 1000))
+  const [videoBackground, setVideoBackground] = useState<VideoBackgroundChoice>("none")
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -198,6 +220,9 @@ function CallRoomInner({
   const endingCallRef = useRef(false)
   const wakeLockRef = useRef<any>(null)
   const micBeforeHoldRef = useRef<boolean>(true)
+  const backgroundProcessorRef = useRef<BackgroundProcessorWrapper | null>(null)
+  const backgroundSupportWarnedRef = useRef(false)
+  const profilePreferencesRef = useRef<Record<string, any>>({})
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
@@ -213,6 +238,10 @@ function CallRoomInner({
       : isConnected
         ? "ringing"
         : "connecting"
+  const isMuted = !localParticipant.isMicrophoneEnabled
+  const isCameraOn = localParticipant.isCameraEnabled
+  const isScreenSharing = localParticipant.isScreenShareEnabled
+  const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
 
   const clearReconnectTimers = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -326,6 +355,117 @@ function CallRoomInner({
     }
   }, [callId, isInitiator, localParticipant.identity])
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const localValue = window.localStorage.getItem(VIDEO_BACKGROUND_STORAGE_KEY)
+        if (!cancelled && localValue && VIDEO_BACKGROUND_CHOICES.some((c) => c.value === localValue)) {
+          setVideoBackground(localValue as VideoBackgroundChoice)
+        }
+      } catch {
+        // Ignore localStorage access issues.
+      }
+
+      try {
+        const res = await fetch("/api/profile")
+        if (!res.ok) return
+        const profile = await res.json()
+        if (cancelled) return
+        const prefs = (profile?.preferences && typeof profile.preferences === "object") ? profile.preferences : {}
+        profilePreferencesRef.current = prefs
+        const saved = prefs.video_background
+        if (saved && VIDEO_BACKGROUND_CHOICES.some((c) => c.value === saved)) {
+          setVideoBackground(saved as VideoBackgroundChoice)
+        }
+      } catch {
+        // Best-effort profile preference load.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const saveBackgroundPreference = useCallback(async (next: VideoBackgroundChoice) => {
+    try {
+      window.localStorage.setItem(VIDEO_BACKGROUND_STORAGE_KEY, next)
+    } catch {
+      // Ignore localStorage access issues.
+    }
+
+    const nextPreferences = {
+      ...profilePreferencesRef.current,
+      video_background: next,
+    }
+    profilePreferencesRef.current = nextPreferences
+    try {
+      await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: nextPreferences }),
+      })
+    } catch {
+      // Best-effort preference persistence.
+    }
+  }, [])
+
+  useEffect(() => {
+    if (mode !== "video") return
+    if (!isCameraOn) return
+
+    const publication = localParticipant.getTrackPublication(Track.Source.Camera)
+    const videoTrack = publication?.track as any
+    if (!videoTrack) return
+
+    let cancelled = false
+    ;(async () => {
+      if (videoBackground === "none") {
+        try {
+          await videoTrack.stopProcessor?.()
+        } catch {
+          // ignore stop errors
+        } finally {
+          backgroundProcessorRef.current = null
+        }
+        return
+      }
+
+      if (!supportsBackgroundProcessors()) {
+        if (!backgroundSupportWarnedRef.current) {
+          backgroundSupportWarnedRef.current = true
+          toast.info(t("backgroundNotSupported"))
+        }
+        return
+      }
+
+      const imagePath = getBackgroundImagePath(videoBackground)
+      const targetMode = videoBackground === "blur"
+        ? ({ mode: "background-blur" as const, blurRadius: 12 })
+        : ({ mode: "virtual-background" as const, imagePath: `${window.location.origin}${imagePath}` })
+
+      try {
+        if (!backgroundProcessorRef.current) {
+          const processor = BackgroundProcessor(targetMode)
+          if (cancelled) return
+          await videoTrack.setProcessor(processor)
+          backgroundProcessorRef.current = processor
+        } else {
+          await backgroundProcessorRef.current.switchTo(targetMode)
+        }
+      } catch {
+        if (!backgroundSupportWarnedRef.current) {
+          backgroundSupportWarnedRef.current = true
+          toast.error(t("backgroundApplyFailed"))
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [videoBackground, mode, isCameraOn, currentCameraDeviceId, localParticipant, t])
+
   // Play soft ringtone only for outbound PSTN calls while waiting for callee to pick up.
   // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
   // so we must exclude that post-call phase explicitly.
@@ -365,11 +505,6 @@ function CallRoomInner({
       setCalleeLeft(true)
     }
   }, [hasRemote, isConnected, calleeLeft])
-
-  const isMuted = !localParticipant.isMicrophoneEnabled
-  const isCameraOn = localParticipant.isCameraEnabled
-  const isScreenSharing = localParticipant.isScreenShareEnabled
-  const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
 
   const refreshCameraDevices = useCallback(async () => {
     try {
@@ -1001,6 +1136,23 @@ function CallRoomInner({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <label className="text-[10px] text-white/60 hidden sm:block">{t("background")}</label>
+          <select
+            value={videoBackground}
+            onChange={(e) => {
+              const next = e.target.value as VideoBackgroundChoice
+              setVideoBackground(next)
+              void saveBackgroundPreference(next)
+            }}
+            className="h-7 rounded-md bg-white/10 text-[10px] text-white/90 px-2 outline-none border border-white/10"
+            aria-label={t("background")}
+          >
+            {VIDEO_BACKGROUND_CHOICES.map((choice) => (
+              <option key={choice.value} value={choice.value} className="text-black">
+                {t(choice.labelKey)}
+              </option>
+            ))}
+          </select>
           {isInitiator && callId && (
             <button
               onClick={copyInviteLink}

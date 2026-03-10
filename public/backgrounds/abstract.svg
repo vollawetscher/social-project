@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="Abstract background">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="45%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+    <radialGradient id="orb1" cx="0.2" cy="0.25" r="0.5">
+      <stop offset="0%" stop-color="#93c5fd" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#93c5fd" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb2" cx="0.8" cy="0.75" r="0.6">
+      <stop offset="0%" stop-color="#fde68a" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#fde68a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="420" cy="260" r="360" fill="url(#orb1)"/>
+  <circle cx="1460" cy="820" r="470" fill="url(#orb2)"/>
+  <g opacity="0.45" fill="#ffffff">
+    <path d="M0 870 C320 720, 640 1020, 960 870 C1280 720, 1600 1020, 1920 870 L1920 1080 L0 1080 Z"/>
+    <path d="M0 760 C320 610, 640 910, 960 760 C1280 610, 1600 910, 1920 760 L1920 1080 L0 1080 Z" opacity="0.32"/>
+  </g>
+  <g opacity="0.18" stroke="#fff" stroke-width="2" fill="none">
+    <circle cx="310" cy="860" r="140"/>
+    <circle cx="1610" cy="250" r="190"/>
+    <circle cx="980" cy="540" r="280"/>
+  </g>
+</svg>

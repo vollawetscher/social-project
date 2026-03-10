@@ -825,7 +825,14 @@
     "smsSentRinging": "SMS gesendet! Telefon klingelt...",
     "invitationSentWaiting": "Einladung gesendet! Warten auf Beitritt...",
     "invitationFailed": "Einladung fehlgeschlagen — Link manuell teilen",
-    "participant": "Teilnehmer"
+    "participant": "Teilnehmer",
+    "background": "Hintergrund",
+    "backgroundNone": "Keiner",
+    "backgroundBlur": "Unschaerfe",
+    "backgroundOffice": "Buero",
+    "backgroundAbstract": "Abstrakt",
+    "backgroundNotSupported": "Hintergrundeffekte werden auf diesem Geraet/Browser nicht unterstuetzt.",
+    "backgroundApplyFailed": "Videohintergrund konnte nicht angewendet werden."
   },
   "callSetup": {
     "title": "Anruf starten",
