@@ -1146,7 +1146,10 @@
       "addedToTemplates": "Agregado a plantillas",
       "loginToInstall": "Inicia sesión para agregar plantilla",
       "installedSuccess": "¡Plantilla agregada a tu colección!",
-      "installFailed": "No se pudo agregar la plantilla"
+      "installFailed": "No se pudo agregar la plantilla",
+      "shareLink": "Compartir",
+      "shareLinkTooltip": "Copiar enlace para compartir esta plantilla",
+      "linkCopied": "¡Enlace copiado al portapapeles!"
     },
     "template": {
       "by": "por",

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
 import {
-  ArrowLeft, Star, Download, User, Copy, FileDown,
+  ArrowLeft, Star, Download, User, Copy, FileDown, Share2,
   Eye, Users, MessageSquare, Globe, Briefcase, FileText,
   Sparkles, Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2,
 } from 'lucide-react'
@@ -188,6 +188,11 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     }
   }
 
+  function handleShareLink() {
+    navigator.clipboard.writeText(window.location.href)
+    toast.success(t('explore.linkCopied'))
+  }
+
   const isAuthor = user && template?.author_id === user.id
 
   if (loading) {
@@ -292,6 +297,15 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               </Button>
             </TooltipTrigger>
             <TooltipContent>{t('explore.downloadJSONTooltip')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" className="bg-transparent" onClick={handleShareLink}>
+                <Share2 className="h-4 w-4 mr-2" />
+                {t('explore.shareLink')}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('explore.shareLinkTooltip')}</TooltipContent>
           </Tooltip>
           <Button
             variant={customizing ? 'secondary' : 'outline'}

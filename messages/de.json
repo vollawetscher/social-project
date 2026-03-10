@@ -1146,7 +1146,10 @@
       "addedToTemplates": "Zu Vorlagen hinzugefügt",
       "loginToInstall": "Anmelden um Vorlage hinzuzufügen",
       "installedSuccess": "Vorlage zu deiner Sammlung hinzugefügt!",
-      "installFailed": "Vorlage konnte nicht hinzugefügt werden"
+      "installFailed": "Vorlage konnte nicht hinzugefügt werden",
+      "shareLink": "Teilen",
+      "shareLinkTooltip": "Link kopieren um diese Vorlage zu teilen",
+      "linkCopied": "Link in die Zwischenablage kopiert!"
     },
     "template": {
       "by": "von",

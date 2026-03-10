@@ -1147,7 +1147,10 @@
       "addedToTemplates": "Added to Templates",
       "loginToInstall": "Log in to add to your templates",
       "installedSuccess": "Template added to your collection!",
-      "installFailed": "Failed to add template"
+      "installFailed": "Failed to add template",
+      "shareLink": "Share",
+      "shareLinkTooltip": "Copy link to share this template",
+      "linkCopied": "Link copied to clipboard!"
     },
     "template": {
       "by": "by",

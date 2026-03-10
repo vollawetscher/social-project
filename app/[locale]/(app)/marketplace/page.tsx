@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
-import { Search, Star, Download, User, SlidersHorizontal, Loader2, X, Globe } from 'lucide-react'
+import { Search, Star, Download, User, SlidersHorizontal, Loader2, X, Globe, Share2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useTranslations, useLocale } from 'next-intl'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import type { MarketplaceTemplate, MarketplaceCategory, MarketplaceProfile } from '@/lib/types/marketplace'
 import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
@@ -83,7 +84,7 @@ export default function MarketplacePage() {
     }
 
     if (languageFilter) {
-      query = query.or(`language.eq.${languageFilter},language.is.null`)
+      query = query.eq('language', languageFilter)
     }
 
     if (searchQuery.trim()) {
@@ -152,6 +153,11 @@ export default function MarketplacePage() {
     const params = new URLSearchParams(window.location.search)
     params.set('creator', authorId)
     window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
+  }
+
+  function handleCopyCreatorLink() {
+    navigator.clipboard.writeText(window.location.href)
+    toast.success(t('explore.linkCopied'))
   }
 
   function clearCreator() {
@@ -267,6 +273,10 @@ export default function MarketplacePage() {
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                 <Badge variant="secondary" className="flex items-center gap-1.5">
                   {creatorName || selectedCreator.slice(0, 8)}
+                  <Share2
+                    className="h-3 w-3 cursor-pointer hover:text-primary transition-colors"
+                    onClick={handleCopyCreatorLink}
+                  />
                   <X
                     className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
                     onClick={clearCreator}
