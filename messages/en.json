@@ -377,7 +377,20 @@
     "alreadyPublished": "This template is already published on the marketplace.",
     "publishSuccess": "Template published to the marketplace!",
     "publishFailed": "Failed to publish template",
-    "deletePublishedWarning": "This template has a published version on the marketplace. Deleting your personal copy will NOT remove the marketplace version. Are you sure you want to delete \"{name}\"?"
+    "deletePublishedWarning": "This template has a published version on the marketplace. Deleting your personal copy will NOT remove the marketplace version. Are you sure you want to delete \"{name}\"?",
+    "sample": {
+      "overview": "Overview",
+      "overviewDesc": "Summary",
+      "keyPoints": "Key Points",
+      "keyPointsDesc": "Main findings",
+      "actionItems": "Action Items",
+      "actionItemsDesc": "Next steps",
+      "sampleOutputLine": "Sample output · {date} · Generated from template structure",
+      "contentSection": "Content section",
+      "taskPlaceholder": "Task {n} — Owner: TBD",
+      "overviewPlaceholder": "This section would contain a brief overview of the conversation or meeting outcomes.",
+      "genericPlaceholder": "Placeholder for {section}. In a real output, this would be filled with AI-generated content based on the transcript."
+    }
   },
   "templateEdit": {
     "editTitle": "Edit Template",
@@ -435,7 +448,14 @@
     "domainTagsDescription": "Categorize this template by domain",
     "styleRulesDescription": "Enter each rule on a new line",
     "defaultGenerationInstructions": "Default Generation Instructions",
-    "defaultGenerationInstructionsDescription": "Pre-fill the \"Do include\" and \"Do not include\" fields when this template is selected for generation"
+    "defaultGenerationInstructionsDescription": "Pre-fill the \"Do include\" and \"Do not include\" fields when this template is selected for generation",
+    "descriptionPlaceholder": "e.g. A structured protocol for client consultations, organized by topics discussed, with action items and follow-ups...",
+    "descriptionHelp": "This is the most important field — it tells the AI exactly what kind of document to generate and how to structure it.",
+    "promptProtected": "This prompt is protected by the template creator",
+    "promptProtectedDesc": "The generation prompt is hidden to protect the creator's intellectual property. You can add your own instructions below to customize the output.",
+    "customInstructions": "Your Additional Instructions",
+    "customInstructionsPlaceholder": "e.g. Focus on financial metrics, always include a risk assessment section...",
+    "customInstructionsHelp": "These instructions are added to the original prompt when generating output. Use them to customize the template for your needs."
   },
   "templateFromSamples": {
     "title": "Create Template from Samples",

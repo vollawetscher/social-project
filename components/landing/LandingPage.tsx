@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation'
 import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Menu, X } from 'lucide-react'
+import { LocaleSwitcher } from '@/components/locale-switcher'
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -41,6 +42,7 @@ export default function LandingPage() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
+            <LocaleSwitcher compact className="text-slate-600 hover:text-slate-900" />
             <Button asChild className="bg-slate-900 hover:bg-slate-800 text-white">
               <Link href="/login">Log in</Link>
             </Button>
@@ -70,6 +72,9 @@ export default function LandingPage() {
               <Link href="/signup" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Join the Beta
               </Link>
+              <div className="pt-2 border-t border-slate-100">
+                <LocaleSwitcher />
+              </div>
             </div>
           </div>
         )}

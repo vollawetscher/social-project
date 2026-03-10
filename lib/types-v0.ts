@@ -165,6 +165,8 @@ export interface Template {
   sampleContent?: string | null
   defaultDoInstructions?: string
   defaultDontInstructions?: string
+  marketplaceSourceId?: string | null
+  customInstructions?: string
 }
 
 export interface Output {

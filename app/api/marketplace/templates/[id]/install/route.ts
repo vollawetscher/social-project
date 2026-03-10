@@ -61,6 +61,7 @@ export async function POST(
     default_dont_instructions: cfg.do_not_include || '',
     created_by: user.id,
     is_system: false,
+    marketplace_source_id: params.id,
   }).select('id, name').single()
 
   if (cloneError) {

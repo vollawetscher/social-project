@@ -14,6 +14,40 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.15.0',
+    date: 'March 10, 2026',
+    entries: [
+      {
+        version: '1.15.0',
+        date: 'March 10, 2026',
+        category: 'feature',
+        title: 'Creator Prompt Protection',
+        description: 'Templates installed from the community hub now protect the creator\'s original prompt. Your know-how stays yours — users can add their own instructions on top without seeing the core recipe.',
+      },
+      {
+        version: '1.15.0',
+        date: 'March 10, 2026',
+        category: 'improvement',
+        title: 'Language Switcher on Landing Page',
+        description: 'Switch between German, English, and Spanish directly from the landing page before logging in.',
+      },
+      {
+        version: '1.15.0',
+        date: 'March 10, 2026',
+        category: 'fix',
+        title: 'Localized Sample Previews',
+        description: 'Template sample previews now display in your selected language instead of mixing English with your locale.',
+      },
+      {
+        version: '1.15.0',
+        date: 'March 10, 2026',
+        category: 'fix',
+        title: 'Faster Toast Notifications',
+        description: 'Success messages now dismiss after 3 seconds instead of lingering on screen.',
+      },
+    ],
+  },
+  {
     version: '1.14.0',
     date: 'March 9, 2026',
     entries: [

@@ -377,7 +377,20 @@
     "alreadyPublished": "Esta plantilla ya está publicada en el marketplace.",
     "publishSuccess": "¡Plantilla publicada en el marketplace!",
     "publishFailed": "No se pudo publicar la plantilla",
-    "deletePublishedWarning": "Esta plantilla tiene una versión publicada en el marketplace. Eliminar tu copia personal NO eliminará la versión del marketplace. ¿Estás seguro de que quieres eliminar \"{name}\"?"
+    "deletePublishedWarning": "Esta plantilla tiene una versión publicada en el marketplace. Eliminar tu copia personal NO eliminará la versión del marketplace. ¿Estás seguro de que quieres eliminar \"{name}\"?",
+    "sample": {
+      "overview": "Resumen general",
+      "overviewDesc": "Resumen",
+      "keyPoints": "Puntos clave",
+      "keyPointsDesc": "Hallazgos principales",
+      "actionItems": "Tareas pendientes",
+      "actionItemsDesc": "Próximos pasos",
+      "sampleOutputLine": "Ejemplo de salida · {date} · Generado a partir de la estructura de plantilla",
+      "contentSection": "Sección de contenido",
+      "taskPlaceholder": "Tarea {n} — Responsable: por definir",
+      "overviewPlaceholder": "Esta sección contendría un breve resumen de la conversación o los resultados de la reunión.",
+      "genericPlaceholder": "Marcador de posición para {section}. En una salida real, esto se llenaría con contenido generado por IA basado en la transcripción."
+    }
   },
   "templateEdit": {
     "editTitle": "Editar Plantilla",
@@ -435,7 +448,13 @@
     "domainTagsDescription": "Categoriza esta plantilla por dominio",
     "styleRulesDescription": "Introduce cada regla en una linea nueva",
     "defaultGenerationInstructions": "Instrucciones predeterminadas de generacion",
-    "defaultGenerationInstructionsDescription": "Rellena automaticamente \"Incluir\" y \"No incluir\" al generar"
+    "defaultGenerationInstructionsDescription": "Rellena automaticamente \"Incluir\" y \"No incluir\" al generar",
+    "promptProtected": "Este prompt está protegido por el creador de la plantilla",
+    "promptProtectedDesc": "El prompt de generación está oculto para proteger la propiedad intelectual del creador. Puedes añadir tus propias instrucciones abajo para personalizar la salida.",
+    "customInstructions": "Tus instrucciones adicionales",
+    "customInstructionsPlaceholder": "ej. Enfocarse en métricas financieras, incluir siempre una sección de evaluación de riesgos...",
+    "customInstructionsHelp": "Estas instrucciones se añaden al prompt original al generar. Úsalas para personalizar la plantilla según tus necesidades.",
+    "descriptionHelp": "Este es el campo más importante — le dice a la IA exactamente qué tipo de documento generar y cómo estructurarlo."
   },
   "templateFromSamples": {
     "title": "Crear plantilla desde ejemplos",

@@ -219,6 +219,10 @@ ${template.sections?.map((s: any) => `- ${s.name}: ${s.description}${s.isRequire
 
 Style guidelines:
 ${template.style_rules?.map((r: string) => `- ${r}`).join('\n') || 'Follow professional writing standards'}`
+
+      if (template.custom_instructions?.trim()) {
+        systemPrompt += `\n\nAdditional user instructions:\n${template.custom_instructions}`
+      }
     }
 
     if (config.doInstructions) {

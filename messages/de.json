@@ -377,7 +377,20 @@
     "alreadyPublished": "Diese Vorlage ist bereits im Marketplace veröffentlicht.",
     "publishSuccess": "Vorlage im Marketplace veröffentlicht!",
     "publishFailed": "Vorlage konnte nicht veröffentlicht werden",
-    "deletePublishedWarning": "Diese Vorlage hat eine veröffentlichte Version im Marketplace. Das Löschen deiner persönlichen Kopie entfernt NICHT die Marketplace-Version. Möchtest du \"{name}\" wirklich löschen?"
+    "deletePublishedWarning": "Diese Vorlage hat eine veröffentlichte Version im Marketplace. Das Löschen deiner persönlichen Kopie entfernt NICHT die Marketplace-Version. Möchtest du \"{name}\" wirklich löschen?",
+    "sample": {
+      "overview": "Überblick",
+      "overviewDesc": "Zusammenfassung",
+      "keyPoints": "Kernpunkte",
+      "keyPointsDesc": "Wichtigste Erkenntnisse",
+      "actionItems": "Aufgaben",
+      "actionItemsDesc": "Nächste Schritte",
+      "sampleOutputLine": "Beispielausgabe · {date} · Generiert aus Vorlagenstruktur",
+      "contentSection": "Inhaltsabschnitt",
+      "taskPlaceholder": "Aufgabe {n} — Verantwortlich: offen",
+      "overviewPlaceholder": "Dieser Abschnitt enthält einen kurzen Überblick über das Gespräch oder die Besprechungsergebnisse.",
+      "genericPlaceholder": "Platzhalter für {section}. In einer echten Ausgabe wird dieser Bereich mit KI-generiertem Inhalt basierend auf dem Transkript gefüllt."
+    }
   },
   "templateEdit": {
     "editTitle": "Vorlage bearbeiten",
@@ -435,7 +448,13 @@
     "domainTagsDescription": "Vorlage nach Bereich kategorisieren",
     "styleRulesDescription": "Jede Regel in einer neuen Zeile eingeben",
     "defaultGenerationInstructions": "Standard-Generierungsanweisungen",
-    "defaultGenerationInstructionsDescription": "Felder \"Einbeziehen\" und \"Nicht einbeziehen\" beim Generieren vorausfuellen"
+    "defaultGenerationInstructionsDescription": "Felder \"Einbeziehen\" und \"Nicht einbeziehen\" beim Generieren vorausfuellen",
+    "promptProtected": "Dieser Prompt ist durch den Ersteller geschützt",
+    "promptProtectedDesc": "Der Generierungs-Prompt ist ausgeblendet, um das geistige Eigentum des Erstellers zu schützen. Du kannst unten eigene Anweisungen hinzufügen, um die Ausgabe anzupassen.",
+    "customInstructions": "Deine zusätzlichen Anweisungen",
+    "customInstructionsPlaceholder": "z.B. Fokus auf Finanzkennzahlen, immer eine Risikobeurteilung einbeziehen...",
+    "customInstructionsHelp": "Diese Anweisungen werden beim Generieren zum Original-Prompt hinzugefügt. Nutze sie, um die Vorlage an deine Bedürfnisse anzupassen.",
+    "descriptionHelp": "Dies ist das wichtigste Feld — es teilt der KI genau mit, welche Art von Dokument erstellt und wie es strukturiert werden soll."
   },
   "templateFromSamples": {
     "title": "Vorlage aus Beispielen erstellen",

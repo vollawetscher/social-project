@@ -12,6 +12,7 @@ import {
   Save,
   Loader2,
   Sparkles,
+  Lock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -48,6 +49,8 @@ export default function EditTemplatePage() {
   const [styleRules, setStyleRules] = useState("")
   const [defaultDoInstructions, setDefaultDoInstructions] = useState("")
   const [defaultDontInstructions, setDefaultDontInstructions] = useState("")
+  const [customInstructions, setCustomInstructions] = useState("")
+  const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
     fetchTemplate()
@@ -69,6 +72,8 @@ export default function EditTemplatePage() {
       setStyleRules((data.style_rules || data.styleRules || []).join('\n'))
       setDefaultDoInstructions(data.default_do_instructions || data.defaultDoInstructions || '')
       setDefaultDontInstructions(data.default_dont_instructions || data.defaultDontInstructions || '')
+      setCustomInstructions(data.custom_instructions || data.customInstructions || '')
+      setIsInstalled(!!data.marketplaceSourceId)
     } catch (error) {
       console.error('Error fetching template:', error)
       toast.error(t('loadFailed'))
@@ -129,6 +134,7 @@ export default function EditTemplatePage() {
           styleRules: styleRules.split('\n').filter(r => r.trim()),
           defaultDoInstructions: defaultDoInstructions.trim(),
           defaultDontInstructions: defaultDontInstructions.trim(),
+          customInstructions: customInstructions.trim(),
         }),
       })
 
@@ -247,32 +253,60 @@ export default function EditTemplatePage() {
               placeholder={t('namePlaceholder')}
             />
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="description">{t('description')}</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                onClick={handleEnhanceDescription}
-                disabled={enhancingDescription || (!name.trim() && !description.trim())}
-              >
-                {enhancingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                {t('enhanceWithAI')}
-              </Button>
+          {isInstalled ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t('description')}</Label>
+                <div className="rounded-lg border border-border bg-muted/50 p-4 flex items-start gap-3">
+                  <Lock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{t('promptProtected')}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('promptProtectedDesc')}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customInstructions">{t('customInstructions')}</Label>
+                <Textarea
+                  id="customInstructions"
+                  value={customInstructions}
+                  onChange={(e) => setCustomInstructions(e.target.value)}
+                  placeholder={t('customInstructionsPlaceholder')}
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('customInstructionsHelp')}
+                </p>
+              </div>
             </div>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. A structured protocol for client consultations, organized by topics discussed, with action items and follow-ups..."
-              rows={3}
-            />
-            <p className="text-xs text-muted-foreground">
-              This is the most important field — it tells the AI exactly what kind of document to generate and how to structure it.
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="description">{t('description')}</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                  onClick={handleEnhanceDescription}
+                  disabled={enhancingDescription || (!name.trim() && !description.trim())}
+                >
+                  {enhancingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {t('enhanceWithAI')}
+                </Button>
+              </div>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('descriptionPlaceholder')}
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('descriptionHelp')}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from "react"
 import { Link } from "@/i18n/navigation"
 import { toast } from "sonner"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import {
   LayoutTemplate,
   Plus,
@@ -72,32 +72,49 @@ const domainColors: Record<string, string> = {
   general: "bg-gray-500/20 text-gray-400 border-gray-500/30",
 }
 
-// Generate sample content for template preview
-function getTemplateSample(template: Template): string {
+interface SampleTranslations {
+  overview: string
+  overviewDesc: string
+  keyPoints: string
+  keyPointsDesc: string
+  actionItems: string
+  actionItemsDesc: string
+  sampleOutputLine: string
+  contentSection: string
+  taskPlaceholder: string
+  overviewPlaceholder: string
+  genericPlaceholder: string
+}
+
+function getTemplateSample(template: Template, translations: SampleTranslations, locale: string): string {
   if (template.sampleContent && template.sampleContent.trim()) {
     return template.sampleContent
   }
   const sections = template.sections?.length
     ? template.sections
     : [
-        { name: "Overview", description: "Summary" },
-        { name: "Key Points", description: "Main findings" },
-        { name: "Action Items", description: "Next steps" },
+        { name: translations.overview, description: translations.overviewDesc },
+        { name: translations.keyPoints, description: translations.keyPointsDesc },
+        { name: translations.actionItems, description: translations.actionItemsDesc },
       ]
-  const now = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+  const now = new Date().toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric" })
   let md = `# ${template.name}\n\n`
-  md += `*Sample output · ${now} · Generated from template structure*\n\n---\n\n`
+  md += `*${translations.sampleOutputLine.replace('{date}', now)}*\n\n---\n\n`
   sections.forEach((s: any) => {
     md += `## ${s.name}\n\n`
-    md += `*${typeof s.description === "string" ? s.description : "Content section"}*\n\n`
-    if (s.name.toLowerCase().includes("action") || s.name.toLowerCase().includes("next")) {
-      md += `- [ ] Task 1 — Owner: TBD\n`
-      md += `- [ ] Task 2 — Owner: TBD\n`
-      md += `- [ ] Task 3 — Owner: TBD\n\n`
-    } else if (s.name.toLowerCase().includes("overview") || s.name.toLowerCase().includes("summary")) {
-      md += `This section would contain a brief overview of the conversation or meeting outcomes.\n\n`
+    md += `*${typeof s.description === "string" ? s.description : translations.contentSection}*\n\n`
+    if (s.name.toLowerCase().includes("action") || s.name.toLowerCase().includes("next") ||
+        s.name.toLowerCase().includes("aufgabe") || s.name.toLowerCase().includes("nächste") ||
+        s.name.toLowerCase().includes("tarea") || s.name.toLowerCase().includes("acción")) {
+      md += `- [ ] ${translations.taskPlaceholder.replace('{n}', '1')}\n`
+      md += `- [ ] ${translations.taskPlaceholder.replace('{n}', '2')}\n`
+      md += `- [ ] ${translations.taskPlaceholder.replace('{n}', '3')}\n\n`
+    } else if (s.name.toLowerCase().includes("overview") || s.name.toLowerCase().includes("summary") ||
+               s.name.toLowerCase().includes("überblick") || s.name.toLowerCase().includes("zusammenfassung") ||
+               s.name.toLowerCase().includes("resumen") || s.name.toLowerCase().includes("descripción")) {
+      md += `${translations.overviewPlaceholder}\n\n`
     } else {
-      md += `Lorem ipsum placeholder for ${s.name}. In a real output, this would be filled with AI-generated content based on the transcript.\n\n`
+      md += `${translations.genericPlaceholder.replace('{section}', s.name)}\n\n`
     }
   })
   return md
@@ -105,7 +122,22 @@ function getTemplateSample(template: Template): string {
 
 function TemplateSampleSheet({ template, open, onOpenChange }: { template: Template; open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useTranslations('templates')
-  const sample = getTemplateSample(template)
+  const ts = useTranslations('templates.sample')
+  const locale = useLocale()
+  const sampleTranslations: SampleTranslations = {
+    overview: ts('overview'),
+    overviewDesc: ts('overviewDesc'),
+    keyPoints: ts('keyPoints'),
+    keyPointsDesc: ts('keyPointsDesc'),
+    actionItems: ts('actionItems'),
+    actionItemsDesc: ts('actionItemsDesc'),
+    sampleOutputLine: ts('sampleOutputLine'),
+    contentSection: ts('contentSection'),
+    taskPlaceholder: ts('taskPlaceholder'),
+    overviewPlaceholder: ts('overviewPlaceholder'),
+    genericPlaceholder: ts('genericPlaceholder'),
+  }
+  const sample = getTemplateSample(template, sampleTranslations, locale)
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">

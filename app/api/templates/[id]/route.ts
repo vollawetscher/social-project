@@ -25,22 +25,25 @@ export async function GET(
       return NextResponse.json({ error: 'Template not found' }, { status: 404 })
     }
 
-    // Transform to v0 format
+    const isInstalled = !!template.marketplace_source_id
+
     const formattedTemplate: Template = {
       id: template.id,
       name: template.name,
-      description: template.description,
+      description: isInstalled ? '' : template.description,
       intendedPerspectives: template.intended_perspectives || [],
       allowedAudience: template.allowed_audience || [],
       domainTags: template.domain_tags || [],
       usedCount: template.used_count || 0,
-      sections: template.sections || [],
+      sections: isInstalled ? [] : (template.sections || []),
       requiredInputs: template.required_inputs || [],
       styleRules: template.style_rules || [],
       suggestionTriggers: template.suggestion_triggers || [],
       sampleContent: template.sample_content || null,
       defaultDoInstructions: template.default_do_instructions || '',
       defaultDontInstructions: template.default_dont_instructions || '',
+      marketplaceSourceId: template.marketplace_source_id || null,
+      customInstructions: template.custom_instructions || '',
     }
 
     return NextResponse.json(formattedTemplate)
@@ -75,24 +78,39 @@ export async function PUT(
       suggestionTriggers,
       defaultDoInstructions,
       defaultDontInstructions,
+      customInstructions,
     } = body
 
-    // Update template (only if user owns it)
+    const { data: existing } = await supabase
+      .from('templates')
+      .select('marketplace_source_id')
+      .eq('id', params.id)
+      .eq('created_by', user.id)
+      .single()
+
+    const isInstalled = !!existing?.marketplace_source_id
+
+    const updatePayload: Record<string, unknown> = {
+      name,
+      intended_perspectives: intendedPerspectives,
+      allowed_audience: allowedAudience,
+      domain_tags: domainTags,
+      required_inputs: requiredInputs,
+      style_rules: styleRules,
+      suggestion_triggers: suggestionTriggers,
+      default_do_instructions: defaultDoInstructions ?? '',
+      default_dont_instructions: defaultDontInstructions ?? '',
+      custom_instructions: customInstructions ?? '',
+    }
+
+    if (!isInstalled) {
+      updatePayload.description = description
+      updatePayload.sections = sections
+    }
+
     const { data: template, error } = await supabase
       .from('templates')
-      .update({
-        name,
-        description,
-        intended_perspectives: intendedPerspectives,
-        allowed_audience: allowedAudience,
-        domain_tags: domainTags,
-        sections,
-        required_inputs: requiredInputs,
-        style_rules: styleRules,
-        suggestion_triggers: suggestionTriggers,
-        default_do_instructions: defaultDoInstructions ?? '',
-        default_dont_instructions: defaultDontInstructions ?? '',
-      })
+      .update(updatePayload)
       .eq('id', params.id)
       .eq('created_by', user.id)
       .select()
@@ -102,22 +120,23 @@ export async function PUT(
       return NextResponse.json({ error: 'Template not found or unauthorized' }, { status: 404 })
     }
 
-    // Transform to v0 format
     const formattedTemplate: Template = {
       id: template.id,
       name: template.name,
-      description: template.description,
+      description: isInstalled ? '' : template.description,
       intendedPerspectives: template.intended_perspectives || [],
       allowedAudience: template.allowed_audience || [],
       domainTags: template.domain_tags || [],
       usedCount: template.used_count || 0,
-      sections: template.sections || [],
+      sections: isInstalled ? [] : (template.sections || []),
       requiredInputs: template.required_inputs || [],
       styleRules: template.style_rules || [],
       suggestionTriggers: template.suggestion_triggers || [],
       sampleContent: template.sample_content || null,
       defaultDoInstructions: template.default_do_instructions || '',
       defaultDontInstructions: template.default_dont_instructions || '',
+      marketplaceSourceId: template.marketplace_source_id || null,
+      customInstructions: template.custom_instructions || '',
     }
 
     return NextResponse.json(formattedTemplate)
