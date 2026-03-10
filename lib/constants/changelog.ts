@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.17.0',
+    date: 'March 5, 2026',
+    entries: [
+      {
+        version: '1.17.0',
+        date: 'March 5, 2026',
+        category: 'feature',
+        title: 'Community Filters & Sorting',
+        description: 'Find the perfect template faster — sort by popularity, rating, or newest. Filter by language (defaults to your language) and click on a creator name to see all their templates. Creator links are shareable!',
+      },
+    ],
+  },
+  {
     version: '1.16.0',
     date: 'March 10, 2026',
     entries: [

@@ -1100,6 +1100,8 @@
         "downloads": "Meiste Downloads"
       },
       "noResults": "Keine Vorlagen gefunden",
+      "allLanguages": "Alle Sprachen",
+      "showAllLanguages": "Vorlagen in allen Sprachen anzeigen",
       "copyJSON": "JSON kopieren",
       "copyJSONTooltip": "Notissima-kompatibles JSON in die Zwischenablage kopieren",
       "copiedJSON": "JSON in die Zwischenablage kopiert!",

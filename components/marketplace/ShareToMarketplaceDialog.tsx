@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { toast } from 'sonner'
 import { Store, Tag, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -43,6 +43,7 @@ export function ShareToMarketplaceDialog({
 }: ShareToMarketplaceDialogProps) {
   const t = useTranslations('marketplace')
   const tt = useTranslations('templates')
+  const locale = useLocale()
   const supabase = createClient()
 
   const [categories, setCategories] = useState<MarketplaceCategory[]>([])
@@ -100,6 +101,7 @@ export function ShareToMarketplaceDialog({
           category_id: categoryId || null,
           tags,
           description_override: description !== template.description ? description : undefined,
+          language: locale,
         }),
       })
 

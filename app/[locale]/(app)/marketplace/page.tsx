@@ -2,16 +2,25 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
-import { Search, Star, Download, User, SlidersHorizontal, Loader2 } from 'lucide-react'
+import { Search, Star, Download, User, SlidersHorizontal, Loader2, X, Globe } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { useTranslations } from 'next-intl'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { useTranslations, useLocale } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import type { MarketplaceTemplate, MarketplaceCategory, MarketplaceProfile } from '@/lib/types/marketplace'
 import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
+
+const LANGUAGE_LABELS: Record<string, string> = {
+  de: 'Deutsch',
+  en: 'English',
+  es: 'Español',
+}
 
 const categoryColors: Record<string, string> = {
   psychology: 'bg-purple-500/20 text-purple-600 border-purple-500/30',
@@ -25,27 +34,56 @@ const categoryColors: Record<string, string> = {
   general: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 }
 
+type SortOption = 'popular' | 'recent' | 'rating'
+
 export default function MarketplacePage() {
+  const locale = useLocale()
   const [searchQuery, setSearchQuery] = useState('')
   const [templates, setTemplates] = useState<MarketplaceTemplate[]>([])
   const [categories, setCategories] = useState<MarketplaceCategory[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<SortOption>('popular')
+  const [languageFilter, setLanguageFilter] = useState<string | null>(locale)
+  const [selectedCreator, setSelectedCreator] = useState<string | null>(null)
+  const [creatorName, setCreatorName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(true)
   const t = useTranslations('marketplace')
   const supabase = createClient()
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const creatorParam = params.get('creator')
+    if (creatorParam) {
+      setSelectedCreator(creatorParam)
+    }
+  }, [])
+
   const fetchTemplates = useCallback(async () => {
     setLoading(true)
+
+    const orderMap: Record<SortOption, string> = {
+      popular: 'download_count',
+      recent: 'created_at',
+      rating: 'avg_rating',
+    }
 
     let query = supabase
       .from('marketplace_templates')
       .select('*')
       .eq('is_published', true)
-      .order('download_count', { ascending: false })
+      .order(orderMap[sortBy], { ascending: false })
 
     if (selectedCategory) {
       query = query.eq('category_id', selectedCategory)
+    }
+
+    if (selectedCreator) {
+      query = query.eq('author_id', selectedCreator)
+    }
+
+    if (languageFilter) {
+      query = query.eq('language', languageFilter)
     }
 
     if (searchQuery.trim()) {
@@ -79,15 +117,20 @@ export default function MarketplacePage() {
       (categoriesRes.data ?? []).map((c: any) => [c.id, c])
     )
 
-    setTemplates(
-      tplData.map((t: any) => ({
-        ...t,
-        author: profileMap.get(t.author_id),
-        category: categoryMap.get(t.category_id),
-      }))
-    )
+    const enriched = tplData.map((t: any) => ({
+      ...t,
+      author: profileMap.get(t.author_id),
+      category: categoryMap.get(t.category_id),
+    }))
+
+    setTemplates(enriched)
+
+    if (selectedCreator && enriched.length > 0 && enriched[0].author) {
+      setCreatorName(enriched[0].author.display_name || enriched[0].author.marketplace_username || null)
+    }
+
     setLoading(false)
-  }, [searchQuery, selectedCategory, supabase])
+  }, [searchQuery, selectedCategory, sortBy, selectedCreator, languageFilter, supabase])
 
   useEffect(() => {
     fetchTemplates()
@@ -101,6 +144,31 @@ export default function MarketplacePage() {
       .then(({ data }: { data: any }) => setCategories(data ?? []))
   }, [supabase])
 
+  function handleCreatorClick(authorId: string, authorName: string, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedCreator(authorId)
+    setCreatorName(authorName)
+    const params = new URLSearchParams(window.location.search)
+    params.set('creator', authorId)
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
+  }
+
+  function clearCreator() {
+    setSelectedCreator(null)
+    setCreatorName(null)
+    const params = new URLSearchParams(window.location.search)
+    params.delete('creator')
+    const qs = params.toString()
+    window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+  }
+
+  const activeFilterCount = [
+    selectedCategory,
+    selectedCreator,
+    languageFilter && languageFilter !== locale ? languageFilter : null,
+  ].filter(Boolean).length
+
   return (
     <TooltipProvider delayDuration={0}>
       <div className="space-y-6">
@@ -110,15 +178,32 @@ export default function MarketplacePage() {
             <h1 className="text-2xl font-semibold text-foreground">{t('explore.title')}</h1>
             <p className="text-sm text-muted-foreground mt-1">{t('explore.subtitle')}</p>
           </div>
-          <Button
-            variant={showFilters ? 'secondary' : 'outline'}
-            size="sm"
-            className="bg-transparent"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <SlidersHorizontal className="h-4 w-4 mr-2" />
-            {t('explore.filter')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="w-[160px] bg-transparent">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="popular">{t('explore.sortOptions.popular')}</SelectItem>
+                <SelectItem value="recent">{t('explore.sortOptions.recent')}</SelectItem>
+                <SelectItem value="rating">{t('explore.sortOptions.rating')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant={showFilters ? 'secondary' : 'outline'}
+              size="sm"
+              className="bg-transparent"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <SlidersHorizontal className="h-4 w-4 mr-2" />
+              {t('explore.filter')}
+              {activeFilterCount > 0 && (
+                <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
@@ -132,25 +217,63 @@ export default function MarketplacePage() {
           />
         </div>
 
-        {showFilters && categories.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <Badge
-              variant={selectedCategory === null ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => setSelectedCategory(null)}
-            >
-              {t('explore.all')}
-            </Badge>
-            {categories.map((cat) => (
+        {showFilters && (
+          <div className="space-y-3">
+            {categories.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <Badge
+                  variant={selectedCategory === null ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedCategory(null)}
+                >
+                  {t('explore.all')}
+                </Badge>
+                {categories.map((cat) => (
+                  <Badge
+                    key={cat.id}
+                    variant={selectedCategory === cat.id ? 'default' : 'outline'}
+                    className={`cursor-pointer ${selectedCategory !== cat.id ? (categoryColors[cat.slug] ?? '') : ''}`}
+                    onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                  >
+                    {cat.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+              {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+                <Badge
+                  key={code}
+                  variant={languageFilter === code ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => setLanguageFilter(languageFilter === code ? null : code)}
+                >
+                  {label}
+                </Badge>
+              ))}
               <Badge
-                key={cat.id}
-                variant={selectedCategory === cat.id ? 'default' : 'outline'}
-                className={`cursor-pointer ${selectedCategory !== cat.id ? (categoryColors[cat.slug] ?? '') : ''}`}
-                onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                variant={languageFilter === null ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setLanguageFilter(null)}
               >
-                {cat.name}
+                {t('explore.allLanguages')}
               </Badge>
-            ))}
+            </div>
+
+            {selectedCreator && (
+              <div className="flex items-center gap-2">
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                <Badge variant="secondary" className="flex items-center gap-1.5">
+                  {creatorName || selectedCreator.slice(0, 8)}
+                  <X
+                    className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
+                    onClick={clearCreator}
+                  />
+                </Badge>
+              </div>
+            )}
           </div>
         )}
 
@@ -161,6 +284,15 @@ export default function MarketplacePage() {
         ) : templates.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <p>{t('explore.noResults')}</p>
+            {languageFilter && (
+              <Button
+                variant="link"
+                className="mt-2"
+                onClick={() => setLanguageFilter(null)}
+              >
+                {t('explore.showAllLanguages')}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -169,14 +301,21 @@ export default function MarketplacePage() {
                 <Card className="border-border hover:border-primary/50 transition-colors h-full">
                   <CardContent className="p-5 flex flex-col h-full">
                     <div className="flex items-start justify-between gap-2 mb-3">
-                      {tpl.category && (
-                        <Badge
-                          variant="outline"
-                          className={categoryColors[tpl.category.slug] || ''}
-                        >
-                          {tpl.category.name}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {tpl.category && (
+                          <Badge
+                            variant="outline"
+                            className={categoryColors[tpl.category.slug] || ''}
+                          >
+                            {tpl.category.name}
+                          </Badge>
+                        )}
+                        {tpl.language && tpl.language !== locale && (
+                          <Badge variant="outline" className="text-xs">
+                            {LANGUAGE_LABELS[tpl.language] || tpl.language.toUpperCase()}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Star className="h-3.5 w-3.5 fill-warning text-warning" />
                         <span>{Number(tpl.avg_rating).toFixed(1)}</span>
@@ -189,7 +328,13 @@ export default function MarketplacePage() {
                     </p>
 
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
+                        onClick={(e) => handleCreatorClick(tpl.author_id, tpl.author?.display_name || '', e)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleCreatorClick(tpl.author_id, tpl.author?.display_name || '', e as any) }}
+                      >
                         <User className="h-3 w-3" />
                         {tpl.author?.display_name}
                       </span>

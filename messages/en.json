@@ -1101,6 +1101,8 @@
         "downloads": "Most Downloads"
       },
       "noResults": "No templates found",
+      "allLanguages": "All Languages",
+      "showAllLanguages": "Show templates in all languages",
       "copyJSON": "Copy JSON",
       "copyJSONTooltip": "Copy Notissima-compatible JSON to clipboard",
       "copiedJSON": "JSON copied to clipboard!",

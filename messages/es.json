@@ -1100,6 +1100,8 @@
         "downloads": "Más Descargas"
       },
       "noResults": "No se encontraron plantillas",
+      "allLanguages": "Todos los idiomas",
+      "showAllLanguages": "Mostrar plantillas en todos los idiomas",
       "copyJSON": "Copiar JSON",
       "copyJSONTooltip": "Copiar JSON compatible con Notissima al portapapeles",
       "copiedJSON": "¡JSON copiado al portapapeles!",

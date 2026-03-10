@@ -38,7 +38,7 @@ export async function POST(
   }
 
   const body = await request.json()
-  const { category_id, tags, description_override } = body
+  const { category_id, tags, description_override, language } = body
 
   const sectionNames = (template.sections || [])
     .map((s: any) => s.name)
@@ -72,6 +72,7 @@ export async function POST(
       tags: tags || template.domain_tags || [],
       is_published: true,
       source_template_id: params.id,
+      language: language || 'en',
     })
     .select('id, title')
     .single()
