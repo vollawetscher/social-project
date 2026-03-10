@@ -86,6 +86,37 @@ function formatScheduledLocal(timestamp: string): string {
   })
 }
 
+function buildInviteIcs(params: {
+  uid: string
+  startIso: string
+  endIso: string
+  title: string
+  description: string
+  joinUrl: string
+}): string {
+  const toUtcStamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
+  const nowStamp = toUtcStamp(new Date().toISOString())
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Notissima//Scheduled Calls//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${params.uid}`,
+    `DTSTAMP:${nowStamp}`,
+    `DTSTART:${toUtcStamp(params.startIso)}`,
+    `DTEND:${toUtcStamp(params.endIso)}`,
+    `SUMMARY:${params.title}`,
+    `DESCRIPTION:${params.description.replace(/\n/g, '\\n')}`,
+    `LOCATION:${params.joinUrl}`,
+    `URL:${params.joinUrl}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ].join('\r\n')
+}
+
 /**
  * Normalize a phone number to E.164 format.
  * Handles: spaces/dashes/parens, leading 00 (international prefix), missing +.
@@ -120,6 +151,7 @@ export default function CallsPage() {
   const [ringSending, setRingSending] = useState(false)
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
   const [scheduleAtLocal, setScheduleAtLocal] = useState("")
+  const [scheduleInviteEmail, setScheduleInviteEmail] = useState("")
   const [scheduleSaving, setScheduleSaving] = useState(false)
   // Save-to-contacts prompt: stores the phone number to save
   const [savingNumber, setSavingNumber] = useState<string | null>(null)
@@ -330,10 +362,41 @@ export default function CallsPage() {
         throw new Error(data.error || t('scheduleFailed'))
       }
 
+      const joinUrl = `${window.location.origin}/call/${data.roomName}?callId=${data.callId}`
+      const scheduledIso = data.scheduledFor || date.toISOString()
+      const endIso = new Date(new Date(scheduledIso).getTime() + 30 * 60 * 1000).toISOString()
+      const subject = t('inviteEmailSubject')
+      const body = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteJoinLink')}: ${joinUrl}\n\n${t('inviteAttachIcsHint')}`
+      const ics = buildInviteIcs({
+        uid: `${data.callId}@notissima.app`,
+        startIso: scheduledIso,
+        endIso,
+        title: t('scheduledCallDefaultTitle'),
+        description: `${t('inviteEmailBodyIntro')}\n${joinUrl}`,
+        joinUrl,
+      })
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `notissima-invite-${data.callId}.ics`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+
+      if (scheduleInviteEmail.trim()) {
+        const mailto = `mailto:${encodeURIComponent(scheduleInviteEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+        window.location.href = mailto
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(`${subject}\n\n${body}`)
+      }
+
       setScheduleDialogOpen(false)
       setScheduleAtLocal("")
+      setScheduleInviteEmail("")
       await fetchCalls()
-      toast.success(t('scheduleSuccess'))
+      toast.success(t('scheduleSuccessWithInvite'))
     } catch (err: any) {
       toast.error(err?.message || t('scheduleFailed'))
     } finally {
@@ -355,6 +418,40 @@ export default function CallsPage() {
       router.push(`/call/${call.room_name}?callId=${call.id}&token=${encodeURIComponent(data.token)}&mode=${call.call_mode || "video"}`)
     } catch (err: any) {
       toast.error(err?.message || t('joinScheduledFailed'))
+    }
+  }
+
+  async function handleCopyScheduledInvite(call: Call) {
+    try {
+      if (!call.scheduled_for) throw new Error(t('copyInviteFailed'))
+      const joinUrl = `${window.location.origin}/call/${call.room_name}?callId=${call.id}`
+      const scheduledIso = call.scheduled_for
+      const endIso = new Date(new Date(scheduledIso).getTime() + 30 * 60 * 1000).toISOString()
+      const subject = t('inviteEmailSubject')
+      const body = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteJoinLink')}: ${joinUrl}\n\n${t('inviteAttachIcsHint')}`
+      const ics = buildInviteIcs({
+        uid: `${call.id}@notissima.app`,
+        startIso: scheduledIso,
+        endIso,
+        title: call.contact_name || t('scheduledCallDefaultTitle'),
+        description: `${t('inviteEmailBodyIntro')}\n${joinUrl}`,
+        joinUrl,
+      })
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `notissima-invite-${call.id}.ics`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(`${subject}\n\n${body}`)
+      }
+      toast.success(t('copyInviteSuccess'))
+    } catch (err: any) {
+      toast.error(err?.message || t('copyInviteFailed'))
     }
   }
 
@@ -654,13 +751,22 @@ export default function CallsPage() {
                     <p className="text-sm font-medium truncate">{call.contact_name || t('scheduledCallDefaultTitle')}</p>
                     <p className="text-xs text-muted-foreground">{call.scheduled_for ? formatScheduledLocal(call.scheduled_for) : "-"}</p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={canJoin ? "default" : "outline"}
-                    onClick={() => canJoin ? handleJoinScheduledCall(call) : toast.info(t('scheduleTooEarly'))}
-                  >
-                    {t('joinNow')}
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopyScheduledInvite(call)}
+                    >
+                      {t('copyInvite')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={canJoin ? "default" : "outline"}
+                      onClick={() => canJoin ? handleJoinScheduledCall(call) : toast.info(t('scheduleTooEarly'))}
+                    >
+                      {t('joinNow')}
+                    </Button>
+                  </div>
                 </div>
               )
             })}
@@ -760,6 +866,12 @@ export default function CallsPage() {
               type="datetime-local"
               value={scheduleAtLocal}
               onChange={(e) => setScheduleAtLocal(e.target.value)}
+            />
+            <Input
+              type="email"
+              value={scheduleInviteEmail}
+              onChange={(e) => setScheduleInviteEmail(e.target.value)}
+              placeholder={t('inviteEmailPlaceholder')}
             />
             <p className="text-xs text-muted-foreground">{t('scheduleJoinWindowHint')}</p>
           </div>
