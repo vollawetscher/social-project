@@ -685,7 +685,7 @@ export default function CallsPage() {
       {/* Quick Actions */}
       <div className="px-4 py-4 border-b border-border">
         <h1 className="text-lg font-semibold text-foreground mb-3">{t('title')}</h1>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
             onClick={() => setPendingCallMode("audio")}
             disabled={creating}
@@ -736,21 +736,23 @@ export default function CallsPage() {
               const startsInMs = call.scheduled_for ? (new Date(call.scheduled_for).getTime() - Date.now()) : 0
               const canJoin = startsInMs <= 10 * 60 * 1000
               return (
-                <div key={call.id} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
+                <div key={call.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-border px-3 py-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{call.contact_name || t('scheduledCallDefaultTitle')}</p>
                     <p className="text-xs text-muted-foreground">{call.scheduled_for ? formatScheduledLocal(call.scheduled_for) : "-"}</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                     <Button
                       size="sm"
                       variant="outline"
+                      className="flex-1 sm:flex-none"
                       onClick={() => handleCopyScheduledInvite(call)}
                     >
                       {t('copyInvite')}
                     </Button>
                     <Button
                       size="sm"
+                      className="flex-1 sm:flex-none"
                       variant={canJoin ? "default" : "outline"}
                       onClick={() => canJoin ? handleJoinScheduledCall(call) : toast.info(t('scheduleTooEarly'))}
                     >
@@ -865,9 +867,9 @@ export default function CallsPage() {
             />
             <p className="text-xs text-muted-foreground">{t('scheduleJoinWindowHint')}</p>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>{t('cancel')}</Button>
-            <Button onClick={handleScheduleVideoCall} disabled={scheduleSaving || !scheduleAtLocal}>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setScheduleDialogOpen(false)}>{t('cancel')}</Button>
+            <Button className="w-full sm:w-auto" onClick={handleScheduleVideoCall} disabled={scheduleSaving || !scheduleAtLocal}>
               {scheduleSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {t('scheduleSave')}
             </Button>
