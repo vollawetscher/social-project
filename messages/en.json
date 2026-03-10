@@ -1137,7 +1137,12 @@
         "overview": "Overview",
         "reviews": "Reviews",
         "comments": "Comments"
-      }
+      },
+      "removeFromCommunity": "Remove from Community",
+      "removeConfirmTitle": "Remove Template from Community?",
+      "removeConfirmDescription": "This will unpublish your template from the community hub. Users who already installed it will keep their copy. This action cannot be undone.",
+      "removeSuccess": "Template removed from community.",
+      "removeFailed": "Failed to remove template."
     },
     "upload": {
       "title": "Share a Template",

@@ -319,7 +319,10 @@ export default function AdminBugsPage() {
                   {/* Row header */}
                   <div
                     className="flex items-start gap-3 cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : err.id)}
+                    onClick={() => {
+                      setExpandedId(isExpanded ? null : err.id)
+                      if (!isExpanded) setResolutionNotes("")
+                    }}
                   >
                     <div className="flex flex-col items-center gap-1 pt-0.5">
                       {err.resolved ? (

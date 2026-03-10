@@ -5,7 +5,7 @@ import { Link } from '@/i18n/navigation'
 import {
   ArrowLeft, Star, Download, User, Copy, FileDown,
   Eye, Users, MessageSquare, Globe, Briefcase, FileText,
-  Sparkles, Loader2, CheckCircle2, XCircle, Plus, LogIn,
+  Sparkles, Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,7 +18,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth/AuthProvider'
@@ -50,13 +56,16 @@ const categoryColors: Record<string, string> = {
 export default function TemplateDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const t = useTranslations('marketplace')
+  const tc = useTranslations('common')
   const supabase = createClient()
+  const router = useRouter()
   const { user } = useAuth()
   const [template, setTemplate] = useState<MarketplaceTemplate | null>(null)
   const [loading, setLoading] = useState(true)
   const [customizing, setCustomizing] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [installed, setInstalled] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const [perspectives, setPerspectives] = useState<Perspective[]>([])
   const [audiences, setAudiences] = useState<Audience[]>([])
@@ -162,6 +171,24 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
       setInstalling(false)
     }
   }
+
+  async function handleDelete() {
+    if (!template) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/marketplace/templates/${template.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Delete failed')
+      toast.success(t('template.removeSuccess'))
+      router.push('/marketplace')
+    } catch (err: any) {
+      toast.error(err.message || t('template.removeFailed'))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const isAuthor = user && template?.author_id === user.id
 
   if (loading) {
     return (
@@ -270,6 +297,38 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             <Sparkles className="h-4 w-4 mr-2" />
             {customizing ? t('template.closeCustomizer') : t('template.customizeExport')}
           </Button>
+
+          {isAuthor && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={deleting}>
+                  {deleting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  {t('template.removeFromCommunity')}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t('template.removeConfirmTitle')}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t('template.removeConfirmDescription')}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {t('template.removeFromCommunity')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         <Card className="border-border">

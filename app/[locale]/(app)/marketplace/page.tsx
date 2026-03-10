@@ -2,16 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
-import { Search, Star, Download, User, SlidersHorizontal, Copy, FileDown, Loader2 } from 'lucide-react'
+import { Search, Star, Download, User, SlidersHorizontal, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { copyExportJSON, downloadExportJSON } from '@/lib/utils/marketplace-export'
 import type { MarketplaceTemplate, MarketplaceCategory, MarketplaceProfile } from '@/lib/types/marketplace'
 import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
 
@@ -102,20 +100,6 @@ export default function MarketplacePage() {
       .order('sort_order')
       .then(({ data }: { data: any }) => setCategories(data ?? []))
   }, [supabase])
-
-  async function handleCopyJSON(e: React.MouseEvent, tpl: MarketplaceTemplate) {
-    e.preventDefault()
-    e.stopPropagation()
-    await copyExportJSON(tpl)
-    toast.success(t('explore.copiedJSON'))
-  }
-
-  function handleDownloadJSON(e: React.MouseEvent, tpl: MarketplaceTemplate) {
-    e.preventDefault()
-    e.stopPropagation()
-    downloadExportJSON(tpl)
-    toast.success(t('explore.downloadedJSON'))
-  }
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -215,36 +199,6 @@ export default function MarketplacePage() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 flex-1 text-xs"
-                            onClick={(e) => handleCopyJSON(e, tpl)}
-                          >
-                            <Copy className="h-3.5 w-3.5 mr-1.5" />
-                            {t('explore.copyJSON')}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('explore.copyJSONTooltip')}</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 flex-1 text-xs"
-                            onClick={(e) => handleDownloadJSON(e, tpl)}
-                          >
-                            <FileDown className="h-3.5 w-3.5 mr-1.5" />
-                            {t('explore.downloadJSON')}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('explore.downloadJSONTooltip')}</TooltipContent>
-                      </Tooltip>
-                    </div>
                   </CardContent>
                 </Card>
               </Link>

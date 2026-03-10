@@ -1136,7 +1136,12 @@
         "overview": "Übersicht",
         "reviews": "Bewertungen",
         "comments": "Kommentare"
-      }
+      },
+      "removeFromCommunity": "Aus Community entfernen",
+      "removeConfirmTitle": "Vorlage aus Community entfernen?",
+      "removeConfirmDescription": "Damit wird deine Vorlage aus dem Community Hub entfernt. Nutzer, die sie bereits installiert haben, behalten ihre Kopie. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "removeSuccess": "Vorlage aus Community entfernt.",
+      "removeFailed": "Fehler beim Entfernen der Vorlage."
     },
     "upload": {
       "title": "Vorlage teilen",

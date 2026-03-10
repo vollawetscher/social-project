@@ -1136,7 +1136,12 @@
         "overview": "Descripción",
         "reviews": "Reseñas",
         "comments": "Comentarios"
-      }
+      },
+      "removeFromCommunity": "Eliminar de la comunidad",
+      "removeConfirmTitle": "¿Eliminar plantilla de la comunidad?",
+      "removeConfirmDescription": "Esto eliminará tu plantilla del hub comunitario. Los usuarios que ya la instalaron conservarán su copia. Esta acción no se puede deshacer.",
+      "removeSuccess": "Plantilla eliminada de la comunidad.",
+      "removeFailed": "Error al eliminar la plantilla."
     },
     "upload": {
       "title": "Compartir una Plantilla",

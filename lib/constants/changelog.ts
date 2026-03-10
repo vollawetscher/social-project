@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.16.0',
+    date: 'March 10, 2026',
+    entries: [
+      {
+        version: '1.16.0',
+        date: 'March 10, 2026',
+        category: 'feature',
+        title: 'Remove Your Community Templates',
+        description: 'Creators can now unpublish their own templates from the community hub directly from the template detail page.',
+      },
+      {
+        version: '1.16.0',
+        date: 'March 10, 2026',
+        category: 'improvement',
+        title: 'Cleaner Community Overview',
+        description: 'Template cards in the community overview now show only essential info. Download and JSON actions are available on the detail page.',
+      },
+    ],
+  },
+  {
     version: '1.15.0',
     date: 'March 10, 2026',
     entries: [
