@@ -421,12 +421,19 @@ function CallRoomInner({
     let cancelled = false
     ;(async () => {
       if (videoBackground === "none") {
-        try {
-          await videoTrack.stopProcessor?.()
-        } catch {
-          // ignore stop errors
-        } finally {
-          backgroundProcessorRef.current = null
+        if (backgroundProcessorRef.current) {
+          try {
+            // Disable processing without tearing down the underlying camera track.
+            await backgroundProcessorRef.current.switchTo({ mode: "disabled" })
+          } catch {
+            try {
+              await videoTrack.stopProcessor?.()
+            } catch {
+              // ignore stop errors
+            } finally {
+              backgroundProcessorRef.current = null
+            }
+          }
         }
         return
       }
