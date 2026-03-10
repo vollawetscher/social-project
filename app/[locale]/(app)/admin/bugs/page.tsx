@@ -82,7 +82,7 @@ export default function AdminBugsPage() {
   const [errors, setErrors] = useState<ErrorLog[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set())
   const [resolutionNotes, setResolutionNotes] = useState("")
 
   // Filters
@@ -121,7 +121,7 @@ export default function AdminBugsPage() {
   }, [authLoading, isAdmin, fetchErrors])
 
   const handleResolve = async (id: string, resolved: boolean) => {
-    setResolvingId(id)
+    setResolvingIds(prev => new Set(prev).add(id))
     try {
       const res = await fetch("/api/error-logs", {
         method: "PATCH",
@@ -140,7 +140,11 @@ export default function AdminBugsPage() {
     } catch (err) {
       toast.error("Failed to update error log")
     } finally {
-      setResolvingId(null)
+      setResolvingIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
@@ -177,6 +181,7 @@ export default function AdminBugsPage() {
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr)
     return d.toLocaleDateString("en-US", {
+      year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -372,9 +377,9 @@ export default function AdminBugsPage() {
                             e.stopPropagation()
                             handleResolve(err.id, true)
                           }}
-                          disabled={resolvingId === err.id}
+                          disabled={resolvingIds.has(err.id)}
                         >
-                          {resolvingId === err.id ? (
+                          {resolvingIds.has(err.id) ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             <CheckCircle2 className="h-3 w-3" />
@@ -476,7 +481,7 @@ export default function AdminBugsPage() {
                           {err.endpoint && (
                             <div>
                               <span className="text-muted-foreground">Endpoint</span>
-                              <p className="font-mono text-foreground">{err.method} {err.endpoint}</p>
+                              <p className="font-mono text-foreground">{err.method ? `${err.method} ` : ''}{err.endpoint}</p>
                             </div>
                           )}
                           {err.user_agent && (
@@ -511,9 +516,9 @@ export default function AdminBugsPage() {
                               e.stopPropagation()
                               handleResolve(err.id, false)
                             }}
-                            disabled={resolvingId === err.id}
+                            disabled={resolvingIds.has(err.id)}
                           >
-                            {resolvingId === err.id ? (
+                            {resolvingIds.has(err.id) ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-1" />
                             ) : null}
                             Reopen
@@ -533,9 +538,9 @@ export default function AdminBugsPage() {
                                 e.stopPropagation()
                                 handleResolve(err.id, true)
                               }}
-                              disabled={resolvingId === err.id}
+                              disabled={resolvingIds.has(err.id)}
                             >
-                              {resolvingId === err.id ? (
+                              {resolvingIds.has(err.id) ? (
                                 <Loader2 className="h-4 w-4 animate-spin mr-1" />
                               ) : (
                                 <CheckCircle2 className="h-4 w-4 mr-1" />
