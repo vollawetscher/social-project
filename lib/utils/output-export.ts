@@ -10,6 +10,7 @@ import { jsPDF } from 'jspdf'
 import { sanitizeOutputForPdf } from '@/lib/utils/output-text-sanitizer'
 import {
   Document,
+  LineRuleType,
   Packer,
   Paragraph,
   TextRun,
@@ -17,11 +18,26 @@ import {
 } from 'docx'
 
 const PDF_SUPPORTED_LANGUAGE_CODES = new Set(['en', 'de', 'fr', 'es', 'it', 'pt', 'nl'])
+const PDF_SUPPORTED_LANGUAGE_ALIASES: Record<string, string> = {
+  english: 'en',
+  german: 'de',
+  deutsch: 'de',
+  french: 'fr',
+  spanish: 'es',
+  espanol: 'es',
+  spanisch: 'es',
+  italian: 'it',
+  portuguese: 'pt',
+  dutch: 'nl',
+}
 
 export function isPdfExportSupportedLanguage(language?: string | null): boolean {
   if (!language) return true
   const normalized = String(language).trim().toLowerCase()
   if (!normalized) return true
+  if (normalized === 'session' || normalized === 'auto') return true
+  const aliasCode = PDF_SUPPORTED_LANGUAGE_ALIASES[normalized]
+  if (aliasCode) return PDF_SUPPORTED_LANGUAGE_CODES.has(aliasCode)
   const code = normalized.slice(0, 2)
   return PDF_SUPPORTED_LANGUAGE_CODES.has(code)
 }
@@ -357,6 +373,12 @@ export async function exportOutput(
   if (format === 'docx') {
     const docChildren: Paragraph[] = []
     const headingSizes: Record<number, number> = { 1: 32, 2: 28, 3: 26, 4: 24, 5: 23, 6: 22 } // half-points
+    const line120 = { line: 288, lineRule: LineRuleType.AUTO } // 1.2 line spacing
+    const emptyLine = () =>
+      new Paragraph({
+        children: [new TextRun({ text: '', size: 22, color: '000000', font: 'Arial' })],
+        spacing: line120,
+      })
 
     for (const block of blocks) {
       if (block.type === 'heading') {
@@ -364,18 +386,24 @@ export async function exportOutput(
           block.children.map((i) => ({ ...i, bold: true })),
           headingSizes[block.depth]
         )
+        docChildren.push(emptyLine())
         docChildren.push(
           new Paragraph({
             children: runs.length > 0 ? runs : [new TextRun({ text: '', size: headingSizes[block.depth], color: '000000', font: 'Arial' })],
-            spacing: { before: 120, after: 90 },
+            spacing: {
+              ...line120,
+              before: 80,
+              after: 80,
+            },
           })
         )
+        docChildren.push(emptyLine())
       } else if (block.type === 'paragraph') {
         const runs = inlinesToDocxRuns(block.children, 22)
         if (runs.length > 0) {
-          docChildren.push(new Paragraph({ children: runs, spacing: { after: 80 } }))
+          docChildren.push(new Paragraph({ children: runs, spacing: { ...line120, after: 80 } }))
         } else {
-          docChildren.push(new Paragraph({ children: [new TextRun({ text: '', size: 22, color: '000000', font: 'Arial' })], spacing: { after: 80 } }))
+          docChildren.push(new Paragraph({ children: [new TextRun({ text: '', size: 22, color: '000000', font: 'Arial' })], spacing: { ...line120, after: 80 } }))
         }
       } else if (block.type === 'list') {
         block.items.forEach((item, idx) => {
@@ -386,7 +414,7 @@ export async function exportOutput(
               children: [new TextRun({ text: prefix, size: 22, color: '000000', font: 'Arial' }), ...runs],
               bullet: block.ordered ? undefined : { level: 0 },
               indent: block.ordered ? { left: convertInchesToTwip(0.5), hanging: convertInchesToTwip(0.25) } : undefined,
-              spacing: { after: 60 },
+              spacing: { ...line120, after: 60 },
             })
           )
         })
@@ -396,16 +424,16 @@ export async function exportOutput(
           docChildren.push(
             new Paragraph({
               children: [new TextRun({ text: headerText, bold: true, size: 22, color: '000000', font: 'Arial' })],
-              spacing: { after: 60 },
+              spacing: { ...line120, after: 60 },
             })
           )
-          docChildren.push(new Paragraph({ children: [new TextRun({ text: '—'.repeat(40), size: 20, color: '000000', font: 'Arial' })], spacing: { after: 40 } }))
+          docChildren.push(new Paragraph({ children: [new TextRun({ text: '—'.repeat(40), size: 20, color: '000000', font: 'Arial' })], spacing: { ...line120, after: 40 } }))
         }
         block.rows.forEach((row) => {
           docChildren.push(
             new Paragraph({
               children: [new TextRun({ text: row.join(' | '), size: 20, color: '000000', font: 'Arial' })],
-              spacing: { after: 40 },
+              spacing: { ...line120, after: 40 },
             })
           )
         })
@@ -415,18 +443,18 @@ export async function exportOutput(
           new Paragraph({
             children: [...[new TextRun({ text: '  ', size: 21, color: '000000', font: 'Arial' })], ...runs],
             indent: { left: convertInchesToTwip(0.5) },
-            spacing: { after: 80 },
+            spacing: { ...line120, after: 80 },
           })
         )
       } else if (block.type === 'code') {
         docChildren.push(
           new Paragraph({
             children: [new TextRun({ text: block.value, font: 'Courier New', size: 20, color: '000000' })],
-            spacing: { after: 80 },
+            spacing: { ...line120, after: 80 },
           })
         )
       } else if (block.type === 'thematicBreak') {
-        docChildren.push(new Paragraph({ children: [new TextRun({ text: '—'.repeat(40), size: 20, color: '000000', font: 'Arial' })], spacing: { after: 120 } }))
+        docChildren.push(new Paragraph({ children: [new TextRun({ text: '—'.repeat(40), size: 20, color: '000000', font: 'Arial' })], spacing: { ...line120, after: 120 } }))
       }
     }
 
