@@ -17,6 +17,9 @@ interface CallSetupProps {
   joining?: boolean
 }
 
+const AUDIO_INPUT_KEY = "notissima.call.audioInputDeviceId"
+const VIDEO_INPUT_KEY = "notissima.call.videoInputDeviceId"
+
 export function CallSetup({
   mode,
   isAuthenticated,
@@ -30,25 +33,39 @@ export function CallSetup({
   const [isMicReady, setIsMicReady] = useState(false)
   const [isCameraReady, setIsCameraReady] = useState(false)
   const [micError, setMicError] = useState<string | null>(null)
+  const [audioInputs, setAudioInputs] = useState<MediaDeviceInfo[]>([])
+  const [videoInputs, setVideoInputs] = useState<MediaDeviceInfo[]>([])
+  const [selectedAudioInput, setSelectedAudioInput] = useState<string>("")
+  const [selectedVideoInput, setSelectedVideoInput] = useState<string>("")
+  const [micLevel, setMicLevel] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const levelRafRef = useRef<number | null>(null)
 
   const displayName = isAuthenticated ? (userName || "User") : guestName
 
   useEffect(() => {
     checkPermissions()
     return () => {
+      if (levelRafRef.current) cancelAnimationFrame(levelRafRef.current)
+      if (audioContextRef.current) audioContextRef.current.close().catch(() => {})
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
     }
   }, [mode])
 
-  async function checkPermissions() {
+  async function checkPermissions(audioDeviceId?: string, videoDeviceId?: string) {
     try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
       const constraints: MediaStreamConstraints = {
-        audio: true,
-        video: mode === "video",
+        audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
+        video: mode === "video"
+          ? (videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true)
+          : false,
       }
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
@@ -60,11 +77,55 @@ export function CallSetup({
           videoRef.current.srcObject = stream
         }
       }
+
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const mics = devices.filter((d) => d.kind === "audioinput")
+      const cams = devices.filter((d) => d.kind === "videoinput")
+      setAudioInputs(mics)
+      setVideoInputs(cams)
+
+      const savedAudio = window.localStorage.getItem(AUDIO_INPUT_KEY) || ""
+      const savedVideo = window.localStorage.getItem(VIDEO_INPUT_KEY) || ""
+      const activeAudio = (stream.getAudioTracks()[0]?.getSettings()?.deviceId as string | undefined) || ""
+      const activeVideo = (stream.getVideoTracks()[0]?.getSettings()?.deviceId as string | undefined) || ""
+      setSelectedAudioInput((savedAudio && mics.some((m) => m.deviceId === savedAudio)) ? savedAudio : activeAudio)
+      setSelectedVideoInput((savedVideo && cams.some((c) => c.deviceId === savedVideo)) ? savedVideo : activeVideo)
+
+      if (levelRafRef.current) cancelAnimationFrame(levelRafRef.current)
+      if (audioContextRef.current) await audioContextRef.current.close().catch(() => {})
+      const audioTrack = stream.getAudioTracks()[0]
+      if (audioTrack) {
+        const audioStream = new MediaStream([audioTrack])
+        const ctx = new AudioContext()
+        const source = ctx.createMediaStreamSource(audioStream)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        source.connect(analyser)
+        const data = new Uint8Array(analyser.frequencyBinCount)
+        audioContextRef.current = ctx
+        const tick = () => {
+          analyser.getByteFrequencyData(data)
+          const avg = data.reduce((sum, v) => sum + v, 0) / data.length
+          setMicLevel(Math.min(100, Math.round((avg / 255) * 100)))
+          levelRafRef.current = requestAnimationFrame(tick)
+        }
+        tick()
+      }
     } catch (err: any) {
       console.error("[CallSetup] Permission error:", err)
       setMicError(err.message || t('couldNotAccessMic'))
     }
   }
+
+  useEffect(() => {
+    if (!selectedAudioInput) return
+    window.localStorage.setItem(AUDIO_INPUT_KEY, selectedAudioInput)
+  }, [selectedAudioInput])
+
+  useEffect(() => {
+    if (!selectedVideoInput) return
+    window.localStorage.setItem(VIDEO_INPUT_KEY, selectedVideoInput)
+  }, [selectedVideoInput])
 
   const canJoin = displayName.trim().length > 0 && isMicReady && !joining
 
@@ -124,6 +185,51 @@ export function CallSetup({
             )}>
               {isCameraReady ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
               <span className="text-xs">{isCameraReady ? t('cameraReady') : t('noCamera')}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">{t('microphone')}</label>
+            <select
+              value={selectedAudioInput}
+              onChange={(e) => {
+                const next = e.target.value
+                setSelectedAudioInput(next)
+                checkPermissions(next, selectedVideoInput)
+              }}
+              className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
+            >
+              {audioInputs.map((mic, idx) => (
+                <option key={mic.deviceId || `mic-${idx}`} value={mic.deviceId}>
+                  {mic.label || `${t('microphone')} ${idx + 1}`}
+                </option>
+              ))}
+            </select>
+            <div className="h-2 rounded bg-secondary overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${micLevel}%` }} />
+            </div>
+          </div>
+
+          {mode === "video" && (
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">{t('camera')}</label>
+              <select
+                value={selectedVideoInput}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setSelectedVideoInput(next)
+                  checkPermissions(selectedAudioInput, next)
+                }}
+                className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
+              >
+                {videoInputs.map((cam, idx) => (
+                  <option key={cam.deviceId || `cam-${idx}`} value={cam.deviceId}>
+                    {cam.label || `${t('camera')} ${idx + 1}`}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>

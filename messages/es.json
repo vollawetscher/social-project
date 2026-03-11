@@ -847,6 +847,8 @@
     "noMic": "Sin micrófono",
     "cameraReady": "Cámara lista",
     "noCamera": "Sin cámara",
+    "microphone": "Micrófono",
+    "camera": "Cámara",
     "enterName": "Introduce tu nombre para unirte",
     "joining": "Uniéndose...",
     "joinCall": "Unirse a la llamada",

@@ -848,6 +848,8 @@
     "noMic": "No mic",
     "cameraReady": "Camera ready",
     "noCamera": "No camera",
+    "microphone": "Microphone",
+    "camera": "Camera",
     "enterName": "Enter your name to join",
     "joining": "Joining...",
     "joinCall": "Join Call",

@@ -11,6 +11,9 @@ export type UsageEventType =
   | 'ai_tokens_input'
   | 'ai_tokens_output'
   | 'ai_generations'
+  | 'email_invites_attempted'
+  | 'email_invites_sent'
+  | 'email_cost_usd'
 
 export interface UsageEvent {
   userId: string | null
@@ -111,4 +114,58 @@ export function recordAiTokens(
     unit: 'count',
     metadata,
   })
+}
+
+function resolveInviteCostUsd(): number {
+  const raw = process.env.EMAIL_INVITE_COST_USD
+  const parsed = raw ? Number(raw) : 0.0025
+  if (!Number.isFinite(parsed) || parsed < 0) return 0.0025
+  return parsed
+}
+
+/** Record server-side email invite attempt/result + estimated cost. */
+export function recordEmailInviteUsage(
+  supabase: SupabaseClient,
+  userId: string | null,
+  details: {
+    callId?: string
+    recipientEmail?: string
+    provider?: string
+    success: boolean
+    error?: string
+  }
+): void {
+  const metadata = {
+    callId: details.callId,
+    recipientEmail: details.recipientEmail,
+    provider: details.provider ?? 'resend',
+    success: details.success,
+    error: details.error,
+  }
+
+  void recordUsageEvent(supabase, {
+    userId,
+    eventType: 'email_invites_attempted',
+    amount: 1,
+    unit: 'count',
+    metadata,
+  })
+
+  if (details.success) {
+    const estimatedCostUsd = resolveInviteCostUsd()
+    void recordUsageEvent(supabase, {
+      userId,
+      eventType: 'email_invites_sent',
+      amount: 1,
+      unit: 'count',
+      metadata,
+    })
+    void recordUsageEvent(supabase, {
+      userId,
+      eventType: 'email_cost_usd',
+      amount: estimatedCostUsd,
+      unit: 'usd',
+      metadata: { ...metadata, estimatedCostUsd },
+    })
+  }
 }

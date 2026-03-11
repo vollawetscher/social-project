@@ -73,6 +73,8 @@ const VIDEO_BACKGROUND_CHOICES: Array<{ value: VideoBackgroundChoice; labelKey: 
   { value: "abstract", labelKey: "backgroundAbstract" },
 ]
 const VIDEO_BACKGROUND_STORAGE_KEY = "notissima.video_background"
+const AUDIO_INPUT_KEY = "notissima.call.audioInputDeviceId"
+const VIDEO_INPUT_KEY = "notissima.call.videoInputDeviceId"
 
 function getBackgroundImagePath(choice: VideoBackgroundChoice): string | null {
   if (choice === "office") return "/backgrounds/office.svg"
@@ -223,6 +225,8 @@ function CallRoomInner({
   const backgroundProcessorRef = useRef<BackgroundProcessorWrapper | null>(null)
   const backgroundSupportWarnedRef = useRef(false)
   const profilePreferencesRef = useRef<Record<string, any>>({})
+  const notesSyncSkipRef = useRef(false)
+  const notesRef = useRef("")
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
@@ -320,6 +324,11 @@ function CallRoomInner({
         table: "calls",
         filter: `id=eq.${callId}`,
       }, (payload: any) => {
+        const sharedNotes = payload.new?.shared_notes
+        if (typeof sharedNotes === "string" && sharedNotes !== notesRef.current) {
+          notesSyncSkipRef.current = true
+          setNotes(sharedNotes)
+        }
         const status = payload.new?.status as "ended" | "missed" | "declined" | "error" | undefined
         if (status && ["ended", "missed", "declined", "error"].includes(status)) {
           setRemoteEndReason(status)
@@ -354,6 +363,47 @@ function CallRoomInner({
       supabase.removeChannel(channel)
     }
   }, [callId, isInitiator, localParticipant.identity])
+
+  useEffect(() => {
+    notesRef.current = notes
+  }, [notes])
+
+  useEffect(() => {
+    if (!callId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/calls/${callId}/shared-notes`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        const serverNotes = typeof data?.notes === "string" ? data.notes : ""
+        notesSyncSkipRef.current = true
+        setNotes(serverNotes)
+      } catch {
+        // best effort
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [callId])
+
+  useEffect(() => {
+    if (!callId) return
+    if (notesSyncSkipRef.current) {
+      notesSyncSkipRef.current = false
+      return
+    }
+    const timer = setTimeout(() => {
+      fetch(`/api/calls/${callId}/shared-notes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes }),
+      }).catch(() => {})
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [callId, notes])
 
   useEffect(() => {
     let cancelled = false
@@ -472,6 +522,30 @@ function CallRoomInner({
       cancelled = true
     }
   }, [videoBackground, mode, isCameraOn, currentCameraDeviceId, localParticipant, t])
+
+  useEffect(() => {
+    if (!isConnected) return
+    ;(async () => {
+      try {
+        const preferredAudio = window.localStorage.getItem(AUDIO_INPUT_KEY)
+        if (preferredAudio) {
+          await room.switchActiveDevice("audioinput", preferredAudio)
+        }
+      } catch {
+        // best effort
+      }
+      if (mode !== "video") return
+      try {
+        const preferredVideo = window.localStorage.getItem(VIDEO_INPUT_KEY)
+        if (preferredVideo) {
+          await room.switchActiveDevice("videoinput", preferredVideo)
+          setCurrentCameraDeviceId(preferredVideo)
+        }
+      } catch {
+        // best effort
+      }
+    })()
+  }, [isConnected, mode, room])
 
   // Play soft ringtone only for outbound PSTN calls while waiting for callee to pick up.
   // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
