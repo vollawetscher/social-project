@@ -1,0 +1,21 @@
+name: Scheduled Call Reminders
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  trigger-reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger reminders endpoint
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+        run: |
+          curl -sS -f -X POST "${APP_BASE_URL%/}/api/internal/scheduled-call-reminders" \
+            -H "Content-Type: application/json" \
+            -H "x-internal-secret: $INTERNAL_API_SECRET" \
+            -d '{}'
