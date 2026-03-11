@@ -145,9 +145,9 @@ export default function SessionDetailPage() {
   const [sessionFiles, setSessionFiles] = useState<any[]>([])
 
   const getOutputDisplayName = useCallback((templateName: string) => {
-    const prefix = session?.internalCaseId?.trim()
+    const prefix = session?.filename?.trim()
     return prefix ? `${prefix} - ${templateName}` : templateName
-  }, [session?.internalCaseId])
+  }, [session?.filename])
 
   // Fetch user profile for preferred_report_language (used by AI-suggested outputs)
   useEffect(() => {
