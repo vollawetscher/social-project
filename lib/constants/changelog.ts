@@ -14,6 +14,54 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.18.0',
+    date: 'March 11, 2026',
+    entries: [
+      {
+        version: '1.18.0',
+        date: 'March 11, 2026',
+        category: 'improvement',
+        title: 'Restructured Marketplace Categories',
+        description: 'New category structure with Business and Technical categories. Categories are now displayed in your language.',
+      },
+      {
+        version: '1.18.0',
+        date: 'March 11, 2026',
+        category: 'feature',
+        title: 'Date in Generated Reports',
+        description: 'Optionally include today\'s date at the beginning of generated outputs. The date format adapts to your selected language.',
+      },
+      {
+        version: '1.18.0',
+        date: 'March 11, 2026',
+        category: 'improvement',
+        title: 'Session Name in Output Titles',
+        description: 'Output titles and exported filenames now include the session name for easier identification.',
+      },
+      {
+        version: '1.18.0',
+        date: 'March 11, 2026',
+        category: 'improvement',
+        title: 'File Size for Uploads',
+        description: 'The session list now shows file size instead of duration for uploaded files, which is more meaningful.',
+      },
+      {
+        version: '1.18.0',
+        date: 'March 11, 2026',
+        category: 'improvement',
+        title: 'Cleaner Template Detail Page',
+        description: 'Simplified the marketplace template page — technical buttons are now only visible for creators, and the mobile view is more compact.',
+      },
+      {
+        version: '1.18.0',
+        date: 'March 11, 2026',
+        category: 'security',
+        title: 'Anti-Republishing Protection',
+        description: 'Templates installed from the marketplace can no longer be republished, protecting the intellectual property of original creators.',
+      },
+    ],
+  },
+  {
     version: '1.17.0',
     date: 'March 5, 2026',
     entries: [

@@ -91,6 +91,12 @@ export function ShareToMarketplaceDialog({
 
   async function handlePublish() {
     if (!template) return
+
+    if ((template as any).marketplace_source_id) {
+      toast.error(t('upload.cannotRepublish'))
+      return
+    }
+
     setPublishing(true)
 
     try {
@@ -170,7 +176,7 @@ export function ShareToMarketplaceDialog({
               <SelectContent>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
-                    {cat.icon} {cat.name}
+                    {cat.icon} {t(`categories.${cat.slug}` as any) || cat.name}
                   </SelectItem>
                 ))}
               </SelectContent>

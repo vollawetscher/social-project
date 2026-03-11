@@ -42,7 +42,13 @@ export default function UploadTemplatePage() {
       setLoadingTemplates(true)
       fetch('/api/templates')
         .then((r) => r.json())
-        .then((data) => setTemplates(Array.isArray(data) ? data : []))
+        .then((data) =>
+          setTemplates(
+            (Array.isArray(data) ? data : []).filter(
+              (tpl: any) => !tpl.marketplace_source_id
+            )
+          )
+        )
         .catch(() => {})
         .finally(() => setLoadingTemplates(false))
     }

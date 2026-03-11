@@ -129,6 +129,7 @@ export function GenerateOutputModal({
   const [doInstructions, setDoInstructions] = useState("")
   const [dontInstructions, setDontInstructions] = useState("")
   const [createTemplate, setCreateTemplate] = useState(false)
+  const [includeDate, setIncludeDate] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [previousInstructions, setPreviousInstructions] = useState<{ doInstructions: string; dontInstructions: string } | null>(null)
   const [perspectiveConfirmed, setPerspectiveConfirmed] = useState(false)
@@ -306,7 +307,8 @@ export function GenerateOutputModal({
             doInstructions,
             dontInstructions,
             createTemplateFromConfig: createTemplate,
-            citeTimestamps: false, // TODO: Add UI control for this
+            citeTimestamps: false,
+            includeDate,
           }
         })
       })
@@ -690,6 +692,18 @@ export function GenerateOutputModal({
                       {t('usePreviousPrefix')} &quot;{previousInstructions.dontInstructions.slice(0, 60)}{previousInstructions.dontInstructions.length > 60 ? '...' : ''}&quot;
                     </button>
                   )}
+                </div>
+
+                {/* Include Date Checkbox */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="include-date"
+                    checked={includeDate}
+                    onCheckedChange={(checked) => setIncludeDate(checked === true)}
+                  />
+                  <label htmlFor="include-date" className="text-sm text-foreground cursor-pointer">
+                    {t('includeDate')}
+                  </label>
                 </div>
 
                 {/* Create Template Checkbox */}

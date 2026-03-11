@@ -333,6 +333,7 @@
     "tone": "Ton",
     "outputFormat": "Ausgabeformat",
     "usePreviousPrefix": "Vorherige verwenden:",
+    "includeDate": "Heutiges Datum im Output einfügen",
     "createTemplateFromConfig": "Vorlage aus dieser Konfiguration erstellen",
     "reset": "Zurücksetzen",
     "generateSuccessTemplate": "Ausgabe generiert und als Vorlage gespeichert!",
@@ -1129,6 +1130,17 @@
     "es": "Español"
   },
   "marketplace": {
+    "categories": {
+      "business": "Geschäft",
+      "legal": "Recht",
+      "medical": "Medizin",
+      "technical": "Technik",
+      "education": "Bildung",
+      "sales": "Vertrieb",
+      "consulting": "Beratung",
+      "hr": "Personal",
+      "general": "Allgemein"
+    },
     "explore": {
       "title": "Vorlagen entdecken",
       "subtitle": "Community-erstellte Vorlagen für jeden Anwendungsfall",
@@ -1202,6 +1214,7 @@
       "importJson": "JSON importieren",
       "importJsonDesc": "Füge einen Notissima-kompatiblen JSON-Export ein, um eine Vorlage zu erstellen und zu teilen.",
       "publishButton": "Veröffentlichen",
+      "cannotRepublish": "Installierte Marketplace-Vorlagen können nicht erneut veröffentlicht werden",
       "import": {
         "title": "Aus Notissima importieren",
         "description": "Füge den JSON-Export aus Notissima ein, um alle Felder automatisch auszufüllen.",

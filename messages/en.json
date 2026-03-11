@@ -333,6 +333,7 @@
     "tone": "Tone",
     "outputFormat": "Output Format",
     "usePreviousPrefix": "Use previous:",
+    "includeDate": "Include today's date in the output",
     "createTemplateFromConfig": "Create a template from this configuration",
     "reset": "Reset",
     "generateSuccessTemplate": "Output generated and saved as template!",
@@ -1130,6 +1131,17 @@
     "es": "Español"
   },
   "marketplace": {
+    "categories": {
+      "business": "Business",
+      "legal": "Legal",
+      "medical": "Medical",
+      "technical": "Technical",
+      "education": "Education",
+      "sales": "Sales",
+      "consulting": "Consulting",
+      "hr": "HR",
+      "general": "General"
+    },
     "explore": {
       "title": "Explore Templates",
       "subtitle": "Browse community-created templates for every use case",
@@ -1203,6 +1215,7 @@
       "importJson": "Import JSON",
       "importJsonDesc": "Paste a Notissima-compatible JSON export to create and share a template.",
       "publishButton": "Publish",
+      "cannotRepublish": "Installed marketplace templates cannot be republished",
       "import": {
         "title": "Import from Notissima",
         "description": "Paste the JSON export from Notissima to auto-fill all fields.",

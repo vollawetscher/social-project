@@ -1538,7 +1538,8 @@ export default function SessionsPage() {
               const status = getStatusDisplay(session)
               const origin = getSessionOriginKind(session)
               const originSummary = getOriginSummary(session, t)
-              const showTextUploadSize = origin === "upload" && (session.textUploadSizeBytes ?? 0) > 0
+              const uploadSizeBytes = (session.textUploadSizeBytes ?? 0) || (session.uploadSizeBytes ?? 0)
+              const showUploadSize = origin === "upload" && uploadSizeBytes > 0
               return (
                 <div
                   key={session.id}
@@ -1551,7 +1552,6 @@ export default function SessionsPage() {
                   )}
                   onClick={(e) => {
                     if (isProcessing(session)) return
-                    // Only navigate if clicking the card itself, not buttons/interactive elements
                     const target = e.target as HTMLElement
                     if (
                       !target.closest('button') && 
@@ -1577,10 +1577,10 @@ export default function SessionsPage() {
                           {origin === "call" ? t('source.call') : origin === "quick_record" ? t('source.quickRecord') : t('source.upload')}
                         </Badge>
                         <span className="flex items-center gap-1">
-                          {showTextUploadSize ? (
+                          {showUploadSize ? (
                             <>
                               <FileText className="h-3 w-3" />
-                              {formatFileSize(session.textUploadSizeBytes ?? 0)}
+                              {formatFileSize(uploadSizeBytes)}
                             </>
                           ) : (
                             <>
@@ -1704,7 +1704,8 @@ export default function SessionsPage() {
                   const status = getStatusDisplay(session)
                   const origin = getSessionOriginKind(session)
                   const originSummary = getOriginSummary(session, t)
-                  const showTextUploadSize = origin === "upload" && (session.textUploadSizeBytes ?? 0) > 0
+                  const uploadSizeBytes = (session.textUploadSizeBytes ?? 0) || (session.uploadSizeBytes ?? 0)
+                  const showUploadSize = origin === "upload" && uploadSizeBytes > 0
                   return (
                     <TableRow 
                       key={session.id} 
@@ -1718,7 +1719,6 @@ export default function SessionsPage() {
                       )}
                       onClick={(e) => {
                         if (isProcessing(session)) return
-                        // Only navigate if clicking the row itself, not buttons/interactive elements
                         const target = e.target as HTMLElement
                         if (
                           !target.closest('button') && 
@@ -1777,10 +1777,10 @@ export default function SessionsPage() {
                       )}
                       <TableCell>
                         <div className="flex items-center gap-1.5 text-muted-foreground">
-                          {showTextUploadSize ? (
+                          {showUploadSize ? (
                             <>
                               <FileText className="h-3.5 w-3.5" />
-                              <span className="text-sm">{formatFileSize(session.textUploadSizeBytes ?? 0)}</span>
+                              <span className="text-sm">{formatFileSize(uploadSizeBytes)}</span>
                             </>
                           ) : (
                             <>

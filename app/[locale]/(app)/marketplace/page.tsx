@@ -24,12 +24,12 @@ const LANGUAGE_LABELS: Record<string, string> = {
 }
 
 const categoryColors: Record<string, string> = {
-  psychology: 'bg-purple-500/20 text-purple-600 border-purple-500/30',
-  sales: 'bg-green-500/20 text-green-600 border-green-500/30',
-  medical: 'bg-red-500/20 text-red-600 border-red-500/30',
-  'it-support': 'bg-blue-500/20 text-blue-600 border-blue-500/30',
+  business: 'bg-indigo-500/20 text-indigo-600 border-indigo-500/30',
   legal: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
+  medical: 'bg-red-500/20 text-red-600 border-red-500/30',
+  technical: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
   education: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30',
+  sales: 'bg-green-500/20 text-green-600 border-green-500/30',
   consulting: 'bg-teal-500/20 text-teal-600 border-teal-500/30',
   hr: 'bg-pink-500/20 text-pink-600 border-pink-500/30',
   general: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
@@ -241,7 +241,7 @@ export default function MarketplacePage() {
                     className={`cursor-pointer ${selectedCategory !== cat.id ? (categoryColors[cat.slug] ?? '') : ''}`}
                     onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
                   >
-                    {cat.name}
+                    {t(`categories.${cat.slug}` as any) || cat.name}
                   </Badge>
                 ))}
               </div>

@@ -23,6 +23,13 @@ export async function POST(
     return NextResponse.json({ error: 'Template not found or not owned by you' }, { status: 404 })
   }
 
+  if (template.marketplace_source_id) {
+    return NextResponse.json(
+      { error: 'Installed marketplace templates cannot be republished. Please create an original template.' },
+      { status: 403 }
+    )
+  }
+
   const { data: existing } = await supabase
     .from('marketplace_templates')
     .select('id')

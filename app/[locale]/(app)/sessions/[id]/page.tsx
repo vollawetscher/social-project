@@ -144,6 +144,11 @@ export default function SessionDetailPage() {
   const [handOffLoading, setHandOffLoading] = useState(false)
   const [sessionFiles, setSessionFiles] = useState<any[]>([])
 
+  const getOutputDisplayName = useCallback((templateName: string) => {
+    const prefix = session?.internalCaseId?.trim()
+    return prefix ? `${prefix} - ${templateName}` : templateName
+  }, [session?.internalCaseId])
+
   // Fetch user profile for preferred_report_language (used by AI-suggested outputs)
   useEffect(() => {
     fetch('/api/profile')
@@ -1156,11 +1161,13 @@ export default function SessionDetailPage() {
                       {t('generateOutput')}
                     </Button>
                   </div>
-                  {outputs.map((output) => (
+                  {outputs.map((output) => {
+                    const outputDisplayName = getOutputDisplayName(output.templateName)
+                    return (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium break-words line-clamp-2">{output.templateName}</h4>
+                          <h4 className="text-sm font-medium break-words line-clamp-2">{outputDisplayName}</h4>
                           <p className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>
                               {new Date(output.createdAt).toLocaleDateString(locale, { 
@@ -1218,15 +1225,15 @@ export default function SessionDetailPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'md').then(() => toast.success(tCommon('download'))); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'md').then(() => toast.success(tCommon('download'))); }}>
                                 MD
                               </DropdownMenuItem>
                               {isPdfExportSupportedLanguage(output.language) && (
-                                <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'pdf').then(() => toast.success(tCommon('download'))); }}>
+                                <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'pdf').then(() => toast.success(tCommon('download'))); }}>
                                   PDF
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'docx').then(() => toast.success(tCommon('download'))); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'docx').then(() => toast.success(tCommon('download'))); }}>
                                 DOCX
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -1246,7 +1253,7 @@ export default function SessionDetailPage() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteOutput(output.id, output.templateName || 'Output')}
+                            onClick={() => handleDeleteOutput(output.id, outputDisplayName || 'Output')}
                             disabled={deletingOutputId === output.id}
                             title={tCommon('delete')}
                           >
@@ -1260,7 +1267,7 @@ export default function SessionDetailPage() {
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">{output.content.substring(0, 150)}...</p>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
             </div>
@@ -1580,11 +1587,13 @@ export default function SessionDetailPage() {
                       {t('generateOutput')}
                     </Button>
                   </div>
-                  {outputs.map((output) => (
+                  {outputs.map((output) => {
+                    const outputDisplayName = getOutputDisplayName(output.templateName)
+                    return (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium break-words line-clamp-2">{output.templateName}</h4>
+                          <h4 className="text-sm font-medium break-words line-clamp-2">{outputDisplayName}</h4>
                           <p className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>
                               {new Date(output.createdAt).toLocaleDateString(locale, { 
@@ -1642,15 +1651,15 @@ export default function SessionDetailPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'md').then(() => toast.success(tCommon('download'))); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'md').then(() => toast.success(tCommon('download'))); }}>
                                 MD
                               </DropdownMenuItem>
                               {isPdfExportSupportedLanguage(output.language) && (
-                                <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'pdf').then(() => toast.success(tCommon('download'))); }}>
+                                <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'pdf').then(() => toast.success(tCommon('download'))); }}>
                                   PDF
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, output.templateName, 'docx').then(() => toast.success(tCommon('download'))); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'docx').then(() => toast.success(tCommon('download'))); }}>
                                 DOCX
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -1670,7 +1679,7 @@ export default function SessionDetailPage() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteOutput(output.id, output.templateName || 'Output')}
+                            onClick={() => handleDeleteOutput(output.id, outputDisplayName || 'Output')}
                             disabled={deletingOutputId === output.id}
                             title={tCommon('delete')}
                           >
@@ -1684,7 +1693,7 @@ export default function SessionDetailPage() {
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">{output.content.substring(0, 150)}...</p>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
             </div>

@@ -262,9 +262,30 @@ Please generate the requested output following all requirements and guidelines.`
       system: systemPrompt,
     })
 
-    const generatedContent = message.content[0].type === 'text'
+    let generatedContent = message.content[0].type === 'text'
       ? message.content[0].text 
       : ''
+
+    if (config.includeDate) {
+      const now = new Date()
+      const dateLocaleMap: Record<string, string> = {
+        de: 'de-DE', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT',
+        pt: 'pt-PT', nl: 'nl-NL', pl: 'pl-PL', ja: 'ja-JP', ko: 'ko-KR',
+        zh: 'zh-CN', ar: 'ar-SA', ru: 'ru-RU', tr: 'tr-TR', vi: 'vi-VN',
+        th: 'th-TH',
+      }
+      const dateLabelMap: Record<string, string> = {
+        de: 'Datum', en: 'Date', es: 'Fecha', fr: 'Date', it: 'Data',
+        pt: 'Data', nl: 'Datum', pl: 'Data', ja: '日付', ko: '날짜',
+        zh: '日期', ar: 'التاريخ', ru: 'Дата', tr: 'Tarih', vi: 'Ngày',
+        th: 'วันที่',
+      }
+      const loc = dateLocaleMap[resolvedLanguageCode] || 'en-US'
+      const label = dateLabelMap[resolvedLanguageCode] || 'Date'
+      const formatted = now.toLocaleDateString(loc, { year: 'numeric', month: 'long', day: 'numeric' })
+      generatedContent = `${label}: ${formatted}\n\n${generatedContent}`
+    }
+
     const sanitizedContent = sanitizeOutputText(generatedContent)
 
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage

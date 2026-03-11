@@ -333,6 +333,7 @@
     "tone": "Tono",
     "outputFormat": "Formato del informe",
     "usePreviousPrefix": "Usar anterior:",
+    "includeDate": "Incluir la fecha de hoy en el resultado",
     "createTemplateFromConfig": "Crear una plantilla a partir de esta configuración",
     "reset": "Restablecer",
     "generateSuccessTemplate": "¡Informe generado y guardado como plantilla!",
@@ -1129,6 +1130,17 @@
     "es": "Español"
   },
   "marketplace": {
+    "categories": {
+      "business": "Negocios",
+      "legal": "Legal",
+      "medical": "Medicina",
+      "technical": "Técnica",
+      "education": "Educación",
+      "sales": "Ventas",
+      "consulting": "Consultoría",
+      "hr": "RRHH",
+      "general": "General"
+    },
     "explore": {
       "title": "Explorar Plantillas",
       "subtitle": "Navega plantillas creadas por la comunidad para cada caso de uso",
@@ -1202,6 +1214,7 @@
       "importJson": "Importar JSON",
       "importJsonDesc": "Pega un JSON exportado de Notissima para crear y compartir una plantilla.",
       "publishButton": "Publicar",
+      "cannotRepublish": "Las plantillas instaladas del marketplace no se pueden volver a publicar",
       "import": {
         "title": "Importar desde Notissima",
         "description": "Pega el JSON exportado de Notissima para completar todos los campos automáticamente.",

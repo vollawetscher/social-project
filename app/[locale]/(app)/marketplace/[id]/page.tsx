@@ -237,10 +237,8 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               ))}
             </div>
             <h1 className="text-2xl font-semibold text-foreground">{template.title}</h1>
-            {isAuthor ? (
+            {isAuthor && (
               <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-1 italic">{t('template.descriptionProtected')}</p>
             )}
 
             <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
@@ -262,16 +260,25 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
 
         <div className="flex flex-wrap gap-3">
           {user ? (
-            <Button onClick={handleInstall} disabled={installing || installed}>
-              {installing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : installed ? (
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
-              )}
-              {installed ? t('explore.addedToTemplates') : t('explore.addToMyTemplates')}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={handleInstall} disabled={installing || installed}>
+                  {installing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : installed ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  <span className="hidden sm:inline ml-1.5">
+                    {installed ? t('explore.addedToTemplates') : t('explore.addToMyTemplates')}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="sm:hidden">
+                {installed ? t('explore.addedToTemplates') : t('explore.addToMyTemplates')}
+              </TooltipContent>
+            </Tooltip>
           ) : (
             <Button asChild>
               <Link href="/login">
@@ -280,41 +287,37 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               </Link>
             </Button>
           )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" className="bg-transparent" onClick={handleCopyJSON}>
-                <Copy className="h-4 w-4 mr-2" />
-                {t('explore.copyJSON')}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('explore.copyJSONTooltip')}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" className="bg-transparent" onClick={handleDownloadJSON}>
-                <FileDown className="h-4 w-4 mr-2" />
-                {t('explore.downloadJSON')}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('explore.downloadJSONTooltip')}</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" className="bg-transparent" onClick={handleShareLink}>
-                <Share2 className="h-4 w-4 mr-2" />
-                {t('explore.shareLink')}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t('explore.shareLinkTooltip')}</TooltipContent>
-          </Tooltip>
-          <Button
-            variant={customizing ? 'secondary' : 'outline'}
-            className={customizing ? '' : 'bg-transparent'}
-            onClick={() => setCustomizing(!customizing)}
-          >
-            <Sparkles className="h-4 w-4 mr-2" />
-            {customizing ? t('template.closeCustomizer') : t('template.customizeExport')}
-          </Button>
+          {isAuthor && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" className="bg-transparent" onClick={handleCopyJSON}>
+                    <Copy className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1.5">{t('explore.copyJSON')}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('explore.copyJSONTooltip')}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" className="bg-transparent" onClick={handleDownloadJSON}>
+                    <FileDown className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1.5">{t('explore.downloadJSON')}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('explore.downloadJSONTooltip')}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" className="bg-transparent" onClick={handleShareLink}>
+                    <Share2 className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1.5">{t('explore.shareLink')}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('explore.shareLinkTooltip')}</TooltipContent>
+              </Tooltip>
+            </>
+          )}
 
           {isAuthor && (
             <AlertDialog>
@@ -571,26 +574,6 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             </div>
           </CardContent>
         </Card>
-
-        {customizing && (
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <p className="text-sm text-foreground flex-1">{t('template.exportReady')}</p>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleCopyJSON}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    {t('explore.copyJSON')}
-                  </Button>
-                  <Button size="sm" variant="outline" className="bg-transparent" onClick={handleDownloadJSON}>
-                    <FileDown className="h-4 w-4 mr-2" />
-                    {t('explore.downloadJSON')}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         <div className="h-8" />
       </div>
