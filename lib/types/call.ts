@@ -49,6 +49,7 @@ export interface Call {
   callee_declined?: boolean
   scheduled_for?: string | null
   scheduled_timezone?: string | null
+  initiator_reminder_sms_sent_at?: string | null
   created_at: string
 }
 

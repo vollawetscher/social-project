@@ -101,6 +101,12 @@ const inviteMessages: Record<SupportedLocale, (callerName: string, joinUrl: stri
   es: (callerName, joinUrl) => `${callerName} le invita a una videollamada.\n\nUnirse ahora: ${joinUrl}`,
 }
 
+const initiatorReminderMessages: Record<SupportedLocale, (joinUrl: string, startsAt: string) => string> = {
+  en: (joinUrl, startsAt) => `Reminder: Your scheduled Notissima video call starts at ${startsAt}.\nJoin: ${joinUrl}`,
+  de: (joinUrl, startsAt) => `Erinnerung: Ihr geplanter Notissima-Videoanruf startet um ${startsAt}.\nBeitreten: ${joinUrl}`,
+  es: (joinUrl, startsAt) => `Recordatorio: Tu videollamada programada de Notissima empieza a las ${startsAt}.\nUnirse: ${joinUrl}`,
+}
+
 export async function sendVideoCallInviteSMS(
   phoneNumber: string,
   callerName: string,
@@ -109,6 +115,16 @@ export async function sendVideoCallInviteSMS(
 ): Promise<SendSMSResponse> {
   const getMessage = inviteMessages[locale] || inviteMessages.en
   return sendSMS({ to: phoneNumber, text: getMessage(callerName, joinUrl) })
+}
+
+export async function sendInitiatorReminderSMS(
+  phoneNumber: string,
+  joinUrl: string,
+  startsAt: string,
+  locale: SupportedLocale = 'en',
+): Promise<SendSMSResponse> {
+  const getMessage = initiatorReminderMessages[locale] || initiatorReminderMessages.en
+  return sendSMS({ to: phoneNumber, text: getMessage(joinUrl, startsAt) })
 }
 
 export function isValidPhoneNumber(phoneNumber: string): boolean {

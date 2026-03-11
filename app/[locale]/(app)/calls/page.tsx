@@ -680,6 +680,25 @@ export default function CallsPage() {
       .slice(0, 5)
   }, [calls])
 
+  useEffect(() => {
+    const now = Date.now()
+    upcomingScheduledCalls.forEach((call) => {
+      if (!call.scheduled_for) return
+      const startsAt = new Date(call.scheduled_for).getTime()
+      const deltaMs = startsAt - now
+      if (deltaMs < 0 || deltaMs > 10 * 60 * 1000) return
+      const key = `notissima.scheduled.reminded.${call.id}`
+      if (typeof window !== "undefined" && window.sessionStorage.getItem(key)) return
+      if (typeof window !== "undefined") window.sessionStorage.setItem(key, "1")
+      const mins = Math.max(0, Math.ceil(deltaMs / 60000))
+      toast.info(
+        mins <= 1
+          ? t('callStartsNow')
+          : t('callStartsSoonIn', { minutes: mins })
+      )
+    })
+  }, [upcomingScheduledCalls, t])
+
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-background overflow-hidden">
       {/* Quick Actions */}
