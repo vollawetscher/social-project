@@ -442,7 +442,7 @@ export default function OutputDetailPage() {
           </Button>
           
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-semibold text-foreground">
+            <h1 className="text-lg font-semibold text-foreground">
               {output.templateName}
             </h1>
             <Badge

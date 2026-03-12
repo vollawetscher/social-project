@@ -79,7 +79,7 @@ export async function POST(request: Request) {
       .in('status', ['scheduled', 'invited', 'waiting'])
       .not('user_id', 'is', null)
       .not('room_name', 'is', null)
-      .gte('scheduled_for', new Date(now).toISOString())
+      .gte('scheduled_for', new Date(now - leadMinutes * 60 * 1000).toISOString())
       .lte('scheduled_for', new Date(windowEnd).toISOString())
       .order('scheduled_for', { ascending: true })
       .limit(200)
@@ -126,8 +126,7 @@ export async function POST(request: Request) {
       if (!call.initiator_reminder_sms_sent_at) {
         const phone = call.user_id ? phoneByUserId.get(call.user_id) : null
         if (!phone) {
-          failed += 1
-          failures.push({ callId: call.id, channel: 'sms', reason: 'missing_phone' })
+          // No phone number — expected for email-only users, not a failure
         } else {
           const locale = inferLocaleFromPhone(phone)
           const startsAt = toDisplayTime(startsAtIso, locale)
@@ -161,7 +160,9 @@ export async function POST(request: Request) {
           continue
         }
 
-        const startsAt = new Date(startsAtIso).toLocaleString()
+        const startsAt = toDisplayTime(startsAtIso, inferLocaleFromPhone(
+          call.user_id ? (phoneByUserId.get(call.user_id) ?? '') : ''
+        ))
         const subject = call.contact_name?.trim()
           ? `Reminder: ${call.contact_name} starts soon`
           : 'Reminder: Your Notissima call starts soon'
