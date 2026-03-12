@@ -6,6 +6,7 @@ import {
   ArrowLeft, Star, Download, User, Copy, FileDown, Share2,
   Eye, Users, MessageSquare, Globe, Briefcase, FileText,
   Sparkles, Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2,
+  ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -42,12 +44,12 @@ const LANGUAGE_OPTIONS: OutputLanguage[] = ['en', 'de', 'fr', 'es', 'it', 'pt', 
 const DOMAIN_OPTIONS: MarketplaceDomain[] = ['psychology', 'medical', 'sales', 'legal', 'education', 'it', 'consulting', 'hr', 'general', 'meetings', 'business', 'support', 'technical']
 
 const categoryColors: Record<string, string> = {
-  psychology: 'bg-purple-500/20 text-purple-600 border-purple-500/30',
-  sales: 'bg-green-500/20 text-green-600 border-green-500/30',
-  medical: 'bg-red-500/20 text-red-600 border-red-500/30',
-  'it-support': 'bg-blue-500/20 text-blue-600 border-blue-500/30',
+  business: 'bg-indigo-500/20 text-indigo-600 border-indigo-500/30',
   legal: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
+  medical: 'bg-red-500/20 text-red-600 border-red-500/30',
+  technical: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
   education: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30',
+  sales: 'bg-green-500/20 text-green-600 border-green-500/30',
   consulting: 'bg-teal-500/20 text-teal-600 border-teal-500/30',
   hr: 'bg-pink-500/20 text-pink-600 border-pink-500/30',
   general: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
@@ -237,9 +239,6 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
               ))}
             </div>
             <h1 className="text-2xl font-semibold text-foreground">{template.title}</h1>
-            {isAuthor && (
-              <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
-            )}
 
             <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -352,27 +351,21 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
           )}
         </div>
 
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              {t('template.generationPrompt')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {customizing ? (
-              <Textarea
-                value={generationPrompt}
-                onChange={(e) => setGenerationPrompt(e.target.value)}
-                className="bg-secondary border-border min-h-[200px] font-mono text-sm border-l-2 border-l-primary/40"
-              />
-            ) : (
-              <pre className="whitespace-pre-wrap text-sm text-foreground bg-secondary/50 rounded-lg p-4 border border-border font-mono leading-relaxed">
-                {cfg.generation_prompt || template.instructions}
-              </pre>
-            )}
-          </CardContent>
-        </Card>
+        {template.description && (
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                {t('template.description')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-sm text-foreground leading-relaxed">
+                {template.description}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="border-border">
@@ -425,6 +418,37 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             </CardContent>
           </Card>
         </div>
+
+        {isAuthor && (cfg.generation_prompt || template.instructions) && (
+          <Collapsible>
+            <Card className="border-border">
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-muted-foreground" />
+                    {t('template.generationPrompt')}
+                    <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent>
+                  {customizing ? (
+                    <Textarea
+                      value={generationPrompt}
+                      onChange={(e) => setGenerationPrompt(e.target.value)}
+                      className="bg-secondary border-border min-h-[200px] font-mono text-sm border-l-2 border-l-primary/40"
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-sm text-foreground bg-secondary/50 rounded-lg p-4 border border-border font-mono leading-relaxed">
+                      {cfg.generation_prompt || template.instructions}
+                    </pre>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
 
         <Card className="border-border">
           <CardHeader>

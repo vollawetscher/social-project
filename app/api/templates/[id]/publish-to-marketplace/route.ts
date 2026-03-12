@@ -47,6 +47,14 @@ export async function POST(
   const body = await request.json()
   const { category_id, tags, description_override, language } = body
 
+  const finalDescription = description_override || template.description || ''
+  if (!finalDescription.trim()) {
+    return NextResponse.json(
+      { error: 'A description is required to publish to the marketplace. Please add a description to your template first.' },
+      { status: 400 }
+    )
+  }
+
   const sectionNames = (template.sections || [])
     .map((s: any) => s.name)
     .filter(Boolean)
@@ -72,7 +80,7 @@ export async function POST(
     .insert({
       author_id: user.id,
       title: template.name,
-      description: description_override || template.description || '',
+      description: finalDescription,
       instructions: generationPrompt,
       template_config: templateConfig,
       category_id: category_id || null,
