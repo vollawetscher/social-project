@@ -84,7 +84,7 @@ export default function AdminBugsPage() {
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set())
-  const [resolutionNotes, setResolutionNotes] = useState("")
+  const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({})
 
   // Filters
   const [filterType, setFilterType] = useState<string>("all")
@@ -124,18 +124,23 @@ export default function AdminBugsPage() {
   const handleResolve = async (id: string, resolved: boolean) => {
     setResolvingIds(prev => new Set(prev).add(id))
     try {
+      const notes = resolutionNotes[id]
       const res = await fetch("/api/error-logs", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id,
           resolved,
-          resolution_notes: resolved ? resolutionNotes || undefined : undefined,
+          resolution_notes: resolved ? notes || undefined : undefined,
         }),
       })
       if (!res.ok) throw new Error("Failed to update")
       toast.success(resolved ? "Marked as resolved" : "Reopened")
-      setResolutionNotes("")
+      setResolutionNotes(prev => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
       setExpandedId(null)
       await fetchErrors()
     } catch (err) {
@@ -327,7 +332,6 @@ export default function AdminBugsPage() {
                     className="flex items-start gap-3 cursor-pointer"
                     onClick={() => {
                       setExpandedId(isExpanded ? null : err.id)
-                      if (!isExpanded) setResolutionNotes("")
                     }}
                   >
                     <div className="flex flex-col items-center gap-1 pt-0.5">
@@ -537,8 +541,8 @@ export default function AdminBugsPage() {
                           <div className="flex items-center gap-2 flex-1">
                             <Input
                               placeholder="Resolution notes (optional)..."
-                              value={resolutionNotes}
-                              onChange={(e) => setResolutionNotes(e.target.value)}
+                              value={resolutionNotes[err.id] || ""}
+                              onChange={(e) => setResolutionNotes(prev => ({ ...prev, [err.id]: e.target.value }))}
                               className="h-8 text-sm flex-1"
                               onClick={(e) => e.stopPropagation()}
                             />
