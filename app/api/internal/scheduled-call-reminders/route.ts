@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
-import { sendInitiatorReminderSMS } from '@/lib/services/sms'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import { logError } from '@/lib/services/error-logger'
 
@@ -14,23 +13,26 @@ function resolveBaseUrl(): string {
   )
 }
 
-function toDisplayTime(iso: string, locale: 'en' | 'de' | 'es') {
+function toDisplayTime(iso: string, locale: 'en' | 'de' | 'es', timezone?: string | null) {
   const localeMap = { en: 'en-US', de: 'de-DE', es: 'es-ES' } as const
-  return new Date(iso).toLocaleString(localeMap[locale], {
+  const opts: Intl.DateTimeFormatOptions = {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  }
+  if (timezone) opts.timeZone = timezone
+  return new Date(iso).toLocaleString(localeMap[locale], opts)
 }
 
 /**
  * POST /api/internal/scheduled-call-reminders
- * Sends one-time initiator SMS reminders for scheduled calls that start soon.
+ * Sends a one-time reminder email to the guest for each scheduled call that starts soon.
+ * Also auto-deletes expired scheduled calls that were never started.
  *
  * Security: Requires x-internal-secret header when INTERNAL_API_SECRET is set.
- * Scheduler: Run every minute from Railway cron/job.
+ * Scheduler: GitHub Actions cron, every 5 minutes.
  */
 export async function POST(request: Request) {
   const expectedSecret = process.env.INTERNAL_API_SECRET
@@ -75,7 +77,7 @@ export async function POST(request: Request) {
 
     const { data: dueCalls, error: dueCallsError } = await supabase
       .from('calls')
-      .select('id, user_id, callee_user_id, room_name, contact_name, scheduled_for, guest_invite_email, initiator_reminder_sms_sent_at, guest_reminder_email_sent_at')
+      .select('id, user_id, callee_user_id, room_name, contact_name, scheduled_for, guest_invite_email, guest_reminder_email_sent_at')
       .in('status', ['scheduled', 'invited', 'waiting'])
       .not('user_id', 'is', null)
       .not('room_name', 'is', null)
@@ -99,111 +101,79 @@ export async function POST(request: Request) {
     )
     const { data: profiles, error: profileError } = await supabase
       .from('profiles')
-      .select('id, phone_number, email')
+      .select('id, phone_number, email, timezone')
       .in('id', userIds)
 
     if (profileError) {
       return NextResponse.json({ error: profileError.message }, { status: 500 })
     }
 
-    const phoneByUserId = new Map<string, string>()
     const emailByUserId = new Map<string, string>()
+    const timezoneByUserId = new Map<string, string>()
+    const phoneByUserId = new Map<string, string>()
     for (const p of profiles || []) {
-      if (p.phone_number) phoneByUserId.set(p.id, p.phone_number)
       if (p.email) emailByUserId.set(p.id, p.email)
+      if (p.timezone) timezoneByUserId.set(p.id, p.timezone)
+      if (p.phone_number) phoneByUserId.set(p.id, p.phone_number)
     }
 
     const baseUrl = resolveBaseUrl()
-    let smsSent = 0
     let emailSent = 0
     let failed = 0
-    const failures: Array<{ callId: string; channel: 'sms' | 'email'; reason: string }> = []
+    const failures: Array<{ callId: string; reason: string }> = []
 
     for (const call of dueCalls) {
+      if (call.guest_reminder_email_sent_at) continue
+
+      const guestEmail =
+        call.guest_invite_email ||
+        (call.callee_user_id ? emailByUserId.get(call.callee_user_id) : null)
+
+      if (!guestEmail) continue
+
       const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${call.id}`
       const startsAtIso = String(call.scheduled_for)
+      const initiatorTimezone = call.user_id ? (timezoneByUserId.get(call.user_id) ?? null) : null
+      const locale = inferLocaleFromPhone(call.user_id ? (phoneByUserId.get(call.user_id) ?? '') : '')
+      const startsAt = toDisplayTime(startsAtIso, locale, initiatorTimezone)
 
-      if (!call.initiator_reminder_sms_sent_at) {
-        const phone = call.user_id ? phoneByUserId.get(call.user_id) : null
-        if (!phone) {
-          // No phone number — expected for email-only users, not a failure
-        } else {
-          const locale = inferLocaleFromPhone(phone)
-          const startsAt = toDisplayTime(startsAtIso, locale)
-          const sms = await sendInitiatorReminderSMS(phone, joinUrl, startsAt, locale)
-          if (!sms.success) {
-            failed += 1
-            failures.push({ callId: call.id, channel: 'sms', reason: sms.error || 'sms_failed' })
-          } else {
-            const { error: updateError } = await supabase
-              .from('calls')
-              .update({ initiator_reminder_sms_sent_at: new Date().toISOString() })
-              .eq('id', call.id)
-              .is('initiator_reminder_sms_sent_at', null)
+      const subject = call.contact_name?.trim()
+        ? `Erinnerung: ${call.contact_name} beginnt bald`
+        : 'Erinnerung: Ihr Notissima Video Call beginnt bald'
+      const body = [
+        `<p>Ihr Notissima Video Call beginnt bald.</p>`,
+        `<p><strong>Wann:</strong> ${startsAt}</p>`,
+        call.contact_name?.trim() ? `<p><strong>Titel:</strong> ${call.contact_name}</p>` : '',
+        `<p><a href="${joinUrl}" style="display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">Jetzt beitreten</a></p>`,
+        `<p style="color:#6b7280;font-size:12px;">Oder kopieren Sie diesen Link: ${joinUrl}</p>`,
+      ].join('\n')
 
-            if (updateError) {
-              failed += 1
-              failures.push({ callId: call.id, channel: 'sms', reason: `update_failed:${updateError.message}` })
-            } else {
-              smsSent += 1
-            }
-          }
-        }
-      }
+      const email = await sendCommunicationHubEmail({ to: guestEmail, subject, body })
 
-      if (!call.guest_reminder_email_sent_at) {
-        const guestEmail =
-          call.guest_invite_email ||
-          (call.callee_user_id ? emailByUserId.get(call.callee_user_id) : null)
+      if (!email.success) {
+        await logError({
+          errorType: 'api_error',
+          severity: 'warning',
+          message: `Guest reminder email failed for scheduled call ${call.id}`,
+          userId: call.user_id || undefined,
+          endpoint: '/api/internal/scheduled-call-reminders',
+          method: 'POST',
+          metadata: { callId: call.id, guestEmail, providerError: email.error || 'email_failed' },
+        }).catch(() => {})
+        failed += 1
+        failures.push({ callId: call.id, reason: email.error || 'email_failed' })
+      } else {
+        const { error: updateError } = await supabase
+          .from('calls')
+          .update({ guest_reminder_email_sent_at: new Date().toISOString() })
+          .eq('id', call.id)
+          .is('guest_reminder_email_sent_at', null)
 
-        if (!guestEmail) {
-          continue
-        }
-
-        const startsAt = toDisplayTime(startsAtIso, inferLocaleFromPhone(
-          call.user_id ? (phoneByUserId.get(call.user_id) ?? '') : ''
-        ))
-        const subject = call.contact_name?.trim()
-          ? `Reminder: ${call.contact_name} starts soon`
-          : 'Reminder: Your Notissima call starts soon'
-        const body = `<p>Reminder: your scheduled Notissima video call starts at ${startsAt}.</p><p><a href="${joinUrl}">Join call</a></p>`
-        const email = await sendCommunicationHubEmail({
-          to: guestEmail,
-          subject,
-          body,
-        })
-
-        if (!email.success) {
-          await logError({
-            errorType: 'api_error',
-            severity: 'warning',
-            message: `Guest reminder email failed for scheduled call ${call.id}`,
-            userId: call.user_id || undefined,
-            endpoint: '/api/internal/scheduled-call-reminders',
-            method: 'POST',
-            metadata: {
-              callId: call.id,
-              guestEmail,
-              provider: 'communication-hub',
-              providerError: email.error || 'email_failed',
-            },
-          }).catch(() => {})
-
+        if (updateError) {
           failed += 1
-          failures.push({ callId: call.id, channel: 'email', reason: email.error || 'email_failed' })
+          failures.push({ callId: call.id, reason: `update_failed:${updateError.message}` })
         } else {
-          const { error: updateError } = await supabase
-            .from('calls')
-            .update({ guest_reminder_email_sent_at: new Date().toISOString() })
-            .eq('id', call.id)
-            .is('guest_reminder_email_sent_at', null)
-
-          if (updateError) {
-            failed += 1
-            failures.push({ callId: call.id, channel: 'email', reason: `update_failed:${updateError.message}` })
-          } else {
-            emailSent += 1
-          }
+          emailSent += 1
         }
       }
     }
@@ -211,8 +181,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       checked: dueCalls.length,
-      sent: smsSent + emailSent,
-      smsSent,
+      sent: emailSent,
       emailSent,
       deletedExpired,
       failed,

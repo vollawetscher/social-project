@@ -26,10 +26,10 @@ export async function POST(request: Request) {
       inviteEmail,
     } = body
 
-    // Get user profile for display name and preferred language
+    // Get user profile for display name, preferred language, and timezone
     const { data: profile } = await supabase
       .from('profiles')
-      .select('display_name, email, default_recording_language')
+      .select('display_name, email, default_recording_language, timezone')
       .eq('id', user.id)
       .single()
 
@@ -142,12 +142,32 @@ export async function POST(request: Request) {
           (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
           'http://localhost:3000'
         const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${call.id}`
-        const startsAt = new Date(call.scheduled_for || scheduledForIso || new Date().toISOString()).toLocaleString()
-        const title = call.contact_name?.trim() || 'Notissima scheduled video call'
-        const html = `<p>You are invited to a scheduled Notissima video call.</p><p><strong>When:</strong> ${startsAt}</p><p><a href="${joinUrl}">Join call</a></p>`
+        const tz = scheduledTimezone || profile?.timezone || 'UTC'
+        const startsAt = new Date(call.scheduled_for || scheduledForIso!).toLocaleString('de-DE', {
+          timeZone: tz,
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZoneName: 'short',
+        })
+        const organizer = displayName
+        const subject = call.contact_name?.trim()
+          ? `Einladung: ${call.contact_name} – Notissima Video Call`
+          : `Einladung: Notissima Video Call mit ${organizer}`
+        const html = [
+          `<p>Sie wurden zu einem Notissima Video Call eingeladen.</p>`,
+          `<p><strong>Wann:</strong> ${startsAt}</p>`,
+          call.contact_name?.trim() ? `<p><strong>Titel:</strong> ${call.contact_name}</p>` : '',
+          `<p><strong>Organisator:</strong> ${organizer}</p>`,
+          `<p><a href="${joinUrl}" style="display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">Jetzt beitreten</a></p>`,
+          `<p style="color:#6b7280;font-size:12px;">Oder kopieren Sie diesen Link: ${joinUrl}</p>`,
+        ].join('\n')
         const email = await sendCommunicationHubEmail({
           to: inviteEmail.trim(),
-          subject: title,
+          subject,
           body: html,
         })
         inviteEmailSent = email.success

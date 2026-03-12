@@ -69,8 +69,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Fetch call/file timing context so reports can include concrete date/time.
-    const [{ data: callRows }, { data: fileRows }] = await Promise.all([
+    // Fetch call/file timing context + user timezone so reports can include concrete date/time.
+    const [{ data: callRows }, { data: fileRows }, { data: profileData }] = await Promise.all([
       supabase
         .from('calls')
         .select('id, contact_name, call_type, call_mode, scheduled_for, started_at, ended_at, created_at')
@@ -83,10 +83,17 @@ export async function POST(request: Request) {
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true })
         .limit(1),
+      supabase
+        .from('profiles')
+        .select('timezone')
+        .eq('id', userId)
+        .single(),
     ])
 
     const callContext = callRows?.[0]
     const fileContext = fileRows?.[0]
+    const userTimezone = profileData?.timezone || 'Europe/Berlin'
+
     const eventStartIso =
       callContext?.started_at ||
       callContext?.scheduled_for ||
@@ -261,6 +268,29 @@ export async function POST(request: Request) {
       (session as any).preferred_report_language
     )
 
+    const dateLocaleCodeMap: Record<string, string> = {
+      de: 'de-DE', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT',
+      pt: 'pt-PT', nl: 'nl-NL', pl: 'pl-PL', ja: 'ja-JP', ko: 'ko-KR',
+      zh: 'zh-CN', ar: 'ar-SA', ru: 'ru-RU', tr: 'tr-TR', vi: 'vi-VN',
+      th: 'th-TH',
+    }
+    const formatEventDateTime = (iso: string | null): string | null => {
+      if (!iso) return null
+      try {
+        const localeCode = dateLocaleCodeMap[resolvedLanguageCode] || 'en-US'
+        return new Date(iso).toLocaleString(localeCode, {
+          timeZone: userTimezone,
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      } catch {
+        return iso
+      }
+    }
+
     const languageMap: Record<string, string> = {
       en: 'English',
       de: 'German',
@@ -298,7 +328,7 @@ Key requirements:
 - Audience: The output is intended for ${audienceMap[config.audience || 'internal'] || 'internal use'}
 - Tone: Use a ${toneMap[config.tone] || 'professional'} tone
 - Language: Generate the ENTIRE output in ${outputLanguage}, including all section headers, titles, labels, and body text. Do NOT leave any headers or structural elements in another language.
-- Include a clear "Date/Time" line near the top of the output using the provided session context values exactly as given.
+- Include a clear "Date/Time" line near the top of the output using the provided session start date/time value.
 - Do NOT use any emojis or emoticons anywhere in the output.
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
@@ -333,9 +363,12 @@ ${config.dontInstructions}`
       return NextResponse.json({ error: 'No transcript content available' }, { status: 400 })
     }
 
+    const formattedStartDateTime = formatEventDateTime(eventStartIso)
+    const formattedEndDateTime = formatEventDateTime(eventEndIso)
+
     const sessionContextLines = [
-      eventStartIso ? `- Session start datetime (ISO): ${eventStartIso}` : null,
-      eventEndIso ? `- Session end datetime (ISO): ${eventEndIso}` : null,
+      formattedStartDateTime ? `- Session start: ${formattedStartDateTime}` : null,
+      formattedEndDateTime ? `- Session end: ${formattedEndDateTime}` : null,
       typeof (session as any).duration_sec === 'number' && (session as any).duration_sec > 0
         ? `- Session duration (seconds): ${(session as any).duration_sec}`
         : null,
@@ -376,21 +409,20 @@ Please generate the requested output following all requirements and guidelines.`
 
     if (config.includeDate) {
       const now = new Date()
-      const dateLocaleMap: Record<string, string> = {
-        de: 'de-DE', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT',
-        pt: 'pt-PT', nl: 'nl-NL', pl: 'pl-PL', ja: 'ja-JP', ko: 'ko-KR',
-        zh: 'zh-CN', ar: 'ar-SA', ru: 'ru-RU', tr: 'tr-TR', vi: 'vi-VN',
-        th: 'th-TH',
-      }
       const dateLabelMap: Record<string, string> = {
         de: 'Datum', en: 'Date', es: 'Fecha', fr: 'Date', it: 'Data',
         pt: 'Data', nl: 'Datum', pl: 'Data', ja: '日付', ko: '날짜',
         zh: '日期', ar: 'التاريخ', ru: 'Дата', tr: 'Tarih', vi: 'Ngày',
         th: 'วันที่',
       }
-      const loc = dateLocaleMap[resolvedLanguageCode] || 'en-US'
+      const loc = dateLocaleCodeMap[resolvedLanguageCode] || 'en-US'
       const label = dateLabelMap[resolvedLanguageCode] || 'Date'
-      const formatted = now.toLocaleDateString(loc, { year: 'numeric', month: 'long', day: 'numeric' })
+      const formatted = now.toLocaleDateString(loc, {
+        timeZone: userTimezone,
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
       generatedContent = `${label}: ${formatted}\n\n${generatedContent}`
     }
 
