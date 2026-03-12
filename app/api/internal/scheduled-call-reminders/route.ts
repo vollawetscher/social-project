@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
+import { sendInitiatorReminderSMS } from '@/lib/services/sms'
 import { logError } from '@/lib/services/error-logger'
 
 function resolveBaseUrl(): string {
@@ -75,9 +76,11 @@ export async function POST(request: Request) {
       deletedExpired = expiredIds.length
     }
 
+    const smsBefore = 5 * 60 * 1000 // 5-minute SMS window for initiator
+
     const { data: dueCalls, error: dueCallsError } = await supabase
       .from('calls')
-      .select('id, user_id, callee_user_id, room_name, contact_name, scheduled_for, guest_invite_email, guest_reminder_email_sent_at')
+      .select('id, user_id, callee_user_id, room_name, contact_name, scheduled_for, guest_invite_email, guest_reminder_email_sent_at, initiator_reminder_sms_sent_at')
       .in('status', ['scheduled', 'invited', 'waiting'])
       .not('user_id', 'is', null)
       .not('room_name', 'is', null)
@@ -119,10 +122,48 @@ export async function POST(request: Request) {
 
     const baseUrl = resolveBaseUrl()
     let emailSent = 0
+    let smsSent = 0
     let failed = 0
     const failures: Array<{ callId: string; reason: string }> = []
 
     for (const call of dueCalls) {
+      const scheduledAtMs = new Date(String(call.scheduled_for)).getTime()
+      const initiatorPhone = call.user_id ? (phoneByUserId.get(call.user_id) ?? null) : null
+      const initiatorLocale = inferLocaleFromPhone(initiatorPhone ?? '')
+
+      // Initiator SMS: fire at ≤5 min before the call
+      if (
+        !call.initiator_reminder_sms_sent_at &&
+        initiatorPhone &&
+        scheduledAtMs <= now + smsBefore
+      ) {
+        const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${call.id}`
+        const initiatorTimezone = call.user_id ? (timezoneByUserId.get(call.user_id) ?? null) : null
+        const startsAt = toDisplayTime(String(call.scheduled_for), initiatorLocale, initiatorTimezone)
+
+        const sms = await sendInitiatorReminderSMS(initiatorPhone, joinUrl, startsAt, initiatorLocale)
+        if (sms.success) {
+          await supabase
+            .from('calls')
+            .update({ initiator_reminder_sms_sent_at: new Date().toISOString() })
+            .eq('id', call.id)
+            .is('initiator_reminder_sms_sent_at', null)
+          smsSent += 1
+        } else {
+          await logError({
+            errorType: 'api_error',
+            severity: 'warning',
+            message: `Initiator reminder SMS failed for scheduled call ${call.id}`,
+            userId: call.user_id || undefined,
+            endpoint: '/api/internal/scheduled-call-reminders',
+            method: 'POST',
+            metadata: { callId: call.id, smsError: sms.error || 'sms_failed' },
+          }).catch(() => {})
+          failed += 1
+          failures.push({ callId: call.id, reason: sms.error || 'sms_failed' })
+        }
+      }
+
       if (call.guest_reminder_email_sent_at) continue
 
       const guestEmail =
@@ -197,6 +238,7 @@ export async function POST(request: Request) {
       checked: dueCalls.length,
       sent: emailSent,
       emailSent,
+      smsSent,
       deletedExpired,
       failed,
       failures,
