@@ -9,7 +9,8 @@ import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
  *  1. Fork the caller's session into a new session owned by the callee
  *  2. Copy the transcript if it is already done, or mark as pending if not
  *  3. Set callee_user_id + callee_session_id on the call row
- *  4. Set onboarding_expires_at on the profile (5-day trial) if not already set
+ *  4. Set onboarding_expires_at on the profile (5-day trial) only for
+ *     newly created accounts (guest-to-signup conversion path).
  */
 export async function POST(
   _request: Request,
@@ -152,14 +153,19 @@ export async function POST(
       })
       .eq('id', callId)
 
-    // --- 9. Set 5-day trial on profile only if not already set ---
+    // --- 9. Set 5-day trial only for newly created accounts ---
     const { data: profile } = await supabase
       .from('profiles')
       .select('onboarding_expires_at, created_at')
       .eq('id', user.id)
       .maybeSingle()
 
-    if (profile && !profile.onboarding_expires_at) {
+    const createdAtMs = profile?.created_at ? new Date(profile.created_at).getTime() : 0
+    const accountAgeMs = createdAtMs > 0 ? Date.now() - createdAtMs : Number.POSITIVE_INFINITY
+    const trialEligibilityWindowMs = 24 * 60 * 60 * 1000 // 24h from account creation
+    const isNewlyCreatedAccount = accountAgeMs >= 0 && accountAgeMs <= trialEligibilityWindowMs
+
+    if (profile && !profile.onboarding_expires_at && isNewlyCreatedAccount) {
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + 5)
       await supabase

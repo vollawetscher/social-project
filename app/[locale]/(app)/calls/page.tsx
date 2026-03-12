@@ -388,14 +388,8 @@ export default function CallsPage() {
       URL.revokeObjectURL(url)
 
       if (scheduleInviteEmail.trim()) {
-        const inviteRes = await fetch(`/api/calls/${data.callId}/invite-email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: scheduleInviteEmail.trim() }),
-        })
-        if (!inviteRes.ok) {
-          const inviteData = await inviteRes.json().catch(() => ({}))
-          toast.error(inviteData.error || t('scheduleInviteEmailFailed'))
+        if (data.inviteEmailSent === false) {
+          toast.error(data.inviteEmailError || t('scheduleInviteEmailFailed'))
         }
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(`${subject}\n\n${body}`)

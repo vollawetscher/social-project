@@ -45,6 +45,33 @@ export async function POST(request: Request) {
     const leadMinutesRaw = Number(process.env.SCHEDULED_CALL_REMINDER_LEAD_MINUTES ?? 10)
     const leadMinutes = Number.isFinite(leadMinutesRaw) && leadMinutesRaw > 0 ? leadMinutesRaw : 10
     const windowEnd = now + leadMinutes * 60 * 1000
+    const deleteGraceRaw = Number(process.env.SCHEDULED_CALL_EXPIRED_DELETE_GRACE_MINUTES ?? 60)
+    const deleteGraceMinutes = Number.isFinite(deleteGraceRaw) && deleteGraceRaw >= 0 ? deleteGraceRaw : 60
+    const deleteBeforeIso = new Date(now - deleteGraceMinutes * 60 * 1000).toISOString()
+
+    // Auto-cleanup: delete stale scheduled calls that already expired.
+    let deletedExpired = 0
+    const { data: expiredCalls, error: expiredSelectError } = await supabase
+      .from('calls')
+      .select('id')
+      .eq('status', 'scheduled')
+      .lt('scheduled_for', deleteBeforeIso)
+      .limit(500)
+
+    if (expiredSelectError) {
+      return NextResponse.json({ error: expiredSelectError.message }, { status: 500 })
+    }
+    if (expiredCalls && expiredCalls.length > 0) {
+      const expiredIds = expiredCalls.map((c) => c.id)
+      const { error: expiredDeleteError } = await supabase
+        .from('calls')
+        .delete()
+        .in('id', expiredIds)
+      if (expiredDeleteError) {
+        return NextResponse.json({ error: expiredDeleteError.message }, { status: 500 })
+      }
+      deletedExpired = expiredIds.length
+    }
 
     const { data: dueCalls, error: dueCallsError } = await supabase
       .from('calls')
@@ -186,9 +213,11 @@ export async function POST(request: Request) {
       sent: smsSent + emailSent,
       smsSent,
       emailSent,
+      deletedExpired,
       failed,
       failures,
       leadMinutes,
+      deleteGraceMinutes,
     })
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 })

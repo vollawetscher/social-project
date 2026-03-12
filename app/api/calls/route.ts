@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
 import { createRoom, createRoomToken, generateRoomName } from '@/lib/services/livekit'
+import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import type { CreateCallRequest } from '@/lib/types/call'
 
 /**
@@ -131,6 +132,28 @@ export async function POST(request: Request) {
     }
 
     if (isScheduled) {
+      let inviteEmailSent = false
+      let inviteEmailError: string | null = null
+
+      if (inviteEmail?.trim()) {
+        const baseUrl =
+          process.env.NEXT_PUBLIC_APP_URL ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+          (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
+          'http://localhost:3000'
+        const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${call.id}`
+        const startsAt = new Date(call.scheduled_for || scheduledForIso || new Date().toISOString()).toLocaleString()
+        const title = call.contact_name?.trim() || 'Notissima scheduled video call'
+        const html = `<p>You are invited to a scheduled Notissima video call.</p><p><strong>When:</strong> ${startsAt}</p><p><a href="${joinUrl}">Join call</a></p>`
+        const email = await sendCommunicationHubEmail({
+          to: inviteEmail.trim(),
+          subject: title,
+          body: html,
+        })
+        inviteEmailSent = email.success
+        inviteEmailError = email.success ? null : (email.error || 'Failed to send invite email')
+      }
+
       return NextResponse.json({
         callId: call.id,
         roomName,
@@ -139,6 +162,8 @@ export async function POST(request: Request) {
         invited: false,
         scheduled: true,
         scheduledFor: scheduledForIso,
+        inviteEmailSent,
+        inviteEmailError,
       })
     }
 
@@ -180,6 +205,15 @@ export async function GET() {
   try {
     const user = await requireAuth()
     const supabase = await createClient()
+
+    // Opportunistic cleanup: remove stale scheduled calls older than 1 hour.
+    const staleThresholdIso = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    await supabase
+      .from('calls')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('status', 'scheduled')
+      .lt('scheduled_for', staleThresholdIso)
 
     const { data: calls, error } = await supabase
       .from('calls')

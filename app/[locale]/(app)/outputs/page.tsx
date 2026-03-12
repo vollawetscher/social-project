@@ -73,6 +73,73 @@ function formatDate(dateString: string, locale: string): string {
   })
 }
 
+function normalizeOutputLanguageCode(raw?: string | null): string | null {
+  const value = String(raw || '').trim().toLowerCase()
+  if (!value) return null
+
+  const alias: Record<string, string> = {
+    auto: 'auto',
+    session: 'auto',
+    en: 'en',
+    english: 'en',
+    de: 'de',
+    german: 'de',
+    deutsch: 'de',
+    es: 'es',
+    spanish: 'es',
+    espanol: 'es',
+    'español': 'es',
+    fr: 'fr',
+    french: 'fr',
+    it: 'it',
+    italian: 'it',
+    pt: 'pt',
+    portuguese: 'pt',
+    nl: 'nl',
+    dutch: 'nl',
+    pl: 'pl',
+    polish: 'pl',
+    sv: 'sv',
+    swedish: 'sv',
+    no: 'no',
+    norwegian: 'no',
+    da: 'da',
+    danish: 'da',
+    cs: 'cs',
+    czech: 'cs',
+    ru: 'ru',
+    russian: 'ru',
+    th: 'th',
+    thai: 'th',
+    ja: 'ja',
+    japanese: 'ja',
+    ko: 'ko',
+    korean: 'ko',
+    zh: 'zh',
+    chinese: 'zh',
+    ar: 'ar',
+    arabic: 'ar',
+    tr: 'tr',
+    turkish: 'tr',
+    vi: 'vi',
+    vietnamese: 'vi',
+    hi: 'hi',
+    hindi: 'hi',
+  }
+  if (alias[value]) return alias[value]
+
+  const localePrefix = value.split(/[-_]/)[0]
+  if (alias[localePrefix]) return alias[localePrefix]
+  if (/^[a-z]{2}$/.test(localePrefix)) return localePrefix
+  return null
+}
+
+function getOutputLanguageBadge(language?: string | null): string {
+  const code = normalizeOutputLanguageCode(language)
+  if (!code || code === 'auto') return 'AUTO'
+  return code.toUpperCase()
+}
+
 function OutputDetailSheet({ output }: { output: Output }) {
   const t = useTranslations('outputs')
   const td = useTranslations('outputDetail')
@@ -469,7 +536,7 @@ export default function OutputsPage() {
                       </span>
                       <span className="flex items-center gap-1 whitespace-nowrap">
                         <Globe className="h-3 w-3 shrink-0" />
-                        {output.language === 'en' ? 'EN' : output.language === 'de' ? 'DE' : output.language.toUpperCase()}
+                        {getOutputLanguageBadge(output.language)}
                       </span>
                     </div>
                   </div>
