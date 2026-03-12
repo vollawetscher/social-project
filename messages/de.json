@@ -571,7 +571,7 @@
     "scheduleJoinWindowHint": "Der Beitritt ist 10 Minuten vor Beginn moeglich.",
     "scheduleSave": "Planung speichern",
     "scheduleSuccess": "Geplanter Anruf erstellt",
-    "scheduleSuccessWithInvite": "Geplanter Anruf erstellt. ICS-Datei fuer die E-Mail-Einladung wurde heruntergeladen.",
+    "scheduleSuccessWithInvite": "Geplanter Anruf erstellt. Einladung vorbereitet.",
     "scheduleFailed": "Anruf konnte nicht geplant werden",
     "scheduleInvalidDate": "Bitte ein gueltiges Datum und eine gueltige Uhrzeit waehlen.",
     "scheduleTooEarly": "Dieser Anruf kann 10 Minuten vor Beginn gestartet werden.",
@@ -589,6 +589,7 @@
     "inviteWhen": "Zeitpunkt",
     "inviteJoinLink": "Beitrittslink",
     "inviteAttachIcsHint": "Bitte die heruntergeladene ICS-Datei an diese E-Mail anhaengen.",
+    "scheduleInviteEmailFailed": "Anruf geplant, aber Einladungs-E-Mail konnte nicht gesendet werden.",
     "call": "Anrufen",
     "enterNumber": "Nummer eingeben",
     "deleteDigit": "Löschen"

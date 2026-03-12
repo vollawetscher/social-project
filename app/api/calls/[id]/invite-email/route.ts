@@ -2,40 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { recordEmailInviteUsage } from '@/lib/services/usage-tracker'
-
-function formatIcsDate(date: Date): string {
-  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
-}
-
-function buildInviteIcs(params: {
-  callId: string
-  startAt: string
-  endAt: string
-  title: string
-  description: string
-  joinUrl: string
-}): string {
-  const now = new Date()
-  return [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Notissima//Scheduled Calls//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:REQUEST',
-    'BEGIN:VEVENT',
-    `UID:${params.callId}@notissima.app`,
-    `DTSTAMP:${formatIcsDate(now)}`,
-    `DTSTART:${formatIcsDate(new Date(params.startAt))}`,
-    `DTEND:${formatIcsDate(new Date(params.endAt))}`,
-    `SUMMARY:${params.title}`,
-    `DESCRIPTION:${params.description.replace(/\n/g, '\\n')}`,
-    `LOCATION:${params.joinUrl}`,
-    `URL:${params.joinUrl}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
-    '',
-  ].join('\r\n')
-}
+import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 
 export async function POST(
   request: Request,
@@ -69,15 +36,6 @@ export async function POST(
       return NextResponse.json({ error: 'Call is not scheduled' }, { status: 400 })
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY
-    const fromEmail = process.env.EMAIL_FROM
-    if (!resendApiKey || !fromEmail) {
-      return NextResponse.json(
-        { error: 'Email provider not configured (RESEND_API_KEY and EMAIL_FROM required)' },
-        { status: 501 }
-      )
-    }
-
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
@@ -86,60 +44,34 @@ export async function POST(
 
     const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${call.id}`
     const startAt = new Date(call.scheduled_for)
-    const endAt = new Date(startAt.getTime() + 30 * 60 * 1000)
     const title = call.contact_name?.trim() || 'Notissima scheduled video call'
-    const description = `You are invited to a scheduled Notissima video call.\nJoin: ${joinUrl}`
-    const ics = buildInviteIcs({
-      callId: call.id,
-      startAt: startAt.toISOString(),
-      endAt: endAt.toISOString(),
-      title,
-      description,
-      joinUrl,
+    const when = startAt.toLocaleString()
+    const html = `<p>You are invited to a scheduled Notissima video call.</p><p><strong>When:</strong> ${when}</p><p><a href="${joinUrl}">Join call</a></p>`
+    const response = await sendCommunicationHubEmail({
+      to: recipientEmail,
+      subject: title,
+      body: html,
     })
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [recipientEmail],
-        subject: title,
-        text: description,
-        html: `<p>You are invited to a scheduled Notissima video call.</p><p><a href="${joinUrl}">Join call</a></p>`,
-        attachments: [
-          {
-            filename: `notissima-invite-${call.id}.ics`,
-            content: Buffer.from(ics, 'utf8').toString('base64'),
-          },
-        ],
-      }),
-    })
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '')
+    if (!response.success) {
       recordEmailInviteUsage(supabase, user.id, {
         callId: call.id,
         recipientEmail,
-        provider: 'resend',
+        provider: 'communication-hub',
         success: false,
-        error: errText || `HTTP ${response.status}`,
+        error: response.error || 'send_failed',
       })
       return NextResponse.json({ error: 'Failed to send invite email' }, { status: 502 })
     }
 
-    const resendData = await response.json().catch(() => ({}))
     recordEmailInviteUsage(supabase, user.id, {
       callId: call.id,
       recipientEmail,
-      provider: 'resend',
+      provider: 'communication-hub',
       success: true,
     })
 
-    return NextResponse.json({ ok: true, providerMessageId: resendData?.id || null })
+    return NextResponse.json({ ok: true, providerMessageId: response.providerMessageId || null })
   } catch (error) {
     try {
       const supabase = await createClient()
@@ -147,7 +79,7 @@ export async function POST(
       recordEmailInviteUsage(supabase, data?.user?.id ?? null, {
         callId,
         recipientEmail,
-        provider: 'resend',
+        provider: 'communication-hub',
         success: false,
         error: error instanceof Error ? error.message : 'unknown_error',
       })

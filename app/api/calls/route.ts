@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       contactName,
       scheduledFor,
       scheduledTimezone,
+      inviteEmail,
     } = body
 
     // Get user profile for display name and preferred language
@@ -42,6 +43,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid scheduledFor datetime' }, { status: 400 })
       }
       scheduledForIso = parsedSchedule.toISOString()
+      if (inviteEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(inviteEmail).trim())) {
+        return NextResponse.json({ error: 'Invalid invite email' }, { status: 400 })
+      }
     }
 
     // Create the LiveKit room immediately only for instant calls.
@@ -116,6 +120,7 @@ export async function POST(request: Request) {
         room_created_at_ms: roomCreatedAtMs,
         scheduled_for: scheduledForIso,
         scheduled_timezone: scheduledTimezone || null,
+        guest_invite_email: isScheduled ? (inviteEmail?.trim() || null) : null,
       })
       .select('*')
       .single()

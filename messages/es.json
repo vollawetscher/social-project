@@ -571,7 +571,7 @@
     "scheduleJoinWindowHint": "La union se habilita 10 minutos antes del inicio.",
     "scheduleSave": "Guardar programacion",
     "scheduleSuccess": "Llamada programada creada",
-    "scheduleSuccessWithInvite": "Llamada programada creada. Archivo ICS descargado para enviar por email.",
+    "scheduleSuccessWithInvite": "Llamada programada creada. Invitacion preparada.",
     "scheduleFailed": "No se pudo programar la llamada",
     "scheduleInvalidDate": "Elige una fecha y hora validas.",
     "scheduleTooEarly": "Esta llamada se puede abrir 10 minutos antes del inicio.",
@@ -589,6 +589,7 @@
     "inviteWhen": "Cuándo",
     "inviteJoinLink": "Enlace para unirse",
     "inviteAttachIcsHint": "Adjunta el archivo ICS descargado a este email.",
+    "scheduleInviteEmailFailed": "Llamada programada, pero no se pudo enviar el email de invitacion.",
     "call": "Llamar",
     "enterNumber": "Introducir número",
     "deleteDigit": "Borrar"

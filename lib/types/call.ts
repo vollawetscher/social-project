@@ -49,7 +49,9 @@ export interface Call {
   callee_declined?: boolean
   scheduled_for?: string | null
   scheduled_timezone?: string | null
+  guest_invite_email?: string | null
   initiator_reminder_sms_sent_at?: string | null
+  guest_reminder_email_sent_at?: string | null
   created_at: string
 }
 
@@ -117,6 +119,7 @@ export interface CreateCallRequest {
   contactName?: string        // Optional display name for invite target
   scheduledFor?: string       // Optional ISO datetime for scheduled calls
   scheduledTimezone?: string  // Optional IANA timezone name
+  inviteEmail?: string        // Optional guest email for scheduled reminders
 }
 
 export interface CreateCallResponse {

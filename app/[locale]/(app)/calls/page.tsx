@@ -355,6 +355,7 @@ export default function CallsPage() {
           mode: "video",
           scheduledFor: date.toISOString(),
           scheduledTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+          inviteEmail: scheduleInviteEmail.trim() || undefined,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -386,8 +387,15 @@ export default function CallsPage() {
       URL.revokeObjectURL(url)
 
       if (scheduleInviteEmail.trim()) {
-        const mailto = `mailto:${encodeURIComponent(scheduleInviteEmail.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-        window.location.assign(mailto)
+        const inviteRes = await fetch(`/api/calls/${data.callId}/invite-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ to: scheduleInviteEmail.trim() }),
+        })
+        if (!inviteRes.ok) {
+          const inviteData = await inviteRes.json().catch(() => ({}))
+          toast.error(inviteData.error || t('scheduleInviteEmailFailed'))
+        }
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(`${subject}\n\n${body}`)
       }

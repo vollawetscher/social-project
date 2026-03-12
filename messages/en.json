@@ -572,7 +572,7 @@
     "scheduleJoinWindowHint": "Join opens 10 minutes before the scheduled start.",
     "scheduleSave": "Save schedule",
     "scheduleSuccess": "Scheduled call created",
-    "scheduleSuccessWithInvite": "Scheduled call created. ICS downloaded for email invite.",
+    "scheduleSuccessWithInvite": "Scheduled call created. Invite prepared.",
     "scheduleFailed": "Failed to schedule call",
     "scheduleInvalidDate": "Please choose a valid date and time.",
     "scheduleTooEarly": "This call can be joined 10 minutes before start.",
@@ -590,6 +590,7 @@
     "inviteWhen": "When",
     "inviteJoinLink": "Join link",
     "inviteAttachIcsHint": "Please attach the downloaded ICS file to this email.",
+    "scheduleInviteEmailFailed": "Call scheduled, but invite email could not be sent.",
     "call": "Call",
     "enterNumber": "Enter number",
     "deleteDigit": "Delete"
