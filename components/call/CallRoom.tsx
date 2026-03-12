@@ -1026,7 +1026,7 @@ function CallRoomInner({
                 {contactPhone && <p className="text-sm text-muted-foreground mt-1">{contactPhone}</p>}
               </div>
               <p className={cn(
-                "text-lg font-mono mt-3",
+                "text-lg mt-3",
                 callStatus === "connected" ? "text-foreground" : "text-muted-foreground"
               )}>
                 {statusLabel[callStatus]}
