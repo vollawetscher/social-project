@@ -3,6 +3,7 @@ import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
 import { createRoom, createRoomToken, generateRoomName } from '@/lib/services/livekit'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
+import { logError } from '@/lib/services/error-logger'
 import type { CreateCallRequest } from '@/lib/types/call'
 
 /**
@@ -172,6 +173,24 @@ export async function POST(request: Request) {
         })
         inviteEmailSent = email.success
         inviteEmailError = email.success ? null : (email.error || 'Failed to send invite email')
+
+        if (email.success) {
+          console.log(`[Calls] Invite email sent to ${inviteEmail.trim()} for call ${call.id}`)
+          await supabase.from('calls').update({
+            guest_invite_email_sent_at: new Date().toISOString(),
+          }).eq('id', call.id)
+        } else {
+          console.error(`[Calls] Invite email FAILED for call ${call.id}: ${inviteEmailError}`)
+          await logError({
+            errorType: 'api_error',
+            severity: 'warning',
+            message: `Guest invite email failed for scheduled call ${call.id}`,
+            userId: user.id,
+            endpoint: '/api/calls',
+            method: 'POST',
+            metadata: { callId: call.id, guestEmail: inviteEmail.trim(), providerError: inviteEmailError },
+          }).catch(() => {})
+        }
       }
 
       return NextResponse.json({
