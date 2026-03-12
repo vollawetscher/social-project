@@ -65,21 +65,23 @@ interface CallRoomProps {
   ringSmsParams?: RingSmsParams
 }
 
-type VideoBackgroundChoice = "none" | "blur" | "office" | "abstract"
+type VideoBackgroundChoice = "none" | "blur" | "home" | "conference" | "office"
 
 const VIDEO_BACKGROUND_CHOICES: Array<{ value: VideoBackgroundChoice; labelKey: string }> = [
-  { value: "none", labelKey: "backgroundNone" },
-  { value: "blur", labelKey: "backgroundBlur" },
-  { value: "office", labelKey: "backgroundOffice" },
-  { value: "abstract", labelKey: "backgroundAbstract" },
+  { value: "none",       labelKey: "backgroundNone" },
+  { value: "blur",       labelKey: "backgroundBlur" },
+  { value: "home",       labelKey: "backgroundHome" },
+  { value: "conference", labelKey: "backgroundConference" },
+  { value: "office",     labelKey: "backgroundOffice" },
 ]
 const VIDEO_BACKGROUND_STORAGE_KEY = "notissima.video_background"
 const AUDIO_INPUT_KEY = "notissima.call.audioInputDeviceId"
 const VIDEO_INPUT_KEY = "notissima.call.videoInputDeviceId"
 
 function getBackgroundImagePath(choice: VideoBackgroundChoice): string | null {
-  if (choice === "office") return "/backgrounds/office.svg"
-  if (choice === "abstract") return "/backgrounds/abstract.svg"
+  if (choice === "home")       return "/backgrounds/home.jpg"
+  if (choice === "conference") return "/backgrounds/conference.jpg"
+  if (choice === "office")     return "/backgrounds/office.jpg"
   return null
 }
 

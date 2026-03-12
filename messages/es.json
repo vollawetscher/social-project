@@ -839,8 +839,9 @@
     "background": "Fondo",
     "backgroundNone": "Ninguno",
     "backgroundBlur": "Desenfoque",
+    "backgroundHome": "Hogar",
+    "backgroundConference": "Conferencia",
     "backgroundOffice": "Oficina",
-    "backgroundAbstract": "Abstracto",
     "backgroundNotSupported": "Los efectos de fondo no son compatibles con este dispositivo/navegador.",
     "backgroundApplyFailed": "No se pudo aplicar el fondo de video."
   },

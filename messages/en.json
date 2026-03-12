@@ -840,8 +840,9 @@
     "background": "Background",
     "backgroundNone": "None",
     "backgroundBlur": "Blur",
+    "backgroundHome": "Home",
+    "backgroundConference": "Conference",
     "backgroundOffice": "Office",
-    "backgroundAbstract": "Abstract",
     "backgroundNotSupported": "Background effects are not supported on this device/browser.",
     "backgroundApplyFailed": "Could not apply video background."
   },

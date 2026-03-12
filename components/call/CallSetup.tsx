@@ -8,8 +8,16 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
-type VideoBackgroundChoice = "none" | "blur" | "office" | "abstract"
+type VideoBackgroundChoice = "none" | "blur" | "home" | "conference" | "office"
 const VIDEO_BACKGROUND_STORAGE_KEY = "notissima.video_background"
+
+const BG_CHOICES: Array<{ value: VideoBackgroundChoice; image?: string; labelKey: string }> = [
+  { value: "none",       labelKey: "backgroundNone" },
+  { value: "blur",       labelKey: "backgroundBlur" },
+  { value: "home",       image: "/backgrounds/home.jpg",       labelKey: "backgroundHome" },
+  { value: "conference", image: "/backgrounds/conference.jpg", labelKey: "backgroundConference" },
+  { value: "office",     image: "/backgrounds/office.jpg",     labelKey: "backgroundOffice" },
+]
 
 interface CallSetupProps {
   mode: "audio" | "video"
@@ -44,7 +52,7 @@ export function CallSetup({
   const [videoBackground, setVideoBackground] = useState<VideoBackgroundChoice>(() => {
     try {
       const saved = window.localStorage.getItem(VIDEO_BACKGROUND_STORAGE_KEY)
-      if (saved === "blur" || saved === "office" || saved === "abstract") return saved
+      if (BG_CHOICES.some((c) => c.value === saved)) return saved as VideoBackgroundChoice
     } catch {}
     return "none"
   })
@@ -167,9 +175,9 @@ export function CallSetup({
         <div className="flex justify-center">
           {mode === "video" && isCameraReady ? (
             <div className="w-48 h-36 rounded-xl bg-[#1a1a1a] overflow-hidden relative">
-              {(videoBackground === "office" || videoBackground === "abstract") && (
+              {BG_CHOICES.find((c) => c.value === videoBackground)?.image && (
                 <img
-                  src={`/backgrounds/${videoBackground}.svg`}
+                  src={BG_CHOICES.find((c) => c.value === videoBackground)!.image}
                   className="absolute inset-0 w-full h-full object-cover"
                   alt=""
                 />
@@ -262,22 +270,39 @@ export function CallSetup({
                 </select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <label className="text-xs text-muted-foreground">{t('background')}</label>
-                <select
-                  value={videoBackground}
-                  onChange={(e) => {
-                    const next = e.target.value as VideoBackgroundChoice
-                    setVideoBackground(next)
-                    try { window.localStorage.setItem(VIDEO_BACKGROUND_STORAGE_KEY, next) } catch {}
-                  }}
-                  className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
-                >
-                  <option value="none">{t('backgroundNone')}</option>
-                  <option value="blur">{t('backgroundBlur')}</option>
-                  <option value="office">{t('backgroundOffice')}</option>
-                  <option value="abstract">{t('backgroundAbstract')}</option>
-                </select>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {BG_CHOICES.map((choice) => (
+                    <button
+                      key={choice.value}
+                      type="button"
+                      onClick={() => {
+                        setVideoBackground(choice.value)
+                        try { window.localStorage.setItem(VIDEO_BACKGROUND_STORAGE_KEY, choice.value) } catch {}
+                      }}
+                      className={cn(
+                        "relative rounded-md overflow-hidden aspect-video border-2 transition-all focus:outline-none",
+                        videoBackground === choice.value
+                          ? "border-primary ring-2 ring-primary/30"
+                          : "border-border hover:border-muted-foreground/50"
+                      )}
+                      title={t(choice.labelKey as any)}
+                    >
+                      {choice.image ? (
+                        <img src={choice.image} className="w-full h-full object-cover" alt="" />
+                      ) : choice.value === "blur" ? (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-200/60 to-blue-400/60 flex items-center justify-center">
+                          <span className="text-[8px] text-blue-900/70 font-medium leading-tight text-center px-0.5">{t('backgroundBlur')}</span>
+                        </div>
+                      ) : (
+                        <div className="w-full h-full bg-secondary flex items-center justify-center">
+                          <span className="text-[8px] text-muted-foreground font-medium leading-tight text-center px-0.5">{t('backgroundNone')}</span>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </>
           )}

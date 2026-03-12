@@ -838,9 +838,10 @@
     "participant": "Teilnehmer",
     "background": "Hintergrund",
     "backgroundNone": "Keiner",
-    "backgroundBlur": "Unschaerfe",
-    "backgroundOffice": "Buero",
-    "backgroundAbstract": "Abstrakt",
+    "backgroundBlur": "Unschärfe",
+    "backgroundHome": "Zuhause",
+    "backgroundConference": "Konferenz",
+    "backgroundOffice": "Büro",
     "backgroundNotSupported": "Hintergrundeffekte werden auf diesem Geraet/Browser nicht unterstuetzt.",
     "backgroundApplyFailed": "Videohintergrund konnte nicht angewendet werden."
   },
