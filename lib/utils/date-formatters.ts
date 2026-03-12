@@ -74,12 +74,15 @@ export function formatTimestamp(dateString: string, locale?: string): string {
 }
 
 /**
- * Format duration in seconds to MM:SS
+ * Format duration in seconds to M:SS or H:MM:SS. Returns '—' for null/zero.
  */
-export function formatDuration(seconds: number): string {
-  if (seconds === 0) return '-'
-  const mins = Math.floor(seconds / 60)
+export function formatDuration(seconds: number | null): string {
+  if (seconds == null || seconds === 0) return '—'
+  const hrs = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
+  if (hrs > 0)
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 

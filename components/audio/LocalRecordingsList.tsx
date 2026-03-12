@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Play, Pause, Trash2, Clock, HardDrive, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
+import { formatDuration } from '@/lib/utils/date-formatters'
 
 interface LocalRecordingsListProps {
   onFileSelected: (file: File) => void
@@ -116,11 +117,7 @@ export function LocalRecordingsList({ onFileSelected }: LocalRecordingsListProps
     }
   }
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+  
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)

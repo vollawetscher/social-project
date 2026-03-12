@@ -14,6 +14,33 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.19.0',
+    date: 'March 12, 2026',
+    entries: [
+      {
+        version: '1.19.0',
+        date: 'March 12, 2026',
+        category: 'improvement',
+        title: 'Smarter Session Labels',
+        description: 'Sessions now show accurate origin badges: "Call", "Notissima Rec", "Uploaded audio", or "Pasted" — no more everything showing as "Upload". Badges are based on how the session was created, not guessed from AI analysis.',
+      },
+      {
+        version: '1.19.0',
+        date: 'March 12, 2026',
+        category: 'fix',
+        title: 'Accurate Duration for Audio Uploads',
+        description: 'Fixed an issue where audio files that couldn\'t be read by the browser would silently count as 1-second recordings, making durations and combine suggestions wrong. Now shows "—" when duration is genuinely unknown.',
+      },
+      {
+        version: '1.19.0',
+        date: 'March 12, 2026',
+        category: 'improvement',
+        title: 'Word Count for Pasted Transcripts',
+        description: 'Pasted or imported text sessions now show word count (e.g. "1,240 words") instead of file size in bytes, which gives you a more meaningful sense of how much content is there.',
+      },
+    ],
+  },
+  {
     version: '1.18.0',
     date: 'March 11, 2026',
     entries: [

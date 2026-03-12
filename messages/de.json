@@ -135,8 +135,9 @@
     "sharedSession": "Geteilt",
     "source": {
       "call": "Anruf",
-      "quickRecord": "Schnellaufnahme",
-      "upload": "Upload"
+      "quickRecord": "Notissima Rec",
+      "audioUpload": "Audio-Upload",
+      "textImport": "Eingefügt"
     },
     "status": {
       "recording": "Aufnahme",

@@ -140,7 +140,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
   return {
     id: dbSession.id,
     filename: additionalData?.filename || dbSession.internal_case_id || `Session ${dbSession.id.slice(0, 8)}`,
-    duration: dbSession.duration_sec || 0,
+    duration: dbSession.duration_sec ?? null,
     language: getLanguageDisplay(languageCode),
     languageCode: languageCode === 'auto' ? 'auto'
       : typeof languageCode === 'string' ? languageCode.slice(0, 2).toLowerCase()
@@ -171,6 +171,9 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     consentLogs: (dbSession as any).consent_logs || [],
     uploadSizeBytes: Number((dbSession as any).upload_size_bytes || 0),
     textUploadSizeBytes: Number((dbSession as any).text_upload_size_bytes || 0),
+    inputHint: (dbSession as any).input_hint ?? undefined,
+    hasAudioFile: Boolean((dbSession as any).has_audio_file),
+    wordCount: (dbSession as any).word_count ?? null,
   }
 }
 

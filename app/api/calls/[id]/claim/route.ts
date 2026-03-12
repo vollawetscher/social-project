@@ -97,7 +97,7 @@ export async function POST(
         user_id: user.id,
         internal_case_id: callName,
         status: calleeStatus,
-        duration_sec: callerSession.duration_sec || 0,
+        duration_sec: callerSession.duration_sec,
         language: callerSession.language || 'de',
         is_callee_pending: !transcriptDone,
       })

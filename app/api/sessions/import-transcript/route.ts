@@ -107,9 +107,15 @@ export async function POST(request: Request) {
     })
     const name = sessionName?.trim() || `Transcript ${timestamp}`
 
-    // Compute duration from last segment
+    // Compute duration from last segment's timestamp (0 for plain text without timestamps)
     const lastSeg = segments[segments.length - 1]
     const durationSec = lastSeg ? Math.ceil((lastSeg.end_ms || 0) / 1000) : 0
+
+    // Word count for text-only sessions (meaningful when duration is 0)
+    const rawTextForCount = incomingRawText || segments.map((s: ParsedSegment) => s.text).join(' ')
+    const wordCount = rawTextForCount
+      ? rawTextForCount.split(/\s+/).filter((w: string) => w.length > 0).length
+      : null
 
     // Create session (no audio)
     const { data: session, error: sessionError } = await supabase
@@ -119,7 +125,8 @@ export async function POST(request: Request) {
         internal_case_id: name,
         status: 'done',
         language: langCode,
-        duration_sec: durationSec,
+        duration_sec: durationSec || null,
+        word_count: wordCount,
       })
       .select()
       .single()

@@ -10,6 +10,7 @@ import { Mic, Upload, Trash2, Play, Pause, Clock, HardDrive, LogIn, ArrowLeft, D
 import { toast } from 'sonner'
 import { AudioRecorder } from '@/components/audio/AudioRecorder'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
+import { formatDuration } from '@/lib/utils/date-formatters'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 
@@ -157,11 +158,7 @@ export default function QuickRecordPage() {
     }
   }
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+  
 
   const formatSize = (bytes: number) => {
     return (bytes / 1024 / 1024).toFixed(1) + ' MB'

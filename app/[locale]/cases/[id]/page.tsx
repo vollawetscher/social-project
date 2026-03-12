@@ -12,6 +12,7 @@ import { EditableTitle } from '@/components/ui/editable-title'
 import { toast } from 'sonner'
 import { Case, Session, CaseStatus } from '@/lib/types/database'
 import { Loader2, ArrowLeft, Plus, FolderOpen, Calendar, Clock, Settings, FileText, Mic, Sparkles } from 'lucide-react'
+import { formatDuration } from '@/lib/utils/date-formatters'
 import {
   Dialog,
   DialogContent,
@@ -176,11 +177,7 @@ export default function CaseDetailPage() {
     })
   }
 
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+  
 
   if (loading || !caseData) {
     return (

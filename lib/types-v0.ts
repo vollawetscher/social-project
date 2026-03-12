@@ -86,7 +86,7 @@ export interface TranscriptCorrections {
 export interface Session {
   id: string
   filename: string
-  duration: number
+  duration: number | null
   language: string
   languageCode?: string  // ISO code (en, de, etc) for API calls
   createdAt: string
@@ -114,6 +114,9 @@ export interface Session {
   consentLogs?: Array<{ participant_name: string; participant_identity: string; granted: boolean; created_at: string }>
   uploadSizeBytes?: number
   textUploadSizeBytes?: number
+  inputHint?: string // Creation-time hint: phone_call | video_call | quick_record | voice_note | meeting | presentation | trade_show
+  hasAudioFile?: boolean // True when at least one audio/video file is attached
+  wordCount?: number | null // Word count for text-only imports; null for audio sessions
 }
 
 export interface ParticipantInfo {

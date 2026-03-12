@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Upload, Loader2, Clock, Check, AlertCircle, Download, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { localStorageService, LocalRecording } from '@/lib/services/local-storage'
+import { formatDuration } from '@/lib/utils/date-formatters'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { createClient } from '@/lib/supabase/client'
 import { getStorageMimeType } from '@/lib/utils/audio-format-detector'
@@ -104,6 +105,7 @@ export default function UploadRecordingsPage() {
       body: JSON.stringify({
         internal_case_id: sessionName,
         language: language,
+        input_hint: 'quick_record',
       }),
     })
     if (!createRes.ok) {
@@ -253,11 +255,7 @@ export default function UploadRecordingsPage() {
     }
   }
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+  
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)

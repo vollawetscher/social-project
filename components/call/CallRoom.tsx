@@ -40,6 +40,7 @@ import { toast } from "sonner"
 import { CallControls } from "@/components/call/CallControls"
 import type { CallMode, LayoutMode } from "@/lib/types/call"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
+import { formatDuration } from "@/lib/utils/date-formatters"
 
 const RECONNECT_GRACE_MS = 30_000
 
@@ -80,16 +81,6 @@ function getBackgroundImagePath(choice: VideoBackgroundChoice): string | null {
   if (choice === "office") return "/backgrounds/office.svg"
   if (choice === "abstract") return "/backgrounds/abstract.svg"
   return null
-}
-
-function formatDuration(seconds: number): string {
-  const hrs = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
-  if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-  }
-  return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
 /**

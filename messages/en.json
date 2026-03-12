@@ -135,8 +135,9 @@
     "sharedSession": "Shared",
     "source": {
       "call": "Call",
-      "quickRecord": "Quick Record",
-      "upload": "Upload"
+      "quickRecord": "Notissima Rec",
+      "audioUpload": "Uploaded audio",
+      "textImport": "Pasted"
     },
     "status": {
       "recording": "Recording",

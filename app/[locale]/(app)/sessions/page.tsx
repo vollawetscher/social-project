@@ -61,6 +61,7 @@ import { PastePreviewSheet } from "@/components/upload/PastePreviewSheet"
 import { getStorageMimeType } from "@/lib/utils/audio-format-detector"
 import { uploadToStorage } from "@/lib/utils/resumable-upload"
 import { parseTranscriptFile, cleanPastedContent } from "@/lib/utils/transcript-parser"
+import { formatDuration } from "@/lib/utils/date-formatters"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
@@ -69,7 +70,7 @@ type CombineSuggestion = {
   sessionIds: string[]
   baseName: string
   count: number
-  totalDuration: number
+  totalDuration: number | null
   sessionNames: string[]
   signature: string
 }
@@ -90,16 +91,6 @@ function isProcessing(session: Session): boolean {
   return session.status === 'recording' || session.status === 'uploading' || session.status === 'transcribing'
 }
 
-function formatDuration(seconds: number): string {
-  const hrs = Math.floor(seconds / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
-  const secs = seconds % 60
-  if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-  }
-  return `${mins}:${secs.toString().padStart(2, "0")}`
-}
-
 function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
   if (bytes < 1024) return `${bytes} B`
@@ -117,22 +108,24 @@ function formatDate(dateString: string): string {
   })
 }
 
-type SessionOriginKind = "call" | "quick_record" | "upload"
+type SessionOriginKind = "call" | "quick_record" | "audio_upload" | "text_import"
 
 function getSessionOriginKind(session: Session): SessionOriginKind {
-  if (
-    session.isFromCall ||
-    session.recordingType === 'call_inbound' ||
-    session.recordingType === 'call_outbound' ||
-    session.recordingType === 'sales_call' ||
-    (session.recordingType as string) === 'phone_call'
-  ) {
-    return "call"
-  }
-  if (session.recordingType === 'dictation') {
-    return "quick_record"
-  }
-  return "upload"
+  if (session.isFromCall) return "call"
+
+  const hint = session.inputHint
+  if (hint === 'phone_call' || hint === 'video_call') return "call"
+  if (hint === 'quick_record' || hint === 'voice_note') return "quick_record"
+  if (hint === 'meeting' || hint === 'presentation' || hint === 'trade_show') return "audio_upload"
+
+  // Fallback for sessions without input_hint (AI-detected recording type)
+  if (session.recordingType === 'call_inbound' || session.recordingType === 'call_outbound'
+      || session.recordingType === 'sales_call') return "call"
+  if (session.recordingType === 'dictation') return "quick_record"
+
+  // Last resort: inspect whether any audio/video file is attached
+  if (session.hasAudioFile) return "audio_upload"
+  return "text_import"
 }
 
 function getSessionTopicSnippet(session: Session): string {
@@ -153,19 +146,21 @@ function truncateSummary(text: string, maxLength = 58): string {
 
 function getOriginSummary(session: Session, t: (key: string) => string): string {
   const origin = getSessionOriginKind(session)
-  const sourceLabel =
-    origin === "call"
-      ? t('source.call')
-      : origin === "quick_record"
-        ? t('source.quickRecord')
-        : t('source.upload')
-  return `${sourceLabel}: ${truncateSummary(getSessionTopicSnippet(session))}`
+  return `${getOriginBadgeLabel(origin, t)}: ${truncateSummary(getSessionTopicSnippet(session))}`
+}
+
+function getOriginBadgeLabel(origin: SessionOriginKind, t: (key: string) => string): string {
+  if (origin === "call") return t('source.call')
+  if (origin === "quick_record") return t('source.quickRecord')
+  if (origin === "audio_upload") return t('source.audioUpload')
+  return t('source.textImport')
 }
 
 function getOriginBadgeClass(origin: SessionOriginKind): string {
   if (origin === "call") return "bg-primary/10 text-primary border-primary/30"
   if (origin === "quick_record") return "bg-success/10 text-success border-success/30"
-  return "bg-warning/10 text-warning border-warning/30"
+  if (origin === "audio_upload") return "bg-warning/10 text-warning border-warning/30"
+  return "bg-muted text-muted-foreground border-border"
 }
 
 // Inline editable session name component
@@ -814,6 +809,7 @@ export default function SessionsPage() {
 
     try {
       let totalDuration = 0
+      let anyDurationRead = false
       let firstPublicUrl = ''
 
       for (let i = 0; i < files.length; i++) {
@@ -842,12 +838,11 @@ export default function SessionsPage() {
 
         if (i === 0) firstPublicUrl = publicUrl
 
-        let audioDuration = await getAudioDuration(file)
-        if (!Number.isFinite(audioDuration) || audioDuration <= 0) {
-          // Fallback for phone MP4: HTML5 audio often fails with fragmented/HLS-style files
-          audioDuration = 1
+        const audioDuration = await getAudioDuration(file)
+        if (audioDuration !== null) {
+          totalDuration += audioDuration
+          anyDurationRead = true
         }
-        totalDuration += audioDuration
 
         const { error: fileError } = await supabase
           .from('files')
@@ -872,7 +867,7 @@ export default function SessionsPage() {
         .from('sessions')
         .update({
           audio_url: firstPublicUrl,
-          duration_sec: totalDuration,
+          duration_sec: anyDurationRead ? totalDuration : null,
           ...(recordedAt && { recorded_at: recordedAt }),
         })
         .eq('id', session.id)
@@ -1020,20 +1015,27 @@ export default function SessionsPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Helper to get audio duration
-  const getAudioDuration = (file: File): Promise<number> => {
-    return new Promise((resolve) => {
-      const audio = document.createElement('audio')
-      audio.preload = 'metadata'
-      audio.onloadedmetadata = () => {
-        URL.revokeObjectURL(audio.src)
-        resolve(Math.floor(audio.duration))
-      }
-      audio.onerror = () => {
-        resolve(0) // Default to 0 if can't read
-      }
-      audio.src = URL.createObjectURL(file)
-    })
+  // Helper to get audio duration. Tries <audio> first, falls back to <video> for
+  // fragmented/HLS-style MP4s that fail on the audio element.
+  const getAudioDuration = (file: File): Promise<number | null> => {
+    const tryElement = (tag: 'audio' | 'video'): Promise<number | null> =>
+      new Promise((resolve) => {
+        const el = document.createElement(tag)
+        el.preload = 'metadata'
+        const objectUrl = URL.createObjectURL(file)
+        el.onloadedmetadata = () => {
+          URL.revokeObjectURL(objectUrl)
+          const d = Math.floor(el.duration)
+          resolve(Number.isFinite(d) && d > 0 ? d : null)
+        }
+        el.onerror = () => {
+          URL.revokeObjectURL(objectUrl)
+          resolve(null)
+        }
+        el.src = objectUrl
+      })
+
+    return tryElement('audio').then((d) => (d !== null ? d : tryElement('video')))
   }
 
   const visibleSessions = useMemo(
@@ -1134,7 +1136,9 @@ export default function SessionsPage() {
       sessionIds: pair.map((s) => s.id),
       baseName: pair[0].filename,
       count: pair.length,
-      totalDuration: pair.reduce((acc, s) => acc + (s.duration || 0), 0),
+      totalDuration: pair.every(s => s.duration != null)
+        ? pair.reduce((acc, s) => acc + s.duration!, 0)
+        : null,
       sessionNames: pair.map((s) => s.filename),
       signature: pair.map((s) => s.id).join('|'),
     }
@@ -1452,7 +1456,7 @@ export default function SessionsPage() {
                 {t('combineSuggested.title', { count: visibleCombineSuggestion.count })}
               </p>
               <p className="text-xs text-muted-foreground">
-                {t('combineSuggested.subtitle', { duration: formatDuration(visibleCombineSuggestion.totalDuration) })}
+                {t('combineSuggested.subtitle', { duration: visibleCombineSuggestion.totalDuration != null ? formatDuration(visibleCombineSuggestion.totalDuration) : '—' })}
               </p>
               <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {visibleCombineSuggestion.sessionNames.join(' + ')}
@@ -1538,8 +1542,7 @@ export default function SessionsPage() {
               const status = getStatusDisplay(session)
               const origin = getSessionOriginKind(session)
               const originSummary = getOriginSummary(session, t)
-              const uploadSizeBytes = (session.textUploadSizeBytes ?? 0) || (session.uploadSizeBytes ?? 0)
-              const showUploadSize = origin === "upload" && uploadSizeBytes > 0
+              const showWordCount = !session.duration
               return (
                 <div
                   key={session.id}
@@ -1574,13 +1577,13 @@ export default function SessionsPage() {
                       </p>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", getOriginBadgeClass(origin))}>
-                          {origin === "call" ? t('source.call') : origin === "quick_record" ? t('source.quickRecord') : t('source.upload')}
+                          {getOriginBadgeLabel(origin, t)}
                         </Badge>
                         <span className="flex items-center gap-1">
-                          {showUploadSize ? (
+                          {showWordCount ? (
                             <>
                               <FileText className="h-3 w-3" />
-                              {formatFileSize(uploadSizeBytes)}
+                              {session.wordCount ? `${session.wordCount.toLocaleString()} words` : '—'}
                             </>
                           ) : (
                             <>
@@ -1704,8 +1707,7 @@ export default function SessionsPage() {
                   const status = getStatusDisplay(session)
                   const origin = getSessionOriginKind(session)
                   const originSummary = getOriginSummary(session, t)
-                  const uploadSizeBytes = (session.textUploadSizeBytes ?? 0) || (session.uploadSizeBytes ?? 0)
-                  const showUploadSize = origin === "upload" && uploadSizeBytes > 0
+                  const showWordCount = !session.duration
                   return (
                     <TableRow 
                       key={session.id} 
@@ -1741,7 +1743,7 @@ export default function SessionsPage() {
                           </p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", getOriginBadgeClass(origin))}>
-                              {origin === "call" ? t('source.call') : origin === "quick_record" ? t('source.quickRecord') : t('source.upload')}
+                              {getOriginBadgeLabel(origin, t)}
                             </Badge>
                             {session.isFromCall && (
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
@@ -1777,10 +1779,10 @@ export default function SessionsPage() {
                       )}
                       <TableCell>
                         <div className="flex items-center gap-1.5 text-muted-foreground">
-                          {showUploadSize ? (
+                          {showWordCount ? (
                             <>
                               <FileText className="h-3.5 w-3.5" />
-                              <span className="text-sm">{formatFileSize(uploadSizeBytes)}</span>
+                              <span className="text-sm">{session.wordCount ? `${session.wordCount.toLocaleString()} words` : '—'}</span>
                             </>
                           ) : (
                             <>

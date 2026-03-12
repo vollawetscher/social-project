@@ -24,21 +24,12 @@ export interface FileWithMeta {
   groupId: string | null // same id = same group/session
 }
 
+import { formatDuration } from '@/lib/utils/date-formatters'
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  if (mins >= 60) {
-    const hrs = Math.floor(mins / 60)
-    const m = mins % 60
-    return `${hrs}:${m.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-  return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
 function getAudioDuration(file: File): Promise<number> {

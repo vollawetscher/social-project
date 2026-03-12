@@ -129,12 +129,18 @@ export async function GET(request: Request) {
         })
         .reduce((acc: number, f: any) => acc + (Number(f?.size_bytes) || 0), 0)
 
+      const hasAudioFile = files.some((f: any) => {
+        const mime = String(f?.mime_type || '').toLowerCase()
+        return mime.startsWith('audio/') || mime.startsWith('video/')
+      })
+
       const { outputs, files: _files, ...rest } = session
       const out = {
         ...rest,
         output_count: outputCount,
         upload_size_bytes: totalSizeBytes,
         text_upload_size_bytes: textUploadSizeBytes,
+        has_audio_file: hasAudioFile,
       }
       if (adminView && session.user_id && ownerEmails[session.user_id]) {
         (out as any).owner_email = ownerEmails[session.user_id]
@@ -162,7 +168,7 @@ export async function POST(request: Request) {
     const user = await requireAuth()
     const supabase = await createClient()
     const body = await request.json()
-    const { context_note = '', internal_case_id = '', case_id = null, language } = body
+    const { context_note = '', internal_case_id = '', case_id = null, language, input_hint } = body
 
     const { data: session, error } = await supabase
       .from('sessions')
@@ -173,6 +179,7 @@ export async function POST(request: Request) {
         internal_case_id,
         status: 'created',
         ...(language && { language }),
+        ...(input_hint && { input_hint }),
       })
       .select()
       .single()

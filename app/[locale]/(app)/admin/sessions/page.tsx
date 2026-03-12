@@ -53,17 +53,12 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   error:        { label: "Error",        className: "bg-destructive/20 text-destructive border-destructive/30" },
 }
 
+import { formatDuration } from "@/lib/utils/date-formatters"
+
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   })
-}
-
-function formatDuration(sec: number | null) {
-  if (!sec) return null
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
 export default function AdminSessionsPage() {
