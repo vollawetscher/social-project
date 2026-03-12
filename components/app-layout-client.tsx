@@ -6,7 +6,6 @@ import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppTopbar } from "@/components/app-topbar"
 import { MobileNav } from "@/components/mobile-nav"
-import { TrialBanner } from "@/components/trial/TrialBanner"
 import { BugReporter } from "@/components/error/BugReporter"
 import { cn } from "@/lib/utils"
 
@@ -35,7 +34,6 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className="p-4 md:p-6 flex-1 min-h-0 flex flex-col gap-4">
-          <TrialBanner />
           {children}
         </div>
       </main>
