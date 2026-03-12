@@ -75,6 +75,12 @@ export async function POST(request: Request) {
       )
     }
 
+    const ownerEmail = user.email || null
+    const metadataWithOwner = {
+      ...(body.metadata || {}),
+      owner_email: ownerEmail,
+    }
+
     // Create error context
     const errorContext: ErrorContext = {
       caseId: body.caseId || null,
@@ -88,7 +94,7 @@ export async function POST(request: Request) {
       endpoint: body.metadata?.pathname || new URL(request.url).pathname,
       method: request.method,
       userAgent: request.headers.get('user-agent') || undefined,
-      metadata: body.metadata || {},
+      metadata: metadataWithOwner,
       userDescription: body.userDescription,
       reproductionSteps: body.reproductionSteps,
     }
@@ -210,7 +216,11 @@ export async function GET(request: Request) {
 
         errorsWithOwnerEmail = data.map((row) => ({
           ...row,
-          owner_email: row.user_id ? emailByUserId.get(row.user_id) || null : null,
+          owner_email:
+            (row.user_id ? emailByUserId.get(row.user_id) || null : null) ||
+            (row.metadata && typeof row.metadata === 'object'
+              ? (row.metadata as Record<string, unknown>).owner_email as string | null
+              : null),
         }))
       }
     }

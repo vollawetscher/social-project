@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { recordEmailInviteUsage } from '@/lib/services/usage-tracker'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
+import { logError } from '@/lib/services/error-logger'
 
 export async function POST(
   request: Request,
@@ -54,6 +55,21 @@ export async function POST(
     })
 
     if (!response.success) {
+      await logError({
+        errorType: 'api_error',
+        severity: 'error',
+        message: `Invite email send failed for scheduled call ${call.id}`,
+        userId: user.id,
+        endpoint: '/api/calls/[id]/invite-email',
+        method: 'POST',
+        metadata: {
+          callId: call.id,
+          recipientEmail,
+          provider: 'communication-hub',
+          providerError: response.error || 'send_failed',
+        },
+      }).catch(() => {})
+
       recordEmailInviteUsage(supabase, user.id, {
         callId: call.id,
         recipientEmail,
@@ -73,6 +89,20 @@ export async function POST(
 
     return NextResponse.json({ ok: true, providerMessageId: response.providerMessageId || null })
   } catch (error) {
+    await logError({
+      errorType: 'server_error',
+      severity: 'error',
+      message: 'Unhandled error in scheduled invite email route',
+      error,
+      endpoint: '/api/calls/[id]/invite-email',
+      method: 'POST',
+      metadata: {
+        callId,
+        recipientEmail,
+        provider: 'communication-hub',
+      },
+    }).catch(() => {})
+
     try {
       const supabase = await createClient()
       const { data } = await supabase.auth.getUser()

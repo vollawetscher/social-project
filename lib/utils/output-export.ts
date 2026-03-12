@@ -1,5 +1,5 @@
 /**
- * Export output content to MD, PDF, or DOCX with proper markdown conversion
+ * Export output content to MD, PDF, DOCX, or Google Docs-compatible DOCX.
  */
 
 import { fromMarkdown } from 'mdast-util-from-markdown'
@@ -215,7 +215,7 @@ function inlinesToDocxRuns(inlines: Inline[], size = 22): TextRun[] {
 export async function exportOutput(
   content: string,
   filename: string,
-  format: 'md' | 'pdf' | 'docx'
+  format: 'md' | 'pdf' | 'docx' | 'gdoc'
 ): Promise<void> {
   const baseName = filename.replace(/\s+/g, '-').toLowerCase().replace(/\.[^.]+$/, '')
 
@@ -370,7 +370,7 @@ export async function exportOutput(
     pdf.save(`${baseName}.pdf`)
   }
 
-  if (format === 'docx') {
+  if (format === 'docx' || format === 'gdoc') {
     const docChildren: Paragraph[] = []
     const headingSizes: Record<number, number> = { 1: 32, 2: 28, 3: 26, 4: 24, 5: 23, 6: 22 } // half-points
     const line120 = { line: 288, lineRule: LineRuleType.AUTO } // 1.2 line spacing
@@ -489,6 +489,7 @@ export async function exportOutput(
     })
 
     const blob = await Packer.toBlob(doc)
+    // Google Docs imports DOCX reliably; expose a dedicated option in UI.
     downloadBlob(blob, `${baseName}.docx`)
   }
 }

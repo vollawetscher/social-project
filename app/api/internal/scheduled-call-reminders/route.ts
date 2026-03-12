@@ -3,6 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
 import { sendInitiatorReminderSMS } from '@/lib/services/sms'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
+import { logError } from '@/lib/services/error-logger'
 
 function resolveBaseUrl(): string {
   return (
@@ -145,6 +146,21 @@ export async function POST(request: Request) {
         })
 
         if (!email.success) {
+          await logError({
+            errorType: 'api_error',
+            severity: 'warning',
+            message: `Guest reminder email failed for scheduled call ${call.id}`,
+            userId: call.user_id || undefined,
+            endpoint: '/api/internal/scheduled-call-reminders',
+            method: 'POST',
+            metadata: {
+              callId: call.id,
+              guestEmail,
+              provider: 'communication-hub',
+              providerError: email.error || 'email_failed',
+            },
+          }).catch(() => {})
+
           failed += 1
           failures.push({ callId: call.id, channel: 'email', reason: email.error || 'email_failed' })
         } else {

@@ -170,6 +170,7 @@ export default function CallsPage() {
   const [savingContact, setSavingContact] = useState(false)
   const [importingContacts, setImportingContacts] = useState(false)
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null)
+  const [deletingScheduledCallId, setDeletingScheduledCallId] = useState<string | null>(null)
   const [incomingInvite, setIncomingInvite] = useState<Call | null>(null)
   const [realtimeDegraded, setRealtimeDegraded] = useState(false)
   const missedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -450,6 +451,26 @@ export default function CallsPage() {
     } catch (err: any) {
       if (err?.name === 'AbortError') return
       toast.error(err?.message || t('copyInviteFailed'))
+    }
+  }
+
+  async function handleDeleteScheduledCall(call: Call) {
+    if (deletingScheduledCallId) return
+    if (!window.confirm(t('deleteScheduledConfirm'))) return
+
+    setDeletingScheduledCallId(call.id)
+    try {
+      const res = await fetch(`/api/calls/${call.id}`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || t('deleteScheduledFailed'))
+      }
+      toast.success(t('deleteScheduledSuccess'))
+      await fetchCalls()
+    } catch (err: any) {
+      toast.error(err?.message || t('deleteScheduledFailed'))
+    } finally {
+      setDeletingScheduledCallId(null)
     }
   }
 
@@ -769,6 +790,15 @@ export default function CallsPage() {
                     <p className="text-xs text-muted-foreground">{call.scheduled_for ? formatScheduledLocal(call.scheduled_for) : "-"}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 sm:flex-none text-destructive hover:text-destructive"
+                      disabled={deletingScheduledCallId === call.id}
+                      onClick={() => handleDeleteScheduledCall(call)}
+                    >
+                      {deletingScheduledCallId === call.id ? t('sending') : t('deleteScheduled')}
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"

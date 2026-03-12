@@ -69,6 +69,32 @@ export async function POST(request: Request) {
       }
     }
 
+    // Fetch call/file timing context so reports can include concrete date/time.
+    const [{ data: callRows }, { data: fileRows }] = await Promise.all([
+      supabase
+        .from('calls')
+        .select('id, contact_name, call_type, call_mode, scheduled_for, started_at, ended_at, created_at')
+        .or(`session_id.eq.${sessionId},callee_session_id.eq.${sessionId}`)
+        .order('created_at', { ascending: false })
+        .limit(1),
+      supabase
+        .from('files')
+        .select('created_at, original_filename, file_purpose, mime_type')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+        .limit(1),
+    ])
+
+    const callContext = callRows?.[0]
+    const fileContext = fileRows?.[0]
+    const eventStartIso =
+      callContext?.started_at ||
+      callContext?.scheduled_for ||
+      fileContext?.created_at ||
+      (session as any).created_at ||
+      null
+    const eventEndIso = callContext?.ended_at || null
+
     // Fetch transcripts (multiple rows if session has multiple audio files)
     const { data: transcriptRows, error: transcriptError } = await supabase
       .from('transcripts')
@@ -160,15 +186,80 @@ export async function POST(request: Request) {
       technical: 'technical and detailed',
     }
 
-    const resolveOutputLanguageCode = (requested: string | undefined, sessionLang: string | undefined): string => {
-      const req = (requested || '').toLowerCase()
-      if (req && req !== 'session' && req !== 'auto') return req.slice(0, 2)
-      const detected = (sessionLang || '').toLowerCase()
-      if (detected && detected !== 'auto') return detected.slice(0, 2)
-      return 'de'
+    const normalizeLanguageCode = (value?: string | null): string | null => {
+      const raw = String(value || '').trim().toLowerCase()
+      if (!raw || raw === 'auto' || raw === 'session') return null
+
+      const aliases: Record<string, string> = {
+        en: 'en',
+        english: 'en',
+        de: 'de',
+        german: 'de',
+        deutsch: 'de',
+        es: 'es',
+        spanish: 'es',
+        espanol: 'es',
+        'español': 'es',
+        fr: 'fr',
+        french: 'fr',
+        it: 'it',
+        italian: 'it',
+        pt: 'pt',
+        portuguese: 'pt',
+        nl: 'nl',
+        dutch: 'nl',
+        pl: 'pl',
+        polish: 'pl',
+        th: 'th',
+        thai: 'th',
+        ja: 'ja',
+        japanese: 'ja',
+        ko: 'ko',
+        korean: 'ko',
+        zh: 'zh',
+        chinese: 'zh',
+        ar: 'ar',
+        arabic: 'ar',
+        ru: 'ru',
+        russian: 'ru',
+        tr: 'tr',
+        turkish: 'tr',
+        vi: 'vi',
+        vietnamese: 'vi',
+        hi: 'hi',
+        hindi: 'hi',
+      }
+
+      if (aliases[raw]) return aliases[raw]
+
+      // Handle locale variants like de-DE, en_US, pt-BR.
+      const localePrefix = raw.split(/[-_]/)[0]
+      if (aliases[localePrefix]) return aliases[localePrefix]
+
+      return null
     }
 
-    const resolvedLanguageCode = resolveOutputLanguageCode(config.language, (session as any).language)
+    const resolveOutputLanguageCode = (
+      requested: string | undefined,
+      sessionLang: string | undefined,
+      preferredReportLanguage: string | undefined
+    ): string => {
+      const requestedRaw = String(requested || '').trim().toLowerCase()
+      if (requestedRaw && requestedRaw !== 'session' && requestedRaw !== 'auto') {
+        return normalizeLanguageCode(requested) || 'de'
+      }
+      return (
+        normalizeLanguageCode(preferredReportLanguage) ||
+        normalizeLanguageCode(sessionLang) ||
+        'de'
+      )
+    }
+
+    const resolvedLanguageCode = resolveOutputLanguageCode(
+      config.language,
+      (session as any).language,
+      (session as any).preferred_report_language
+    )
 
     const languageMap: Record<string, string> = {
       en: 'English',
@@ -207,6 +298,7 @@ Key requirements:
 - Audience: The output is intended for ${audienceMap[config.audience || 'internal'] || 'internal use'}
 - Tone: Use a ${toneMap[config.tone] || 'professional'} tone
 - Language: Generate the ENTIRE output in ${outputLanguage}, including all section headers, titles, labels, and body text. Do NOT leave any headers or structural elements in another language.
+- Include a clear "Date/Time" line near the top of the output using the provided session context values exactly as given.
 - Do NOT use any emojis or emoticons anywhere in the output.
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
@@ -241,7 +333,23 @@ ${config.dontInstructions}`
       return NextResponse.json({ error: 'No transcript content available' }, { status: 400 })
     }
 
-    const userPrompt = `Conversation transcript:
+    const sessionContextLines = [
+      eventStartIso ? `- Session start datetime (ISO): ${eventStartIso}` : null,
+      eventEndIso ? `- Session end datetime (ISO): ${eventEndIso}` : null,
+      typeof (session as any).duration_sec === 'number' && (session as any).duration_sec > 0
+        ? `- Session duration (seconds): ${(session as any).duration_sec}`
+        : null,
+      callContext?.call_type ? `- Call type: ${callContext.call_type}` : null,
+      callContext?.call_mode ? `- Call mode: ${callContext.call_mode}` : null,
+      callContext?.contact_name ? `- Contact name: ${callContext.contact_name}` : null,
+      fileContext?.original_filename ? `- Source filename: ${fileContext.original_filename}` : null,
+      fileContext?.file_purpose ? `- Source file purpose: ${fileContext.file_purpose}` : null,
+    ].filter(Boolean).join('\n')
+
+    const userPrompt = `Session context:
+${sessionContextLines || '- Date/time context not available'}
+
+Conversation transcript:
 
 ${transcriptText}${speakersText}
 
