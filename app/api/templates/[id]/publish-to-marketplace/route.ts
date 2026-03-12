@@ -68,7 +68,7 @@ export async function POST(
     audiences: template.allowed_audience || [],
     tone: 'neutral' as const,
     output_format: 'markdown' as const,
-    languages: ['en', 'de'] as string[],
+    languages: language ? [language] : ['en'],
     domains: template.domain_tags || [],
     generation_prompt: generationPrompt,
     do_include: template.default_do_instructions || '',

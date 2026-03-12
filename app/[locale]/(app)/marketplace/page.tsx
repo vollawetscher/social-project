@@ -84,7 +84,9 @@ export default function MarketplacePage() {
     }
 
     if (languageFilter) {
-      query = query.eq('language', languageFilter)
+      query = query.or(
+        `language.eq.${languageFilter},and(language.is.null,template_config->languages.cs.["${languageFilter}"])`
+      )
     }
 
     if (searchQuery.trim()) {
