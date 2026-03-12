@@ -241,7 +241,7 @@ export default function MarketplacePage() {
                     className={`cursor-pointer ${selectedCategory !== cat.id ? (categoryColors[cat.slug] ?? '') : ''}`}
                     onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
                   >
-                    {t(`categories.${cat.slug}` as any) || cat.name}
+                    {t.has(`categories.${cat.slug}` as any) ? t(`categories.${cat.slug}` as any) : cat.name}
                   </Badge>
                 ))}
               </div>

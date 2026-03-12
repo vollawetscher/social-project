@@ -176,7 +176,7 @@ export function ShareToMarketplaceDialog({
               <SelectContent>
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
-                    {cat.icon} {t(`categories.${cat.slug}` as any) || cat.name}
+                    {cat.icon} {t.has(`categories.${cat.slug}` as any) ? t(`categories.${cat.slug}` as any) : cat.name}
                   </SelectItem>
                 ))}
               </SelectContent>
