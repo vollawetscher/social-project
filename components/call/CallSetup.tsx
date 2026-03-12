@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
+type VideoBackgroundChoice = "none" | "blur" | "office" | "abstract"
+const VIDEO_BACKGROUND_STORAGE_KEY = "notissima.video_background"
+
 interface CallSetupProps {
   mode: "audio" | "video"
   isAuthenticated: boolean
@@ -38,12 +41,26 @@ export function CallSetup({
   const [selectedAudioInput, setSelectedAudioInput] = useState<string>("")
   const [selectedVideoInput, setSelectedVideoInput] = useState<string>("")
   const [micLevel, setMicLevel] = useState(0)
+  const [videoBackground, setVideoBackground] = useState<VideoBackgroundChoice>(() => {
+    try {
+      const saved = window.localStorage.getItem(VIDEO_BACKGROUND_STORAGE_KEY)
+      if (saved === "blur" || saved === "office" || saved === "abstract") return saved
+    } catch {}
+    return "none"
+  })
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const levelRafRef = useRef<number | null>(null)
 
   const displayName = isAuthenticated ? (userName || "User") : guestName
+
+  // Attach the media stream to the video element after it renders
+  useEffect(() => {
+    if (isCameraReady && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current
+    }
+  }, [isCameraReady])
 
   useEffect(() => {
     checkPermissions()
@@ -73,9 +90,7 @@ export function CallSetup({
       setIsMicReady(true)
       if (mode === "video") {
         setIsCameraReady(true)
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-        }
+        // srcObject is set via useEffect once the video element renders
       }
 
       const devices = await navigator.mediaDevices.enumerateDevices()
@@ -152,12 +167,26 @@ export function CallSetup({
         <div className="flex justify-center">
           {mode === "video" && isCameraReady ? (
             <div className="w-48 h-36 rounded-xl bg-[#1a1a1a] overflow-hidden relative">
+              {(videoBackground === "office" || videoBackground === "abstract") && (
+                <img
+                  src={`/backgrounds/${videoBackground}.svg`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  alt=""
+                />
+              )}
               <video
                 ref={videoRef}
                 autoPlay
                 muted
                 playsInline
-                className="w-full h-full object-cover mirror"
+                className="absolute inset-0 w-full h-full object-cover"
+                style={
+                  videoBackground === "blur"
+                    ? { filter: "blur(8px)", transform: "scale(1.1) scaleX(-1)" }
+                    : videoBackground !== "none"
+                    ? { opacity: 0.35, transform: "scaleX(-1)" }
+                    : { transform: "scaleX(-1)" }
+                }
               />
             </div>
           ) : (
@@ -213,24 +242,44 @@ export function CallSetup({
           </div>
 
           {mode === "video" && (
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">{t('camera')}</label>
-              <select
-                value={selectedVideoInput}
-                onChange={(e) => {
-                  const next = e.target.value
-                  setSelectedVideoInput(next)
-                  checkPermissions(selectedAudioInput, next)
-                }}
-                className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
-              >
-                {videoInputs.map((cam, idx) => (
-                  <option key={cam.deviceId || `cam-${idx}`} value={cam.deviceId}>
-                    {cam.label || `${t('camera')} ${idx + 1}`}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t('camera')}</label>
+                <select
+                  value={selectedVideoInput}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    setSelectedVideoInput(next)
+                    checkPermissions(selectedAudioInput, next)
+                  }}
+                  className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
+                >
+                  {videoInputs.map((cam, idx) => (
+                    <option key={cam.deviceId || `cam-${idx}`} value={cam.deviceId}>
+                      {cam.label || `${t('camera')} ${idx + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">{t('background')}</label>
+                <select
+                  value={videoBackground}
+                  onChange={(e) => {
+                    const next = e.target.value as VideoBackgroundChoice
+                    setVideoBackground(next)
+                    try { window.localStorage.setItem(VIDEO_BACKGROUND_STORAGE_KEY, next) } catch {}
+                  }}
+                  className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
+                >
+                  <option value="none">{t('backgroundNone')}</option>
+                  <option value="blur">{t('backgroundBlur')}</option>
+                  <option value="office">{t('backgroundOffice')}</option>
+                  <option value="abstract">{t('backgroundAbstract')}</option>
+                </select>
+              </div>
+            </>
           )}
         </div>
 

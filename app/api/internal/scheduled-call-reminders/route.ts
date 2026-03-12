@@ -137,18 +137,32 @@ export async function POST(request: Request) {
       const locale = inferLocaleFromPhone(call.user_id ? (phoneByUserId.get(call.user_id) ?? '') : '')
       const startsAt = toDisplayTime(startsAtIso, locale, initiatorTimezone)
 
-      const subject = call.contact_name?.trim()
-        ? `Erinnerung: ${call.contact_name} beginnt bald`
-        : 'Erinnerung: Ihr Notissima Video Call beginnt bald'
+      const callTitle = call.contact_name?.trim() || null
+      const subject = callTitle
+        ? `Ihr Video Call "${callTitle}" beginnt in Kürze`
+        : 'Ihr Video Call beginnt in Kürze'
       const body = [
-        `<p>Ihr Notissima Video Call beginnt bald.</p>`,
+        `<p>Hallo,</p>`,
+        `<p>Ihr Notissima Video Call beginnt in Kürze.</p>`,
         `<p><strong>Wann:</strong> ${startsAt}</p>`,
-        call.contact_name?.trim() ? `<p><strong>Titel:</strong> ${call.contact_name}</p>` : '',
-        `<p><a href="${joinUrl}" style="display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">Jetzt beitreten</a></p>`,
-        `<p style="color:#6b7280;font-size:12px;">Oder kopieren Sie diesen Link: ${joinUrl}</p>`,
-      ].join('\n')
+        callTitle ? `<p><strong>Betreff:</strong> ${callTitle}</p>` : '',
+        `<p><a href="${joinUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Jetzt beitreten</a></p>`,
+        `<p style="color:#6b7280;font-size:12px;">Link: ${joinUrl}</p>`,
+      ].filter(Boolean).join('\n')
+      const textBody = [
+        'Ihr Notissima Video Call beginnt in Kürze.',
+        `Wann: ${startsAt}`,
+        callTitle ? `Betreff: ${callTitle}` : '',
+        `Link: ${joinUrl}`,
+      ].filter(Boolean).join('\n')
 
-      const email = await sendCommunicationHubEmail({ to: guestEmail, subject, body })
+      const email = await sendCommunicationHubEmail({
+        to: guestEmail,
+        subject,
+        body,
+        fromName: 'Notissima',
+        textBody,
+      })
 
       if (!email.success) {
         await logError({

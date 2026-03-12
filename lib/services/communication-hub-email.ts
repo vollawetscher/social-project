@@ -2,6 +2,9 @@ interface SendEmailParams {
   to: string
   subject: string
   body: string
+  fromName?: string
+  replyTo?: string
+  textBody?: string
 }
 
 interface SendEmailResponse {
@@ -35,6 +38,9 @@ export async function sendCommunicationHubEmail(params: SendEmailParams): Promis
         to: params.to,
         subject: params.subject,
         body: params.body,
+        ...(params.fromName && { from_name: params.fromName }),
+        ...(params.replyTo && { reply_to: params.replyTo }),
+        ...(params.textBody && { text_body: params.textBody }),
       }),
     })
 

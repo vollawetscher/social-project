@@ -155,21 +155,28 @@ export async function POST(request: Request) {
           timeZoneName: 'short',
         })
         const organizer = displayName
-        const subject = call.contact_name?.trim()
-          ? `Einladung: ${call.contact_name} – Notissima Video Call`
-          : `Einladung: Notissima Video Call mit ${organizer}`
+        const callTitle = call.contact_name?.trim() || 'Notissima Video Call'
+        const subject = `${organizer} hat Sie zu einem Video Call eingeladen`
         const html = [
-          `<p>Sie wurden zu einem Notissima Video Call eingeladen.</p>`,
+          `<p>Hallo,</p>`,
+          `<p><strong>${organizer}</strong> hat Sie zu einem Video Call eingeladen.</p>`,
           `<p><strong>Wann:</strong> ${startsAt}</p>`,
-          call.contact_name?.trim() ? `<p><strong>Titel:</strong> ${call.contact_name}</p>` : '',
-          `<p><strong>Organisator:</strong> ${organizer}</p>`,
-          `<p><a href="${joinUrl}" style="display:inline-block;padding:10px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">Jetzt beitreten</a></p>`,
-          `<p style="color:#6b7280;font-size:12px;">Oder kopieren Sie diesen Link: ${joinUrl}</p>`,
-        ].join('\n')
+          call.contact_name?.trim() ? `<p><strong>Betreff:</strong> ${callTitle}</p>` : '',
+          `<p><a href="${joinUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Jetzt beitreten</a></p>`,
+          `<p style="color:#6b7280;font-size:12px;">Link: ${joinUrl}</p>`,
+        ].filter(Boolean).join('\n')
+        const textBody = [
+          `${organizer} hat Sie zu einem Video Call eingeladen.`,
+          `Wann: ${startsAt}`,
+          call.contact_name?.trim() ? `Betreff: ${callTitle}` : '',
+          `Link: ${joinUrl}`,
+        ].filter(Boolean).join('\n')
         const email = await sendCommunicationHubEmail({
           to: inviteEmail.trim(),
           subject,
           body: html,
+          fromName: 'Notissima',
+          textBody,
         })
         inviteEmailSent = email.success
         inviteEmailError = email.success ? null : (email.error || 'Failed to send invite email')
