@@ -16,6 +16,14 @@ function resolveOutputLanguageCode(preferredReportLanguage: string | null | unde
   return 'de'
 }
 
+const LANG_NAMES: Record<string, string> = {
+  de: 'German', en: 'English', es: 'Spanish', fr: 'French',
+  it: 'Italian', pt: 'Portuguese', nl: 'Dutch', pl: 'Polish',
+  cs: 'Czech', da: 'Danish', fi: 'Finnish', no: 'Norwegian',
+  sv: 'Swedish', ru: 'Russian', ja: 'Japanese', zh: 'Chinese',
+  ko: 'Korean', ar: 'Arabic', hi: 'Hindi',
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -150,6 +158,10 @@ export async function POST(
       })
     }
 
+    // Resolve target language for suggested output format titles/descriptions
+    const outputLangCode = resolveOutputLanguageCode(profile?.preferred_report_language, session.language)
+    const outputLangName = LANG_NAMES[outputLangCode] || outputLangCode
+
     // Call Claude to analyze with enhanced context extraction
     console.log('[Analyze API] Calling Claude API for enhanced analysis...')
     const message = await anthropic.messages.create({
@@ -188,6 +200,7 @@ export async function POST(
    - Medical: consultation notes, referral summary, patient-facing summary
    - General: meeting minutes, action items, executive summary
    Customize suggestions for the ACTUAL domain and conversation type. Each needs: title (short), description (1 line), generationInstructions (detailed prompt for AI to generate this output).
+   **LANGUAGE for suggestedOutputFormats**: Write the title and description fields in **${outputLangName}**. The generationInstructions should also be in ${outputLangName}.
 
 Transcript sample:
 ${sample}
