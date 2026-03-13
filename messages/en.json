@@ -1214,7 +1214,11 @@
       "removeConfirmTitle": "Remove Template from Community?",
       "removeConfirmDescription": "This will unpublish your template from the community hub. Users who already installed it will keep their copy. This action cannot be undone.",
       "removeSuccess": "Template removed from community.",
-      "removeFailed": "Failed to remove template."
+      "removeFailed": "Failed to remove template.",
+      "rateThis": "Rate this template",
+      "yourRating": "Your rating",
+      "ratingSubmitted": "Rating submitted!",
+      "loginToRate": "Log in to rate"
     },
     "upload": {
       "title": "Share a Template",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
-import { Search, Star, Download, User, SlidersHorizontal, Loader2, X, Globe, Share2 } from 'lucide-react'
+import { Search, Download, User, SlidersHorizontal, Loader2, X, Globe, Share2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import type { MarketplaceTemplate, MarketplaceCategory, MarketplaceProfile } from '@/lib/types/marketplace'
 import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
+import { StarRating } from '@/components/marketplace/StarRating'
 
 const LANGUAGE_LABELS: Record<string, string> = {
   de: 'Deutsch',
@@ -329,7 +330,7 @@ export default function MarketplacePage() {
                         )}
                       </div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+                        <StarRating value={Number(tpl.avg_rating)} readonly size="sm" />
                         <span>{Number(tpl.avg_rating).toFixed(1)}</span>
                       </div>
                     </div>

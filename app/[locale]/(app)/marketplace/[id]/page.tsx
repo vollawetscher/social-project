@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
 import {
-  ArrowLeft, Star, Download, User, Copy, FileDown, Share2,
+  ArrowLeft, Download, User, Copy, FileDown, Share2,
   Eye, Users, MessageSquare, Globe, Briefcase, FileText,
   Sparkles, Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2,
   ChevronDown,
@@ -31,6 +31,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { copyExportJSON, downloadExportJSON } from '@/lib/utils/marketplace-export'
+import { StarRating } from '@/components/marketplace/StarRating'
 import type {
   MarketplaceTemplate, MarketplaceProfile, MarketplaceCategory,
   Perspective, Audience, Tone, OutputFormat, OutputLanguage, MarketplaceDomain,
@@ -68,6 +69,8 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const [installing, setInstalling] = useState(false)
   const [installed, setInstalled] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [userRating, setUserRating] = useState<number>(0)
+  const [submittingRating, setSubmittingRating] = useState(false)
 
   const [perspectives, setPerspectives] = useState<Perspective[]>([])
   const [audiences, setAudiences] = useState<Audience[]>([])
@@ -108,6 +111,18 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     }
     setTemplate(enriched)
 
+    if (user) {
+      const { data: existingRating } = await supabase
+        .from('marketplace_ratings')
+        .select('rating')
+        .eq('template_id', id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (existingRating) {
+        setUserRating(existingRating.rating)
+      }
+    }
+
     const cfg = tpl.template_config
     if (cfg) {
       setPerspectives(cfg.perspectives ?? [])
@@ -122,7 +137,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     }
 
     setLoading(false)
-  }, [id, supabase])
+  }, [id, supabase, user])
 
   useEffect(() => {
     fetchTemplate()
@@ -195,6 +210,37 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     toast.success(t('explore.linkCopied'))
   }
 
+  async function handleRate(rating: number) {
+    if (!template) return
+    setSubmittingRating(true)
+    try {
+      const res = await fetch(`/api/marketplace/templates/${template.id}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Rating failed')
+      }
+      setUserRating(rating)
+      toast.success(t('template.ratingSubmitted'))
+
+      const { data: updated } = await supabase
+        .from('marketplace_templates')
+        .select('avg_rating')
+        .eq('id', template.id)
+        .maybeSingle()
+      if (updated) {
+        setTemplate((prev) => prev ? { ...prev, avg_rating: updated.avg_rating } : prev)
+      }
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setSubmittingRating(false)
+    }
+  }
+
   const isAuthor = user && template?.author_id === user.id
 
   if (loading) {
@@ -246,8 +292,8 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                 {template.author?.display_name ?? t('template.unknown')}
               </span>
               <span className="flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 fill-warning text-warning" />
-                {Number(template.avg_rating).toFixed(1)}
+                <StarRating value={Number(template.avg_rating)} readonly size="sm" />
+                <span>{Number(template.avg_rating).toFixed(1)}</span>
               </span>
               <span className="flex items-center gap-1">
                 <Download className="h-3.5 w-3.5" />
@@ -366,6 +412,40 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-border">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium">{t('template.rateThis')}</h3>
+                {userRating > 0 && (
+                  <p className="text-xs text-muted-foreground">{t('template.yourRating')}: {userRating}/5</p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {user && !isAuthor ? (
+                  <>
+                    <StarRating
+                      value={userRating}
+                      onChange={handleRate}
+                      size="lg"
+                    />
+                    {submittingRating && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </>
+                ) : !user ? (
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/login">
+                      <LogIn className="h-3.5 w-3.5 mr-1.5" />
+                      {t('template.loginToRate')}
+                    </Link>
+                  </Button>
+                ) : (
+                  <StarRating value={Number(template.avg_rating)} readonly size="lg" />
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="border-border">
