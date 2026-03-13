@@ -5,6 +5,7 @@ import { recordEmailInviteUsage } from '@/lib/services/usage-tracker'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import { logError } from '@/lib/services/error-logger'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
+import { buildInviteIcs } from '@/lib/utils/invite-ics'
 
 export async function POST(
   request: Request,
@@ -24,7 +25,7 @@ export async function POST(
 
     const { data: call, error: callError } = await supabase
       .from('calls')
-      .select('id, user_id, room_name, scheduled_for, contact_name')
+      .select('id, user_id, room_name, scheduled_for, scheduled_duration_min, contact_name')
       .eq('id', callId)
       .single()
 
@@ -40,13 +41,38 @@ export async function POST(
 
     const joinUrl = `${getAppBaseUrl()}/call/${call.room_name}?callId=${call.id}`
     const startAt = new Date(call.scheduled_for)
+    const durationMin = Number(call.scheduled_duration_min || 30)
+    const endAtIso = new Date(startAt.getTime() + durationMin * 60 * 1000).toISOString()
     const title = call.contact_name?.trim() || 'Notissima scheduled video call'
     const when = startAt.toLocaleString()
-    const html = `<p>You are invited to a scheduled Notissima video call.</p><p><strong>When:</strong> ${when}</p><p><a href="${joinUrl}">Join call</a></p>`
+    const html = `<p>You are invited to a scheduled Notissima video call.</p><p><strong>When:</strong> ${when}</p><p><strong>Duration:</strong> ${durationMin} min</p><p><a href="${joinUrl}">Join call</a></p>`
+    const textBody = [
+      'You are invited to a scheduled Notissima video call.',
+      `When: ${when}`,
+      `Duration: ${durationMin} min`,
+      `Join link: ${joinUrl}`,
+    ].join('\n')
+    const ics = buildInviteIcs({
+      uid: `${call.id}@notissima.app`,
+      startIso: startAt.toISOString(),
+      endIso: endAtIso,
+      title,
+      description: `You are invited to a scheduled Notissima video call.\n${joinUrl}`,
+      joinUrl,
+    })
+    const icsBase64 = Buffer.from(ics, 'utf8').toString('base64')
     const response = await sendCommunicationHubEmail({
       to: recipientEmail,
       subject: title,
       body: html,
+      textBody,
+      attachments: [
+        {
+          filename: `notissima-invite-${call.id}.ics`,
+          contentType: 'text/calendar; charset=utf-8',
+          contentBase64: icsBase64,
+        },
+      ],
     })
 
     if (!response.success) {

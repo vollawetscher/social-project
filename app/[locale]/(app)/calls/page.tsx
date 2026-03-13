@@ -153,6 +153,7 @@ export default function CallsPage() {
   const [ringSending, setRingSending] = useState(false)
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
   const [scheduleAtLocal, setScheduleAtLocal] = useState("")
+  const [scheduleDurationMin, setScheduleDurationMin] = useState(30)
   const [scheduleInviteEmail, setScheduleInviteEmail] = useState("")
   const [scheduleSelectedContactIds, setScheduleSelectedContactIds] = useState<string[]>([])
   const [scheduleSaving, setScheduleSaving] = useState(false)
@@ -378,6 +379,7 @@ export default function CallsPage() {
           callType: "web",
           mode: "video",
           scheduledFor: date.toISOString(),
+          scheduledDurationMin: scheduleDurationMin,
           scheduledTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
           inviteEmail: inviteEmails[0] || undefined,
           inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
@@ -390,9 +392,10 @@ export default function CallsPage() {
 
       const joinUrl = `${window.location.origin}/call/${data.roomName}?callId=${data.callId}`
       const scheduledIso = data.scheduledFor || date.toISOString()
-      const endIso = new Date(new Date(scheduledIso).getTime() + 30 * 60 * 1000).toISOString()
+      const plannedDuration = Number(data.scheduledDurationMin || scheduleDurationMin || 30)
+      const endIso = new Date(new Date(scheduledIso).getTime() + plannedDuration * 60 * 1000).toISOString()
       const subject = t('inviteEmailSubject')
-      const body = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteJoinLink')}: ${joinUrl}\n\n${t('inviteAttachIcsHint')}`
+      const body = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteDuration')}: ${plannedDuration} ${t('minutes')}\n${t('inviteJoinLink')}: ${joinUrl}\n\n${t('inviteAttachIcsHint')}`
       const ics = buildInviteIcs({
         uid: `${data.callId}@notissima.app`,
         startIso: scheduledIso,
@@ -423,6 +426,7 @@ export default function CallsPage() {
 
       setScheduleDialogOpen(false)
       setScheduleAtLocal("")
+      setScheduleDurationMin(30)
       setScheduleInviteEmail("")
       setScheduleSelectedContactIds([])
       await fetchCalls()
@@ -456,8 +460,9 @@ export default function CallsPage() {
       if (!call.scheduled_for) throw new Error(t('copyInviteFailed'))
       const joinUrl = `${window.location.origin}/call/${call.room_name}?callId=${call.id}`
       const scheduledIso = call.scheduled_for
+      const durationMin = Number(call.scheduled_duration_min || 30)
       const subject = t('inviteEmailSubject')
-      const body = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteJoinLink')}: ${joinUrl}`
+      const body = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteDuration')}: ${durationMin} ${t('minutes')}\n${t('inviteJoinLink')}: ${joinUrl}`
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(`${subject}\n\n${body}`)
       }
@@ -480,7 +485,8 @@ export default function CallsPage() {
       if (!call.scheduled_for) throw new Error(t('shareWhatsAppFailed'))
       const joinUrl = `${window.location.origin}/call/${call.room_name}?callId=${call.id}`
       const scheduledIso = call.scheduled_for
-      const text = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteJoinLink')}: ${joinUrl}`
+      const durationMin = Number(call.scheduled_duration_min || 30)
+      const text = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteDuration')}: ${durationMin} ${t('minutes')}\n${t('inviteJoinLink')}: ${joinUrl}`
       const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
       window.open(waUrl, "_blank", "noopener,noreferrer")
       toast.success(t('shareWhatsAppSuccess'))
@@ -863,7 +869,10 @@ export default function CallsPage() {
                 <div key={call.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-border px-3 py-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{call.contact_name || t('scheduledCallDefaultTitle')}</p>
-                    <p className="text-xs text-muted-foreground">{call.scheduled_for ? formatScheduledLocal(call.scheduled_for) : "-"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {call.scheduled_for ? formatScheduledLocal(call.scheduled_for) : "-"}
+                      {` · ${Number(call.scheduled_duration_min || 30)} ${t('minutes')}`}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                     <Button
@@ -990,6 +999,7 @@ export default function CallsPage() {
         setScheduleDialogOpen(open)
         if (!open) {
           setScheduleSelectedContactIds([])
+          setScheduleDurationMin(30)
         }
       }}>
         <DialogContent className="max-w-sm">
@@ -1006,6 +1016,20 @@ export default function CallsPage() {
               value={scheduleAtLocal}
               onChange={(e) => setScheduleAtLocal(e.target.value)}
             />
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">{t('durationLabel')}</p>
+              <select
+                value={scheduleDurationMin}
+                onChange={(e) => setScheduleDurationMin(Number(e.target.value))}
+                className="w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
+              >
+                <option value={15}>15 {t('minutes')}</option>
+                <option value={30}>30 {t('minutes')}</option>
+                <option value={45}>45 {t('minutes')}</option>
+                <option value={60}>60 {t('minutes')}</option>
+                <option value={90}>90 {t('minutes')}</option>
+              </select>
+            </div>
             <p className="text-xs text-muted-foreground">{t('inviteContactsLabel')}</p>
             <div className="max-h-32 overflow-y-auto border border-border rounded-md divide-y divide-border">
               {contacts.filter((c) => !!c.email).length === 0 ? (

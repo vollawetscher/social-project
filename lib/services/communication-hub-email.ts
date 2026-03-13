@@ -5,12 +5,18 @@ interface SendEmailParams {
   fromName?: string
   replyTo?: string
   textBody?: string
+  attachments?: Array<{
+    filename: string
+    contentType: string
+    contentBase64: string
+  }>
 }
 
 interface SendEmailResponse {
   success: boolean
   error?: string
   providerMessageId?: string | null
+  sentWithoutAttachments?: boolean
 }
 
 function resolveCommunicationHubBaseUrl(): string {
@@ -27,6 +33,23 @@ export async function sendCommunicationHubEmail(params: SendEmailParams): Promis
   }
 
   const endpoint = `${resolveCommunicationHubBaseUrl()}/api/email/send`
+  const buildPayload = (includeAttachments: boolean) => ({
+    to: params.to,
+    subject: params.subject,
+    body: params.body,
+    ...(params.fromName && { from_name: params.fromName }),
+    ...(params.replyTo && { reply_to: params.replyTo }),
+    ...(params.textBody && { text_body: params.textBody }),
+    ...(includeAttachments && params.attachments?.length
+      ? {
+          attachments: params.attachments.map((a) => ({
+            filename: a.filename,
+            content_type: a.contentType,
+            content_base64: a.contentBase64,
+          })),
+        }
+      : {}),
+  })
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -34,18 +57,31 @@ export async function sendCommunicationHubEmail(params: SendEmailParams): Promis
         'Content-Type': 'application/json',
         'X-API-Key': apiKey,
       },
-      body: JSON.stringify({
-        to: params.to,
-        subject: params.subject,
-        body: params.body,
-        ...(params.fromName && { from_name: params.fromName }),
-        ...(params.replyTo && { reply_to: params.replyTo }),
-        ...(params.textBody && { text_body: params.textBody }),
-      }),
+      body: JSON.stringify(buildPayload(true)),
     })
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '')
+      // Attachment payloads may be unsupported in some provider versions.
+      // Retry without attachments so invite delivery still succeeds.
+      if (params.attachments?.length) {
+        const fallbackResponse = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': apiKey,
+          },
+          body: JSON.stringify(buildPayload(false)),
+        })
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json().catch(() => ({}))
+          return {
+            success: true,
+            providerMessageId: fallbackData?.id || fallbackData?.messageId || null,
+            sentWithoutAttachments: true,
+          }
+        }
+      }
       return {
         success: false,
         error: errText || `HTTP ${response.status}`,

@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.9',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.9',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Calendar Attachments in Invite Emails',
+        description: 'Scheduled call invite emails now include an attached ICS calendar file, making it easier for recipients to add calls directly to their calendar apps.',
+      },
+    ],
+  },
+  {
+    version: '1.20.8',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.8',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Custom Duration for Scheduled Calls',
+        description: 'You can now choose a planned duration when scheduling video calls, and invitations include that duration so attendees get clearer calendar context.',
+      },
+    ],
+  },
+  {
     version: '1.20.7',
     date: 'March 13, 2026',
     entries: [

@@ -5,6 +5,7 @@ import { createRoom, createRoomToken, generateRoomName } from '@/lib/services/li
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import { logError } from '@/lib/services/error-logger'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
+import { buildInviteIcs } from '@/lib/utils/invite-ics'
 import type { CreateCallRequest } from '@/lib/types/call'
 
 /**
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
       calleeUserId,
       contactName,
       scheduledFor,
+      scheduledDurationMin,
       scheduledTimezone,
       inviteEmail,
       inviteEmails,
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
     const isScheduled = Boolean(scheduledFor && callType === 'web' && mode === 'video')
     const roomCreatedAtMs = isScheduled ? null : Date.now()
     let scheduledForIso: string | null = null
+    let normalizedScheduledDurationMin = 30
     let normalizedInviteEmails: string[] = []
     if (isScheduled) {
       const parsedSchedule = new Date(String(scheduledFor))
@@ -60,6 +63,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `Invalid invite email: ${invalidInviteEmail}` }, { status: 400 })
       }
       normalizedInviteEmails = combinedInviteEmails
+
+      const parsedDuration = Number(scheduledDurationMin ?? 30)
+      if (!Number.isFinite(parsedDuration) || parsedDuration < 5 || parsedDuration > 24 * 60) {
+        return NextResponse.json({ error: 'Invalid scheduled duration' }, { status: 400 })
+      }
+      normalizedScheduledDurationMin = Math.round(parsedDuration)
     }
 
     // Create the LiveKit room immediately only for instant calls.
@@ -133,6 +142,7 @@ export async function POST(request: Request) {
         participant_a_identity: user.id,
         room_created_at_ms: roomCreatedAtMs,
         scheduled_for: scheduledForIso,
+        scheduled_duration_min: isScheduled ? normalizedScheduledDurationMin : null,
         scheduled_timezone: scheduledTimezone || null,
         guest_invite_email: isScheduled ? (normalizedInviteEmails[0] || null) : null,
       })
@@ -167,10 +177,16 @@ export async function POST(request: Request) {
         const organizer = displayName
         const callTitle = call.contact_name?.trim() || 'Notissima Video Call'
         const subject = `${organizer} hat Sie zu einem Video Call eingeladen`
+        const durationLabel = `${normalizedScheduledDurationMin} Min`
+        const scheduledStartIso = call.scheduled_for || scheduledForIso!
+        const scheduledEndIso = new Date(
+          new Date(scheduledStartIso).getTime() + normalizedScheduledDurationMin * 60 * 1000
+        ).toISOString()
         const html = [
           `<p>Hallo,</p>`,
           `<p><strong>${organizer}</strong> hat Sie zu einem Video Call eingeladen.</p>`,
           `<p><strong>Wann:</strong> ${startsAt}</p>`,
+          `<p><strong>Dauer:</strong> ${durationLabel}</p>`,
           call.contact_name?.trim() ? `<p><strong>Betreff:</strong> ${callTitle}</p>` : '',
           `<p><a href="${joinUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Jetzt beitreten</a></p>`,
           `<p style="color:#6b7280;font-size:12px;">Link: ${joinUrl}</p>`,
@@ -178,9 +194,19 @@ export async function POST(request: Request) {
         const textBody = [
           `${organizer} hat Sie zu einem Video Call eingeladen.`,
           `Wann: ${startsAt}`,
+          `Dauer: ${durationLabel}`,
           call.contact_name?.trim() ? `Betreff: ${callTitle}` : '',
           `Link: ${joinUrl}`,
         ].filter(Boolean).join('\n')
+        const ics = buildInviteIcs({
+          uid: `${call.id}@notissima.app`,
+          startIso: scheduledStartIso,
+          endIso: scheduledEndIso,
+          title: callTitle,
+          description: `${organizer} hat Sie zu einem Video Call eingeladen.\n${joinUrl}`,
+          joinUrl,
+        })
+        const icsBase64 = Buffer.from(ics, 'utf8').toString('base64')
 
         for (const recipient of normalizedInviteEmails) {
           const email = await sendCommunicationHubEmail({
@@ -189,6 +215,13 @@ export async function POST(request: Request) {
             body: html,
             fromName: 'Notissima',
             textBody,
+            attachments: [
+              {
+                filename: `notissima-invite-${call.id}.ics`,
+                contentType: 'text/calendar; charset=utf-8',
+                contentBase64: icsBase64,
+              },
+            ],
           })
           if (email.success) {
             inviteEmailsSentCount += 1
@@ -227,6 +260,7 @@ export async function POST(request: Request) {
         invited: false,
         scheduled: true,
         scheduledFor: scheduledForIso,
+        scheduledDurationMin: normalizedScheduledDurationMin,
         inviteEmailSent,
         inviteEmailError,
         inviteEmailsSentCount,

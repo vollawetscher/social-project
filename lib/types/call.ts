@@ -50,6 +50,7 @@ export interface Call {
   callee_declined?: boolean
   pstn_consent_state?: PstnConsentState | null
   scheduled_for?: string | null
+  scheduled_duration_min?: number | null
   scheduled_timezone?: string | null
   guest_invite_email?: string | null
   initiator_reminder_sms_sent_at?: string | null
@@ -120,6 +121,7 @@ export interface CreateCallRequest {
   calleeUserId?: string       // Target user for in-app invite calls
   contactName?: string        // Optional display name for invite target
   scheduledFor?: string       // Optional ISO datetime for scheduled calls
+  scheduledDurationMin?: number // Optional planned duration in minutes for scheduled calls
   scheduledTimezone?: string  // Optional IANA timezone name
   inviteEmail?: string        // Optional guest email for scheduled reminders
   inviteEmails?: string[]     // Optional multiple guest emails for scheduled reminders
