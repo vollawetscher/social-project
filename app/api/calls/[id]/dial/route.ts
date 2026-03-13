@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
-import { placeConsentCall } from '@/lib/services/twilio-voice'
-import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
-import { getAppBaseUrl } from '@/lib/utils/app-url'
+import { createSipParticipant } from '@/lib/services/livekit'
 import type { DialRequest } from '@/lib/types/call'
 
 /**
- * POST /api/calls/[id]/dial - Start PSTN dial-out with forced consent.
- * Places a Twilio consent IVR call first; only after explicit consent do we
- * connect the callee to the LiveKit room via SIP.
- * Only the call owner can initiate this flow.
+ * POST /api/calls/[id]/dial - Dial out to a phone number from within a call room.
+ * Creates a SIP participant in the LiveKit room via the configured Twilio SIP trunk.
+ * Only the call owner can initiate a PSTN dial-out.
  */
 export async function POST(
   request: Request,
@@ -57,48 +54,24 @@ export async function POST(
       return NextResponse.json({ error: 'Call is no longer active' }, { status: 410 })
     }
 
-    const locale = inferLocaleFromPhone(phoneNumber_e164)
-    const appBaseUrl = getAppBaseUrl()
-    // Twilio must reach a public HTTPS webhook URL.
-    if (
-      (process.env.NODE_ENV === 'production' && appBaseUrl.includes('localhost')) ||
-      !/^https?:\/\//i.test(appBaseUrl)
-    ) {
-      return NextResponse.json(
-        {
-          error: 'Invalid public app URL for Twilio consent webhook',
-          details: 'Set NEXT_PUBLIC_APP_URL or RAILWAY_PUBLIC_DOMAIN to your public HTTPS domain.',
-        },
-        { status: 500 }
-      )
-    }
-
-    const consentWebhookUrl = `${appBaseUrl}/api/calls/${callId}/pstn-consent?locale=${locale}`
-    console.log('[Calls Dial] Twilio consent webhook URL:', consentWebhookUrl)
-    const consentCall = await placeConsentCall({
-      to: phoneNumber_e164,
-      consentWebhookUrl,
+    // Create SIP participant (dials out via Twilio)
+    const sipParticipant = await createSipParticipant(call.room_name, phoneNumber_e164, {
+      participantIdentity: `sip-${phoneNumber_e164}`,
+      participantName: phoneNumber_e164,
+      playDialtone: true,
+      ringingTimeout: 90,
     })
-
-    if (!consentCall.success || !consentCall.callSid) {
-      return NextResponse.json(
-        { error: 'Failed to place consent call', details: consentCall.error },
-        { status: 502 }
-      )
-    }
-
-    // Update call record with PSTN info and consent state.
-    // We do NOT create the SIP participant here; webhook flow will do that
-    // only after explicit callee consent.
+    
+    // Update call record with PSTN info.
+    // Do NOT set status=active yet — wait for the SIP participant_joined webhook
+    // which confirms the callee actually answered, then start egress.
     await supabase
       .from('calls')
       .update({
         call_type: 'pstn_outbound',
         phone_number: phoneNumber_e164,
         participant_b_identity: `sip-${phoneNumber_e164}`,
-        sip_call_id: null,
-        pstn_consent_state: 'pending',
-        callee_declined: false,
+        sip_call_id: sipParticipant.participantId,
         ...(contactName ? { contact_name: contactName } : {}),
       })
       .eq('id', callId)
@@ -112,8 +85,7 @@ export async function POST(
     }
 
     return NextResponse.json({
-      consentCallSid: consentCall.callSid,
-      consentPending: true,
+      sipCallId: sipParticipant.participantId,
     })
   } catch (error: any) {
     console.error('[Calls Dial] Error:', error)

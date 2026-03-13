@@ -27,11 +27,23 @@ export async function POST(request: Request) {
         const identity = event.participant?.identity
         if (!roomName || !identity) break
 
-        const { data: call } = await supabase
+        let call: any = null
+        const primaryQuery = await supabase
           .from('calls')
           .select('id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, call_type, pstn_consent_state')
           .eq('room_name', roomName)
           .maybeSingle()
+
+        if (primaryQuery.error && /pstn_consent_state|column .* does not exist/i.test(primaryQuery.error.message || '')) {
+          const fallbackQuery = await supabase
+            .from('calls')
+            .select('id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, call_type')
+            .eq('room_name', roomName)
+            .maybeSingle()
+          call = fallbackQuery.data
+        } else {
+          call = primaryQuery.data
+        }
 
         if (!call) break
 

@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.12',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.12',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Restored Direct PSTN Dial-Out',
+        description: 'Phone dial-out now connects directly again without an intermediate consent IVR step, restoring the previous outbound call flow and reliability.',
+      },
+    ],
+  },
+  {
     version: '1.20.11',
     date: 'March 13, 2026',
     entries: [
