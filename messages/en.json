@@ -415,6 +415,7 @@
     "analyzingHint": "Upload 1-3 sample outputs. The AI will analyze their structure and generate a template.",
     "enterNameOrDescription": "Enter a template name or rough description first",
     "enhanceFailed": "Failed to enhance description",
+    "enhancedBoth": "Instructions and description optimized",
     "nameRequired": "Please enter a template name",
     "perspectiveRequired": "Please select at least one perspective",
     "audienceRequired": "Please select at least one audience",
@@ -460,7 +461,13 @@
     "promptProtectedDesc": "The generation prompt is hidden to protect the creator's intellectual property. You can add your own instructions below to customize the output.",
     "customInstructions": "Your Additional Instructions",
     "customInstructionsPlaceholder": "e.g. Focus on financial metrics, always include a risk assessment section...",
-    "customInstructionsHelp": "These instructions are added to the original prompt when generating output. Use them to customize the template for your needs."
+    "customInstructionsHelp": "These instructions are added to the original prompt when generating output. Use them to customize the template for your needs.",
+    "generationInstructions": "Generation Instructions",
+    "generationInstructionsDesc": "The AI prompt that controls what document is generated and how it is structured.",
+    "instructionsPlaceholder": "e.g. Create a structured meeting protocol with attendees, agenda items, decisions, action items with deadlines...",
+    "instructionsHelp": "This is the AI prompt — it tells the AI exactly what to generate. This is never shown publicly.",
+    "shortDescriptionPlaceholder": "e.g. A structured meeting protocol with action items and follow-ups",
+    "shortDescriptionHelp": "A short description for other users. Visible in the Marketplace when you share this template."
   },
   "templateFromSamples": {
     "title": "Create Template from Samples",
@@ -1262,6 +1269,10 @@
         "titlePlaceholder": "e.g. MEDDIC Sales Report",
         "description": "Description",
         "descriptionPlaceholder": "Describe what this template does and when to use it...",
+        "marketplaceDescription": "Marketplace Description",
+        "marketplaceDescriptionPlaceholder": "Describe what this template does for other users (not the AI prompt)...",
+        "marketplaceDescriptionHint": "This description is publicly visible in the Marketplace.",
+        "promptWarning": "This looks like it might contain an AI prompt. The description should be a user-friendly summary, not the generation instructions.",
         "category": "Category",
         "categoryPlaceholder": "Select a category",
         "tags": "Tags",

@@ -21,31 +21,57 @@ export async function POST(request: Request) {
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 512,
+      max_tokens: 1024,
       messages: [
         {
           role: 'user',
-          content: `You are helping a user write a template description for an AI-powered transcription documentation tool called Notissima. The template description is the PRIMARY instruction the AI uses when generating outputs from meeting/call transcripts.
+          content: `You are helping a user with an AI-powered transcription documentation tool called Notissima. You have TWO tasks:
 
-A good description should:
+TASK 1 — Generation Instructions (AI prompt):
+Rewrite the user's rough instructions into polished, effective AI generation instructions. These tell the AI how to generate outputs from meeting/call transcripts.
+Good instructions should:
 - State clearly what type of document this template produces
 - Specify the structure/format expected (sections, bullet points, narrative, etc.)
 - Mention what information to prioritize or extract
 - Define the tone and level of detail
 - Be 2-4 sentences, concise but specific
 
-The user's template is named: "${name || '(unnamed)'}"
-The user's rough description: "${description || '(none provided, infer from the name)'}"
+TASK 2 — User-Facing Description:
+Generate a short, user-friendly description (MAX 250 characters) that explains what this template does. This is shown publicly in the Marketplace.
+- Write for end-users, not for AI
+- Do NOT reveal any AI prompt details, instructions, or technical implementation
+- Focus on the benefit/outcome for the user
+- 1-2 sentences maximum
+- Must be 250 characters or fewer
 
-Rewrite this into a polished, effective template description. Return ONLY the improved description text, nothing else. Do not use quotes around it.`,
+The user's template is named: "${name || '(unnamed)'}"
+The user's rough instructions: "${description || '(none provided, infer from the name)'}"
+
+Return ONLY a valid JSON object with exactly these two keys, nothing else:
+{"instructions": "...", "description": "..."}`,
         },
       ],
     })
 
-    const enhanced =
+    const rawText =
       message.content[0].type === 'text' ? message.content[0].text.trim() : ''
 
-    return NextResponse.json({ enhanced })
+    let enhancedInstructions = ''
+    let generatedDescription = ''
+
+    try {
+      const parsed = JSON.parse(rawText)
+      enhancedInstructions = (parsed.instructions || '').trim()
+      generatedDescription = (parsed.description || '').substring(0, 250).trim()
+    } catch {
+      enhancedInstructions = rawText
+    }
+
+    return NextResponse.json({
+      enhancedInstructions,
+      generatedDescription,
+      enhanced: enhancedInstructions,
+    })
   } catch (error: any) {
     console.error('[Enhance Description] Error:', error.message)
     return NextResponse.json(

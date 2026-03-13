@@ -14,6 +14,39 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.1',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.1',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Smarter AI Enhancement',
+        description: 'The "Enhance with AI" button now optimizes both your generation instructions and creates a user-friendly description in one click. Descriptions are limited to 250 characters for a clean, consistent look across the Marketplace.',
+      },
+    ],
+  },
+  {
+    version: '1.20.0',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.0',
+        date: 'March 13, 2026',
+        category: 'security',
+        title: 'Template IP Protection',
+        description: 'Your generation instructions (AI prompts) are now stored separately from the template description. Prompts are never shown publicly in the Marketplace, protecting your intellectual property when sharing templates.',
+      },
+      {
+        version: '1.20.0',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Clearer Template Editor',
+        description: 'The template editor now has separate fields for "Description" (visible to others) and "Generation Instructions" (your AI prompt). This makes it clear what is shared publicly and what stays private.',
+      },
+    ],
+  },
+  {
     version: '1.19.0',
     date: 'March 12, 2026',
     entries: [

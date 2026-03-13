@@ -415,6 +415,7 @@
     "analyzingHint": "Sube 1-3 informes de ejemplo. La IA analizará su estructura y generará una plantilla.",
     "enterNameOrDescription": "Introduce primero un nombre de plantilla o una descripcion inicial",
     "enhanceFailed": "No se pudo mejorar la descripcion",
+    "enhancedBoth": "Instrucciones y descripcion optimizadas",
     "nameRequired": "Introduce un nombre de plantilla",
     "perspectiveRequired": "Selecciona al menos una perspectiva",
     "audienceRequired": "Selecciona al menos una audiencia",
@@ -459,7 +460,13 @@
     "customInstructions": "Tus instrucciones adicionales",
     "customInstructionsPlaceholder": "ej. Enfocarse en métricas financieras, incluir siempre una sección de evaluación de riesgos...",
     "customInstructionsHelp": "Estas instrucciones se añaden al prompt original al generar. Úsalas para personalizar la plantilla según tus necesidades.",
-    "descriptionHelp": "Este es el campo más importante — le dice a la IA exactamente qué tipo de documento generar y cómo estructurarlo."
+    "descriptionHelp": "Este es el campo más importante — le dice a la IA exactamente qué tipo de documento generar y cómo estructurarlo.",
+    "generationInstructions": "Instrucciones de generación",
+    "generationInstructionsDesc": "El prompt de IA que controla qué documento se genera y cómo se estructura.",
+    "instructionsPlaceholder": "ej. Crea un protocolo estructurado de reunión con participantes, puntos de agenda, decisiones, tareas con plazos...",
+    "instructionsHelp": "Este es el prompt de IA — le dice a la IA exactamente qué generar. Nunca se muestra públicamente.",
+    "shortDescriptionPlaceholder": "ej. Un protocolo estructurado de reunión con tareas y seguimientos",
+    "shortDescriptionHelp": "Una breve descripción para otros usuarios. Visible en el Marketplace cuando compartes esta plantilla."
   },
   "templateFromSamples": {
     "title": "Crear plantilla desde ejemplos",
@@ -1261,6 +1268,10 @@
         "titlePlaceholder": "ej. Informe de Ventas MEDDIC",
         "description": "Descripción",
         "descriptionPlaceholder": "Describe qué hace esta plantilla y cuándo usarla...",
+        "marketplaceDescription": "Descripción del Marketplace",
+        "marketplaceDescriptionPlaceholder": "Describe lo que hace esta plantilla para otros usuarios (no el prompt de IA)...",
+        "marketplaceDescriptionHint": "Esta descripción es visible públicamente en el Marketplace.",
+        "promptWarning": "Esto parece contener un prompt de IA. La descripción debe ser un resumen fácil de entender, no las instrucciones de generación.",
         "category": "Categoría",
         "categoryPlaceholder": "Selecciona una categoría",
         "tags": "Etiquetas",

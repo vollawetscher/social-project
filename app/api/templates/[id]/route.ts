@@ -27,10 +27,10 @@ export async function GET(
 
     const isInstalled = !!template.marketplace_source_id
 
-    const formattedTemplate: Template = {
+    const formattedTemplate: Template & { instructions?: string } = {
       id: template.id,
       name: template.name,
-      description: isInstalled ? '' : template.description,
+      description: template.description || '',
       intendedPerspectives: template.intended_perspectives || [],
       allowedAudience: template.allowed_audience || [],
       domainTags: template.domain_tags || [],
@@ -45,6 +45,7 @@ export async function GET(
       marketplaceSourceId: template.marketplace_source_id || null,
       customInstructions: template.custom_instructions || '',
       language: template.language || null,
+      instructions: isInstalled ? '' : (template.instructions || ''),
     }
 
     return NextResponse.json(formattedTemplate)
@@ -70,6 +71,7 @@ export async function PUT(
     const { 
       name, 
       description, 
+      instructions,
       intendedPerspectives, 
       allowedAudience, 
       domainTags, 
@@ -108,6 +110,7 @@ export async function PUT(
 
     if (!isInstalled) {
       updatePayload.description = description
+      updatePayload.instructions = instructions
       updatePayload.sections = sections
     }
 
@@ -123,10 +126,10 @@ export async function PUT(
       return NextResponse.json({ error: 'Template not found or unauthorized' }, { status: 404 })
     }
 
-    const formattedTemplate: Template = {
+    const formattedTemplate: Template & { instructions?: string } = {
       id: template.id,
       name: template.name,
-      description: isInstalled ? '' : template.description,
+      description: template.description || '',
       intendedPerspectives: template.intended_perspectives || [],
       allowedAudience: template.allowed_audience || [],
       domainTags: template.domain_tags || [],
@@ -141,6 +144,7 @@ export async function PUT(
       marketplaceSourceId: template.marketplace_source_id || null,
       customInstructions: template.custom_instructions || '',
       language: template.language || null,
+      instructions: isInstalled ? '' : (template.instructions || ''),
     }
 
     return NextResponse.json(formattedTemplate)

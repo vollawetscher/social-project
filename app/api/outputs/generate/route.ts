@@ -333,14 +333,19 @@ Key requirements:
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
     if (template) {
-      systemPrompt += `\n\nTemplate: ${template.name}
-${template.description}
+      const generationInstructions = template.instructions || template.description || ''
 
-Required sections (translate section names and descriptions into ${outputLanguage}):
-${template.sections?.map((s: any) => `- ${s.name}: ${s.description}${s.isRequired ? ' (Required)' : ''}`).join('\n')}
+      systemPrompt += `\n\nTemplate: ${template.name}`
 
-Style guidelines:
-${template.style_rules?.map((r: string) => `- ${r}`).join('\n') || 'Follow professional writing standards'}`
+      if (generationInstructions.trim()) {
+        systemPrompt += `\n\nGeneration instructions:\n${generationInstructions}`
+      }
+
+      if (template.sections?.length) {
+        systemPrompt += `\n\nRequired sections (translate section names and descriptions into ${outputLanguage}):\n${template.sections.map((s: any) => `- ${s.name}: ${s.description}${s.isRequired ? ' (Required)' : ''}`).join('\n')}`
+      }
+
+      systemPrompt += `\n\nStyle guidelines:\n${template.style_rules?.map((r: string) => `- ${r}`).join('\n') || 'Follow professional writing standards'}`
 
       if (template.custom_instructions?.trim()) {
         systemPrompt += `\n\nAdditional user instructions:\n${template.custom_instructions}`

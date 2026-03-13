@@ -415,6 +415,7 @@
     "analyzingHint": "Laden Sie 1-3 Beispielausgaben hoch. Die KI analysiert deren Struktur und erstellt eine Vorlage.",
     "enterNameOrDescription": "Bitte zuerst Vorlagenname oder Rohbeschreibung eingeben",
     "enhanceFailed": "Beschreibung konnte nicht verbessert werden",
+    "enhancedBoth": "Prompt und Beschreibung wurden optimiert",
     "nameRequired": "Bitte Vorlagenname eingeben",
     "perspectiveRequired": "Bitte mindestens eine Perspektive waehlen",
     "audienceRequired": "Bitte mindestens eine Zielgruppe waehlen",
@@ -459,7 +460,13 @@
     "customInstructions": "Deine zusätzlichen Anweisungen",
     "customInstructionsPlaceholder": "z.B. Fokus auf Finanzkennzahlen, immer eine Risikobeurteilung einbeziehen...",
     "customInstructionsHelp": "Diese Anweisungen werden beim Generieren zum Original-Prompt hinzugefügt. Nutze sie, um die Vorlage an deine Bedürfnisse anzupassen.",
-    "descriptionHelp": "Dies ist das wichtigste Feld — es teilt der KI genau mit, welche Art von Dokument erstellt und wie es strukturiert werden soll."
+    "descriptionHelp": "Dies ist das wichtigste Feld — es teilt der KI genau mit, welche Art von Dokument erstellt und wie es strukturiert werden soll.",
+    "generationInstructions": "Generierungsanweisungen",
+    "generationInstructionsDesc": "Der KI-Prompt, der steuert, welches Dokument generiert wird und wie es strukturiert ist.",
+    "instructionsPlaceholder": "z.B. Erstelle ein strukturiertes Besprechungsprotokoll mit Teilnehmern, Agendapunkten, Entscheidungen, Aufgaben mit Fristen...",
+    "instructionsHelp": "Dies ist der KI-Prompt — er teilt der KI genau mit, was generiert werden soll. Wird nie öffentlich angezeigt.",
+    "shortDescriptionPlaceholder": "z.B. Ein strukturiertes Besprechungsprotokoll mit Aufgaben und Nachverfolgungen",
+    "shortDescriptionHelp": "Eine kurze Beschreibung für andere Nutzer. Wird im Marketplace angezeigt, wenn du diese Vorlage teilst."
   },
   "templateFromSamples": {
     "title": "Vorlage aus Beispielen erstellen",
@@ -1261,6 +1268,10 @@
         "titlePlaceholder": "z.B. MEDDIC-Vertriebsbericht",
         "description": "Beschreibung",
         "descriptionPlaceholder": "Beschreibe, was diese Vorlage macht und wann man sie einsetzt...",
+        "marketplaceDescription": "Marketplace-Beschreibung",
+        "marketplaceDescriptionPlaceholder": "Beschreibe, was diese Vorlage für andere Nutzer macht (nicht der KI-Prompt)...",
+        "marketplaceDescriptionHint": "Diese Beschreibung ist im Marketplace öffentlich sichtbar.",
+        "promptWarning": "Das sieht nach einem KI-Prompt aus. Die Beschreibung sollte eine nutzerfreundliche Zusammenfassung sein, nicht die Generierungsanweisungen.",
         "category": "Kategorie",
         "categoryPlaceholder": "Kategorie wählen",
         "tags": "Tags",

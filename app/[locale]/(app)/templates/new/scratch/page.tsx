@@ -26,14 +26,14 @@ export default function CreateTemplateFromScratchPage() {
   const tc = useTranslations('common')
   const router = useRouter()
   const [saving, setSaving] = useState(false)
-  const [enhancingDescription, setEnhancingDescription] = useState(false)
+  const [enhancingInstructions, setEnhancingInstructions] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [instructions, setInstructions] = useState("")
   const [selectedPerspectives, setSelectedPerspectives] = useState<ParticipantRole[]>(["party_a", "party_b", "observer"])
   const [selectedAudiences, setSelectedAudiences] = useState<Audience[]>(["internal"])
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null)
-  const [instructions, setInstructions] = useState("")
 
   const togglePerspective = (p: ParticipantRole) => {
     setSelectedPerspectives((prev) =>
@@ -53,25 +53,27 @@ export default function CreateTemplateFromScratchPage() {
     )
   }
 
-  const handleEnhanceDescription = async () => {
-    if (!name.trim() && !description.trim()) {
+  const handleEnhanceInstructions = async () => {
+    if (!name.trim() && !instructions.trim()) {
       toast.error(t('enterNameOrDescription'))
       return
     }
-    setEnhancingDescription(true)
+    setEnhancingInstructions(true)
     try {
       const res = await fetch("/api/templates/enhance-description", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), description: description.trim() }),
+        body: JSON.stringify({ name: name.trim(), description: instructions.trim() }),
       })
       if (!res.ok) throw new Error((await res.json()).error || t('enhanceFailed'))
-      const { enhanced } = await res.json()
-      if (enhanced) setDescription(enhanced)
+      const { enhancedInstructions, generatedDescription } = await res.json()
+      if (enhancedInstructions) setInstructions(enhancedInstructions)
+      if (generatedDescription) setDescription(generatedDescription)
+      toast.success(t('enhancedBoth'))
     } catch (err: any) {
       toast.error(err.message || t('enhanceFailed'))
     } finally {
-      setEnhancingDescription(false)
+      setEnhancingInstructions(false)
     }
   }
 
@@ -96,7 +98,7 @@ export default function CreateTemplateFromScratchPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          description: description.trim() || `Template for generating ${name.trim()}`,
+          description: description.trim(),
           intendedPerspectives: selectedPerspectives,
           allowedAudience: selectedAudiences,
           domainTags: selectedDomains.length > 0 ? selectedDomains : ["general"],
@@ -104,7 +106,7 @@ export default function CreateTemplateFromScratchPage() {
           requiredInputs: [],
           styleRules: [],
           suggestionTriggers: [],
-          instructions: instructions.trim() || undefined,
+          instructions: instructions.trim() || `Generate a ${name.trim()} following the defined structure and style.`,
           language: selectedLanguage,
         }),
       })
@@ -154,31 +156,56 @@ export default function CreateTemplateFromScratchPage() {
             />
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="description">{t('description')}</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                onClick={handleEnhanceDescription}
-                disabled={enhancingDescription || (!name.trim() && !description.trim())}
-              >
-                {enhancingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                {t('enhanceWithAI')}
-              </Button>
-            </div>
+            <Label htmlFor="description">{t('description')}</Label>
             <Textarea
               id="description"
-              placeholder={t('descriptionPlaceholder')}
+              placeholder={t('shortDescriptionPlaceholder')}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+              onChange={(e) => setDescription(e.target.value.slice(0, 250))}
+              maxLength={250}
+              rows={2}
             />
-            <p className="text-xs text-muted-foreground">
-              This is the most important field — it tells the AI exactly what kind of document to generate and how to structure it.
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {t('shortDescriptionHelp')}
+              </p>
+              <span className={`text-xs ${description.length > 230 ? 'text-orange-500' : 'text-muted-foreground'}`}>
+                {description.length}/250
+              </span>
+            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle>{t('generationInstructions')}</CardTitle>
+          <CardDescription>{t('generationInstructionsDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-primary"
+              onClick={handleEnhanceInstructions}
+              disabled={enhancingInstructions || (!name.trim() && !instructions.trim())}
+            >
+              {enhancingInstructions ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              {t('enhanceWithAI')}
+            </Button>
+          </div>
+          <Textarea
+            id="instructions"
+            placeholder={t('instructionsPlaceholder')}
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={4}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t('instructionsHelp')}
+          </p>
         </CardContent>
       </Card>
 
@@ -255,22 +282,6 @@ export default function CreateTemplateFromScratchPage() {
               <p className="text-xs text-muted-foreground">{t('templateLanguageHint')}</p>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle>{t('generationInstructionsOptional')}</CardTitle>
-          <CardDescription>{t('generationInstructionsDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder={t('generationInstructionsPlaceholder')}
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
-            rows={4}
-            className="resize-none"
-          />
         </CardContent>
       </Card>
 

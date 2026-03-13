@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { toast } from 'sonner'
-import { Store, Tag, Loader2 } from 'lucide-react'
+import { Store, Tag, Loader2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -133,6 +133,12 @@ export function ShareToMarketplaceDialog({
     }
   }
 
+  const looksLikePrompt = useMemo(() => {
+    const lower = description.toLowerCase()
+    const promptKeywords = ['you are', 'generate a', 'create a', 'your task', 'your role', 'role:', 'task:', 'rules:']
+    return description.length > 300 || promptKeywords.some(kw => lower.includes(kw))
+  }, [description])
+
   if (!template) return null
 
   return (
@@ -158,13 +164,27 @@ export function ShareToMarketplaceDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>{t('upload.form.description')}</Label>
+            <Label>{t('upload.form.marketplaceDescription')}</Label>
             <Textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value.slice(0, 250))}
+              maxLength={250}
+              placeholder={t('upload.form.marketplaceDescriptionPlaceholder')}
               rows={3}
               className="resize-none"
             />
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">{t('upload.form.marketplaceDescriptionHint')}</p>
+              <span className={`text-xs ${description.length > 230 ? 'text-orange-500' : 'text-muted-foreground'}`}>
+                {description.length}/250
+              </span>
+            </div>
+            {looksLikePrompt && (
+              <div className="flex items-start gap-2 rounded-md bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 p-2.5">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-yellow-700 dark:text-yellow-300">{t('upload.form.promptWarning')}</p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

@@ -37,12 +37,13 @@ export default function EditTemplatePage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [enhancingDescription, setEnhancingDescription] = useState(false)
+  const [enhancingInstructions, setEnhancingInstructions] = useState(false)
   const [template, setTemplate] = useState<Template | null>(null)
   
   // Form state
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [instructions, setInstructions] = useState("")
   const [selectedPerspectives, setSelectedPerspectives] = useState<ParticipantRole[]>([])
   const [selectedAudiences, setSelectedAudiences] = useState<Audience[]>([])
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
@@ -66,7 +67,8 @@ export default function EditTemplatePage() {
       
       // Populate form
       setName(data.name)
-      setDescription(data.description)
+      setDescription(data.description || '')
+      setInstructions(data.instructions || '')
       setSelectedPerspectives(data.intended_perspectives || data.intendedPerspectives || [])
       setSelectedAudiences(data.allowed_audience || data.allowedAudience || [])
       setSelectedDomains(data.domain_tags || data.domainTags || [])
@@ -84,25 +86,27 @@ export default function EditTemplatePage() {
     }
   }
 
-  const handleEnhanceDescription = async () => {
-    if (!name.trim() && !description.trim()) {
+  const handleEnhanceInstructions = async () => {
+    if (!name.trim() && !instructions.trim()) {
       toast.error(t('enterNameOrDescription'))
       return
     }
-    setEnhancingDescription(true)
+    setEnhancingInstructions(true)
     try {
       const res = await fetch("/api/templates/enhance-description", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), description: description.trim() }),
+        body: JSON.stringify({ name: name.trim(), description: instructions.trim() }),
       })
       if (!res.ok) throw new Error((await res.json()).error || t('enhanceFailed'))
-      const { enhanced } = await res.json()
-      if (enhanced) setDescription(enhanced)
+      const { enhancedInstructions, generatedDescription } = await res.json()
+      if (enhancedInstructions) setInstructions(enhancedInstructions)
+      if (generatedDescription) setDescription(generatedDescription)
+      toast.success(t('enhancedBoth'))
     } catch (err: any) {
       toast.error(err.message || t('enhanceFailed'))
     } finally {
-      setEnhancingDescription(false)
+      setEnhancingInstructions(false)
     }
   }
 
@@ -130,6 +134,7 @@ export default function EditTemplatePage() {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),
+          instructions: instructions.trim(),
           intendedPerspectives: selectedPerspectives,
           allowedAudience: selectedAudiences,
           domainTags: selectedDomains,
@@ -256,10 +261,30 @@ export default function EditTemplatePage() {
               placeholder={t('namePlaceholder')}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">{t('description')}</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value.slice(0, 250))}
+              maxLength={250}
+              placeholder={t('shortDescriptionPlaceholder')}
+              rows={2}
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {t('shortDescriptionHelp')}
+              </p>
+              <span className={`text-xs ${description.length > 230 ? 'text-orange-500' : 'text-muted-foreground'}`}>
+                {description.length}/250
+              </span>
+            </div>
+          </div>
+
           {isInstalled ? (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>{t('description')}</Label>
+                <Label>{t('generationInstructions')}</Label>
                 <div className="rounded-lg border border-border bg-muted/50 p-4 flex items-start gap-3">
                   <Lock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <div>
@@ -285,28 +310,28 @@ export default function EditTemplatePage() {
           ) : (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="description">{t('description')}</Label>
+                <Label htmlFor="instructions">{t('generationInstructions')}</Label>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                  onClick={handleEnhanceDescription}
-                  disabled={enhancingDescription || (!name.trim() && !description.trim())}
+                  onClick={handleEnhanceInstructions}
+                  disabled={enhancingInstructions || (!name.trim() && !instructions.trim())}
                 >
-                  {enhancingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {enhancingInstructions ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                   {t('enhanceWithAI')}
                 </Button>
               </div>
               <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t('descriptionPlaceholder')}
-                rows={3}
+                id="instructions"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder={t('instructionsPlaceholder')}
+                rows={4}
               />
               <p className="text-xs text-muted-foreground">
-                {t('descriptionHelp')}
+                {t('instructionsHelp')}
               </p>
             </div>
           )}

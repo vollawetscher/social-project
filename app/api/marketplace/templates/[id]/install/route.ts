@@ -30,15 +30,6 @@ export async function POST(
 
   const cfg = template.template_config || {}
 
-  const sectionFromPrompt = cfg.generation_prompt
-    ? [{
-        id: 'generated-output',
-        name: 'Generated Output',
-        description: cfg.generation_prompt,
-        isRequired: true,
-      }]
-    : []
-
   const styleRules: string[] = []
   if (cfg.do_include) {
     styleRules.push(...cfg.do_include.split('\n').filter(Boolean).map((s: string) => `DO: ${s.trim()}`))
@@ -50,10 +41,11 @@ export async function POST(
   const { data: cloned, error: cloneError } = await supabase.from('templates').insert({
     name: template.title,
     description: template.description || '',
+    instructions: cfg.generation_prompt || template.instructions || '',
     intended_perspectives: cfg.perspectives || [],
     allowed_audience: cfg.audiences || [],
     domain_tags: cfg.domains || [],
-    sections: sectionFromPrompt,
+    sections: [],
     required_inputs: [],
     style_rules: styleRules,
     suggestion_triggers: template.tags || [],

@@ -5,8 +5,7 @@ import { Link } from '@/i18n/navigation'
 import {
   ArrowLeft, Download, User, Copy, FileDown, Share2,
   Eye, Users, MessageSquare, Globe, Briefcase, FileText,
-  Sparkles, Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2,
-  ChevronDown,
+  Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +18,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -78,7 +76,6 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('markdown')
   const [languages, setLanguages] = useState<OutputLanguage[]>([])
   const [domains, setDomains] = useState<MarketplaceDomain[]>([])
-  const [generationPrompt, setGenerationPrompt] = useState('')
   const [doInclude, setDoInclude] = useState('')
   const [doNotInclude, setDoNotInclude] = useState('')
 
@@ -131,7 +128,6 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
       setOutputFormat(cfg.output_format ?? 'markdown')
       setLanguages(cfg.languages ?? [])
       setDomains(cfg.domains ?? [])
-      setGenerationPrompt(cfg.generation_prompt ?? '')
       setDoInclude(cfg.do_include ?? '')
       setDoNotInclude(cfg.do_not_include ?? '')
     }
@@ -498,37 +494,6 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             </CardContent>
           </Card>
         </div>
-
-        {isAuthor && (cfg.generation_prompt || template.instructions) && (
-          <Collapsible>
-            <Card className="border-border">
-              <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-muted-foreground" />
-                    {t('template.generationPrompt')}
-                    <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground transition-transform [[data-state=open]>&]:rotate-180" />
-                  </CardTitle>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent>
-                  {customizing ? (
-                    <Textarea
-                      value={generationPrompt}
-                      onChange={(e) => setGenerationPrompt(e.target.value)}
-                      className="bg-secondary border-border min-h-[200px] font-mono text-sm border-l-2 border-l-primary/40"
-                    />
-                  ) : (
-                    <pre className="whitespace-pre-wrap text-sm text-foreground bg-secondary/50 rounded-lg p-4 border border-border font-mono leading-relaxed">
-                      {cfg.generation_prompt || template.instructions}
-                    </pre>
-                  )}
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        )}
 
         <Card className="border-border">
           <CardHeader>
