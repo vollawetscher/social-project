@@ -82,7 +82,7 @@ function parseConsentDecision(locale: Locale, digits: string, speech: string): C
   return 'timeout'
 }
 
-export async function POST(
+async function handleConsentWebhook(
   request: Request,
   { params }: { params: { id: string } }
 ) {
@@ -90,7 +90,6 @@ export async function POST(
   const stage = new URL(request.url).searchParams.get('stage')
   const locale = normalizeLocale(new URL(request.url).searchParams.get('locale'))
   const cfg = LOCALE_PROMPTS[locale]
-  const db = createServiceRoleClient()
 
   // Initial IVR prompt.
   if (stage !== 'result') {
@@ -110,6 +109,7 @@ export async function POST(
   }
 
   try {
+    const db = createServiceRoleClient()
     const form = await request.formData()
     const digits = String(form.get('Digits') || '').trim()
     const speech = String(form.get('SpeechResult') || '').trim()
@@ -242,4 +242,20 @@ export async function POST(
     console.error('[PSTN Consent] Error:', error)
     return toTwimlResponse('<?xml version="1.0" encoding="UTF-8"?><Response><Say>An error occurred.</Say><Hangup/></Response>')
   }
+}
+
+export async function POST(
+  request: Request,
+  ctx: { params: { id: string } }
+) {
+  return handleConsentWebhook(request, ctx)
+}
+
+// Twilio can be configured for GET or POST webhooks.
+// Accepting both prevents "application error" due to method mismatch.
+export async function GET(
+  request: Request,
+  ctx: { params: { id: string } }
+) {
+  return handleConsentWebhook(request, ctx)
 }

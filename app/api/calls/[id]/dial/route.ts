@@ -58,7 +58,23 @@ export async function POST(
     }
 
     const locale = inferLocaleFromPhone(phoneNumber_e164)
-    const consentWebhookUrl = `${getAppBaseUrl()}/api/calls/${callId}/pstn-consent?locale=${locale}`
+    const appBaseUrl = getAppBaseUrl()
+    // Twilio must reach a public HTTPS webhook URL.
+    if (
+      (process.env.NODE_ENV === 'production' && appBaseUrl.includes('localhost')) ||
+      !/^https?:\/\//i.test(appBaseUrl)
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Invalid public app URL for Twilio consent webhook',
+          details: 'Set NEXT_PUBLIC_APP_URL or RAILWAY_PUBLIC_DOMAIN to your public HTTPS domain.',
+        },
+        { status: 500 }
+      )
+    }
+
+    const consentWebhookUrl = `${appBaseUrl}/api/calls/${callId}/pstn-consent?locale=${locale}`
+    console.log('[Calls Dial] Twilio consent webhook URL:', consentWebhookUrl)
     const consentCall = await placeConsentCall({
       to: phoneNumber_e164,
       consentWebhookUrl,
