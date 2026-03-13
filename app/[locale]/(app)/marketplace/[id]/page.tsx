@@ -150,7 +150,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         perspectives, audiences, tone,
         output_format: outputFormat,
         languages, domains,
-        generation_prompt: generationPrompt,
+        generation_prompt: template!.template_config?.generation_prompt || '',
         do_include: doInclude,
         do_not_include: doNotInclude,
       },
