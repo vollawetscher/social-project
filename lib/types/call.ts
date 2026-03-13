@@ -6,6 +6,7 @@
 // --- Database types (match calls table schema) ---
 
 export type CallType = 'web' | 'pstn_outbound'
+export type PstnConsentState = 'not_required' | 'pending' | 'granted' | 'declined' | 'timeout'
 export type CallStatus =
   | 'scheduled'
   | 'waiting'
@@ -47,6 +48,7 @@ export interface Call {
   declined_at?: string | null
   missed_at?: string | null
   callee_declined?: boolean
+  pstn_consent_state?: PstnConsentState | null
   scheduled_for?: string | null
   scheduled_timezone?: string | null
   guest_invite_email?: string | null
@@ -120,6 +122,7 @@ export interface CreateCallRequest {
   scheduledFor?: string       // Optional ISO datetime for scheduled calls
   scheduledTimezone?: string  // Optional IANA timezone name
   inviteEmail?: string        // Optional guest email for scheduled reminders
+  inviteEmails?: string[]     // Optional multiple guest emails for scheduled reminders
 }
 
 export interface CreateCallResponse {

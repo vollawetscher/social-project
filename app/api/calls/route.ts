@@ -26,6 +26,7 @@ export async function POST(request: Request) {
       scheduledFor,
       scheduledTimezone,
       inviteEmail,
+      inviteEmails,
     } = body
 
     // Get user profile for display name, preferred language, and timezone
@@ -40,15 +41,25 @@ export async function POST(request: Request) {
     const isScheduled = Boolean(scheduledFor && callType === 'web' && mode === 'video')
     const roomCreatedAtMs = isScheduled ? null : Date.now()
     let scheduledForIso: string | null = null
+    let normalizedInviteEmails: string[] = []
     if (isScheduled) {
       const parsedSchedule = new Date(String(scheduledFor))
       if (Number.isNaN(parsedSchedule.getTime())) {
         return NextResponse.json({ error: 'Invalid scheduledFor datetime' }, { status: 400 })
       }
       scheduledForIso = parsedSchedule.toISOString()
-      if (inviteEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(inviteEmail).trim())) {
-        return NextResponse.json({ error: 'Invalid invite email' }, { status: 400 })
+      const combinedInviteEmails = Array.from(new Set([
+        ...(Array.isArray(inviteEmails) ? inviteEmails : []),
+        ...(inviteEmail ? [inviteEmail] : []),
+      ]
+        .map((e) => String(e || '').trim().toLowerCase())
+        .filter(Boolean)))
+
+      const invalidInviteEmail = combinedInviteEmails.find((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+      if (invalidInviteEmail) {
+        return NextResponse.json({ error: `Invalid invite email: ${invalidInviteEmail}` }, { status: 400 })
       }
+      normalizedInviteEmails = combinedInviteEmails
     }
 
     // Create the LiveKit room immediately only for instant calls.
@@ -123,7 +134,7 @@ export async function POST(request: Request) {
         room_created_at_ms: roomCreatedAtMs,
         scheduled_for: scheduledForIso,
         scheduled_timezone: scheduledTimezone || null,
-        guest_invite_email: isScheduled ? (inviteEmail?.trim() || null) : null,
+        guest_invite_email: isScheduled ? (normalizedInviteEmails[0] || null) : null,
       })
       .select('*')
       .single()
@@ -136,8 +147,11 @@ export async function POST(request: Request) {
     if (isScheduled) {
       let inviteEmailSent = false
       let inviteEmailError: string | null = null
+      let inviteEmailsSentCount = 0
+      let inviteEmailsFailedCount = 0
+      const failedInviteEmails: string[] = []
 
-      if (inviteEmail?.trim()) {
+      if (normalizedInviteEmails.length > 0) {
         const joinUrl = `${getAppBaseUrl()}/call/${call.room_name}?callId=${call.id}`
         const tz = scheduledTimezone || profile?.timezone || 'UTC'
         const startsAt = new Date(call.scheduled_for || scheduledForIso!).toLocaleString('de-DE', {
@@ -167,32 +181,41 @@ export async function POST(request: Request) {
           call.contact_name?.trim() ? `Betreff: ${callTitle}` : '',
           `Link: ${joinUrl}`,
         ].filter(Boolean).join('\n')
-        const email = await sendCommunicationHubEmail({
-          to: inviteEmail.trim(),
-          subject,
-          body: html,
-          fromName: 'Notissima',
-          textBody,
-        })
-        inviteEmailSent = email.success
-        inviteEmailError = email.success ? null : (email.error || 'Failed to send invite email')
 
-        if (email.success) {
-          console.log(`[Calls] Invite email sent to ${inviteEmail.trim()} for call ${call.id}`)
+        for (const recipient of normalizedInviteEmails) {
+          const email = await sendCommunicationHubEmail({
+            to: recipient,
+            subject,
+            body: html,
+            fromName: 'Notissima',
+            textBody,
+          })
+          if (email.success) {
+            inviteEmailsSentCount += 1
+            console.log(`[Calls] Invite email sent to ${recipient} for call ${call.id}`)
+          } else {
+            inviteEmailsFailedCount += 1
+            failedInviteEmails.push(recipient)
+            const providerError = email.error || 'Failed to send invite email'
+            inviteEmailError = inviteEmailError || providerError
+            console.error(`[Calls] Invite email FAILED for call ${call.id} to ${recipient}: ${providerError}`)
+            await logError({
+              errorType: 'api_error',
+              severity: 'warning',
+              message: `Guest invite email failed for scheduled call ${call.id}`,
+              userId: user.id,
+              endpoint: '/api/calls',
+              method: 'POST',
+              metadata: { callId: call.id, guestEmail: recipient, providerError },
+            }).catch(() => {})
+          }
+        }
+
+        inviteEmailSent = inviteEmailsSentCount > 0
+        if (inviteEmailSent) {
           await supabase.from('calls').update({
             guest_invite_email_sent_at: new Date().toISOString(),
           }).eq('id', call.id)
-        } else {
-          console.error(`[Calls] Invite email FAILED for call ${call.id}: ${inviteEmailError}`)
-          await logError({
-            errorType: 'api_error',
-            severity: 'warning',
-            message: `Guest invite email failed for scheduled call ${call.id}`,
-            userId: user.id,
-            endpoint: '/api/calls',
-            method: 'POST',
-            metadata: { callId: call.id, guestEmail: inviteEmail.trim(), providerError: inviteEmailError },
-          }).catch(() => {})
         }
       }
 
@@ -206,6 +229,9 @@ export async function POST(request: Request) {
         scheduledFor: scheduledForIso,
         inviteEmailSent,
         inviteEmailError,
+        inviteEmailsSentCount,
+        inviteEmailsFailedCount,
+        failedInviteEmails,
       })
     }
 

@@ -26,6 +26,8 @@ import {
   Link2,
   Send,
   User,
+  Pencil,
+  MessageCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -152,6 +154,7 @@ export default function CallsPage() {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
   const [scheduleAtLocal, setScheduleAtLocal] = useState("")
   const [scheduleInviteEmail, setScheduleInviteEmail] = useState("")
+  const [scheduleSelectedContactIds, setScheduleSelectedContactIds] = useState<string[]>([])
   const [scheduleSaving, setScheduleSaving] = useState(false)
   // Save-to-contacts prompt: stores the phone number to save
   const [savingNumber, setSavingNumber] = useState<string | null>(null)
@@ -168,6 +171,11 @@ export default function CallsPage() {
   const [addPhone, setAddPhone] = useState("")
   const [addEmail, setAddEmail] = useState("")
   const [savingContact, setSavingContact] = useState(false)
+  const [editingContactId, setEditingContactId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState("")
+  const [editingPhone, setEditingPhone] = useState("")
+  const [editingEmail, setEditingEmail] = useState("")
+  const [savingContactEdit, setSavingContactEdit] = useState(false)
   const [importingContacts, setImportingContacts] = useState(false)
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null)
   const [deletingScheduledCallId, setDeletingScheduledCallId] = useState<string | null>(null)
@@ -346,6 +354,21 @@ export default function CallsPage() {
       return
     }
 
+    const selectedEmails = contacts
+      .filter((c) => scheduleSelectedContactIds.includes(c.id))
+      .map((c) => c.email?.trim().toLowerCase())
+      .filter((e): e is string => Boolean(e))
+    const manualEmails = scheduleInviteEmail
+      .split(/[,\n;]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+    const inviteEmails = Array.from(new Set([...selectedEmails, ...manualEmails]))
+    const invalidEmails = inviteEmails.filter((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+    if (invalidEmails.length > 0) {
+      toast.error(t('invalidInviteEmails'))
+      return
+    }
+
     setScheduleSaving(true)
     try {
       const res = await fetch("/api/calls", {
@@ -356,7 +379,8 @@ export default function CallsPage() {
           mode: "video",
           scheduledFor: date.toISOString(),
           scheduledTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-          inviteEmail: scheduleInviteEmail.trim() || undefined,
+          inviteEmail: inviteEmails[0] || undefined,
+          inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -387,9 +411,11 @@ export default function CallsPage() {
       a.remove()
       URL.revokeObjectURL(url)
 
-      if (scheduleInviteEmail.trim()) {
-        if (data.inviteEmailSent === false) {
+      if (inviteEmails.length > 0) {
+        if (data.inviteEmailSent === false || data.inviteEmailsSentCount === 0) {
           toast.error(data.inviteEmailError || t('scheduleInviteEmailFailed'))
+        } else if (data.inviteEmailsFailedCount > 0) {
+          toast.error(t('scheduleInvitePartialFailed', { failed: data.inviteEmailsFailedCount }))
         }
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(`${subject}\n\n${body}`)
@@ -398,6 +424,7 @@ export default function CallsPage() {
       setScheduleDialogOpen(false)
       setScheduleAtLocal("")
       setScheduleInviteEmail("")
+      setScheduleSelectedContactIds([])
       await fetchCalls()
       toast.success(t('scheduleSuccessWithInvite'))
     } catch (err: any) {
@@ -445,6 +472,20 @@ export default function CallsPage() {
     } catch (err: any) {
       if (err?.name === 'AbortError') return
       toast.error(err?.message || t('copyInviteFailed'))
+    }
+  }
+
+  function handleShareScheduledInviteWhatsApp(call: Call) {
+    try {
+      if (!call.scheduled_for) throw new Error(t('shareWhatsAppFailed'))
+      const joinUrl = `${window.location.origin}/call/${call.room_name}?callId=${call.id}`
+      const scheduledIso = call.scheduled_for
+      const text = `${t('inviteEmailBodyIntro')}\n\n${t('inviteWhen')}: ${formatScheduledLocal(scheduledIso)}\n${t('inviteJoinLink')}: ${joinUrl}`
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
+      window.open(waUrl, "_blank", "noopener,noreferrer")
+      toast.success(t('shareWhatsAppSuccess'))
+    } catch (err: any) {
+      toast.error(err?.message || t('shareWhatsAppFailed'))
     }
   }
 
@@ -628,6 +669,47 @@ export default function CallsPage() {
     }
   }
 
+  function handleStartEditContact(contact: Contact) {
+    setEditingContactId(contact.id)
+    setEditingName(contact.name || "")
+    setEditingPhone(contact.phone_number || "")
+    setEditingEmail(contact.email || "")
+  }
+
+  function handleCancelEditContact() {
+    setEditingContactId(null)
+    setEditingName("")
+    setEditingPhone("")
+    setEditingEmail("")
+  }
+
+  async function handleSaveContactEdit() {
+    if (!editingContactId || !editingName.trim()) return
+    setSavingContactEdit(true)
+    try {
+      const res = await fetch(`/api/contacts/${editingContactId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingName.trim(),
+          phone_number: editingPhone.trim() || null,
+          email: editingEmail.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to update contact")
+      const updated = await res.json()
+      setContacts((prev) =>
+        prev.map((c) => (c.id === updated.id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
+      )
+      handleCancelEditContact()
+      toast.success(t("saveContact"))
+    } catch {
+      toast.error(t("contactAddFailed"))
+    } finally {
+      setSavingContactEdit(false)
+    }
+  }
+
   async function handleImportContacts() {
     // Web Contact Picker API support is determined by navigator.contacts.select.
     // Some browsers expose navigator.contacts without a global ContactsManager.
@@ -755,7 +837,7 @@ export default function CallsPage() {
             </div>
           </button>
           <button
-            onClick={() => setScheduleDialogOpen(true)}
+            onClick={() => { fetchContacts(); setScheduleDialogOpen(true) }}
             disabled={creating || scheduleSaving}
             className="flex items-center gap-3 p-3 rounded-xl bg-violet-500/10 hover:bg-violet-500/15 transition-colors disabled:opacity-50"
           >
@@ -800,6 +882,15 @@ export default function CallsPage() {
                       onClick={() => handleCopyScheduledInvite(call)}
                     >
                       {t('copyInvite')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 sm:flex-none"
+                      onClick={() => handleShareScheduledInviteWhatsApp(call)}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      {t('shareWhatsApp')}
                     </Button>
                     <Button
                       size="sm"
@@ -876,7 +967,7 @@ export default function CallsPage() {
         )}
         {activeTab === "contacts" && (
           <div className="w-full">
-            <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} />
+            <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} editingContactId={editingContactId} editingName={editingName} setEditingName={setEditingName} editingPhone={editingPhone} setEditingPhone={setEditingPhone} editingEmail={editingEmail} setEditingEmail={setEditingEmail} savingContactEdit={savingContactEdit} handleStartEditContact={handleStartEditContact} handleCancelEditContact={handleCancelEditContact} handleSaveContactEdit={handleSaveContactEdit} />
           </div>
         )}
         {activeTab === "dialpad" && (
@@ -891,11 +982,16 @@ export default function CallsPage() {
       {/* === Mobile Content (tab-based) === */}
       <div className="flex-1 overflow-y-auto md:hidden">
         {activeTab === "recent" && <RecentCallsList calls={recentCalls} loading={loading} router={router} setAddPhone={setAddPhone} setActiveTab={setActiveTab} setShowAddForm={setShowAddForm} />}
-        {activeTab === "contacts" && <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} />}
+        {activeTab === "contacts" && <ContactsPanel contacts={contacts} filteredContacts={filteredContacts} contactsLoading={contactsLoading} contactSearch={contactSearch} setContactSearch={setContactSearch} showAddForm={showAddForm} setShowAddForm={setShowAddForm} addName={addName} setAddName={setAddName} addPhone={addPhone} setAddPhone={setAddPhone} addEmail={addEmail} setAddEmail={setAddEmail} savingContact={savingContact} handleAddContact={handleAddContact} handleImportContacts={handleImportContacts} importingContacts={importingContacts} handleCallContact={handleCallContact} handleDeleteContact={handleDeleteContact} deletingContactId={deletingContactId} creating={creating} editingContactId={editingContactId} editingName={editingName} setEditingName={setEditingName} editingPhone={editingPhone} setEditingPhone={setEditingPhone} editingEmail={editingEmail} setEditingEmail={setEditingEmail} savingContactEdit={savingContactEdit} handleStartEditContact={handleStartEditContact} handleCancelEditContact={handleCancelEditContact} handleSaveContactEdit={handleSaveContactEdit} />}
         {activeTab === "dialpad" && <DialPad key={dialpadNumber} initialNumber={dialpadNumber} onCall={(number, mode) => { setDialpadNumber(""); handleDialpadCall(number, mode) }} disabled={creating} />}
       </div>
 
-      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+      <Dialog open={scheduleDialogOpen} onOpenChange={(open) => {
+        setScheduleDialogOpen(open)
+        if (!open) {
+          setScheduleSelectedContactIds([])
+        }
+      }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -910,12 +1006,43 @@ export default function CallsPage() {
               value={scheduleAtLocal}
               onChange={(e) => setScheduleAtLocal(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">{t('inviteContactsLabel')}</p>
+            <div className="max-h-32 overflow-y-auto border border-border rounded-md divide-y divide-border">
+              {contacts.filter((c) => !!c.email).length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">{t('noContactEmails')}</p>
+              ) : (
+                contacts.filter((c) => !!c.email).map((contact) => {
+                  const selected = scheduleSelectedContactIds.includes(contact.id)
+                  return (
+                    <button
+                      key={contact.id}
+                      type="button"
+                      onClick={() => {
+                        setScheduleSelectedContactIds((prev) =>
+                          prev.includes(contact.id)
+                            ? prev.filter((id) => id !== contact.id)
+                            : [...prev, contact.id]
+                        )
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent",
+                        selected && "bg-primary/10"
+                      )}
+                    >
+                      <span className="truncate">{contact.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2 truncate">{contact.email}</span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
             <Input
-              type="email"
+              type="text"
               value={scheduleInviteEmail}
               onChange={(e) => setScheduleInviteEmail(e.target.value)}
-              placeholder={t('inviteEmailPlaceholder')}
+              placeholder={t('additionalInviteEmailsPlaceholder')}
             />
+            <p className="text-xs text-muted-foreground">{t('inviteEmailsHint')}</p>
             <p className="text-xs text-muted-foreground">{t('scheduleJoinWindowHint')}</p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
@@ -1152,7 +1279,7 @@ function RecentCallsList({ calls, loading, router, setAddPhone, setActiveTab, se
   )
 }
 
-function ContactsPanel({ contacts, filteredContacts, contactsLoading, contactSearch, setContactSearch, showAddForm, setShowAddForm, addName, setAddName, addPhone, setAddPhone, addEmail, setAddEmail, savingContact, handleAddContact, handleImportContacts, importingContacts, handleCallContact, handleDeleteContact, deletingContactId, creating }: {
+function ContactsPanel({ contacts, filteredContacts, contactsLoading, contactSearch, setContactSearch, showAddForm, setShowAddForm, addName, setAddName, addPhone, setAddPhone, addEmail, setAddEmail, savingContact, handleAddContact, handleImportContacts, importingContacts, handleCallContact, handleDeleteContact, deletingContactId, creating, editingContactId, editingName, setEditingName, editingPhone, setEditingPhone, editingEmail, setEditingEmail, savingContactEdit, handleStartEditContact, handleCancelEditContact, handleSaveContactEdit }: {
   contacts: Contact[]
   filteredContacts: Contact[]
   contactsLoading: boolean
@@ -1174,6 +1301,17 @@ function ContactsPanel({ contacts, filteredContacts, contactsLoading, contactSea
   handleDeleteContact: (id: string, name: string) => void
   deletingContactId: string | null
   creating: boolean
+  editingContactId: string | null
+  editingName: string
+  setEditingName: (v: string) => void
+  editingPhone: string
+  setEditingPhone: (v: string) => void
+  editingEmail: string
+  setEditingEmail: (v: string) => void
+  savingContactEdit: boolean
+  handleStartEditContact: (contact: Contact) => void
+  handleCancelEditContact: () => void
+  handleSaveContactEdit: () => void
 }) {
   const t = useTranslations('calls')
   const tc = useTranslations('common')
@@ -1222,25 +1360,86 @@ function ContactsPanel({ contacts, filteredContacts, contactsLoading, contactSea
           <div className="divide-y divide-border">
             {filteredContacts.map((contact) => {
               const initials = contact.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+              const isEditing = editingContactId === contact.id
               return (
                 <div key={contact.id} className="flex items-center gap-3 px-4 py-3">
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarFallback className="bg-secondary text-foreground text-sm font-medium">{initials}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground text-sm truncate">{contact.name}</p>
-                    {contact.phone_number && <p className="text-xs text-muted-foreground truncate">{contact.phone_number}</p>}
-                    {!contact.phone_number && contact.email && <p className="text-xs text-muted-foreground truncate">{contact.email}</p>}
+                    {isEditing ? (
+                      <div className="space-y-1">
+                        <Input
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          placeholder={t("namePlaceholder")}
+                          className="h-8 bg-background"
+                        />
+                        <Input
+                          value={editingPhone}
+                          onChange={(e) => setEditingPhone(e.target.value)}
+                          placeholder={t("phonePlaceholderShort")}
+                          type="tel"
+                          className="h-8 bg-background"
+                        />
+                        <Input
+                          value={editingEmail}
+                          onChange={(e) => setEditingEmail(e.target.value)}
+                          placeholder={t("emailPlaceholder")}
+                          type="email"
+                          className="h-8 bg-background"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <p className="font-medium text-foreground text-sm truncate">{contact.name}</p>
+                        {contact.phone_number && <p className="text-xs text-muted-foreground truncate">{contact.phone_number}</p>}
+                        {contact.email && <p className="text-xs text-muted-foreground truncate">{contact.email}</p>}
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {contact.phone_number && (
+                    {!isEditing && contact.phone_number && (
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => handleCallContact(contact, "audio")} disabled={creating} title={t('call')}>
                         <Phone className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteContact(contact.id, contact.name)} disabled={deletingContactId === contact.id} title={tc('delete')}>
-                      {deletingContactId === contact.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </Button>
+                    {isEditing ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8"
+                          onClick={handleCancelEditContact}
+                          disabled={savingContactEdit}
+                        >
+                          {tc("cancel")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-8"
+                          onClick={handleSaveContactEdit}
+                          disabled={savingContactEdit || !editingName.trim()}
+                        >
+                          {savingContactEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : tc("save")}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => handleStartEditContact(contact)}
+                          title={tc("edit")}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteContact(contact.id, contact.name)} disabled={deletingContactId === contact.id} title={tc('delete')}>
+                          {deletingContactId === contact.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               )

@@ -101,6 +101,13 @@ export async function POST(
     }
     console.log('[Analyze API] Session found, transcripts count:', session.transcripts?.length || 0)
 
+    const sourceSignals = ((session as any)?.ai_extracted_context?.sourceSignals || null) as
+      | { contentType?: string; authorRole?: string; isExternalInquiry?: boolean; confidence?: number }
+      | null
+    const hasExternalInquirySignal =
+      (session as any)?.input_hint === 'external_inquiry_email' ||
+      sourceSignals?.isExternalInquiry === true
+
     const transcripts = (session.transcripts || []).sort((a: any, b: any) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     )
@@ -191,6 +198,7 @@ export async function POST(
 
 3. **Rich Context** to help understand and document this session
 4. **User-Indicated Content Hint**: The user selected this before upload (use to guide recording type/domain if relevant): ${(session as { input_hint?: string }).input_hint || 'none'}
+4b. **Imported Text Source Signals** (heuristic): ${sourceSignals ? JSON.stringify(sourceSignals) : 'none'}
 5. **User Identification**: The recording was made by "${userName || 'unknown user'}". Try to identify which participant is this user.
 6. **Transcription Consent**: At the START of the conversation, was consent to record/transcribe mentioned? The initiator (caller/recorder) implicitly consents. Look for: "This call may be recorded", "Do you consent?", "Okay to record?", affirmative replies. Extract: discussed (boolean), participantsConsented (array of speaker IDs who consented, e.g. ["S1","S2"]), summary (one-line description of how consent was obtained, or null if not discussed).
 7. **Spoken Commands**: Detect voice commands directed at "Notissima" (the assistant). Use FUZZY matching—transcription/ASR often misspells proper nouns. Match variations such as: Notissima, Notisima, Notissma, Natissima, Notessima; with or without punctuation (Notissima:, Notissima,); after "Hey", "Ok", "So" etc. If a phrase looks like a command to an assistant (create X, send link, summarize) and the wake word is phonetically similar to Notissima, treat it as a match. Extract the exact phrase as spoken in transcript, speaker, and brief intent summary.
@@ -270,6 +278,7 @@ Respond in this exact JSON format:
 - Infer specific roles from conversation content
 - Be specific with domains - use actual field names (e.g., "Tax Law" not just "Legal")
 - Use 2-layer domain structure: primary (broad) + specialty (specific)
+- If User-Indicated Content Hint is "external_inquiry_email" OR sourceSignals.isExternalInquiry is true, do NOT classify as "dictation". Treat it as an external inquiry/correspondence-style import and choose a non-dictation type.
 - If information isn't clearly available, use empty arrays [] or "unknown"
 - Be accurate and preserve correct spelling from transcript
 - For consent: focus on the first 1-2 minutes of the conversation. If nothing found, use discussed: false, participantsConsented: [], summary: null
@@ -308,6 +317,22 @@ Respond in this exact JSON format:
     console.log('[Analyze API] Parsed analysis:', JSON.stringify(analysis).substring(0, 300))
     console.log('[Analyze API] AI identified participants:', JSON.stringify(analysis.extractedContext?.participants, null, 2))
 
+    // Prevent false "dictation" labels for external inbound inquiries.
+    const finalRecordingType =
+      hasExternalInquirySignal && analysis.recordingType === 'dictation'
+        ? 'other'
+        : analysis.recordingType
+    const finalRecordingTypeConfidence =
+      hasExternalInquirySignal && analysis.recordingType === 'dictation'
+        ? Math.min(Number(analysis.recordingTypeConfidence || 0.5), 0.6)
+        : analysis.recordingTypeConfidence
+
+    const existingExtractedContext = ((session as any)?.ai_extracted_context || {}) as Record<string, any>
+    const mergedExtractedContext = {
+      ...analysis.extractedContext,
+      sourceSignals: existingExtractedContext.sourceSignals || sourceSignals || null,
+    }
+
     // Update session with AI suggestions and extracted context
     console.log('[Analyze API] Updating session in database...')
     const suggestedFormats = Array.isArray(analysis.suggestedOutputFormats)
@@ -316,10 +341,10 @@ Respond in this exact JSON format:
     const { error: updateError } = await supabase
       .from('sessions')
       .update({
-        recording_type: analysis.recordingType,
-        recording_type_confidence: analysis.recordingTypeConfidence,
+        recording_type: finalRecordingType,
+        recording_type_confidence: finalRecordingTypeConfidence,
         suggested_domains: analysis.domains,
-        ai_extracted_context: analysis.extractedContext || {},
+        ai_extracted_context: mergedExtractedContext,
         suggested_output_formats: suggestedFormats,
       })
       .eq('id', params.id)
@@ -449,10 +474,10 @@ Respond in this exact JSON format:
     }
 
     return NextResponse.json({
-      recordingType: analysis.recordingType,
-      recordingTypeConfidence: analysis.recordingTypeConfidence,
+      recordingType: finalRecordingType,
+      recordingTypeConfidence: finalRecordingTypeConfidence,
       domains: analysis.domains,
-      extractedContext: analysis.extractedContext || {},
+      extractedContext: mergedExtractedContext,
       suggestedOutputFormats: suggestedFormats,
       autoGeneration: autoGeneratedOutput,
     })

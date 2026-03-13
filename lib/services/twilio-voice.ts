@@ -11,6 +11,11 @@ interface TwilioCallResult {
   error?: string
 }
 
+interface PlaceConsentCallParams {
+  to: string
+  consentWebhookUrl: string
+}
+
 type TwilioCallStatus =
   | 'queued'
   | 'ringing'
@@ -106,6 +111,57 @@ export async function placeNotificationCall(
     return { success: true, callSid: data.sid }
   } catch (error: any) {
     console.error('[TwilioVoice] Error placing call:', error)
+    return { success: false, error: error.message || 'Network error' }
+  }
+}
+
+/**
+ * Places a Twilio call that executes consent IVR logic via webhook TwiML.
+ * The webhook is expected to return <Gather input="speech dtmf">.
+ */
+export async function placeConsentCall({
+  to,
+  consentWebhookUrl,
+}: PlaceConsentCallParams): Promise<TwilioCallResult> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  const callerId = process.env.TWILIO_CALLER_ID
+
+  if (!accountSid || !authToken || !callerId) {
+    console.error('[TwilioVoice] Missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_CALLER_ID')
+    return { success: false, error: 'Twilio voice not configured' }
+  }
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`
+    const body = new URLSearchParams({
+      To: to,
+      From: callerId,
+      Url: consentWebhookUrl,
+      Method: 'POST',
+      Timeout: '30',
+    })
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('[TwilioVoice] Consent call failed:', response.status, errorData)
+      return { success: false, error: errorData.message || `HTTP ${response.status}` }
+    }
+
+    const data = await response.json()
+    console.log('[TwilioVoice] Consent call placed:', data.sid)
+    return { success: true, callSid: data.sid }
+  } catch (error: any) {
+    console.error('[TwilioVoice] Error placing consent call:', error)
     return { success: false, error: error.message || 'Network error' }
   }
 }

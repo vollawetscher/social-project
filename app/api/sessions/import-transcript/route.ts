@@ -10,6 +10,7 @@ import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { needsStructureHeuristic } from '@/lib/utils/transcript-structure-check'
 import { structureTranscript } from '@/lib/services/transcript-structurer'
+import { detectImportedTextSource } from '@/lib/utils/text-source-detection'
 import { logError } from '@/lib/services/error-logger'
 
 interface ParsedSegment {
@@ -40,6 +41,12 @@ export async function POST(request: Request) {
       rawFileContent?: string
       filename?: string
     } = body
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, display_name, full_name')
+      .eq('id', user.id)
+      .maybeSingle()
 
     let segments: ParsedSegment[]
     let rawText: string
@@ -117,6 +124,18 @@ export async function POST(request: Request) {
       ? rawTextForCount.split(/\s+/).filter((w: string) => w.length > 0).length
       : null
 
+    const sourceSignals = detectImportedTextSource({
+      text: rawTextForCount || rawText || '',
+      filename,
+      sessionName,
+      userEmail: profile?.email || null,
+      userDisplayName: profile?.display_name || profile?.full_name || null,
+    })
+    const inputHint = sourceSignals.isExternalInquiry ? 'external_inquiry_email' : null
+    const seededExtractedContext = {
+      sourceSignals,
+    }
+
     // Create session (no audio)
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
@@ -127,6 +146,8 @@ export async function POST(request: Request) {
         language: langCode,
         duration_sec: durationSec || null,
         word_count: wordCount,
+        ...(inputHint ? { input_hint: inputHint } : {}),
+        ai_extracted_context: seededExtractedContext,
       })
       .select()
       .single()

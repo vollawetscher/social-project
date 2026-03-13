@@ -102,22 +102,10 @@ export default function CallRoomPage() {
       const data = await res.json()
       setToken(data.token)
 
-      // For video calls, consent is implicit and only status is shown in-room.
-      // For audio calls, non-initiators must explicitly confirm.
-      const needsAudioConsent = !tokenParam && modeParam === "audio"
-      if (!needsAudioConsent && !tokenParam && callId) {
-        fetch(`/api/calls/${callId}/consent`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            granted: true,
-            participantName: displayName || "Guest",
-            participantIdentity: user?.id || `guest-${Date.now()}`,
-          }),
-        }).catch(() => {})
-      }
-
-      setPhase(needsAudioConsent ? "consent" : "active")
+      // Non-initiators must explicitly confirm consent before joining.
+      // This applies to both audio and video joins in the browser.
+      const needsJoinConsent = !tokenParam
+      setPhase(needsJoinConsent ? "consent" : "active")
     } catch (err: any) {
       setError(err.message || "Failed to join call")
       setPhase("error")

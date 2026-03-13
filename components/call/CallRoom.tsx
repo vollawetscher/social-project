@@ -199,6 +199,9 @@ function CallRoomInner({
 
   const consentLoggedRef = useRef(false)
   const [remoteConsents, setRemoteConsents] = useState<{ identity: string; name: string; granted: boolean }[]>([])
+  const [pstnConsentState, setPstnConsentState] = useState<"not_required" | "pending" | "granted" | "declined" | "timeout">(
+    callType === "pstn_outbound" ? "pending" : "not_required"
+  )
   const [remoteCallEnded, setRemoteCallEnded] = useState(false)
   const [remoteEndReason, setRemoteEndReason] = useState<"declined" | "missed" | "ended" | "error" | null>(null)
   const [isSpeaker, setIsSpeaker] = useState(true)
@@ -304,6 +307,12 @@ function CallRoomInner({
             .filter((c: any) => c.participant_identity !== localParticipant.identity)
             .map((c: any) => ({ identity: c.participant_identity, name: c.participant_name, granted: c.granted }))
           setRemoteConsents(others)
+          if (callType === "pstn_outbound" && others.length > 0) {
+            const anyDeclined = others.some((c: any) => !c.granted)
+            const allGranted = others.every((c: any) => c.granted)
+            if (anyDeclined) setPstnConsentState("declined")
+            else if (allGranted) setPstnConsentState("granted")
+          }
         }
       } catch { /* ignore */ }
     }
@@ -317,6 +326,10 @@ function CallRoomInner({
         table: "calls",
         filter: `id=eq.${callId}`,
       }, (payload: any) => {
+        const consentState = payload.new?.pstn_consent_state as "not_required" | "pending" | "granted" | "declined" | "timeout" | undefined
+        if (consentState) {
+          setPstnConsentState(consentState)
+        }
         const sharedNotes = payload.new?.shared_notes
         if (typeof sharedNotes === "string" && sharedNotes !== notesRef.current) {
           notesSyncSkipRef.current = true
@@ -344,6 +357,9 @@ function CallRoomInner({
             name: row.participant_name || "Participant",
             granted: Boolean(row.granted),
           }
+          if (callType === "pstn_outbound") {
+            setPstnConsentState(next.granted ? "granted" : "declined")
+          }
           if (idx === -1) return [...prev, next]
           const clone = [...prev]
           clone[idx] = next
@@ -355,7 +371,7 @@ function CallRoomInner({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [callId, isInitiator, localParticipant.identity])
+  }, [callId, isInitiator, localParticipant.identity, callType])
 
   useEffect(() => {
     notesRef.current = notes
@@ -895,9 +911,19 @@ function CallRoomInner({
           ? t("invitationFailed")
           : null
 
+  const pstnConsentLabel = callType === "pstn_outbound" && !hasRemote
+    ? (pstnConsentState === "pending"
+      ? t("awaitingPhoneConsent")
+      : pstnConsentState === "declined"
+        ? t("callerOnly")
+        : pstnConsentState === "timeout"
+          ? t("callerOnly")
+          : null)
+    : null
+
   const statusLabel = {
     connecting: t("connecting"),
-    ringing: ringSmsLabel || t("waitingForOther"),
+    ringing: pstnConsentLabel || ringSmsLabel || t("waitingForOther"),
     connected: formatDuration(duration),
     ended: t("callEnded"),
   }
@@ -907,18 +933,34 @@ function CallRoomInner({
   const hasConsentEntry = remoteConsents.length > 0
   const allRemoteGranted = hasConsentEntry && remoteConsents.every((c) => c.granted)
   const remoteDeclined = hasConsentEntry && remoteConsents.some((c) => !c.granted)
-  const consentBadgeText = !hasRemote
-    ? t("awaitingParticipant")
-    : allRemoteGranted
+  const pstnConsentBadgeText = pstnConsentState === "pending"
+    ? t("awaitingPhoneConsent")
+    : pstnConsentState === "granted"
       ? t("consentGranted")
-      : remoteDeclined
+      : pstnConsentState === "declined" || pstnConsentState === "timeout"
         ? t("callerOnly")
-        : t("consentPending")
-  const consentBadgeTone = allRemoteGranted
+        : t("awaitingParticipant")
+  const pstnConsentBadgeTone = pstnConsentState === "granted"
     ? "bg-success/20 text-success"
-    : remoteDeclined
+    : pstnConsentState === "declined" || pstnConsentState === "timeout"
       ? "bg-warning/20 text-warning"
       : "bg-info/20 text-info"
+  const consentBadgeText = callType === "pstn_outbound" && !hasRemote
+    ? pstnConsentBadgeText
+    : !hasRemote
+      ? t("awaitingParticipant")
+      : allRemoteGranted
+        ? t("consentGranted")
+        : remoteDeclined
+          ? t("callerOnly")
+          : t("consentPending")
+  const consentBadgeTone = callType === "pstn_outbound" && !hasRemote
+    ? pstnConsentBadgeTone
+    : allRemoteGranted
+      ? "bg-success/20 text-success"
+      : remoteDeclined
+        ? "bg-warning/20 text-warning"
+        : "bg-info/20 text-info"
 
   const contactInitials = contactName
     ? contactName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)

@@ -14,6 +14,84 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.7',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.7',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'WhatsApp Sharing for Scheduled Calls',
+        description: 'Scheduled call cards now include a WhatsApp share button, so you can send join links directly in one tap while still keeping copy-link options.',
+      },
+    ],
+  },
+  {
+    version: '1.20.6',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.6',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Multi-Contact Scheduled Invites',
+        description: 'When scheduling a video call, you can now select multiple contacts and add extra email addresses at once, so everyone receives the invite in one step.',
+      },
+    ],
+  },
+  {
+    version: '1.20.5',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.5',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Editable Contacts for Faster Invites',
+        description: 'You can now edit saved contacts directly in the Calls screen, including phone number and email, making it easier to keep invite details up to date.',
+      },
+    ],
+  },
+  {
+    version: '1.20.4',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.4',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Smarter Imported Email Detection',
+        description: 'When you paste or import email text, Notissima now detects external inquiries more reliably and avoids misclassifying them as dictation. This helps preserve the correct sender perspective for better analysis.',
+      },
+    ],
+  },
+  {
+    version: '1.20.3',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.3',
+        date: 'March 13, 2026',
+        category: 'security',
+        title: 'Phone Call Consent Before Connection',
+        description: 'For outbound phone calls, consent is now captured by voice before connection is finalized. If consent is declined, the call can continue with caller-only recording so the callee is connected but their side is not recorded.',
+      },
+    ],
+  },
+  {
+    version: '1.20.2',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.2',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Consent Prompt Before Joining Calls',
+        description: 'Participants now see a consent prompt before joining both audio and video browser calls, so recording consent is explicitly confirmed up front.',
+      },
+    ],
+  },
+  {
     version: '1.20.1',
     date: 'March 13, 2026',
     entries: [

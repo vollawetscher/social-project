@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
-import { createSipParticipant } from '@/lib/services/livekit'
+import { placeConsentCall } from '@/lib/services/twilio-voice'
+import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
+import { getAppBaseUrl } from '@/lib/utils/app-url'
 import type { DialRequest } from '@/lib/types/call'
 
 /**
- * POST /api/calls/[id]/dial - Dial out to a phone number from within a call room.
- * Creates a SIP participant in the LiveKit room via the configured Twilio SIP trunk.
- * Only the call owner can initiate a PSTN dial-out.
+ * POST /api/calls/[id]/dial - Start PSTN dial-out with forced consent.
+ * Places a Twilio consent IVR call first; only after explicit consent do we
+ * connect the callee to the LiveKit room via SIP.
+ * Only the call owner can initiate this flow.
  */
 export async function POST(
   request: Request,
@@ -54,24 +57,32 @@ export async function POST(
       return NextResponse.json({ error: 'Call is no longer active' }, { status: 410 })
     }
 
-    // Create SIP participant (dials out via Twilio)
-    const sipParticipant = await createSipParticipant(call.room_name, phoneNumber_e164, {
-      participantIdentity: `sip-${phoneNumber_e164}`,
-      participantName: phoneNumber_e164,
-      playDialtone: true,
-      ringingTimeout: 90,
+    const locale = inferLocaleFromPhone(phoneNumber_e164)
+    const consentWebhookUrl = `${getAppBaseUrl()}/api/calls/${callId}/pstn-consent?locale=${locale}`
+    const consentCall = await placeConsentCall({
+      to: phoneNumber_e164,
+      consentWebhookUrl,
     })
 
-    // Update call record with PSTN info.
-    // Do NOT set status=active yet — wait for the SIP participant_joined webhook
-    // which confirms the callee actually answered, then start egress.
+    if (!consentCall.success || !consentCall.callSid) {
+      return NextResponse.json(
+        { error: 'Failed to place consent call', details: consentCall.error },
+        { status: 502 }
+      )
+    }
+
+    // Update call record with PSTN info and consent state.
+    // We do NOT create the SIP participant here; webhook flow will do that
+    // only after explicit callee consent.
     await supabase
       .from('calls')
       .update({
         call_type: 'pstn_outbound',
         phone_number: phoneNumber_e164,
-        sip_call_id: sipParticipant.participantId,
         participant_b_identity: `sip-${phoneNumber_e164}`,
+        sip_call_id: null,
+        pstn_consent_state: 'pending',
+        callee_declined: false,
         ...(contactName ? { contact_name: contactName } : {}),
       })
       .eq('id', callId)
@@ -85,7 +96,8 @@ export async function POST(
     }
 
     return NextResponse.json({
-      sipCallId: sipParticipant.participantId,
+      consentCallSid: consentCall.callSid,
+      consentPending: true,
     })
   } catch (error: any) {
     console.error('[Calls Dial] Error:', error)

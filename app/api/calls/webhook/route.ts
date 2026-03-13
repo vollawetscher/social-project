@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
         const { data: call } = await supabase
           .from('calls')
-          .select('id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id')
+          .select('id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, call_type, pstn_consent_state')
           .eq('room_name', roomName)
           .maybeSingle()
 
@@ -39,11 +39,11 @@ export async function POST(request: Request) {
         //  - any non-A identity when participant_b_identity not yet set (web calls), OR
         //  - the identity that matches the pre-set participant_b_identity (PSTN/SIP calls,
         //    where the dial route sets participant_b_identity before the callee answers).
-        // Guard with !track_a_egress_id so we never start a second egress.
+        // We always need to detect and activate participant B.
+        // Egress-start logic is handled separately to avoid duplicate starts.
         const isParticipantB =
           identity !== call.participant_a_identity &&
-          (!call.participant_b_identity || identity === call.participant_b_identity) &&
-          !call.track_a_egress_id
+          (!call.participant_b_identity || identity === call.participant_b_identity)
 
         if (isParticipantB) {
           await supabase
@@ -58,8 +58,13 @@ export async function POST(request: Request) {
 
           console.log('[LiveKit Webhook] Call activated:', call.id, 'participant B:', identity)
 
-          // Start recording now that both participants are present
-          if (call.session_id) {
+          // Start recording now that both participants are present unless a caller-only
+          // egress already exists (e.g. callee declined consent).
+          const hasExistingEgress = Boolean(call.track_a_egress_id)
+          const calleeDeclinedPstnConsent =
+            call.call_type === 'pstn_outbound' && call.pstn_consent_state === 'declined'
+
+          if (call.session_id && !hasExistingEgress && !calleeDeclinedPstnConsent) {
             try {
               const egress = await startCompositeEgress(roomName, call.session_id)
               await supabase

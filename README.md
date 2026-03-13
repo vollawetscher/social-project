@@ -290,3 +290,6 @@ Set environment variables on your hosting platform (Vercel, Railway, etc.).
 - Diarization: Speaker identification (works on raw recordings, not edited content)
 - Multi-file sessions: context + meeting + dictation + instruction + addition recordings
 - PII: Currently displays unredacted (practical re-identification risk is low for meeting transcripts)
+
+**Planning notes:**
+- Email ingress design note: `docs/EMAIL_INGRESS_NOTE.md`

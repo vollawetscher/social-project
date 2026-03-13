@@ -130,6 +130,13 @@ export interface ExtractedContext {
   purpose: string
   agenda: string[]
   venue: string
+  sourceSignals?: {
+    contentType?: 'email' | 'chat' | 'transcript' | 'note'
+    authorRole?: 'self' | 'external' | 'mixed' | 'unknown'
+    isExternalInquiry?: boolean
+    confidence?: number
+    reasons?: string[]
+  } | null
   consent?: {
     discussed: boolean
     participantsConsented?: string[]
