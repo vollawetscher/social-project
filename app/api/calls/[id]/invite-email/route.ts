@@ -4,6 +4,7 @@ import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { recordEmailInviteUsage } from '@/lib/services/usage-tracker'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import { logError } from '@/lib/services/error-logger'
+import { getAppBaseUrl } from '@/lib/utils/app-url'
 
 export async function POST(
   request: Request,
@@ -37,13 +38,7 @@ export async function POST(
       return NextResponse.json({ error: 'Call is not scheduled' }, { status: 400 })
     }
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-      (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
-      'http://localhost:3000'
-
-    const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${call.id}`
+    const joinUrl = `${getAppBaseUrl()}/call/${call.room_name}?callId=${call.id}`
     const startAt = new Date(call.scheduled_for)
     const title = call.contact_name?.trim() || 'Notissima scheduled video call'
     const when = startAt.toLocaleString()

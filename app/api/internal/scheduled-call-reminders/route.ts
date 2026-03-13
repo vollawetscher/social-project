@@ -4,15 +4,7 @@ import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import { sendInitiatorReminderSMS } from '@/lib/services/sms'
 import { logError } from '@/lib/services/error-logger'
-
-function resolveBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
-    'http://localhost:3000'
-  )
-}
+import { getAppBaseUrl } from '@/lib/utils/app-url'
 
 function toDisplayTime(iso: string, locale: 'en' | 'de' | 'es', timezone?: string | null) {
   const localeMap = { en: 'en-US', de: 'de-DE', es: 'es-ES' } as const
@@ -120,7 +112,7 @@ export async function POST(request: Request) {
       if (p.phone_number) phoneByUserId.set(p.id, p.phone_number)
     }
 
-    const baseUrl = resolveBaseUrl()
+    const baseUrl = getAppBaseUrl()
     let emailSent = 0
     let smsSent = 0
     let failed = 0

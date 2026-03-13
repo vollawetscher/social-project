@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sendVideoCallInviteSMS } from '@/lib/services/sms'
 import { placeNotificationCall, waitForCallAnswered } from '@/lib/services/twilio-voice'
 import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
+import { getAppBaseUrl } from '@/lib/utils/app-url'
 
 /**
  * POST /api/calls/[id]/ring-sms
@@ -43,12 +44,7 @@ export async function POST(
     }
     const locale = inferLocaleFromPhone(phoneNumber)
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-      || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null)
-      || 'http://localhost:3000'
-
-    const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${callId}`
+    const joinUrl = `${getAppBaseUrl()}/call/${call.room_name}?callId=${callId}`
 
     // Place voice call first. SMS will be sent only after answer.
     const voiceResult = await placeNotificationCall(phoneNumber, callerName, locale)

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { verifyWebhook, startCompositeEgress } from '@/lib/services/livekit'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { getAppBaseUrl } from '@/lib/utils/app-url'
 
 /**
  * POST /api/calls/webhook - LiveKit webhook handler.
@@ -242,9 +243,7 @@ export async function POST(request: Request) {
             .eq('id', call.session_id)
 
           // Trigger actual Speechmatics transcription (fire and forget)
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-            || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null)
-            || 'http://localhost:3000'
+          const baseUrl = getAppBaseUrl()
           const secret = process.env.INTERNAL_API_SECRET
 
           console.log('[LiveKit Webhook] Triggering transcription for session:', call.session_id)

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createRoom, createRoomToken, generateRoomName } from '@/lib/services/livekit'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import { logError } from '@/lib/services/error-logger'
+import { getAppBaseUrl } from '@/lib/utils/app-url'
 import type { CreateCallRequest } from '@/lib/types/call'
 
 /**
@@ -137,12 +138,7 @@ export async function POST(request: Request) {
       let inviteEmailError: string | null = null
 
       if (inviteEmail?.trim()) {
-        const baseUrl =
-          process.env.NEXT_PUBLIC_APP_URL ||
-          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-          (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null) ||
-          'http://localhost:3000'
-        const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${call.id}`
+        const joinUrl = `${getAppBaseUrl()}/call/${call.room_name}?callId=${call.id}`
         const tz = scheduledTimezone || profile?.timezone || 'UTC'
         const startsAt = new Date(call.scheduled_for || scheduledForIso!).toLocaleString('de-DE', {
           timeZone: tz,
