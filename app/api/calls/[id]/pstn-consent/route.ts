@@ -7,7 +7,6 @@ type ConsentState = 'granted' | 'declined' | 'timeout'
 
 const LOCALE_PROMPTS: Record<Locale, {
   language: string
-  voice: string
   prompt: string
   options: string
   connecting: string
@@ -17,7 +16,6 @@ const LOCALE_PROMPTS: Record<Locale, {
 }> = {
   en: {
     language: 'en-US',
-    voice: 'Polly.Joanna',
     prompt: 'This call may be recorded for documentation. Do you consent?',
     options: 'Say yes or no. You can also press 1 for yes or 2 for no.',
     connecting: 'Thank you. Connecting your call now.',
@@ -27,7 +25,6 @@ const LOCALE_PROMPTS: Record<Locale, {
   },
   de: {
     language: 'de-DE',
-    voice: 'Polly.Vicki',
     prompt: 'Dieser Anruf kann zu Dokumentationszwecken aufgezeichnet werden. Stimmen Sie zu?',
     options: 'Sagen Sie Ja oder Nein. Oder drücken Sie 1 für Ja oder 2 für Nein.',
     connecting: 'Danke. Wir verbinden Sie jetzt.',
@@ -37,7 +34,6 @@ const LOCALE_PROMPTS: Record<Locale, {
   },
   es: {
     language: 'es-ES',
-    voice: 'Polly.Lucia',
     prompt: 'Esta llamada puede ser grabada con fines de documentación. ¿Aceptas?',
     options: 'Di sí o no. También puedes pulsar 1 para sí o 2 para no.',
     connecting: 'Gracias. Te estamos conectando ahora.',
@@ -90,6 +86,7 @@ async function handleConsentWebhook(
   const stage = new URL(request.url).searchParams.get('stage')
   const locale = normalizeLocale(new URL(request.url).searchParams.get('locale'))
   const cfg = LOCALE_PROMPTS[locale]
+  console.log('[PSTN Consent] Webhook hit', { method: request.method, stage, locale, url: request.url })
 
   // Initial IVR prompt.
   if (stage !== 'result') {
@@ -97,11 +94,11 @@ async function handleConsentWebhook(
     const twiml = [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<Response>',
-      `<Gather input="speech dtmf" method="POST" action="${actionUrl}" numDigits="1" timeout="8" speechTimeout="auto" actionOnEmptyResult="true" language="${cfg.language}" hints="${cfg.hints}">`,
-      `<Say language="${cfg.language}" voice="${cfg.voice}">${cfg.prompt}</Say>`,
-      `<Say language="${cfg.language}" voice="${cfg.voice}">${cfg.options}</Say>`,
+      `<Gather input="speech dtmf" method="POST" action="${actionUrl}" numDigits="1" timeout="8" speechTimeout="auto" actionOnEmptyResult="true">`,
+      `<Say language="${cfg.language}" voice="alice">${cfg.prompt}</Say>`,
+      `<Say language="${cfg.language}" voice="alice">${cfg.options}</Say>`,
       '</Gather>',
-      `<Say language="${cfg.language}" voice="${cfg.voice}">${cfg.timeout}</Say>`,
+      `<Say language="${cfg.language}" voice="alice">${cfg.timeout}</Say>`,
       '<Hangup/>',
       '</Response>',
     ].join('')
@@ -164,7 +161,7 @@ async function handleConsentWebhook(
       const twiml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<Response>',
-        `<Say language="${cfg.language}" voice="${cfg.voice}">${cfg.connecting}</Say>`,
+        `<Say language="${cfg.language}" voice="alice">${cfg.connecting}</Say>`,
         '<Hangup/>',
         '</Response>',
       ].join('')
@@ -233,7 +230,7 @@ async function handleConsentWebhook(
     const twiml = [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<Response>',
-      `<Say language="${cfg.language}" voice="${cfg.voice}">${declinedMessage}</Say>`,
+      `<Say language="${cfg.language}" voice="alice">${declinedMessage}</Say>`,
       '<Hangup/>',
       '</Response>',
     ].join('')

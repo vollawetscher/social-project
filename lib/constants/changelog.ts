@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.11',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.11',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'PSTN Consent Prompt Stability',
+        description: 'Improved reliability of phone-call consent prompts by simplifying Twilio voice handling and strengthening webhook diagnostics for faster issue resolution.',
+      },
+    ],
+  },
+  {
     version: '1.20.10',
     date: 'March 13, 2026',
     entries: [
