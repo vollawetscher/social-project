@@ -796,6 +796,76 @@
     "batchMode": "Modo por lotes",
     "realTimeMode": "Modo en tiempo real"
   },
+  "quickRecord": {
+    "title": "Grabacion Rapida",
+    "subtitle": "Graba sin iniciar sesion - sube despues",
+    "savedRecordings": "Grabaciones guardadas",
+    "storageSummary": "{count, plural, one {# grabacion} other {# grabaciones}} - {size}",
+    "actions": {
+      "back": "Atras",
+      "signIn": "Iniciar sesion",
+      "uploadAndTranscribe": "Subir y transcribir",
+      "cancel": "Cancelar",
+      "newRecording": "Nueva grabacion",
+      "play": "Reproducir",
+      "saveToDevice": "Guardar en el dispositivo",
+      "delete": "Eliminar"
+    },
+    "empty": {
+      "title": "Aun no hay grabaciones",
+      "subtitle": "Empieza tu primera grabacion - no requiere inicio de sesion"
+    },
+    "howItWorks": {
+      "title": "Como funciona",
+      "item1": "Graba sin iniciar sesion",
+      "item2": "Las grabaciones se quedan en tu dispositivo",
+      "item3": "Inicia sesion despues para subir",
+      "item4": "La transcripcion comienza despues de subir"
+    },
+    "date": {
+      "todayAt": "Hoy {time}",
+      "yesterdayAt": "Ayer {time}"
+    },
+    "toasts": {
+      "loadFailed": "No se pudieron cargar las grabaciones",
+      "saved": "Grabacion guardada",
+      "saveFailed": "No se pudo guardar la grabacion",
+      "deleted": "Grabacion eliminada",
+      "deleteFailed": "No se pudo eliminar la grabacion",
+      "signInToUpload": "Inicia sesion para subir grabaciones",
+      "saveToFilesHint": "Elige 'Guardar en Archivos' para seleccionar una carpeta o comparte en otra app",
+      "savedToDownloads": "Guardado en tu carpeta de Descargas",
+      "saveFileFailed": "No se pudo guardar el archivo",
+      "playbackFailed": "Error de reproduccion"
+    }
+  },
+  "quickRecordUpload": {
+    "title": "Subir grabaciones",
+    "subtitle": "Selecciona grabaciones para subir y crear nuevas sesiones",
+    "recordingLanguage": "Idioma de grabacion",
+    "uploading": "Subiendo...",
+    "uploadCta": "Subir {count, plural, one {# grabacion} other {# grabaciones}}",
+    "actions": {
+      "back": "Atras",
+      "backToRecording": "Volver a grabar",
+      "saveToDevice": "Guardar en el dispositivo"
+    },
+    "empty": {
+      "title": "No hay grabaciones para subir"
+    },
+    "errors": {
+      "recordingNotFound": "Grabacion no encontrada"
+    },
+    "toasts": {
+      "loadFailed": "No se pudieron cargar las grabaciones",
+      "selectAtLeastOne": "No hay grabaciones seleccionadas",
+      "uploadedSuccess": "{count} grabacion(es) subida(s) correctamente",
+      "uploadedFailed": "{count} grabacion(es) no se pudieron subir",
+      "saveToFilesHint": "Elige 'Guardar en Archivos' para seleccionar una carpeta o comparte en otra app",
+      "savedToDownloads": "Guardado en tu carpeta de Descargas",
+      "saveFileFailed": "No se pudo guardar el archivo"
+    }
+  },
   "callRoom": {
     "connecting": "Conectando...",
     "waitingForOther": "Esperando a que la otra persona se una...",

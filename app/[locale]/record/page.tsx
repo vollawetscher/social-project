@@ -23,6 +23,7 @@ export default function QuickRecordPage() {
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null)
   const router = useRouter()
   const locale = useLocale()
+  const t = useTranslations('quickRecord')
   const { user, loading } = useAuth()
 
   const toLocalePath = (path: string) => {
@@ -46,7 +47,7 @@ export default function QuickRecordPage() {
       setTotalSize(size)
     } catch (error) {
       console.error('Failed to load recordings:', error)
-      toast.error('Failed to load recordings')
+      toast.error(t('toasts.loadFailed'))
     }
   }
 
@@ -62,29 +63,29 @@ export default function QuickRecordPage() {
       }
 
       await localStorageService.saveRecording(recording)
-      toast.success('Recording saved')
+      toast.success(t('toasts.saved'))
       setShowRecorder(false)
       await loadRecordings()
     } catch (error) {
       console.error('Failed to save recording:', error)
-      toast.error('Failed to save recording')
+      toast.error(t('toasts.saveFailed'))
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await localStorageService.deleteRecording(id)
-      toast.success('Recording deleted')
+      toast.success(t('toasts.deleted'))
       await loadRecordings()
     } catch (error) {
       console.error('Failed to delete recording:', error)
-      toast.error('Failed to delete recording')
+      toast.error(t('toasts.deleteFailed'))
     }
   }
 
   const handleUpload = () => {
     if (!user) {
-      toast.error('Please sign in to upload recordings')
+      toast.error(t('toasts.signInToUpload'))
       const redirectTarget = encodeURIComponent(toLocalePath('/record'))
       router.push(`/login?redirect=${redirectTarget}`)
       return
@@ -115,7 +116,7 @@ export default function QuickRecordPage() {
           files: [file],
           title: filename,
         })
-        toast.success("Choose 'Save to Files' to pick a folder, or share to another app", { duration: 5000 })
+        toast.success(t('toasts.saveToFilesHint'), { duration: 5000 })
       } else {
         const url = URL.createObjectURL(rec.blob)
         const a = document.createElement('a')
@@ -123,11 +124,11 @@ export default function QuickRecordPage() {
         a.download = filename
         a.click()
         URL.revokeObjectURL(url)
-        toast.success('Saved to your Downloads folder')
+        toast.success(t('toasts.savedToDownloads'))
       }
     } catch (err) {
       if ((err as Error)?.name === 'AbortError') return
-      toast.error('Failed to save file')
+      toast.error(t('toasts.saveFileFailed'))
     }
   }
 
@@ -162,7 +163,7 @@ export default function QuickRecordPage() {
       }
     } catch (error) {
       console.error('Failed to play recording:', error)
-      toast.error('Playback failed')
+      toast.error(t('toasts.playbackFailed'))
     }
   }
 
@@ -179,12 +180,19 @@ export default function QuickRecordPage() {
     yesterday.setDate(yesterday.getDate() - 1)
 
     if (date.toDateString() === today.toDateString()) {
-      return 'Today ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      return t('date.todayAt', {
+        time: date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+      })
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      return t('date.yesterdayAt', {
+        time: date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+      })
     } else {
-      return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }) + ' ' +
-             date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      return (
+        date.toLocaleDateString(locale, { month: '2-digit', day: '2-digit' }) +
+        ' ' +
+        date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+      )
     }
   }
 
@@ -201,21 +209,21 @@ export default function QuickRecordPage() {
               size="icon"
               onClick={() => router.back()}
               className="shrink-0"
-              title="Back"
+              title={t('actions.back')}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-primary">Quick Record</h1>
+              <h1 className="text-2xl font-bold text-primary">{t('title')}</h1>
               <p className="text-sm text-muted-foreground">
-                Record without login • Upload later
+                {t('subtitle')}
               </p>
             </div>
           </div>
           {!loading && !user && (
             <Button variant="outline" size="sm" onClick={() => router.push(`/login?redirect=${encodeURIComponent(toLocalePath('/record'))}`)}>
               <LogIn className="h-4 w-4 mr-2" />
-              Sign In
+              {t('actions.signIn')}
             </Button>
           )}
         </div>
@@ -226,12 +234,12 @@ export default function QuickRecordPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-primary">
                 <HardDrive className="h-4 w-4" />
-                <span>{recordings.length} Recording{recordings.length !== 1 ? 's' : ''} • {formatSize(totalSize)}</span>
+                <span>{t('storageSummary', { count: recordings.length, size: formatSize(totalSize) })}</span>
               </div>
               {user && recordings.length > 0 && (
                 <Button size="sm" onClick={handleUpload}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload & Transcribe
+                  {t('actions.uploadAndTranscribe')}
                 </Button>
               )}
             </div>
@@ -249,7 +257,7 @@ export default function QuickRecordPage() {
               className="w-full mt-4"
               onClick={() => setShowRecorder(false)}
             >
-              Cancel
+              {t('actions.cancel')}
             </Button>
           </Card>
         ) : (
@@ -259,7 +267,7 @@ export default function QuickRecordPage() {
             onClick={() => setShowRecorder(true)}
           >
             <Mic className="h-8 w-8 mr-3" />
-            New Recording
+            {t('actions.newRecording')}
           </Button>
         )}
 
@@ -267,7 +275,7 @@ export default function QuickRecordPage() {
         {recordings.length > 0 ? (
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-foreground px-1">
-              Saved Recordings
+              {t('savedRecordings')}
             </h2>
             {recordings.map((rec) => (
               <Card key={rec.id} className="p-3 border-primary/20 bg-gradient-to-br from-white to-primary/5">
@@ -290,7 +298,7 @@ export default function QuickRecordPage() {
                       variant="ghost"
                       onClick={() => handlePlay(rec.id)}
                       className="h-8 w-8"
-                      title="Play"
+                      title={t('actions.play')}
                     >
                       {playingId === rec.id ? (
                         <Pause className="h-4 w-4" />
@@ -303,7 +311,7 @@ export default function QuickRecordPage() {
                       variant="ghost"
                       onClick={() => handleDownload(rec)}
                       className="h-8 w-8"
-                      title="Save to device"
+                      title={t('actions.saveToDevice')}
                     >
                       <Download className="h-4 w-4" />
                     </Button>
@@ -312,7 +320,7 @@ export default function QuickRecordPage() {
                       variant="ghost"
                       onClick={() => handleDelete(rec.id)}
                       className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                      title="Delete"
+                      title={t('actions.delete')}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -324,21 +332,21 @@ export default function QuickRecordPage() {
         ) : !showRecorder && (
           <Card className="p-8 text-center border-primary/20 bg-gradient-to-br from-white to-primary/5">
             <Mic className="h-12 w-12 text-primary mx-auto mb-3" />
-            <p className="text-foreground font-medium">No recordings yet</p>
+            <p className="text-foreground font-medium">{t('empty.title')}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Start your first recording – no sign-in required
+              {t('empty.subtitle')}
             </p>
           </Card>
         )}
 
         {/* Info Footer */}
         <Card className="p-4 border-primary/20 bg-white/50">
-          <h3 className="font-semibold text-sm text-foreground mb-2">ℹ️ How it works</h3>
+          <h3 className="font-semibold text-sm text-foreground mb-2">ℹ️ {t('howItWorks.title')}</h3>
           <ul className="text-xs text-muted-foreground space-y-1">
-            <li>✅ Record without sign-in</li>
-            <li>✅ Recordings stay on your device</li>
-            <li>✅ Sign in later to upload</li>
-            <li>✅ Transcription starts after upload</li>
+            <li>✅ {t('howItWorks.item1')}</li>
+            <li>✅ {t('howItWorks.item2')}</li>
+            <li>✅ {t('howItWorks.item3')}</li>
+            <li>✅ {t('howItWorks.item4')}</li>
           </ul>
         </Card>
       </div>

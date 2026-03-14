@@ -797,6 +797,76 @@
     "batchMode": "Batch mode",
     "realTimeMode": "Real-time mode"
   },
+  "quickRecord": {
+    "title": "Quick Record",
+    "subtitle": "Record without login - upload later",
+    "savedRecordings": "Saved Recordings",
+    "storageSummary": "{count, plural, one {# recording} other {# recordings}} - {size}",
+    "actions": {
+      "back": "Back",
+      "signIn": "Sign In",
+      "uploadAndTranscribe": "Upload & Transcribe",
+      "cancel": "Cancel",
+      "newRecording": "New Recording",
+      "play": "Play",
+      "saveToDevice": "Save to device",
+      "delete": "Delete"
+    },
+    "empty": {
+      "title": "No recordings yet",
+      "subtitle": "Start your first recording - no sign-in required"
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "item1": "Record without sign-in",
+      "item2": "Recordings stay on your device",
+      "item3": "Sign in later to upload",
+      "item4": "Transcription starts after upload"
+    },
+    "date": {
+      "todayAt": "Today {time}",
+      "yesterdayAt": "Yesterday {time}"
+    },
+    "toasts": {
+      "loadFailed": "Failed to load recordings",
+      "saved": "Recording saved",
+      "saveFailed": "Failed to save recording",
+      "deleted": "Recording deleted",
+      "deleteFailed": "Failed to delete recording",
+      "signInToUpload": "Please sign in to upload recordings",
+      "saveToFilesHint": "Choose 'Save to Files' to pick a folder, or share to another app",
+      "savedToDownloads": "Saved to your Downloads folder",
+      "saveFileFailed": "Failed to save file",
+      "playbackFailed": "Playback failed"
+    }
+  },
+  "quickRecordUpload": {
+    "title": "Upload Recordings",
+    "subtitle": "Select recordings to upload and create new sessions",
+    "recordingLanguage": "Recording Language",
+    "uploading": "Uploading...",
+    "uploadCta": "Upload {count, plural, one {# Recording} other {# Recordings}}",
+    "actions": {
+      "back": "Back",
+      "backToRecording": "Back to Recording",
+      "saveToDevice": "Save to device"
+    },
+    "empty": {
+      "title": "No recordings to upload"
+    },
+    "errors": {
+      "recordingNotFound": "Recording not found"
+    },
+    "toasts": {
+      "loadFailed": "Failed to load recordings",
+      "selectAtLeastOne": "No recordings selected",
+      "uploadedSuccess": "{count} recording(s) uploaded successfully",
+      "uploadedFailed": "{count} recording(s) failed to upload",
+      "saveToFilesHint": "Choose 'Save to Files' to pick a folder, or share to another app",
+      "savedToDownloads": "Saved to your Downloads folder",
+      "saveFileFailed": "Failed to save file"
+    }
+  },
   "callRoom": {
     "connecting": "Connecting...",
     "waitingForOther": "Waiting for the other person to join...",

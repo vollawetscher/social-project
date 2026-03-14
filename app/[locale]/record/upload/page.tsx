@@ -32,6 +32,7 @@ export default function UploadRecordingsPage() {
   const [language, setLanguage] = useState<string>('auto')
   const router = useRouter()
   const locale = useLocale()
+  const t = useTranslations('quickRecordUpload')
   const tl = useTranslations('languages')
   const { user, loading } = useAuth()
 
@@ -79,7 +80,7 @@ export default function UploadRecordingsPage() {
       setSelectedIds(new Set(recs.map(r => r.id)))
     } catch (error) {
       console.error('Failed to load recordings:', error)
-      toast.error('Failed to load recordings')
+      toast.error(t('toasts.loadFailed'))
     }
   }
 
@@ -195,7 +196,7 @@ export default function UploadRecordingsPage() {
 
   const handleUpload = async () => {
     if (selectedIds.size === 0) {
-      toast.error('No recordings selected')
+      toast.error(t('toasts.selectAtLeastOne'))
       return
     }
 
@@ -221,7 +222,7 @@ export default function UploadRecordingsPage() {
         setUploadStatuses(new Map(statuses))
 
         const recording = await localStorageService.getRecording(id)
-        if (!recording) throw new Error('Recording not found')
+        if (!recording) throw new Error(t('errors.recordingNotFound'))
 
         const sessionId = await uploadRecording(recording, language)
         lastSessionId = sessionId
@@ -243,7 +244,7 @@ export default function UploadRecordingsPage() {
     setUploading(false)
 
     if (successCount > 0) {
-      toast.success(`${successCount} recording(s) uploaded successfully`)
+      toast.success(t('toasts.uploadedSuccess', { count: successCount }))
       
       // Reload recordings list
       await loadRecordings()
@@ -259,7 +260,7 @@ export default function UploadRecordingsPage() {
     }
 
     if (errorCount > 0) {
-      toast.error(`${errorCount} recording(s) failed to upload`)
+      toast.error(t('toasts.uploadedFailed', { count: errorCount }))
     }
   }
 
@@ -267,7 +268,7 @@ export default function UploadRecordingsPage() {
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
-    return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleDateString(locale, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
   }
 
   const handleSaveToDevice = async (rec: LocalRecording) => {
@@ -291,7 +292,7 @@ export default function UploadRecordingsPage() {
           files: [file],
           title: filename,
         })
-        toast.success("Choose 'Save to Files' to pick a folder, or share to another app", { duration: 5000 })
+        toast.success(t('toasts.saveToFilesHint'), { duration: 5000 })
       } else {
         const url = URL.createObjectURL(rec.blob)
         const a = document.createElement('a')
@@ -299,11 +300,11 @@ export default function UploadRecordingsPage() {
         a.download = filename
         a.click()
         URL.revokeObjectURL(url)
-        toast.success('Saved to your Downloads folder')
+        toast.success(t('toasts.savedToDownloads'))
       }
     } catch (err) {
       if ((err as Error)?.name === 'AbortError') return
-      toast.error('Failed to save file')
+      toast.error(t('toasts.saveFileFailed'))
     }
   }
 
@@ -319,13 +320,13 @@ export default function UploadRecordingsPage() {
     <div className="min-h-screen bg-slate-50 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label={t('actions.back')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Upload Recordings</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t('title')}</h1>
             <p className="text-sm text-slate-600">
-              Select recordings to upload and create new sessions
+              {t('subtitle')}
             </p>
           </div>
         </div>
@@ -334,7 +335,7 @@ export default function UploadRecordingsPage() {
         {recordings.length > 0 && (
           <Card className="p-4">
             <Label htmlFor="language" className="text-sm font-medium mb-2 block">
-              Recording Language
+              {t('recordingLanguage')}
             </Label>
             <select
               id="language"
@@ -383,8 +384,8 @@ export default function UploadRecordingsPage() {
                         onClick={() => handleSaveToDevice(rec)}
                         disabled={uploading}
                         className="h-8 w-8 shrink-0"
-                        title="Save to device"
-                        aria-label="Save to device"
+                        title={t('actions.saveToDevice')}
+                        aria-label={t('actions.saveToDevice')}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
@@ -409,9 +410,9 @@ export default function UploadRecordingsPage() {
           </div>
         ) : (
           <Card className="p-8 text-center">
-            <p className="text-slate-600">No recordings to upload</p>
+            <p className="text-slate-600">{t('empty.title')}</p>
             <Button variant="link" onClick={() => router.push('/record')}>
-              Back to Recording
+              {t('actions.backToRecording')}
             </Button>
           </Card>
         )}
@@ -427,12 +428,12 @@ export default function UploadRecordingsPage() {
             {uploading ? (
               <>
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                Uploading...
+                {t('uploading')}
               </>
             ) : (
               <>
                 <Upload className="h-5 w-5 mr-2" />
-                Upload {selectedIds.size} Recording{selectedIds.size !== 1 ? 's' : ''}
+                {t('uploadCta', { count: selectedIds.size })}
               </>
             )}
           </Button>

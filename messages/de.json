@@ -796,6 +796,76 @@
     "batchMode": "Batch-Modus",
     "realTimeMode": "Echtzeit-Modus"
   },
+  "quickRecord": {
+    "title": "Schnellaufnahme",
+    "subtitle": "Ohne Login aufnehmen - spaeter hochladen",
+    "savedRecordings": "Gespeicherte Aufnahmen",
+    "storageSummary": "{count, plural, one {# Aufnahme} other {# Aufnahmen}} - {size}",
+    "actions": {
+      "back": "Zurueck",
+      "signIn": "Anmelden",
+      "uploadAndTranscribe": "Hochladen & Transkribieren",
+      "cancel": "Abbrechen",
+      "newRecording": "Neue Aufnahme",
+      "play": "Abspielen",
+      "saveToDevice": "Auf Geraet speichern",
+      "delete": "Loeschen"
+    },
+    "empty": {
+      "title": "Noch keine Aufnahmen",
+      "subtitle": "Starte deine erste Aufnahme - ohne Anmeldung"
+    },
+    "howItWorks": {
+      "title": "So funktioniert es",
+      "item1": "Ohne Anmeldung aufnehmen",
+      "item2": "Aufnahmen bleiben auf deinem Geraet",
+      "item3": "Spaeter anmelden und hochladen",
+      "item4": "Transkription startet nach dem Upload"
+    },
+    "date": {
+      "todayAt": "Heute {time}",
+      "yesterdayAt": "Gestern {time}"
+    },
+    "toasts": {
+      "loadFailed": "Aufnahmen konnten nicht geladen werden",
+      "saved": "Aufnahme gespeichert",
+      "saveFailed": "Aufnahme konnte nicht gespeichert werden",
+      "deleted": "Aufnahme geloescht",
+      "deleteFailed": "Aufnahme konnte nicht geloescht werden",
+      "signInToUpload": "Bitte anmelden, um Aufnahmen hochzuladen",
+      "saveToFilesHint": "Waehle 'In Dateien sichern', um einen Ordner auszuwaehlen oder in eine andere App zu teilen",
+      "savedToDownloads": "Im Downloads-Ordner gespeichert",
+      "saveFileFailed": "Datei konnte nicht gespeichert werden",
+      "playbackFailed": "Wiedergabe fehlgeschlagen"
+    }
+  },
+  "quickRecordUpload": {
+    "title": "Aufnahmen hochladen",
+    "subtitle": "Waehle Aufnahmen zum Hochladen und Erstellen neuer Sitzungen",
+    "recordingLanguage": "Aufnahmesprache",
+    "uploading": "Wird hochgeladen...",
+    "uploadCta": "{count, plural, one {# Aufnahme hochladen} other {# Aufnahmen hochladen}}",
+    "actions": {
+      "back": "Zurueck",
+      "backToRecording": "Zurueck zur Aufnahme",
+      "saveToDevice": "Auf Geraet speichern"
+    },
+    "empty": {
+      "title": "Keine Aufnahmen zum Hochladen"
+    },
+    "errors": {
+      "recordingNotFound": "Aufnahme nicht gefunden"
+    },
+    "toasts": {
+      "loadFailed": "Aufnahmen konnten nicht geladen werden",
+      "selectAtLeastOne": "Keine Aufnahme ausgewaehlt",
+      "uploadedSuccess": "{count} Aufnahme(n) erfolgreich hochgeladen",
+      "uploadedFailed": "{count} Aufnahme(n) konnten nicht hochgeladen werden",
+      "saveToFilesHint": "Waehle 'In Dateien sichern', um einen Ordner auszuwaehlen oder in eine andere App zu teilen",
+      "savedToDownloads": "Im Downloads-Ordner gespeichert",
+      "saveFileFailed": "Datei konnte nicht gespeichert werden"
+    }
+  },
   "callRoom": {
     "connecting": "Verbindung wird hergestellt...",
     "waitingForOther": "Warten auf den Beitritt der anderen Person...",

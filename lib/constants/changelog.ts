@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.17',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.17',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Localized Quick Record Experience',
+        description: 'Quick Record and its upload flow now show localized labels, actions, status messages, and guidance text so the full experience matches your selected app language.',
+      },
+    ],
+  },
+  {
     version: '1.20.16',
     date: 'March 13, 2026',
     entries: [
