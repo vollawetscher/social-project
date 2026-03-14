@@ -12,6 +12,7 @@ export interface MicrophoneOptions {
   noiseSuppression?: boolean
   autoGainControl?: boolean
   channelCount?: number
+  channelCountExact?: boolean
   deviceId?: string
 }
 
@@ -45,7 +46,9 @@ class MicrophoneManager {
       }
 
       if (options?.channelCount) {
-        audioConstraints.channelCount = { ideal: options.channelCount }
+        audioConstraints.channelCount = options.channelCountExact
+          ? { exact: options.channelCount }
+          : { ideal: options.channelCount }
       }
       if (options?.deviceId) {
         audioConstraints.deviceId = { exact: options.deviceId }

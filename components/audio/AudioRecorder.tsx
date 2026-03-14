@@ -49,6 +49,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const animationFrameRef = useRef<number | null>(null)
   const levelUpdateRef = useRef<number>(0)
   const activeStreamRef = useRef<MediaStream | null>(null)
+  const recordingContextRef = useRef<AudioContext | null>(null)
 
   useEffect(() => {
     return () => {
@@ -62,10 +63,11 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         URL.revokeObjectURL(audioURL)
       }
       stopLevelMonitoring()
+      cleanupRecordingContext()
       microphoneManager.releaseMicrophone('audio-recorder')
       releaseWakeLock()
     }
-  }, [audioURL])
+  }, [audioURL, cleanupRecordingContext, stopLevelMonitoring])
 
   const loadInputDevices = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return
@@ -101,7 +103,18 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       const tempStream = await navigator.mediaDevices.getUserMedia({ audio: constraints })
       const track = tempStream.getAudioTracks()[0]
       const settings = track?.getSettings()
-      setDetectedInputChannels(settings?.channelCount || 1)
+      const capabilities = typeof (track as any)?.getCapabilities === 'function'
+        ? (track as any).getCapabilities()
+        : null
+      const capabilityMax =
+        typeof capabilities?.channelCount === 'number'
+          ? capabilities.channelCount
+          : typeof capabilities?.channelCount?.max === 'number'
+            ? capabilities.channelCount.max
+            : Array.isArray(capabilities?.channelCount)
+              ? Math.max(...capabilities.channelCount)
+              : 1
+      setDetectedInputChannels(Math.max(settings?.channelCount || 1, capabilityMax || 1))
       tempStream.getTracks().forEach((t) => t.stop())
     } catch (error) {
       console.warn('[AudioRecorder] Channel probe failed:', error)
@@ -120,6 +133,46 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     if (!selectedInputDeviceId) return
     probeInputChannels(selectedInputDeviceId)
   }, [showSettings, isRecording, selectedInputDeviceId, probeInputChannels])
+
+  const cleanupRecordingContext = useCallback(() => {
+    if (recordingContextRef.current) {
+      recordingContextRef.current.close().catch(() => {})
+      recordingContextRef.current = null
+    }
+  }, [])
+
+  const buildRecordingStream = useCallback((inputStream: MediaStream, preferStereo: boolean): MediaStream => {
+    if (!preferStereo) return inputStream
+
+    const inputTrack = inputStream.getAudioTracks()[0]
+    const inputSettings = inputTrack?.getSettings()
+    const inputChannels = inputSettings?.channelCount || 1
+
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const source = ctx.createMediaStreamSource(inputStream)
+      const destination = ctx.createMediaStreamDestination()
+      const merger = ctx.createChannelMerger(2)
+
+      if (inputChannels >= 2) {
+        const splitter = ctx.createChannelSplitter(2)
+        source.connect(splitter)
+        splitter.connect(merger, 0, 0)
+        splitter.connect(merger, 1, 1)
+      } else {
+        // Hardware is mono: duplicate signal so output file is 2-channel dual-mono.
+        source.connect(merger, 0, 0)
+        source.connect(merger, 0, 1)
+      }
+
+      merger.connect(destination)
+      recordingContextRef.current = ctx
+      return destination.stream
+    } catch (error) {
+      console.warn('[AudioRecorder] Failed to build stereo recording stream, using input stream:', error)
+      return inputStream
+    }
+  }, [])
 
   // --- Audio Level Monitoring ---
   const startLevelMonitoring = useCallback((stream: MediaStream) => {
@@ -379,6 +432,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         noiseSuppression: audioProcessing,
         autoGainControl: audioProcessing,
         channelCount: 2, // Always request stereo; browser gives what's available
+        channelCountExact: (detectedInputChannels || 1) >= 2,
         deviceId: selectedInputDeviceId !== 'default' ? selectedInputDeviceId : undefined,
       })
       if (!stream) {
@@ -389,6 +443,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
       // Start level monitoring for visual feedback
       startLevelMonitoring(stream)
+      cleanupRecordingContext()
       
       // Monitor for stream ending unexpectedly
       stream.getAudioTracks().forEach(track => {
@@ -410,6 +465,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       if (!audioFormat.isSupported) {
         microphoneManager.releaseMicrophone('audio-recorder')
         stopLevelMonitoring()
+        cleanupRecordingContext()
         toast.error(
           'Your browser cannot record in a supported audio format. Please use Safari (iPhone/Mac) or upload a pre-recorded file instead.',
           { duration: 10000 }
@@ -425,13 +481,14 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       if (audioFormat.mimeType) {
         options.mimeType = audioFormat.mimeType
       }
-
-      const mediaRecorder = new MediaRecorder(stream, options)
+      const recordingStream = buildRecordingStream(stream, (detectedInputChannels || 1) >= 2)
+      const mediaRecorder = new MediaRecorder(recordingStream, options)
 
       const actualMimeType = mediaRecorder.mimeType || audioFormat.mimeType
       if (!actualMimeType) {
         microphoneManager.releaseMicrophone('audio-recorder')
         stopLevelMonitoring()
+        cleanupRecordingContext()
         toast.error(
           'Could not determine recording format. Please use Safari or upload a file instead.',
           { duration: 10000 }
@@ -463,6 +520,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       mediaRecorder.onstop = async () => {
         stopHealthMonitoring()
         stopLevelMonitoring()
+        cleanupRecordingContext()
         releaseWakeLock()
         
         // Wait for any pending dataavailable events to fire
@@ -545,6 +603,8 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       
       toast.error(errorMsg)
       microphoneManager.releaseMicrophone('audio-recorder')
+      cleanupRecordingContext()
+      activeStreamRef.current = null
     }
   }
 
@@ -645,6 +705,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const discardRecording = () => {
     stopHealthMonitoring()
     stopLevelMonitoring()
+    cleanupRecordingContext()
     releaseWakeLock()
     if (audioURL) {
       URL.revokeObjectURL(audioURL)

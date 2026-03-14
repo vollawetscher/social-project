@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.16',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.16',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Improved Stereo Capture with External Mics',
+        description: 'Recorder now requests strict 2-channel input when available and preserves stereo channels more reliably for supported USB/lapel microphones.',
+      },
+    ],
+  },
+  {
     version: '1.20.15',
     date: 'March 13, 2026',
     entries: [
