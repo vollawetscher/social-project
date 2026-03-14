@@ -27,6 +27,10 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const [channelCount, setChannelCount] = useState(1)
   const [audioLevels, setAudioLevels] = useState<number[]>([0])
   const [showSettings, setShowSettings] = useState(false)
+  const [availableInputDevices, setAvailableInputDevices] = useState<MediaDeviceInfo[]>([])
+  const [selectedInputDeviceId, setSelectedInputDeviceId] = useState<string>('default')
+  const [detectedInputChannels, setDetectedInputChannels] = useState<number | null>(null)
+  const [probingChannels, setProbingChannels] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -44,6 +48,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const analysersRef = useRef<AnalyserNode[]>([])
   const animationFrameRef = useRef<number | null>(null)
   const levelUpdateRef = useRef<number>(0)
+  const activeStreamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     return () => {
@@ -61,6 +66,60 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       releaseWakeLock()
     }
   }, [audioURL])
+
+  const loadInputDevices = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const audioInputs = devices.filter((d) => d.kind === 'audioinput')
+      setAvailableInputDevices(audioInputs)
+
+      if (audioInputs.length > 0 && selectedInputDeviceId === 'default') {
+        const preferred = audioInputs.find((d) => d.deviceId === 'default') || audioInputs[0]
+        setSelectedInputDeviceId(preferred?.deviceId || 'default')
+      }
+    } catch (error) {
+      console.warn('[AudioRecorder] Failed to enumerate input devices:', error)
+    }
+  }, [selectedInputDeviceId])
+
+  const probeInputChannels = useCallback(async (deviceId: string) => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
+    if (isRecording) return
+    setProbingChannels(true)
+    try {
+      const constraints: MediaTrackConstraints = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: { ideal: 2 },
+      }
+      if (deviceId && deviceId !== 'default') {
+        constraints.deviceId = { exact: deviceId }
+      }
+
+      const tempStream = await navigator.mediaDevices.getUserMedia({ audio: constraints })
+      const track = tempStream.getAudioTracks()[0]
+      const settings = track?.getSettings()
+      setDetectedInputChannels(settings?.channelCount || 1)
+      tempStream.getTracks().forEach((t) => t.stop())
+    } catch (error) {
+      console.warn('[AudioRecorder] Channel probe failed:', error)
+      setDetectedInputChannels(null)
+    } finally {
+      setProbingChannels(false)
+    }
+  }, [isRecording])
+
+  useEffect(() => {
+    loadInputDevices()
+  }, [loadInputDevices])
+
+  useEffect(() => {
+    if (!showSettings || isRecording) return
+    if (!selectedInputDeviceId) return
+    probeInputChannels(selectedInputDeviceId)
+  }, [showSettings, isRecording, selectedInputDeviceId, probeInputChannels])
 
   // --- Audio Level Monitoring ---
   const startLevelMonitoring = useCallback((stream: MediaStream) => {
@@ -320,11 +379,13 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         noiseSuppression: audioProcessing,
         autoGainControl: audioProcessing,
         channelCount: 2, // Always request stereo; browser gives what's available
+        deviceId: selectedInputDeviceId !== 'default' ? selectedInputDeviceId : undefined,
       })
       if (!stream) {
         toast.error('Microphone already in use')
         return
       }
+      activeStreamRef.current = stream
 
       // Start level monitoring for visual feedback
       startLevelMonitoring(stream)
@@ -437,6 +498,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
         // Release microphone via manager
         microphoneManager.releaseMicrophone('audio-recorder')
+        activeStreamRef.current = null
 
         setDuration(finalDuration)
         onRecordingComplete(blob, finalDuration)
@@ -493,6 +555,9 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         isPausedRef.current = false
         setIsPaused(false)
         mediaRecorderRef.current.resume()
+        if (activeStreamRef.current) {
+          startLevelMonitoring(activeStreamRef.current)
+        }
         const pauseDuration = Date.now() - pausedTimeRef.current
         totalPausedTimeRef.current += pauseDuration
         
@@ -515,6 +580,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         // Pausing
         isPausedRef.current = true
         setIsPaused(true)
+        stopLevelMonitoring()
         
         // Stop health monitoring entirely while paused
         stopHealthMonitoring()
@@ -587,6 +653,7 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     setDuration(0)
     setRecordingTime(0)
     chunksRef.current = []
+    activeStreamRef.current = null
     isPausedRef.current = false // Reset ref
     // Ensure microphone is released
     microphoneManager.releaseMicrophone('audio-recorder')
@@ -684,6 +751,35 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
 
                   {showSettings && (
                     <div className="border rounded-lg p-3 space-y-3 bg-slate-50">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="input-device" className="text-sm font-medium">
+                          Input Device
+                        </Label>
+                        <select
+                          id="input-device"
+                          value={selectedInputDeviceId}
+                          onChange={(e) => setSelectedInputDeviceId(e.target.value)}
+                          className="w-full rounded-md border border-slate-300 bg-white p-2 text-sm"
+                        >
+                          {availableInputDevices.length === 0 && (
+                            <option value="default">Default microphone</option>
+                          )}
+                          {availableInputDevices.map((device, index) => (
+                            <option key={device.deviceId || index} value={device.deviceId}>
+                              {device.label || `Microphone ${index + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-slate-500 leading-tight">
+                          {probingChannels
+                            ? 'Checking channel support...'
+                            : detectedInputChannels == null
+                              ? 'Channel support unknown until device permission is granted.'
+                              : detectedInputChannels >= 2
+                                ? 'Detected stereo-capable input (2 channels).'
+                                : 'Detected mono input. Try selecting your external/lapel mic for stereo.'}
+                        </p>
+                      </div>
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label htmlFor="audio-processing" className="text-sm font-medium">

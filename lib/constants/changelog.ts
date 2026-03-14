@@ -14,6 +14,39 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.15',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.15',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Recorder Meter Pauses with Recording',
+        description: 'When you pause a recording, the live audio level meter now pauses too, then resumes correctly when recording continues.',
+      },
+    ],
+  },
+  {
+    version: '1.20.14',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.14',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Quick Record Works Without Login Again',
+        description: 'Quick Record can now be opened without signing in, so you can capture audio instantly and upload it after creating an account.',
+      },
+      {
+        version: '1.20.14',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Input Device Selection for Better Stereo Capture',
+        description: 'The recorder now lets you select your microphone input and checks channel support, making it easier to use external/lapel mics with stereo recording when available.',
+      },
+    ],
+  },
+  {
     version: '1.20.13',
     date: 'March 13, 2026',
     entries: [

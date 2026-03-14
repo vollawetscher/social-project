@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
+import { useLocale } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Mic, Upload, Trash2, Play, Pause, Clock, HardDrive, LogIn, ArrowLeft, Download } from 'lucide-react'
@@ -21,7 +22,13 @@ export default function QuickRecordPage() {
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null)
   const router = useRouter()
+  const locale = useLocale()
   const { user, loading } = useAuth()
+
+  const toLocalePath = (path: string) => {
+    const normalized = path.startsWith('/') ? path : `/${path}`
+    return locale === 'en' ? normalized : `/${locale}${normalized}`
+  }
 
   useEffect(() => {
     loadRecordings()
@@ -78,7 +85,8 @@ export default function QuickRecordPage() {
   const handleUpload = () => {
     if (!user) {
       toast.error('Please sign in to upload recordings')
-      router.push(`/login?redirect=/record`)
+      const redirectTarget = encodeURIComponent(toLocalePath('/record'))
+      router.push(`/login?redirect=${redirectTarget}`)
       return
     }
     
@@ -205,7 +213,7 @@ export default function QuickRecordPage() {
             </div>
           </div>
           {!loading && !user && (
-            <Button variant="outline" size="sm" onClick={() => router.push('/login')}>
+            <Button variant="outline" size="sm" onClick={() => router.push(`/login?redirect=${encodeURIComponent(toLocalePath('/record'))}`)}>
               <LogIn className="h-4 w-4 mr-2" />
               Sign In
             </Button>

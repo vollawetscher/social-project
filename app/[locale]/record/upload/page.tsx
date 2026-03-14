@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
+import { useLocale } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -30,12 +31,19 @@ export default function UploadRecordingsPage() {
   const [uploading, setUploading] = useState(false)
   const [language, setLanguage] = useState<string>('auto')
   const router = useRouter()
+  const locale = useLocale()
   const tl = useTranslations('languages')
   const { user, loading } = useAuth()
 
+  const toLocalePath = (path: string) => {
+    const normalized = path.startsWith('/') ? path : `/${path}`
+    return locale === 'en' ? normalized : `/${locale}${normalized}`
+  }
+
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login?redirect=/record/upload')
+      const redirectTarget = encodeURIComponent(toLocalePath('/record/upload'))
+      router.push(`/login?redirect=${redirectTarget}`)
       return
     }
 
