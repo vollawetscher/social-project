@@ -51,6 +51,13 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const activeStreamRef = useRef<MediaStream | null>(null)
   const recordingContextRef = useRef<AudioContext | null>(null)
 
+  const cleanupRecordingContext = useCallback(() => {
+    if (recordingContextRef.current) {
+      recordingContextRef.current.close().catch(() => {})
+      recordingContextRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -62,12 +69,20 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
       if (audioURL) {
         URL.revokeObjectURL(audioURL)
       }
-      stopLevelMonitoring()
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+      if (analyserContextRef.current) {
+        analyserContextRef.current.close().catch(() => {})
+        analyserContextRef.current = null
+      }
+      analysersRef.current = []
       cleanupRecordingContext()
       microphoneManager.releaseMicrophone('audio-recorder')
       releaseWakeLock()
     }
-  }, [audioURL, cleanupRecordingContext, stopLevelMonitoring])
+  }, [audioURL, cleanupRecordingContext])
 
   const loadInputDevices = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return
@@ -133,13 +148,6 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
     if (!selectedInputDeviceId) return
     probeInputChannels(selectedInputDeviceId)
   }, [showSettings, isRecording, selectedInputDeviceId, probeInputChannels])
-
-  const cleanupRecordingContext = useCallback(() => {
-    if (recordingContextRef.current) {
-      recordingContextRef.current.close().catch(() => {})
-      recordingContextRef.current = null
-    }
-  }, [])
 
   const buildRecordingStream = useCallback((inputStream: MediaStream, preferStereo: boolean): MediaStream => {
     if (!preferStereo) return inputStream
