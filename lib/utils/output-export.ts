@@ -17,29 +17,8 @@ import {
   convertInchesToTwip,
 } from 'docx'
 
-const PDF_SUPPORTED_LANGUAGE_CODES = new Set(['en', 'de', 'fr', 'es', 'it', 'pt', 'nl'])
-const PDF_SUPPORTED_LANGUAGE_ALIASES: Record<string, string> = {
-  english: 'en',
-  german: 'de',
-  deutsch: 'de',
-  french: 'fr',
-  spanish: 'es',
-  espanol: 'es',
-  spanisch: 'es',
-  italian: 'it',
-  portuguese: 'pt',
-  dutch: 'nl',
-}
-
 export function isPdfExportSupportedLanguage(language?: string | null): boolean {
-  if (!language) return true
-  const normalized = String(language).trim().toLowerCase()
-  if (!normalized) return true
-  if (normalized === 'session' || normalized === 'auto') return true
-  const aliasCode = PDF_SUPPORTED_LANGUAGE_ALIASES[normalized]
-  if (aliasCode) return PDF_SUPPORTED_LANGUAGE_CODES.has(aliasCode)
-  const code = normalized.slice(0, 2)
-  return PDF_SUPPORTED_LANGUAGE_CODES.has(code)
+  return true
 }
 
 type Block =

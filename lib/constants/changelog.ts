@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.13',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.13',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'PDF Download Restored in Outputs',
+        description: 'The PDF option is visible again in output download menus, so you can export any generated output as PDF without it disappearing based on language.',
+      },
+    ],
+  },
+  {
     version: '1.20.12',
     date: 'March 13, 2026',
     entries: [
