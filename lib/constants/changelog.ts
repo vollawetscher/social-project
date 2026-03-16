@@ -14,6 +14,84 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.27',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.27',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Back Navigation Keeps Your Original Context',
+        description: 'When opening an output from a session, the Back action now returns you to that same session view instead of sending you to the generic outputs list.',
+      },
+    ],
+  },
+  {
+    version: '1.20.26',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.26',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Template Pick During Transcript Import',
+        description: 'In transcript preview, you can now choose a template and generate an output immediately after import, giving you a faster text-to-report workflow.',
+      },
+    ],
+  },
+  {
+    version: '1.20.25',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.25',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Re-Parse Controls in Session Transcript View',
+        description: 'You can now cycle parse modes and re-apply parsing directly from the Session Transcript tab, so imported transcripts can be corrected after import without re-uploading.',
+      },
+    ],
+  },
+  {
+    version: '1.20.24',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.24',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'AI Structuring Now Returns Type Detection',
+        description: 'When transcript AI structuring runs, it now returns both cleaned speaker segments and transcript type classification in one pass, improving consistency while reducing duplicate detection work.',
+      },
+    ],
+  },
+  {
+    version: '1.20.23',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.23',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Improved Parse Button Readability',
+        description: 'The parse-mode button in text import preview now uses stronger contrast so the label is easier to read.',
+      },
+    ],
+  },
+  {
+    version: '1.20.22',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.22',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Imported Speaker Timestamps Preserved More Accurately',
+        description: 'When transcript text includes explicit timeline markers (like 1:26 or 1:30), imports now treat them as timing data instead of transcript content, reducing synthetic timing drift in parsed sessions.',
+      },
+    ],
+  },
+  {
     version: '1.20.21',
     date: 'March 13, 2026',
     entries: [

@@ -163,7 +163,9 @@
       "noContent": "No content in {fileName}. Please add transcript text.",
       "importTimeout": "Import timed out. Try a smaller file or paste the content instead.",
       "importFailed": "Import failed",
+      "generateFailed": "Failed to generate output",
       "importSuccess": "{count} transcript(s) imported",
+      "importAndGenerateSuccess": "Transcript imported and output generated",
       "pasteImported": "Pasted transcript imported",
       "clipboardEmpty": "Clipboard is empty",
       "clipboardFailed": "Failed to read clipboard",
@@ -1060,7 +1062,10 @@
     },
     "cancel": "Cancel",
     "import": "Import",
-    "importing": "Importing..."
+      "importing": "Importing...",
+      "importAndGenerate": "Import and generate output",
+      "templateLabel": "Generate output with template (optional)",
+      "templateNone": "No template (import only)"
   },
   "pasteSheet": {
     "title": "Paste Content",

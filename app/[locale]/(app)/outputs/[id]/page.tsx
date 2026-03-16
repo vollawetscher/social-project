@@ -2,9 +2,9 @@
 
 export const dynamic = 'force-dynamic'
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useTranslations } from "next-intl"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { Link, useRouter } from "@/i18n/navigation"
 import { toast } from "sonner"
 import ReactMarkdown from 'react-markdown'
@@ -105,6 +105,7 @@ const TRANSLATE_LANGUAGES: { code: string; label: string }[] = [
 
 export default function OutputDetailPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const outputId = params.id as string
   const t = useTranslations('outputDetail')
@@ -120,6 +121,11 @@ export default function OutputDetailPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [isPublic, setIsPublic] = useState(false)
   const [copiedShareLink, setCopiedShareLink] = useState(false)
+  const backHref = useMemo(() => {
+    const from = searchParams.get('from')
+    if (!from) return '/outputs'
+    return from.startsWith('/') && !from.startsWith('//') ? from : '/outputs'
+  }, [searchParams])
 
   useEffect(() => {
     fetchOutput()
@@ -146,7 +152,7 @@ export default function OutputDetailPage() {
     } catch (error) {
       console.error('Error fetching output:', error)
       toast.error(t('loadFailed'))
-      router.push('/outputs')
+      router.push(backHref)
     } finally {
       setLoading(false)
     }
@@ -360,7 +366,7 @@ export default function OutputDetailPage() {
       }
 
       toast.success(t('deleteSuccess'))
-      router.push('/outputs')
+      router.push(backHref)
     } catch (error) {
       console.error('Error deleting output:', error)
       toast.error(error instanceof Error ? error.message : t('deleteFailed'))
@@ -380,7 +386,11 @@ export default function OutputDetailPage() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || t('translateFailed'))
       toast.success(t('translatedTo', { language: TRANSLATE_LANGUAGES.find(l => l.code === targetLanguage)?.label || targetLanguage }))
-      router.push(`/outputs/${data.id}`)
+      router.push(
+        backHref === '/outputs'
+          ? `/outputs/${data.id}`
+          : `/outputs/${data.id}?from=${encodeURIComponent(backHref)}`
+      )
     } catch (error) {
       console.error('Translate error:', error)
       toast.error(error instanceof Error ? error.message : t('translateFailed'))
@@ -414,7 +424,7 @@ export default function OutputDetailPage() {
             {t('notFoundHint')}
           </p>
           <Button asChild>
-            <Link href="/outputs">
+            <Link href={backHref}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               {tc('back')}
             </Link>
@@ -435,7 +445,7 @@ export default function OutputDetailPage() {
             asChild 
             className="mb-3 -ml-2"
           >
-            <Link href="/outputs">
+            <Link href={backHref}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               {tc('back')}
             </Link>

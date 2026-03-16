@@ -62,7 +62,7 @@ import { getStorageMimeType } from "@/lib/utils/audio-format-detector"
 import { uploadToStorage } from "@/lib/utils/resumable-upload"
 import { parseTranscriptFile, cleanPastedContent, type TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
 import { formatDuration } from "@/lib/utils/date-formatters"
-import type { SessionStatus, Session } from "@/lib/types-v0"
+import type { SessionStatus, Session, Template } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 
 type StatusDisplay = { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline"; className?: string; animated?: boolean }
@@ -284,6 +284,7 @@ export default function SessionsPage() {
   const [pastePreviewOpen, setPastePreviewOpen] = useState(false)
   const [pastePreviewSource, setPastePreviewSource] = useState<'clipboard' | 'file'>('clipboard')
   const [pastePreviewFileName, setPastePreviewFileName] = useState<string | null>(null)
+  const [pastePreviewTemplates, setPastePreviewTemplates] = useState<Array<Pick<Template, 'id' | 'name'>>>([])
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const transcriptInputRef = useRef<HTMLInputElement>(null)
@@ -341,6 +342,21 @@ export default function SessionsPage() {
     }
   }, [adminView])
 
+  const fetchPastePreviewTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/templates')
+      if (!res.ok) return
+      const data = await res.json()
+      if (!Array.isArray(data)) return
+      const templates = data
+        .filter((item: any) => item && typeof item.id === 'string' && typeof item.name === 'string')
+        .map((item: any) => ({ id: item.id, name: item.name as string }))
+      setPastePreviewTemplates(templates)
+    } catch (error) {
+      console.error('Error fetching templates for paste preview:', error)
+    }
+  }, [])
+
   useEffect(() => {
     fetchUserPreferences()
   }, [user])
@@ -348,6 +364,11 @@ export default function SessionsPage() {
   useEffect(() => {
     if (user) fetchSessions()
   }, [user, adminView, fetchSessions])
+
+  useEffect(() => {
+    if (!pastePreviewOpen || pastePreviewTemplates.length > 0) return
+    fetchPastePreviewTemplates()
+  }, [pastePreviewOpen, pastePreviewTemplates.length, fetchPastePreviewTemplates])
 
 
   // Poll when any session is in progress so badges update when ready
@@ -425,11 +446,11 @@ export default function SessionsPage() {
     fileName: string,
     ingestionSource: 'drag_drop' | 'file_select' | 'clipboard_paste' = 'file_select',
     parseStrategy: TranscriptParseStrategy = 'auto'
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     const { segments, rawText } = parseTranscriptFile(rawFileContent, fileName, { strategy: parseStrategy })
     if (segments.length === 0) {
       toast.error(t('uploadMessages.noContent', { fileName }))
-      return false
+      return null
     }
     const sessionName = fileName.replace(/\.[^/.]+$/, '') || fileName
     const uniqueSpeakers = new Set(segments.map(s => s.speaker))
@@ -459,7 +480,8 @@ export default function SessionsPage() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || t('uploadMessages.importFailed'))
       }
-      return true
+      const payload = await res.json().catch(() => ({}))
+      return payload?.session?.id || null
     } catch (err: any) {
       clearTimeout(timeoutId)
       if (err.name === 'AbortError') {
@@ -474,18 +496,19 @@ export default function SessionsPage() {
     source: 'drag_drop' | 'file_select' = 'file_select'
   ): Promise<boolean> => {
     const rawFileContent = await file.text()
-    return importTranscriptContent(rawFileContent, file.name, source)
+    const sessionId = await importTranscriptContent(rawFileContent, file.name, source)
+    return !!sessionId
   }, [importTranscriptContent])
 
   const processPastedTranscript = useCallback(async (
     rawContent: string,
     source: 'clipboard_paste' | 'file_select' = 'clipboard_paste',
     parseStrategy: TranscriptParseStrategy = 'auto'
-  ): Promise<boolean> => {
+  ): Promise<string | null> => {
     const trimmed = rawContent.trim()
     if (!trimmed || trimmed.length < 10) {
       toast.error(t('uploadMessages.emptyContent'))
-      return false
+      return null
     }
     return importTranscriptContent(trimmed, 'pasted.txt', source, parseStrategy)
   }, [importTranscriptContent, t])
@@ -554,24 +577,68 @@ export default function SessionsPage() {
     setPastePreviewOpen(true)
   }, [])
 
-  const handlePastePreviewConfirm = useCallback(async (text: string, parseStrategy: TranscriptParseStrategy) => {
+  const generateOutputForTemplate = useCallback(async (sessionId: string, templateId: string) => {
+    const templateName = pastePreviewTemplates.find((template) => template.id === templateId)?.name
+    const response = await fetch('/api/outputs/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId,
+        config: {
+          templateId,
+          templateName,
+          perspective: 'observer',
+          audience: 'internal',
+          language: language || 'auto',
+          tone: 'neutral',
+          format: 'markdown',
+          doInstructions: '',
+          dontInstructions: '',
+          createTemplateFromConfig: false,
+          citeTimestamps: false,
+          includeDate: false,
+        },
+      }),
+    })
+
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(data.error || t('uploadMessages.generateFailed'))
+    }
+    return data?.id as string | undefined
+  }, [pastePreviewTemplates, language, t])
+
+  const handlePastePreviewConfirm = useCallback(async (
+    text: string,
+    parseStrategy: TranscriptParseStrategy,
+    templateId?: string
+  ) => {
     setUploadingTranscript(true)
     try {
-      const imported = pastePreviewSource === 'file' && pastePreviewFileName
+      const sessionId = pastePreviewSource === 'file' && pastePreviewFileName
         ? await importTranscriptContent(text, pastePreviewFileName, 'file_select', parseStrategy)
         : await processPastedTranscript(text, 'clipboard_paste', parseStrategy)
 
-      if (imported) {
+      if (sessionId) {
+        let outputId: string | undefined
+        if (templateId) {
+          outputId = await generateOutputForTemplate(sessionId, templateId)
+        }
         toast.success(
-          pastePreviewSource === 'file'
-            ? t('uploadMessages.importSuccess', { count: 1 })
-            : t('uploadMessages.pasteImported')
+          templateId
+            ? t('uploadMessages.importAndGenerateSuccess')
+            : (pastePreviewSource === 'file'
+              ? t('uploadMessages.importSuccess', { count: 1 })
+              : t('uploadMessages.pasteImported'))
         )
         setPastePreviewOpen(false)
         setPastePreviewFileName(null)
         setPastePreviewSource('clipboard')
         setIsUploadOpen(false)
         await fetchSessions()
+        if (outputId) {
+          router.push(`/outputs/${outputId}`)
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t('uploadMessages.importFailed')
@@ -579,7 +646,7 @@ export default function SessionsPage() {
     } finally {
       setUploadingTranscript(false)
     }
-  }, [processPastedTranscript, importTranscriptContent, fetchSessions, pastePreviewSource, pastePreviewFileName, t])
+  }, [processPastedTranscript, importTranscriptContent, fetchSessions, pastePreviewSource, pastePreviewFileName, t, generateOutputForTemplate, router])
 
   const handlePasteTranscript = useCallback(async () => {
     try {
@@ -1845,6 +1912,7 @@ export default function SessionsPage() {
         initialText={pastePreviewText}
         ingestionSource={pastePreviewSource === 'file' ? 'file_select' : 'clipboard_paste'}
         fileName={pastePreviewFileName}
+        templates={pastePreviewTemplates}
         onConfirm={handlePastePreviewConfirm}
         loading={uploadingTranscript}
       />

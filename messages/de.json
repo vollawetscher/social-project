@@ -163,7 +163,9 @@
       "noContent": "Kein Inhalt in {fileName}. Bitte fügen Sie Transkript-Text hinzu.",
       "importTimeout": "Import abgelaufen. Versuchen Sie eine kleinere Datei oder fügen Sie den Inhalt direkt ein.",
       "importFailed": "Import fehlgeschlagen",
+      "generateFailed": "Ausgabe konnte nicht generiert werden",
       "importSuccess": "{count} Transkript(e) importiert",
+      "importAndGenerateSuccess": "Transkript importiert und Ausgabe erstellt",
       "pasteImported": "Eingefügtes Transkript importiert",
       "clipboardEmpty": "Zwischenablage ist leer",
       "clipboardFailed": "Zwischenablage konnte nicht gelesen werden",
@@ -1059,7 +1061,10 @@
     },
     "cancel": "Abbrechen",
     "import": "Importieren",
-    "importing": "Wird importiert..."
+    "importing": "Wird importiert...",
+    "importAndGenerate": "Importieren und Ausgabe erstellen",
+    "templateLabel": "Ausgabe mit Vorlage erstellen (optional)",
+    "templateNone": "Keine Vorlage (nur Import)"
   },
   "pasteSheet": {
     "title": "Inhalt einfügen",

@@ -4,6 +4,7 @@
  */
 import Anthropic from '@anthropic-ai/sdk'
 import { logError } from '@/lib/services/error-logger'
+import type { TranscriptContentKind, TranscriptDetectedType } from '@/lib/utils/transcript-type-detection'
 
 export interface StructuredSegment {
   start_ms: number
@@ -15,6 +16,12 @@ export interface StructuredSegment {
 export interface StructureResult {
   segments: StructuredSegment[]
   rawText: string
+  transcriptSignals: {
+    contentKind: TranscriptContentKind
+    detectedType: TranscriptDetectedType
+    confidence: number
+    reasons: string[]
+  }
 }
 
 const STRUCTURE_PROMPT = `You are given a raw transcript that may contain:
@@ -30,12 +37,22 @@ Reorganize this into a CLEAN conversation transcript with clear speaker turns.
 - Preserve all substantive content
 - Output ONLY valid JSON, no markdown or explanation
 
-Output format - an array of objects:
-[
-  { "speaker": "S1", "text": "First utterance...", "start_ms": 0, "end_ms": 5000 },
-  { "speaker": "S2", "text": "Second utterance...", "start_ms": 5000, "end_ms": 12000 }
-]
-Use sequential timestamps based on estimated speaking time (~150 words/min).`
+Output format - JSON object only:
+{
+  "content_kind": "transcript | non_transcript | mixed",
+  "detected_type": "speaker_turns | timestamped_speaker_turns | subtitle_like | chat_export | non_transcript_note | mixed_or_unknown",
+  "confidence": 0.0,
+  "reasons": ["short reason", "short reason"],
+  "segments": [
+    { "speaker": "S1", "text": "First utterance...", "start_ms": 0, "end_ms": 5000 },
+    { "speaker": "S2", "text": "Second utterance...", "start_ms": 5000, "end_ms": 12000 }
+  ]
+}
+Use sequential timestamps based on estimated speaking time (~150 words/min) only when explicit timestamps are unavailable.`
+
+function clamp(num: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, num))
+}
 
 export async function structureTranscript(
   rawContent: string,
@@ -93,26 +110,58 @@ export async function structureTranscript(
     throw new Error('AI structuring returned empty response')
   }
 
-  // Extract JSON from response (handle possible markdown code block)
-  let jsonStr = text.trim()
-  const match = text.match(/\[[\s\S]*\]/)
-  if (match) jsonStr = match[0]
-
-  const parsed = JSON.parse(jsonStr) as Array<{
+  // Extract JSON from response (prefer object payload, fallback to array-only legacy payload)
+  const cleaned = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim()
+  let parsedObject: any = null
+  let parsedArray: Array<{
     speaker?: string
     text?: string
     start_ms?: number
     end_ms?: number
-  }>
+  }> = []
 
-  if (!Array.isArray(parsed) || parsed.length === 0) {
+  try {
+    const direct = JSON.parse(cleaned)
+    if (Array.isArray(direct)) {
+      parsedArray = direct
+    } else if (direct && typeof direct === 'object') {
+      parsedObject = direct
+      if (Array.isArray(direct.segments)) parsedArray = direct.segments
+    }
+  } catch {
+    const objMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (objMatch) {
+      try {
+        const candidate = JSON.parse(objMatch[0])
+        if (candidate && typeof candidate === 'object') {
+          parsedObject = candidate
+          if (Array.isArray(candidate.segments)) parsedArray = candidate.segments
+        }
+      } catch {
+        // no-op
+      }
+    }
+    if (parsedArray.length === 0) {
+      const arrMatch = cleaned.match(/\[[\s\S]*\]/)
+      if (arrMatch) {
+        try {
+          const candidate = JSON.parse(arrMatch[0])
+          if (Array.isArray(candidate)) parsedArray = candidate
+        } catch {
+          // no-op
+        }
+      }
+    }
+  }
+
+  if (!Array.isArray(parsedArray) || parsedArray.length === 0) {
     throw new Error('AI structuring returned invalid or empty segments')
   }
 
   const segments: StructuredSegment[] = []
   let currentMs = 0
 
-  for (const item of parsed) {
+  for (const item of parsedArray) {
     const textContent = typeof item.text === 'string' ? item.text.trim() : ''
     if (!textContent) continue
 
@@ -137,5 +186,11 @@ export async function structureTranscript(
   }
 
   const rawText = segments.map((s) => s.text).join(' ')
-  return { segments, rawText }
+  const transcriptSignals = {
+    contentKind: (parsedObject?.content_kind as TranscriptContentKind) || 'mixed',
+    detectedType: (parsedObject?.detected_type as TranscriptDetectedType) || 'mixed_or_unknown',
+    confidence: clamp(Number(parsedObject?.confidence || 0.6), 0.35, 0.99),
+    reasons: Array.isArray(parsedObject?.reasons) ? parsedObject.reasons.slice(0, 8).map((r: any) => String(r)) : ['ai_structurer_detected_type'],
+  }
+  return { segments, rawText, transcriptSignals }
 }

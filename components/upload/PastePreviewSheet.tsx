@@ -23,7 +23,8 @@ interface PastePreviewSheetProps {
   initialText: string
   ingestionSource?: TranscriptIngestionSource
   fileName?: string | null
-  onConfirm: (text: string, strategy: TranscriptParseStrategy) => void
+  templates?: Array<{ id: string; name: string }>
+  onConfirm: (text: string, strategy: TranscriptParseStrategy, templateId?: string) => void
   loading?: boolean
 }
 
@@ -33,12 +34,14 @@ export function PastePreviewSheet({
   initialText,
   ingestionSource = 'unknown',
   fileName = null,
+  templates = [],
   onConfirm,
   loading = false,
 }: PastePreviewSheetProps) {
   const t = useTranslations('pastePreview')
   const [text, setText] = useState(initialText)
   const [modeIndex, setModeIndex] = useState(0)
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const parseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt']
@@ -47,6 +50,7 @@ export function PastePreviewSheet({
     if (open) {
       setText(initialText)
       setModeIndex(0)
+      setSelectedTemplateId('')
     }
   }, [open, initialText])
 
@@ -144,8 +148,32 @@ export function PastePreviewSheet({
         <div className="text-xs text-muted-foreground pb-2">
           {t('stats', { words: wordCount.toLocaleString(), characters: charCount.toLocaleString() })}
         </div>
+        <div className="pb-3">
+          <label htmlFor="preview-template-select" className="mb-1 block text-xs font-medium text-foreground">
+            {t('templateLabel')}
+          </label>
+          <select
+            id="preview-template-select"
+            value={selectedTemplateId}
+            onChange={(e) => setSelectedTemplateId(e.target.value)}
+            disabled={loading}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">{t('templateNone')}</option>
+            {templates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <SheetFooter className="border-t pt-4">
-          <Button variant="secondary" onClick={handleTryNextParse} disabled={loading}>
+          <Button
+            variant="secondary"
+            onClick={handleTryNextParse}
+            disabled={loading}
+            className="text-foreground bg-muted hover:bg-muted/80 border border-border"
+          >
             <Shuffle className="h-4 w-4 mr-2" />
             {t('tryNextParse')} ({modeLabelMap[parseModes[modeIndex]]})
           </Button>
@@ -153,7 +181,7 @@ export function PastePreviewSheet({
             {t('cancel')}
           </Button>
           <Button
-            onClick={() => onConfirm(trimmed, parseModes[modeIndex])}
+            onClick={() => onConfirm(trimmed, parseModes[modeIndex], selectedTemplateId || undefined)}
             disabled={loading || charCount < 10}
           >
             {loading ? (
@@ -164,7 +192,7 @@ export function PastePreviewSheet({
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                {t('import')}
+                {selectedTemplateId ? t('importAndGenerate') : t('import')}
               </>
             )}
           </Button>

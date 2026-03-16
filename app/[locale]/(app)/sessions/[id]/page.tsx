@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   MessageSquare,
   Trash2,
+  Shuffle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -65,6 +66,7 @@ import { formatDetailDate } from "@/lib/utils/date-formatters"
 import { EditableTitle } from "@/components/ui/editable-title"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { BugReporter } from "@/components/error/BugReporter"
+import type { TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
 
 /** Renders Speechmatics summary with paragraphs and bullet lists */
 function FormattedSummary({ text }: { text: string }) {
@@ -143,6 +145,17 @@ export default function SessionDetailPage() {
   const [handOffEmail, setHandOffEmail] = useState('')
   const [handOffLoading, setHandOffLoading] = useState(false)
   const [sessionFiles, setSessionFiles] = useState<any[]>([])
+  const [reparseModeIndex, setReparseModeIndex] = useState(0)
+  const [reparsingTranscript, setReparsingTranscript] = useState(false)
+  const tPastePreview = useTranslations('pastePreview')
+
+  const reparseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt']
+  const reparseModeLabel: Record<TranscriptParseStrategy, string> = {
+    auto: tPastePreview('parseModes.auto'),
+    sprecher_zeit: tPastePreview('parseModes.sprecherZeit'),
+    timestamped_speaker_lines: tPastePreview('parseModes.timestampedSpeakerLines'),
+    plain_txt: tPastePreview('parseModes.plainText'),
+  }
 
   const getOutputDisplayName = useCallback((templateName: string) => {
     const prefix = session?.filename?.trim()
@@ -660,6 +673,39 @@ export default function SessionDetailPage() {
     }
   }
 
+  const mapTranscriptToV0 = (rawJson: any[]) => {
+    return (rawJson || []).map((segment: any, index: number) => ({
+      id: `seg_${index}`,
+      speakerId: segment.speaker || 'unknown',
+      speakerName: segment.speaker || 'Unknown',
+      startTime: (segment.start_ms || 0) / 1000,
+      endTime: (segment.end_ms || 0) / 1000,
+      text: segment.text || '',
+      isPiiRedacted: false,
+    }))
+  }
+
+  const handleReparseTranscript = async () => {
+    setReparsingTranscript(true)
+    try {
+      const strategy = reparseModes[reparseModeIndex]
+      const res = await fetch(`/api/sessions/${sessionId}/transcript/reparse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategy }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to re-parse transcript')
+      const updatedSegments = mapTranscriptToV0(data?.transcript?.raw_json || [])
+      setSession((prev) => (prev ? { ...prev, transcript: updatedSegments } : prev))
+      toast.success(`Transcript re-parsed using ${reparseModeLabel[strategy]}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to re-parse transcript')
+    } finally {
+      setReparsingTranscript(false)
+    }
+  }
+
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Header */}
@@ -867,6 +913,21 @@ export default function SessionDetailPage() {
             <TabsTrigger value="outputs">{t('outputs')}</TabsTrigger>
           </TabsList>
           <TabsContent value="transcript" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
+            <div className="mb-2 flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setReparseModeIndex((i) => (i + 1) % reparseModes.length)}
+                disabled={reparsingTranscript}
+              >
+                <Shuffle className="h-3.5 w-3.5 mr-1.5" />
+                {tPastePreview('tryNextParse')}: {reparseModeLabel[reparseModes[reparseModeIndex]]}
+              </Button>
+              <Button size="sm" onClick={handleReparseTranscript} disabled={reparsingTranscript}>
+                {reparsingTranscript ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                Apply
+              </Button>
+            </div>
             <div className="h-full rounded-lg border border-border bg-card overflow-hidden">
               <TranscriptViewer 
                 segments={session.transcript}
@@ -1245,7 +1306,7 @@ export default function SessionDetailPage() {
                             asChild
                             title={tOutputs('open')}
                           >
-                            <Link href={`/outputs/${output.id}`}>
+                            <Link href={`/outputs/${output.id}?from=${encodeURIComponent(`/sessions/${sessionId}`)}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
                           </Button>
@@ -1289,15 +1350,32 @@ export default function SessionDetailPage() {
           
           {/* Tab Content */}
           {activeTab === "transcript" && (
-            <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
-              <TranscriptViewer 
-                segments={session.transcript} 
-                currentTime={currentAudioTime}
-                onSeek={handleSeekToTime}
-                corrections={session.transcriptCorrections}
-                onTogglePlayback={handleTogglePlayback}
-                isPlaying={isAudioPlaying}
-              />
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="mb-2 flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setReparseModeIndex((i) => (i + 1) % reparseModes.length)}
+                  disabled={reparsingTranscript}
+                >
+                  <Shuffle className="h-3.5 w-3.5 mr-1.5" />
+                  {tPastePreview('tryNextParse')}: {reparseModeLabel[reparseModes[reparseModeIndex]]}
+                </Button>
+                <Button size="sm" onClick={handleReparseTranscript} disabled={reparsingTranscript}>
+                  {reparsingTranscript ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                  Apply
+                </Button>
+              </div>
+              <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
+                <TranscriptViewer 
+                  segments={session.transcript} 
+                  currentTime={currentAudioTime}
+                  onSeek={handleSeekToTime}
+                  corrections={session.transcriptCorrections}
+                  onTogglePlayback={handleTogglePlayback}
+                  isPlaying={isAudioPlaying}
+                />
+              </div>
             </div>
           )}
 
@@ -1671,7 +1749,7 @@ export default function SessionDetailPage() {
                             asChild
                             title={tOutputs('open')}
                           >
-                            <Link href={`/outputs/${output.id}`}>
+                            <Link href={`/outputs/${output.id}?from=${encodeURIComponent(`/sessions/${sessionId}`)}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
                           </Button>

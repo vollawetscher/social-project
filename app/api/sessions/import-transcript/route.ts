@@ -56,6 +56,12 @@ export async function POST(request: Request) {
 
     let segments: ParsedSegment[]
     let rawText: string
+    let aiTranscriptSignals: {
+      contentKind: 'transcript' | 'non_transcript' | 'mixed'
+      detectedType: 'speaker_turns' | 'timestamped_speaker_turns' | 'subtitle_like' | 'chat_export' | 'non_transcript_note' | 'mixed_or_unknown'
+      confidence: number
+      reasons: string[]
+    } | null = null
 
     // Peek: only run AI structuring when content looks messy (chat, summaries, mixed)
     const needsStructure =
@@ -68,6 +74,7 @@ export async function POST(request: Request) {
         const structured = await structureTranscript(rawFileContent!, language)
         segments = structured.segments
         rawText = structured.rawText
+        aiTranscriptSignals = structured.transcriptSignals
       } catch (err: any) {
         console.error('[Import Transcript] AI structuring failed:', err?.message)
         await logError({
@@ -137,11 +144,12 @@ export async function POST(request: Request) {
       userEmail: profile?.email || null,
       userDisplayName: profile?.display_name || profile?.full_name || null,
     })
-    const transcriptSignals = detectTranscriptType({
+    const fallbackTranscriptSignals = detectTranscriptType({
       text: rawTextForCount || rawText || rawFileContent || '',
       filename,
       ingestionSource,
     })
+    const transcriptSignals = aiTranscriptSignals || fallbackTranscriptSignals
     const inputHint = sourceSignals.isExternalInquiry ? 'external_inquiry_email' : null
     const seededExtractedContext = {
       sourceSignals,

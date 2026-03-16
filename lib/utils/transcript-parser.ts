@@ -300,8 +300,28 @@ function parseSprecherZeitFormat(content: string): ParseResult | null {
   if (lines.length === 0) return null
 
   const headerRe = /^SPRECHER:\s*([^,]+?)\s*,\s*ZEIT:\s*(\d{2}):(\d{2}):(\d{2})[.,](\d{3})\s*(.*)$/i
-  const segments: ParsedSegment[] = []
-  let current: ParsedSegment | null = null
+  type InternalSegment = ParsedSegment & { explicitEnd: boolean }
+  const segments: InternalSegment[] = []
+  let current: InternalSegment | null = null
+
+  const parseLooseTimecodeToMs = (value: string): number | null => {
+    const m = value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+    if (!m) return null
+    const first = parseInt(m[1], 10)
+    const second = parseInt(m[2], 10)
+    const third = m[3] ? parseInt(m[3], 10) : null
+    if (Number.isNaN(first) || Number.isNaN(second)) return null
+    if (third !== null) return first * 3600000 + second * 60000 + third * 1000
+    return first * 60000 + second * 1000
+  }
+
+  const extractTrailingLooseTimecode = (value: string): { text: string; endMs: number | null } => {
+    const m = value.match(/^(.*?)(?:\s+|^)(\d{1,2}:\d{2}(?::\d{2})?)\s*$/)
+    if (!m) return { text: value.trim(), endMs: null }
+    const parsed = parseLooseTimecodeToMs(m[2])
+    if (parsed === null) return { text: value.trim(), endMs: null }
+    return { text: m[1].trim(), endMs: parsed }
+  }
 
   const flushCurrent = () => {
     if (!current) return
@@ -316,6 +336,15 @@ function parseSprecherZeitFormat(content: string): ParseResult | null {
   for (const line of lines) {
     // Ignore standalone legacy speaker tags (e.g. "S1", "S2")
     if (/^S\d+$/i.test(line)) continue
+    // Standalone timeline markers (e.g. "1:26", "01:30", "1:02:15")
+    const standaloneTimeMs = parseLooseTimecodeToMs(line)
+    if (standaloneTimeMs !== null) {
+      if (current) {
+        current.end_ms = Math.max(current.start_ms + 1000, standaloneTimeMs)
+        current.explicitEnd = true
+      }
+      continue
+    }
 
     const m = line.match(headerRe)
     if (m) {
@@ -326,19 +355,28 @@ function parseSprecherZeitFormat(content: string): ParseResult | null {
       const ms = parseInt(m[5], 10)
       const startMs = hh * 3600000 + mm * 60000 + ss * 1000 + ms
       const speaker = m[1].trim()
-      const initialText = (m[6] || '').trim()
+      const parsedTail = extractTrailingLooseTimecode((m[6] || '').trim())
       current = {
         start_ms: startMs,
-        end_ms: startMs + 5000,
+        end_ms: startMs + 1000,
         speaker: speaker || 'S1',
-        text: initialText,
+        text: parsedTail.text,
+        explicitEnd: parsedTail.endMs !== null,
+      }
+      if (parsedTail.endMs !== null) {
+        current.end_ms = Math.max(startMs + 1000, parsedTail.endMs)
       }
       continue
     }
 
     // If we are inside a speaker block, append continuation lines.
     if (current) {
-      current.text = `${current.text} ${line}`.trim()
+      const parsedTail = extractTrailingLooseTimecode(line)
+      current.text = `${current.text} ${parsedTail.text}`.trim()
+      if (parsedTail.endMs !== null) {
+        current.end_ms = Math.max(current.start_ms + 1000, parsedTail.endMs)
+        current.explicitEnd = true
+      }
     }
   }
 
@@ -346,12 +384,15 @@ function parseSprecherZeitFormat(content: string): ParseResult | null {
   if (segments.length < 1) return null
 
   for (let i = 0; i < segments.length; i++) {
-    const nextStart = i + 1 < segments.length ? segments[i + 1].start_ms : segments[i].start_ms + 5000
-    segments[i].end_ms = Math.max(nextStart, segments[i].start_ms + 1000)
+    if (!segments[i].explicitEnd) {
+      const nextStart = i + 1 < segments.length ? segments[i + 1].start_ms : segments[i].start_ms + 5000
+      segments[i].end_ms = Math.max(nextStart, segments[i].start_ms + 1000)
+    }
   }
 
-  const rawText = segments.map((s) => `${s.speaker}: ${s.text}`.trim()).join('\n')
-  return { segments, rawText }
+  const normalizedSegments: ParsedSegment[] = segments.map(({ explicitEnd: _explicitEnd, ...seg }) => seg)
+  const rawText = normalizedSegments.map((s) => `${s.speaker}: ${s.text}`.trim()).join('\n')
+  return { segments: normalizedSegments, rawText }
 }
 
 /**

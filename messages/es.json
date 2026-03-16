@@ -163,7 +163,9 @@
       "noContent": "Sin contenido en {fileName}. Añade texto de transcripción.",
       "importTimeout": "Importación agotada. Intenta con un archivo más pequeño o pega el contenido directamente.",
       "importFailed": "Importación fallida",
+      "generateFailed": "No se pudo generar el informe",
       "importSuccess": "{count} transcripción(es) importada(s)",
+      "importAndGenerateSuccess": "Transcripcion importada y informe generado",
       "pasteImported": "Transcripción pegada importada",
       "clipboardEmpty": "El portapapeles está vacío",
       "clipboardFailed": "No se pudo leer el portapapeles",
@@ -1059,7 +1061,10 @@
     },
     "cancel": "Cancelar",
     "import": "Importar",
-    "importing": "Importando..."
+    "importing": "Importando...",
+    "importAndGenerate": "Importar y generar informe",
+    "templateLabel": "Generar informe con plantilla (opcional)",
+    "templateNone": "Sin plantilla (solo importar)"
   },
   "pasteSheet": {
     "title": "Pegar Contenido",
