@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.21.0',
+    date: 'March 11, 2026',
+    entries: [
+      {
+        version: '1.21.0',
+        date: 'March 11, 2026',
+        category: 'feature',
+        title: 'Creator Lead Capture',
+        description: 'Template creators can now choose to receive email notifications when users install their templates. Users consent to share their email before installing, connecting creators directly with their audience.',
+      },
+    ],
+  },
+  {
     version: '1.20.43',
     date: 'March 16, 2026',
     entries: [

@@ -7,15 +7,54 @@
 
 ## Zusammenfassung
 
-Notissima nutzt den Marketplace als **Lead-Generierungs-Plattform fuer Notion-Creator und -Berater**. Templates sind kostenlos. Creator monetarisieren nicht ueber Template-Verkaeufe, sondern ueber **qualifizierte Leads** -- Nutzer, die beim Installieren eines Templates ihre Kontaktdaten freigeben. Notissima wickelt keine Zahlungen ab. Der eingebaute IP-Schutz (Prompts bleiben unsichtbar) ist das zentrale Differenzierungsmerkmal gegenueber Gumroad oder Lemonsqueezy.
+**Notissima ist eine Plattform fuer kontextbewussten, strukturierten Sprach-Input.** Was mit dem strukturierten Output danach passiert -- ob er in Notion, Airtable, Salesforce, Google Sheets oder ein beliebiges anderes System fliesst -- ist die Kompetenz und das Geschaeft des Creators/Integrators.
+
+Der Marketplace ist eine **Lead-Generierungs-Plattform fuer Workflow-Integratoren**. Templates sind kostenlos und dienen als Teaser. Creator monetarisieren nicht ueber Template-Verkaeufe, sondern ueber **qualifizierte Leads** -- Nutzer, die beim Installieren ihre Kontaktdaten freigeben. Der Creator bietet dann Consulting, Custom-Integrationen und Workflow-Design an. Notissima wickelt keine Zahlungen ab. Der eingebaute IP-Schutz (Prompts bleiben unsichtbar) ist das zentrale Differenzierungsmerkmal.
 
 ---
 
 # Teil 1: Go-to-Market -- Creator als Vertriebskanal
 
-## Warum Notion-Creator der ideale Wachstumstreiber sind
+## Was Notissima ist -- und was nicht
 
-Notion hat kein eigenes Monetarisierungsmodell fuer Templates. Creator haben sich deshalb ein externes Oekosystem aufgebaut:
+**Notissima liefert:** Kontextbewussten, strukturierten Sprach-Input. Ein User spricht, und Notissima generiert per KI ein strukturiertes Dokument -- angepasst an Domaene, Perspektive, Zielgruppe und Format.
+
+**Was Notissima NICHT macht:** Bestimmen, wohin der Output fliesst. Das ist die volle Kompetenz des Creators/Integrators. Der Output kann in Notion landen, in Airtable, in einem CRM, in Google Docs, per API in ein ERP-System -- oder einfach als Markdown kopiert werden.
+
+Diese Trennung ist entscheidend: Notissima ist der **Input-Engine**, der Creator ist der **Workflow-Architekt**.
+
+## Warum Workflow-Integratoren die Opportunity sehen werden
+
+Die erste Zielgruppe fuer die Creator-Akquise sind Notion-Creator -- nicht weil Notissima ein Notion-Tool ist, sondern weil diese Creator:
+- Bereits eine grosse Audience haben, die strukturierte Daten in digitale Systeme bringen will
+- Gewohnt sind, digitale Produkte zu erstellen und zu vermarkten
+- Aktiv nach Differenzierungsmerkmalen suchen
+
+Aber die Opportunity geht weit ueber Notion hinaus:
+
+| Creator-Typ | Zielsystem | Consulting-Potenzial |
+|-------------|-----------|---------------------|
+| Notion-Creator | Notion-Datenbanken, Wikis | Workflow-Design, Team-Onboarding |
+| Airtable-Experten | Airtable Bases, Automations | Datenpipeline-Design |
+| CRM-Berater | Salesforce, HubSpot, Pipedrive | Sales-Prozess-Optimierung |
+| Prozessoptimierer | ERP, Projektmanagement | Unternehmensweite Voice-Workflows |
+| Branchenspezialisten | Branchensoftware (Medizin, Recht, Immobilien) | Domaenenspezifische Templates + Integration |
+
+**Die Template-Verknuepfung ist dabei bewusst offen gehalten:** Ein Template-Feld "Optimiert fuer [Zielsystem]" mit Link -- egal ob Notion, Airtable oder eine eigene Loesung.
+
+## Warum ein Creator viel mehr verdient als mit Template-Verkauf
+
+| Modell | Typischer Umsatz pro Kunde |
+|--------|---------------------------|
+| Template-Verkauf (Gumroad) | 5--29 EUR einmalig |
+| Notissima Template (gratis) + Consulting | 500--5.000 EUR pro Auftrag |
+| Notissima Template + vollstaendiges Workflow-Design | 2.000--15.000 EUR pro Projekt |
+
+Das Template ist die **Kostprobe**. Es zeigt dem potenziellen Kunden: "Dieser Creator versteht mein Problem." Der naechste Schritt ist nicht ein weiteres Template fuer 5 EUR, sondern: "Designe mir einen kompletten Voice-to-Workflow-Prozess fuer mein Team."
+
+## Notion-Creator als erste Zielgruppe (Beachhead)
+
+Notion-Creator sind der Einstiegspunkt, nicht das Endziel:
 
 | Plattform | Funktion | Reichweite |
 |-----------|----------|------------|
@@ -24,66 +63,98 @@ Notion hat kein eigenes Monetarisierungsmodell fuer Templates. Creator haben sic
 | Twitter/X | Community, Promotion | 2.000 -- 100.000 Follower |
 | Email-Liste | Direkte Kommunikation | 1.000 -- 50.000 Kontakte |
 | Discord / Communities | Engagement | 500 -- 10.000 Mitglieder |
-| Notion Template Gallery | Kostenlose Reichweite | Tausende Views/Monat |
 
 **Ein einziger mittelgrosser Creator kann potenziell mehr User bringen als Monate eigener Marketing-Arbeit.**
 
-Diese Creator suchen staendig nach Wegen, ihren Kunden mehr Wert zu bieten und sich von anderen Notion-Template-Anbietern abzuheben. Voice-Input ist ein Feature, das kein anderer Template-Anbieter hat -- das macht Notissima zum perfekten Differenzierungsmerkmal fuer Creator.
+Diese Creator suchen staendig nach Wegen, ihren Kunden mehr Wert zu bieten. Voice-Input ist ein Feature, das kein anderer Workflow-Anbieter hat -- das macht Notissima zum perfekten Differenzierungsmerkmal.
 
 ## Die 5 Distributions-Kanaele
 
 ### Kanal 1: In-Product Placement (staerkster Kanal)
 
-Der Creator baut einen Hinweis **direkt in sein Notion-Template** ein -- z.B. eine Seite "Voice Input Setup" oder einen Callout-Block auf der Hauptseite mit direktem Link zum passenden Notissima-Template.
+Der Creator baut einen Hinweis **direkt in sein bestehendes Produkt** ein -- z.B. in einem Notion-Template eine Seite "Voice Input Setup", in einem Airtable-Base einen Callout-Block, oder in einer Workflow-Dokumentation ein Kapitel "Daten per Sprache erfassen".
 
 **Warum das so stark ist:**
-- Der User ist bereits im Notion-Template und sucht aktiv nach Wegen, es zu befuellen
-- Er hat bereits bezahlt (fuer das Notion-Template) -- hohe Kaufkraft und Commitment
-- Der Creator erwischt den perfekten Moment: "Du hast gerade mein CRM-Template gekauft? So fuellst du es 10x schneller."
+- Der User nutzt bereits das Produkt des Creators und sucht aktiv nach Wegen, es effizienter zu befuellen
+- Er hat bereits Vertrauen zum Creator (und eventuell bezahlt)
+- Der Creator erwischt den perfekten Moment: "Du hast mein CRM-System eingerichtet? So fuellst du es 10x schneller per Sprache."
 - Kein Werbe-Budget noetig -- die Distribution passiert innerhalb des Produkts
 
-**Beispiel:** Creator verkauft "Notion CRM fuer Freelancer" auf Gumroad (29 EUR). Im Template gibt es eine Seite "Quick Setup Guide" mit dem Hinweis: "Neuen Kontakt per Sprache hinzufuegen? Installiere das passende Notissima Voice-Template: [Link]"
+**Beispiel Notion:** Creator verkauft "Notion CRM fuer Freelancer" auf Gumroad (29 EUR). Im Template: Hinweis auf "Neuen Kontakt per Sprache hinzufuegen? Installiere das passende Notissima Voice-Template: [Link]"
+
+**Beispiel branchenspezifisch:** Ein Prozessberater fuer Immobilienmakler hat eine Workflow-Dokumentation. Darin: "Besichtigungsprotokoll per Sprache erstellen? Notissima-Template: [Link]" -- und dann bietet er die vollstaendige Integration ins CRM des Maklers als Consulting an.
 
 ### Kanal 2: Content / YouTube
 
-Creator produziert ein Video: "How I use voice to fill my Notion templates 10x faster" -- zeigt den Workflow (Sprache aufnehmen, Notissima, Output in Notion pasten) und verlinkt das Template in der Video-Beschreibung. Erreicht tausende Notion-User mit genau diesem Problem.
+Creator produziert ein Video: "How I turn voice into structured data for [Zielsystem]" -- zeigt den Workflow (Sprache aufnehmen, Notissima generiert strukturierten Output, Ergebnis ins Zielsystem uebernehmen) und verlinkt das Template in der Video-Beschreibung.
 
-### Kanal 3: Bundle mit Notion-Template
+### Kanal 3: Bundle mit bestehendem Produkt
 
-Creator bietet sein Gumroad-Produkt als Bundle an: "Notion CRM Template (29 EUR) + Passendes Notissima Voice-Template (gratis)". Der Notissima-Teil ist kostenlos, aber erhoehrt den wahrgenommenen Wert des Bundles.
+Creator bietet sein Gumroad-Produkt als Bundle an: "[Produkt] (29 EUR) + Passendes Notissima Voice-Template (gratis)". Der Notissima-Teil ist kostenlos, erhoehrt aber den wahrgenommenen Wert des Bundles und eroeffnet die Consulting-Pipeline.
 
 ### Kanal 4: Email-Liste
 
-Creator informiert seine Subscriber: "Neues Feature fuer mein [Template Name]: Sprachinput ueber Notissima" mit direktem Link. Bei 5.000+ Subscribern kann das allein hunderte Signups bringen.
+Creator informiert seine Subscriber: "Neues Feature fuer [Produkt]: Strukturierter Sprachinput ueber Notissima" mit direktem Link. Bei 5.000+ Subscribern kann das allein hunderte Signups bringen.
 
 ### Kanal 5: Community / Social Media
 
-Creator postet in Discord/Twitter: "Ich habe ein Notissima-Template gebaut das perfekt zu meinem [Notion Template] passt" -- mit Screenshot/GIF vom Workflow und Link.
+Creator postet in Discord/Twitter/LinkedIn: "Ich habe ein Notissima-Template gebaut das strukturierten Sprachinput fuer [Anwendungsfall/Zielsystem] liefert" -- mit Screenshot/GIF vom Workflow und Link.
 
 ## Konkreter Akquise-Plan: Die ersten 10 Creator
 
+**Wichtiges Prinzip:** Notissima baut keine Templates fuer fremde Zielsysteme. Wir haben nicht das Know-how ueber Notion, Airtable, Salesforce oder andere Plattformen -- **der Creator hat es.** Er kennt sein Zielsystem, seine Kunden und deren Probleme. Unser Job ist es, ihm die Plattform und die Werkzeuge zu geben, damit er in Minuten ein Notissima-Template bauen kann. Sein Template, sein Know-how, sein Geschaeft.
+
+**Phase 1: Notion-Creator (Beachhead)**
+
 | Schritt | Aktion | Ziel |
 |---------|--------|------|
-| 1 | 5--10 Notion-Creator auf Twitter/YouTube identifizieren, die Templates verkaufen | Zielgruppe finden |
-| 2 | Fuer jeden Creator ein Notissima-Template erstellen, das zu seinem Top-Notion-Template passt | Zeigen statt reden |
-| 3 | Creator anschreiben: "Ich habe ein Voice-Input-Template gebaut, das perfekt zu deinem [Notion Template] passt. Deine Kunden koennten damit per Sprache Daten eingeben. Willst du es ausprobieren?" | Tuer oeffnen |
-| 4 | Demo-Call anbieten (15 Min, natuerlich per Notissima) | Vertrauen aufbauen |
-| 5 | Creator-Profil einrichten, Template unter seinem Namen publizieren | Win-Win schaffen |
+| 1 | 5--10 Notion-Creator auf Twitter/YouTube identifizieren, die Templates verkaufen | Erste Zielgruppe finden |
+| 2 | Creator anschreiben: "Deine Kunden tippen Daten muehsam in dein [Notion-Template] ein. Mit Notissima koennten sie einfach sprechen -- und der Output passt perfekt in dein System. Bau in 5 Minuten ein Voice-Template fuer dein Produkt." | Tuer oeffnen |
+| 3 | Demo-Call anbieten (15 Min, natuerlich per Notissima) -- Creator sieht live, wie einfach Template-Erstellung ist | Vertrauen aufbauen |
+| 4 | Creator baut sein erstes Template selbst, publiziert es unter seinem Namen | Ownership von Tag 1 |
+| 5 | Creator integriert den Hinweis in sein bestehendes Produkt | Flywheel starten |
 
-**Entscheidend:** Die ersten Templates werden **fuer** die Creator erstellt, nicht von ihnen. Das senkt die Einstiegshuerde massiv. Erst wenn sie den Wert sehen, erstellen sie eigene.
+**Phase 2: Ueber Notion hinaus (nach den ersten Erfolgen)**
+
+| Schritt | Aktion | Ziel |
+|---------|--------|------|
+| 6 | Erfolgsgeschichten der Notion-Creator dokumentieren | Social Proof fuer andere Oekosysteme |
+| 7 | Airtable-Experten, CRM-Berater, Branchenspezialisten identifizieren | Neue Zielgruppen |
+| 8 | Gleicher Ansatz: Creator zeigen wie einfach Template-Erstellung ist, sie bauen selbst | Expansion |
+
+**Entscheidend:** Der Creator baut sein Template **selbst**. Er ist Eigentuemer, nicht Empfaenger. Notissima stellt sicher, dass die Template-Erstellung so einfach ist, dass ein Creator in Minuten loslegen kann -- aber das Know-how ueber das Zielsystem und die Kundenbedürfnisse bleibt beim Creator.
 
 ## Der Flywheel-Effekt
 
-1. Notissima baut Template fuer Creator's Notion-Produkt
-2. Creator bekommt fertiges Voice-Template und baut Hinweis in sein Notion-Template ein
-3. Creator's Kunden (Notion-User) entdecken Notissima beim Nutzen des Notion-Templates
+1. Creator baut ein Notissima-Template fuer sein Produkt (sein Know-how, seine Kunden)
+2. Creator baut Hinweis in sein bestehendes Produkt ein
+3. Creator's Kunden entdecken Notissima beim Nutzen des Produkts
 4. User meldet sich bei Notissima an, installiert Template (Lead fuer Creator)
-5. Creator sieht Wert, erstellt weitere Templates
-6. Marketplace wird wertvoller, zieht mehr User an
-7. Mehr User ziehen weitere Creator an
-8. Zurueck zu Schritt 1
+5. Creator bietet Consulting an -- vollstaendiges Workflow-Design Voice-to-[Zielsystem]
+6. Creator sieht den Wert, erstellt weitere Templates fuer andere Anwendungsfaelle
+7. Marketplace wird wertvoller, zieht mehr User an
+8. Mehr User und Erfolgsgeschichten ziehen Creator aus anderen Oekosystemen an
+9. Zurueck zu Schritt 1 -- mit breiterem Spektrum
 
-**Der Schluessel ist: die ersten Templates fuer Creator bauen, nicht darauf warten, dass sie es selbst tun.**
+**Der Schluessel ist: die Template-Erstellung so einfach machen, dass Creator in Minuten loslegen koennen -- und ihnen zeigen, welche Opportunity dahinter steckt.**
+
+## Die Creator-Opportunity im Detail
+
+Ein Notissima-Template ist fuer den Creator kein Endprodukt -- es ist ein **Tueroeffner**:
+
+**Stufe 1 -- Template (kostenlos, Lead-Gen):**
+Der Creator publiziert ein Notissima-Template, z.B. "Besichtigungsprotokoll per Sprache". User installiert es, gibt seine Kontaktdaten frei.
+
+**Stufe 2 -- Quick-Win Consulting (500--2.000 EUR):**
+Creator kontaktiert den Lead: "Du nutzt mein Besichtigungsprotokoll-Template. Soll ich dir zeigen, wie der Output automatisch in dein CRM fliesst?" Einmalige Einrichtung.
+
+**Stufe 3 -- Workflow-Design (2.000--15.000 EUR):**
+Creator designt eine vollstaendige Voice-to-Workflow-Pipeline: Mehrere Notissima-Templates fuer unterschiedliche Anwendungsfaelle, Integration ins Zielsystem, Team-Onboarding.
+
+**Stufe 4 -- Laufende Betreuung (monatlicher Retainer):**
+Creator optimiert laufend, passt Templates an, schult neue Teammitglieder.
+
+Notissima ermoeglicht Stufe 1. Der Creator steuert die Kompetenz fuer Stufen 2--4 bei. **Je kompetenter der Creator, desto groesser seine Opportunity.**
 
 ---
 
@@ -97,10 +168,10 @@ Creator postet in Discord/Twitter: "Ich habe ein Notissima-Template gebaut das p
 - `marketplace_avatar_url` -- Profilbild
 
 ### Neue Felder
-- **Tagline** -- Einzeiler, z.B. "Notion-Berater fuer Produktivitaets-Workflows" (max 120 Zeichen)
+- **Tagline** -- Einzeiler, z.B. "Workflow-Berater fuer Produktivitaets-Systeme" (max 120 Zeichen)
 - **Services** -- Was bietet der Creator an? Freitext (max 500 Zeichen)
+- **Spezialisierung** -- Zielsystem-Tags (Notion, Airtable, Salesforce, Custom, ...) fuer Filterung
 - **Website** -- Eigene Website URL
-- **Notion Gallery** -- Link zum Notion-Template-Gallery-Profil
 - **Social Links** -- Twitter/X, YouTube, LinkedIn (jeweils optional)
 - **Kontakt-Email fuer Leads** -- Kann abweichen von der Account-Email
 - **Verfuegbarkeit** -- Toggle: "Verfuegbar fuer Consulting-Anfragen"
@@ -172,14 +243,15 @@ Jeder Creator bekommt einen Referral-Link (`notissima.app/r/[username]`).
 - Creator sieht im Dashboard: "X Nutzer haben sich ueber deinen Link angemeldet"
 - Optional spaeter: Deep-Links die direkt ein bestimmtes Template oeffnen, mit Auto-Install nach Signup
 
-## 2.6 Notion-Template-Verknuepfung
+## 2.6 Zielsystem-Verknuepfung (Notion, Airtable, etc.)
 
 Felder auf Marketplace-Templates:
-- **Notion-Template-URL** -- Link zum passenden kostenpflichtigen Notion-Template
-- **Notion-Template-Name** -- Name des Notion-Templates
-- **Creator CTA-Text** -- Custom Call-to-Action
+- **Zielsystem-Typ** -- Dropdown/Tags: Notion, Airtable, Salesforce, Google Sheets, Custom, Allgemein
+- **Zielsystem-URL** -- Link zum passenden Produkt des Creators (Notion-Template, Airtable-Base, etc.)
+- **Zielsystem-Name** -- Name des verknuepften Produkts
+- **Creator CTA-Text** -- Custom Call-to-Action, z.B. "Passendes Notion-Template ansehen" oder "Vollstaendige Integration anfragen"
 
-Im UI: Prominenter CTA-Block auf der Template-Detail-Seite ("Optimiert fuer [Notion Template Name] -- [Button: Notion Template ansehen]") und ein "Works with Notion" Badge.
+Im UI: Prominenter CTA-Block auf der Template-Detail-Seite ("Optimiert fuer [Zielsystem-Name] -- [Button: Produkt ansehen]") und ein dynamisches Badge ("Works with Notion" / "Works with Airtable" / etc.).
 
 ## 2.7 User Consent-Verwaltung (DSGVO)
 
@@ -198,9 +270,10 @@ In den User-Settings ein neuer Abschnitt "Datenfreigaben":
 
 Kein Code, sondern Inhalte die Notissima bereitstellt:
 - Embed-Badges: "Works with Notissima", "Voice-Powered by Notissima" (PNG/SVG)
+- Dynamische Badges pro Zielsystem: "Works with Notion", "Works with Airtable", etc.
 - Email-Vorlagen fuer Creator zum Anpassen
 - Social-Media-Grafiken
-- Kurze Anleitungstexte fuer Notion-Templates ("Kopiere diesen Text in dein Notion-Template")
+- Kurze Anleitungstexte fuer verschiedene Zielsysteme ("So verlinkst du Notissima in deinem Notion-Template / Airtable-Base / ...")
 
 ## Aufwandsschaetzung
 
@@ -239,17 +312,19 @@ Kein Code, sondern Inhalte die Notissima bereitstellt:
 ## Vorteile fuer Creator
 
 **Lead-Gen-Modell:**
-- Ein qualifizierter Lead (jemand der aktiv Voice-to-Notion sucht) kann 500--5.000 EUR Consulting-Umsatz bringen
-- 100 Leads zu je 5% Conversion = 5 Consulting-Auftraege = potenziell 2.500--25.000 EUR
+- Ein qualifizierter Lead (jemand der aktiv strukturierten Voice-Input fuer sein System sucht) kann 500--15.000 EUR Consulting-Umsatz bringen
+- 100 Leads zu je 5% Conversion = 5 Consulting-Auftraege = potenziell 2.500--75.000 EUR
 - Zum Vergleich: 100 Template-Verkaeufe a 5 EUR (abzgl. 30% Plattform-Fee) = 350 EUR netto
+- Der Creator hat die volle Kompetenz ueber das, was nach dem Sprach-Input passiert -- seine Wertschoepfung ist nicht auf ein 5-EUR-Template begrenzt
 
 **Stripe-Modell:**
 - Template-Verkaeufe bringen typisch 2--20 EUR pro Stueck
 - Nach Plattform-Fee bleiben 70--85%
 - Braucht hohes Volumen um relevant zu sein
 - Creator hat bei jedem anderen Marketplace die gleiche Option
+- Begrenzt die Wahrnehmung des Creators auf "Template-Verkaeufer" statt "Workflow-Experte"
 
-**Fazit fuer Creator:** Ein Lead ist 10--100x mehr wert als ein Template-Verkauf. Das Lead-Gen-Modell spricht die Ebene "Business" an, nicht "Hobby".
+**Fazit fuer Creator:** Ein Lead ist 10--100x mehr wert als ein Template-Verkauf. Das Lead-Gen-Modell positioniert den Creator als Experten, nicht als Zulieferer. Seine Wertschoepfung liegt in der vollen Integration -- nicht im Template allein.
 
 ## Vorteile fuer User
 
@@ -292,6 +367,18 @@ Das entscheidende Argument gegenueber externen Plattformen:
 
 Dieser IP-Schutz ist ein Feature, das **keine andere Plattform** bieten kann -- weil er direkt in die Ausfuehrungsumgebung integriert ist.
 
+## Die Rollenverteilung: Notissima vs. Creator
+
+| | Notissima | Creator |
+|---|-----------|---------|
+| **Verantwortung** | Strukturierter Sprach-Input, KI-Analyse, Template-Engine, IP-Schutz | Integration ins Zielsystem, Workflow-Design, Kundenbeziehung |
+| **Kernkompetenz** | Sprache-zu-Struktur | Struktur-zu-Aktion |
+| **Monetarisierung** | Plattform-Subscription (Minuten, KI-Analyse) | Consulting, Workflow-Design, Retainer |
+| **Kundenkontakt** | Plattform-User | Qualifizierte Leads ueber Notissima + eigenes Netzwerk |
+| **Wertschoepfung** | Input-Qualitaet maximieren | Output-Nutzung maximieren |
+
+**Notissima macht den Input exzellent. Der Creator macht das, was danach passiert, exzellent. Kein Overlap, kein Konflikt -- pure Synergie.**
+
 ## Wann Stripe Connect spaeter sinnvoll werden koennte
 
 Revenue-Share kann als **optionales Premium-Feature** hinzugefuegt werden, wenn:
@@ -305,15 +392,31 @@ Bis dahin ist das Lead-Gen-Modell die richtige Wahl: schneller, einfacher, besse
 
 ---
 
-# Pitch-Zusammenfassung fuer Notion Creator
+# Pitch-Zusammenfassung fuer Creator
 
-> **"Deine Notion-Follower tippen Daten muehsam ein. Mit Notissima sprechen sie einfach -- und der Output passt perfekt in dein Notion-Template.**
+## Pitch 1: An Notion-Creator (Beachhead)
+
+> **"Deine Kunden tippen Daten muehsam ein. Mit Notissima sprechen sie einfach -- und der Output passt perfekt in dein System.**
 >
 > **So funktioniert's:**
-> 1. Erstelle ein kostenloses Notissima-Template, das strukturierten Output fuer dein Notion-Template liefert
-> 2. Verlinke dein Notion-Template auf der Template-Seite
+> 1. Erstelle ein kostenloses Notissima-Template, das strukturierten Sprach-Output fuer dein Produkt liefert
+> 2. Verlinke dein Produkt auf der Template-Seite
 > 3. Jeder, der dein Template installiert, teilt seine Kontaktdaten mit dir
-> 4. Du bekommst qualifizierte Leads -- Menschen, die aktiv nach Voice-to-Notion-Loesungen suchen
-> 5. Biete ihnen Custom-Integrationen, Beratung oder deine Premium-Produkte an
+> 4. Du bekommst qualifizierte Leads -- Menschen, die aktiv nach Voice-to-Workflow-Loesungen suchen
+> 5. Biete ihnen die vollstaendige Integration: Workflow-Design, Einrichtung, Team-Onboarding
+>
+> **Dein Template ist die Kostprobe. Dein Consulting ist das Geschaeft.** Ein Lead ueber Notissima ist nicht jemand der ein Template fuer 5 EUR kauft -- es ist jemand der einen Workflow-Experten sucht.
 >
 > **Dein Prompt bleibt geschuetzt.** Auf Gumroad bekommt der Kaeufer die Rohdatei. Bei Notissima sieht niemand deinen Prompt -- er bleibt auf unseren Servern. Dein Know-how ist sicher."
+
+## Pitch 2: An Workflow-Integratoren (Expansion)
+
+> **"Notissima liefert kontextbewussten, strukturierten Sprach-Input. Du machst daraus eine Integration, die fuer deinen Kunden funktioniert -- egal ob Notion, Airtable, Salesforce oder ein Custom-System.**
+>
+> **Deine Opportunity:**
+> - Erstelle Notissima-Templates als Teaser fuer deine Expertise
+> - Gewinne qualifizierte Leads, die genau dein Problem loesen wollen
+> - Biete Consulting, Workflow-Design und laufende Betreuung an
+> - Dein Know-how (der Prompt) bleibt geschuetzt -- niemand sieht ihn
+>
+> **Notissima macht den Input exzellent. Du machst alles danach exzellent.**"

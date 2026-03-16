@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { title, description, instructions, template_config, category_id, tags, is_published } = body
+  const { title, description, instructions, template_config, category_id, tags, is_published, lead_capture_enabled } = body
 
   if (!title?.trim()) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     category_id: category_id || null,
     tags: tags || [],
     is_published: is_published ?? false,
+    lead_capture_enabled: lead_capture_enabled === true,
   }).select().single()
 
   if (error) {

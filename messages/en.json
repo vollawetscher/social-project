@@ -1438,8 +1438,17 @@
         "saveDraft": "Save as Draft",
         "requiredField": "This field is required",
         "loginRequired": "Please sign in to share a template.",
+        "leadCapture": "Available after email consent only",
+        "leadCaptureHint": "Users must share their email address before installing this template. You will receive a notification with their contact details.",
         "signIn": "Sign In"
       }
+    },
+    "consent": {
+      "title": "Email sharing required",
+      "description": "The creator {creator} would like to be notified when you install this template. Your email address will be shared:",
+      "gdprNote": "The creator is responsible for handling your email address in compliance with GDPR.",
+      "checkbox": "I agree to share my email address with the creator",
+      "installButton": "Install and share email"
     },
     "community": {
       "title": "Community",

@@ -19,7 +19,7 @@ export default function PrivacyPage() {
 
       <main className="max-w-4xl mx-auto px-6 py-16">
         <h1 className="text-3xl sm:text-4xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-slate-400 text-sm mb-12">Last updated: March 5, 2026</p>
+        <p className="text-slate-400 text-sm mb-12">Last updated: March 11, 2026</p>
 
         <div className="space-y-10 text-slate-600 leading-relaxed">
           <section>
@@ -65,7 +65,24 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">6. Your Rights (GDPR)</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">6. Marketplace Template Installation &amp; Email Sharing</h2>
+            <p className="mb-3">
+              When you install a marketplace template that requires email consent (&quot;gated template&quot;), we share your email address with the template creator. This only happens when:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-2">
+              <li>The template creator has enabled lead capture for that template</li>
+              <li>You explicitly consent by checking the agreement checkbox before installing</li>
+            </ul>
+            <p className="mt-3 mb-3">
+              The information shared with the creator includes your email address and the name of the template you installed. The template creator becomes the data controller for your email address under GDPR and is responsible for its lawful processing.
+            </p>
+            <p>
+              You can contact the template creator directly to request deletion of your data. If you need assistance, contact us at the email below.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">7. Your Rights (GDPR)</h2>
             <p className="mb-3">If you are in the European Economic Area, you have the right to:</p>
             <ul className="list-disc list-inside space-y-2 ml-2">
               <li>Access your personal data</li>
@@ -78,21 +95,21 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">7. Cookies</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">8. Cookies</h2>
             <p>
               We may use cookies and similar tracking technologies to enhance your experience. You can control cookie preferences through your browser settings.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">8. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">9. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the &quot;Last updated&quot; date.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">9. Contact Us</h2>
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">10. Contact Us</h2>
             <p>
               If you have any questions about this Privacy Policy, please contact us at:{' '}
               <a href="mailto:privacy@notissima.com" className="text-teal-600 hover:text-teal-500 underline underline-offset-2">

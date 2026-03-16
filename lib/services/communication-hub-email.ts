@@ -1,3 +1,55 @@
+export interface CreatorLeadEmailParams {
+  creatorEmail: string
+  userEmail: string
+  templateName: string
+  installedAt: string
+}
+
+export async function sendCreatorLeadEmail(params: CreatorLeadEmailParams): Promise<SendEmailResponse> {
+  const { creatorEmail, userEmail, templateName, installedAt } = params
+  const subject = `Neuer Nutzer für dein Template "${templateName}"`
+  const body = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
+      <h2 style="color: #0f172a; margin-bottom: 16px;">Neuer Lead über Notissima</h2>
+      <p style="color: #475569; line-height: 1.6;">
+        Ein Nutzer hat dein Template <strong>"${templateName}"</strong> installiert und dabei seine Kontaktdaten freigegeben.
+      </p>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 13px;">Email des Nutzers</p>
+        <p style="margin: 0; color: #0f172a; font-size: 16px; font-weight: 600;">
+          <a href="mailto:${userEmail}" style="color: #0d9488; text-decoration: none;">${userEmail}</a>
+        </p>
+        <p style="margin: 12px 0 0 0; color: #64748b; font-size: 13px;">Installiert am: ${installedAt}</p>
+      </div>
+      <p style="color: #475569; line-height: 1.6; font-size: 14px;">
+        Du bist gemäß DSGVO für den Umgang mit dieser Email-Adresse verantwortlich.
+      </p>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+      <p style="color: #94a3b8; font-size: 12px;">
+        Diese Email wurde automatisch von Notissima gesendet.
+      </p>
+    </div>
+  `.trim()
+  const textBody = [
+    `Neuer Lead über Notissima`,
+    ``,
+    `Ein Nutzer hat dein Template "${templateName}" installiert und dabei seine Kontaktdaten freigegeben.`,
+    ``,
+    `Email des Nutzers: ${userEmail}`,
+    `Installiert am: ${installedAt}`,
+    ``,
+    `Du bist gemäß DSGVO für den Umgang mit dieser Email-Adresse verantwortlich.`,
+  ].join('\n')
+
+  return sendCommunicationHubEmail({
+    to: creatorEmail,
+    subject,
+    body,
+    textBody,
+    fromName: 'Notissima Marketplace',
+  })
+}
+
 interface SendEmailParams {
   to: string
   subject: string

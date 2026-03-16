@@ -45,7 +45,7 @@ export async function POST(
   }
 
   const body = await request.json()
-  const { category_id, tags, description_override, language } = body
+  const { category_id, tags, description_override, language, lead_capture_enabled } = body
 
   const finalDescription = description_override || template.description || ''
 
@@ -82,6 +82,7 @@ export async function POST(
       is_published: true,
       source_template_id: params.id,
       language: language || null,
+      lead_capture_enabled: lead_capture_enabled === true,
     })
     .select('id, title')
     .single()

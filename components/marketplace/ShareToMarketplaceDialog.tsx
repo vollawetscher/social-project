@@ -3,12 +3,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { toast } from 'sonner'
-import { Store, Tag, Loader2, AlertTriangle } from 'lucide-react'
+import { Store, Tag, Loader2, AlertTriangle, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -52,6 +53,7 @@ export function ShareToMarketplaceDialog({
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [publishing, setPublishing] = useState(false)
+  const [leadCaptureEnabled, setLeadCaptureEnabled] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -71,6 +73,7 @@ export function ShareToMarketplaceDialog({
       setTags(template.domainTags?.slice() || [])
       setCategoryId('')
       setTagInput('')
+      setLeadCaptureEnabled(false)
     }
   }, [template, open])
 
@@ -108,6 +111,7 @@ export function ShareToMarketplaceDialog({
           tags,
           description_override: description !== template.description ? description : undefined,
           language: template.language || locale,
+          lead_capture_enabled: leadCaptureEnabled,
         }),
       })
 
@@ -228,6 +232,24 @@ export function ShareToMarketplaceDialog({
                 ))}
               </div>
             )}
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-2">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <Checkbox
+                checked={leadCaptureEnabled}
+                onCheckedChange={(checked) => setLeadCaptureEnabled(checked === true)}
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <span className="text-sm font-medium flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                  {t('upload.form.leadCapture')}
+                </span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t('upload.form.leadCaptureHint')}
+                </p>
+              </div>
+            </label>
           </div>
         </div>
 

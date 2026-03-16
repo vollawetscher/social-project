@@ -1437,8 +1437,17 @@
         "saveDraft": "Guardar como Borrador",
         "requiredField": "Este campo es obligatorio",
         "loginRequired": "Inicia sesión para compartir una plantilla.",
+        "leadCapture": "Disponible solo tras compartir email",
+        "leadCaptureHint": "Los usuarios deben compartir su dirección de email antes de instalar esta plantilla. Recibirás una notificación con sus datos de contacto.",
         "signIn": "Iniciar Sesión"
       }
+    },
+    "consent": {
+      "title": "Se requiere compartir email",
+      "description": "El creador {creator} desea ser notificado cuando instales esta plantilla. Tu dirección de email será compartida:",
+      "gdprNote": "El creador es responsable del manejo de tu dirección de email conforme al RGPD.",
+      "checkbox": "Acepto compartir mi dirección de email con el creador",
+      "installButton": "Instalar y compartir email"
     },
     "community": {
       "title": "Comunidad",

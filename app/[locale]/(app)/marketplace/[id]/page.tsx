@@ -66,6 +66,8 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const [customizing, setCustomizing] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [installed, setInstalled] = useState(false)
+  const [consentDialogOpen, setConsentDialogOpen] = useState(false)
+  const [consentChecked, setConsentChecked] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [userRating, setUserRating] = useState<number>(0)
   const [submittingRating, setSubmittingRating] = useState(false)
@@ -169,14 +171,29 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     toast.success(t('explore.downloadedJSON'))
   }
 
-  async function handleInstall() {
+  function onInstallClick() {
+    if (!template) return
+    if (template.lead_capture_enabled) {
+      setConsentChecked(false)
+      setConsentDialogOpen(true)
+    } else {
+      doInstall(false)
+    }
+  }
+
+  async function doInstall(withConsent: boolean) {
     if (!template) return
     setInstalling(true)
     try {
-      const res = await fetch(`/api/marketplace/templates/${template.id}/install`, { method: 'POST' })
+      const res = await fetch(`/api/marketplace/templates/${template.id}/install`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(withConsent ? { consent: true } : {}),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Install failed')
       setInstalled(true)
+      setConsentDialogOpen(false)
       toast.success(t('explore.installedSuccess'))
     } catch (err: any) {
       toast.error(err.message || t('explore.installFailed'))
@@ -303,7 +320,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
           {user ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button onClick={handleInstall} disabled={installing || installed}>
+                <Button onClick={onInstallClick} disabled={installing || installed}>
                   {installing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : installed ? (
@@ -645,6 +662,46 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
         </Card>
 
         <div className="h-8" />
+
+        <AlertDialog open={consentDialogOpen} onOpenChange={setConsentDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('consent.title')}</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3">
+                  <p>{t('consent.description', { creator: template.author?.display_name || t('template.unknown') })}</p>
+                  <div className="rounded-md bg-secondary/50 border border-border p-3 text-sm font-medium text-foreground">
+                    {user?.email}
+                  </div>
+                  <p className="text-xs">{t('consent.gdprNote')}</p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-2">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <Checkbox
+                  checked={consentChecked}
+                  onCheckedChange={(checked) => setConsentChecked(checked === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm">{t('consent.checkbox')}</span>
+              </label>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={!consentChecked || installing}
+                onClick={(e) => {
+                  e.preventDefault()
+                  doInstall(true)
+                }}
+              >
+                {installing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {t('consent.installButton')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   )

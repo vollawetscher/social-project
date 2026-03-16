@@ -1437,8 +1437,17 @@
         "saveDraft": "Als Entwurf speichern",
         "requiredField": "Dieses Feld ist erforderlich",
         "loginRequired": "Bitte melde dich an, um eine Vorlage zu teilen.",
+        "leadCapture": "Nur nach Email-Freigabe verfügbar",
+        "leadCaptureHint": "Nutzer müssen ihre Email-Adresse freigeben, bevor sie diese Vorlage installieren können. Du erhältst eine Benachrichtigung mit den Kontaktdaten.",
         "signIn": "Anmelden"
       }
+    },
+    "consent": {
+      "title": "Email-Freigabe erforderlich",
+      "description": "Der Ersteller {creator} möchte benachrichtigt werden, wenn du diese Vorlage installierst. Dafür wird deine Email-Adresse weitergegeben:",
+      "gdprNote": "Der Ersteller ist gemäß DSGVO für den Umgang mit deiner Email-Adresse verantwortlich.",
+      "checkbox": "Ich stimme der Weitergabe meiner Email-Adresse an den Ersteller zu",
+      "installButton": "Installieren und Email freigeben"
     },
     "community": {
       "title": "Community",

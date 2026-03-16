@@ -61,6 +61,7 @@ export interface MarketplaceTemplate {
   download_count: number
   avg_rating: number
   is_published: boolean
+  lead_capture_enabled: boolean
   language: string
   created_at: string
   updated_at: string

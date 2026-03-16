@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendCreatorLeadEmail } from '@/lib/services/communication-hub-email'
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const supabase = await createClient()
@@ -14,13 +15,28 @@ export async function POST(
 
   const { data: template, error: tplError } = await supabase
     .from('marketplace_templates')
-    .select('*')
+    .select('*, author:profiles!author_id(email)')
     .eq('id', params.id)
     .eq('is_published', true)
     .maybeSingle()
 
   if (tplError || !template) {
     return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+  }
+
+  let consent = false
+  try {
+    const body = await request.json().catch(() => ({}))
+    consent = body?.consent === true
+  } catch {
+    // no body is fine for open templates
+  }
+
+  if (template.lead_capture_enabled && !consent) {
+    return NextResponse.json(
+      { error: 'Consent required for this template', consent_required: true },
+      { status: 400 }
+    )
   }
 
   await supabase.from('marketplace_downloads').insert({
@@ -59,6 +75,20 @@ export async function POST(
   if (cloneError) {
     console.error('Error cloning template:', cloneError)
     return NextResponse.json({ error: cloneError.message }, { status: 500 })
+  }
+
+  if (template.lead_capture_enabled && consent) {
+    const creatorEmail = (template.author as any)?.email
+    if (creatorEmail) {
+      sendCreatorLeadEmail({
+        creatorEmail,
+        userEmail: user.email!,
+        templateName: template.title,
+        installedAt: new Date().toLocaleString('de-DE', { timeZone: 'Europe/Berlin' }),
+      }).catch((err) => {
+        console.error('Failed to send creator lead email:', err)
+      })
+    }
   }
 
   return NextResponse.json({ success: true, template_id: cloned.id, name: cloned.name })
