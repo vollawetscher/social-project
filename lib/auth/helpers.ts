@@ -1,7 +1,20 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import type { User } from '@supabase/supabase-js'
 
-export async function requireAuth(): Promise<User> {
+export async function requireAuth(request?: Request): Promise<User> {
+  // Fallback path for clients where cookie auth is temporarily out of sync:
+  // accept explicit bearer token and verify it server-side.
+  const authHeader = request?.headers.get('authorization') || ''
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i)
+  const bearerToken = bearerMatch?.[1]?.trim()
+  if (bearerToken) {
+    const serviceClient = createServiceRoleClient()
+    const { data: bearerData, error: bearerError } = await serviceClient.auth.getUser(bearerToken)
+    if (!bearerError && bearerData?.user) {
+      return bearerData.user
+    }
+  }
+
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
 

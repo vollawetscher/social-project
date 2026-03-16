@@ -14,6 +14,58 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.43',
+    date: 'March 16, 2026',
+    entries: [
+      {
+        version: '1.20.43',
+        date: 'March 16, 2026',
+        category: 'fix',
+        title: 'Incoming Call Actions Work More Reliably Across Devices',
+        description: 'Accept and decline actions now use a more robust auth path so cross-device incoming call handling works even when browser auth cookies are temporarily out of sync.',
+      },
+    ],
+  },
+  {
+    version: '1.20.42',
+    date: 'March 16, 2026',
+    entries: [
+      {
+        version: '1.20.42',
+        date: 'March 16, 2026',
+        category: 'fix',
+        title: 'Incoming Call Accept/Decline Handles Expired Login',
+        description: 'When your login has expired, incoming call accept or decline now redirects you to sign in and returns you to the call flow instead of showing a blocking authentication error.',
+      },
+    ],
+  },
+  {
+    version: '1.20.41',
+    date: 'March 16, 2026',
+    entries: [
+      {
+        version: '1.20.41',
+        date: 'March 16, 2026',
+        category: 'fix',
+        title: 'Call Session Duration No Longer Inflates',
+        description: 'Call session duration now aligns with actual call window timing, preventing occasional inflated durations from appearing in session views.',
+      },
+    ],
+  },
+  {
+    version: '1.20.40',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.40',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Clearer Host Remove List and Smoother Background Look',
+        description: 'Host controls now show clearer participant roles and readable IDs before removal, and video background processing is tuned for a smoother on-call visual result.',
+      },
+    ],
+  },
+  {
     version: '1.20.39',
     date: 'March 13, 2026',
     entries: [

@@ -110,6 +110,30 @@ export async function GET(request: Request) {
       }))
     }
 
+    const sessionIds = (sessions || []).map((s: any) => s.id).filter(Boolean) as string[]
+    const callDurationBySessionId: Record<string, number> = {}
+    if (sessionIds.length > 0) {
+      const durationDb = adminView ? createServiceRoleClient() : supabase
+      const { data: linkedCalls } = await durationDb
+        .from('calls')
+        .select('session_id, callee_session_id, started_at, ended_at')
+        .or([
+          `session_id.in.(${sessionIds.join(',')})`,
+          `callee_session_id.in.(${sessionIds.join(',')})`,
+        ].join(','))
+
+      for (const call of linkedCalls || []) {
+        const startedAtMs = call.started_at ? new Date(call.started_at).getTime() : 0
+        const endedAtMs = call.ended_at ? new Date(call.ended_at).getTime() : 0
+        if (!(startedAtMs > 0 && endedAtMs > startedAtMs)) continue
+        const durationSec = Math.round((endedAtMs - startedAtMs) / 1000)
+        const primarySessionId = typeof call.session_id === 'string' ? call.session_id : null
+        const calleeSessionId = typeof call.callee_session_id === 'string' ? call.callee_session_id : null
+        if (primarySessionId) callDurationBySessionId[primarySessionId] = durationSec
+        if (calleeSessionId) callDurationBySessionId[calleeSessionId] = durationSec
+      }
+    }
+
     const sessionsWithCount = sessions?.map((session: any) => {
       const outputCount = session.outputs?.[0]?.count || 0
       const files = Array.isArray(session.files) ? session.files : []
@@ -137,8 +161,17 @@ export async function GET(request: Request) {
       })
 
       const { outputs, files: _files, ...rest } = session
+      const normalizedDurationSec =
+        typeof rest.duration_sec === 'number' && rest.duration_sec > 0
+          ? (
+              callDurationBySessionId[rest.id] && callDurationBySessionId[rest.id] > 0
+                ? Math.min(rest.duration_sec, callDurationBySessionId[rest.id])
+                : rest.duration_sec
+            )
+          : rest.duration_sec
       const out = {
         ...rest,
+        duration_sec: normalizedDurationSec,
         output_count: outputCount,
         upload_size_bytes: totalSizeBytes,
         text_upload_size_bytes: textUploadSizeBytes,

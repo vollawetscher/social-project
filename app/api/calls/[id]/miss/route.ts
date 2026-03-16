@@ -7,11 +7,11 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
  * Mark an unanswered invite as missed (timeout path).
  */
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth()
+    const user = await requireAuth(request)
     const db = createServiceRoleClient()
 
     const { data: call } = await db

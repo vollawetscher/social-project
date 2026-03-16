@@ -278,6 +278,18 @@ export default function CallsPage() {
     if (activeTab === "contacts") fetchContacts()
   }, [activeTab])
 
+  async function getAuthHeaders(): Promise<Record<string, string>> {
+    try {
+      const client = createSupabaseClient()
+      if (!client) return {}
+      const { data } = await client.auth.getSession()
+      const token = data.session?.access_token
+      return token ? { Authorization: `Bearer ${token}` } : {}
+    } catch {
+      return {}
+    }
+  }
+
   async function fetchCalls() {
     try {
       const res = await fetch("/api/calls")
@@ -295,9 +307,22 @@ export default function CallsPage() {
   async function handleAcceptIncomingInvite() {
     if (!incomingInvite) return
     try {
-      const res = await fetch(`/api/calls/${incomingInvite.id}/accept`, { method: "POST" })
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch(`/api/calls/${incomingInvite.id}/accept`, {
+        method: "POST",
+        headers: authHeaders,
+      })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
+        if (res.status === 401) {
+          const redirect =
+            typeof window !== "undefined"
+              ? encodeURIComponent(window.location.pathname + window.location.search)
+              : encodeURIComponent("/calls")
+          toast.info("Please sign in to accept the call.")
+          router.push(`/login?redirect=${redirect}`)
+          return
+        }
         throw new Error(data.error || "Failed to accept call")
       }
       const data = await res.json()
@@ -311,9 +336,22 @@ export default function CallsPage() {
   async function handleDeclineIncomingInvite() {
     if (!incomingInvite) return
     try {
-      const res = await fetch(`/api/calls/${incomingInvite.id}/decline`, { method: "POST" })
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch(`/api/calls/${incomingInvite.id}/decline`, {
+        method: "POST",
+        headers: authHeaders,
+      })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
+        if (res.status === 401) {
+          const redirect =
+            typeof window !== "undefined"
+              ? encodeURIComponent(window.location.pathname + window.location.search)
+              : encodeURIComponent("/calls")
+          toast.info("Please sign in to decline the call.")
+          router.push(`/login?redirect=${redirect}`)
+          return
+        }
         throw new Error(data.error || "Failed to decline call")
       }
       setIncomingInvite(null)

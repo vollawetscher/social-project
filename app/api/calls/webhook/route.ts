@@ -204,7 +204,23 @@ export async function POST(request: Request) {
         const storagePath = fileResult?.filename || fileResult?.filepath
         const fileSize = fileResult?.size ? Number(fileResult.size) : 0
         const durationNs = fileResult?.duration ? Number(fileResult.duration) : 0
-        const durationSec = Math.round(durationNs / 1_000_000_000)
+        const durationSecFromEgress = Math.round(durationNs / 1_000_000_000)
+        const callStartedAtMs = call.started_at ? new Date(call.started_at).getTime() : 0
+        const callEndedAtMs = call.ended_at ? new Date(call.ended_at).getTime() : 0
+        const durationSecFromCallWindow =
+          callStartedAtMs > 0 && callEndedAtMs > callStartedAtMs
+            ? Math.round((callEndedAtMs - callStartedAtMs) / 1000)
+            : 0
+        // Prefer egress-reported duration, but clamp to the known call window when present.
+        // This prevents occasional inflated durations from surfacing in sessions.
+        const durationSec =
+          durationSecFromCallWindow > 0
+            ? (
+                durationSecFromEgress > 0
+                  ? Math.min(durationSecFromEgress, durationSecFromCallWindow)
+                  : durationSecFromCallWindow
+              )
+            : durationSecFromEgress
 
         if (!storagePath) {
           console.error('[LiveKit Webhook] No file path in egress result:', JSON.stringify(egressInfo))
@@ -221,7 +237,20 @@ export async function POST(request: Request) {
           break
         }
 
-        console.log('[LiveKit Webhook] Recording stored at:', storagePath, 'size:', fileSize, 'duration:', durationSec, 's')
+        console.log(
+          '[LiveKit Webhook] Recording stored at:',
+          storagePath,
+          'size:',
+          fileSize,
+          'duration:',
+          durationSec,
+          's',
+          '(egress:',
+          durationSecFromEgress,
+          'window:',
+          durationSecFromCallWindow,
+          ')'
+        )
 
         try {
           // Create file record -- recording is already in Supabase Storage

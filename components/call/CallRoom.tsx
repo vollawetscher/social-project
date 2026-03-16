@@ -69,6 +69,14 @@ interface CallRoomProps {
   ringSmsParams?: RingSmsParams
 }
 
+interface ModerationParticipant {
+  identity: string
+  name: string
+  role?: string
+  roleLabel?: string
+  shortIdentity?: string
+}
+
 type VideoBackgroundChoice = "none" | "blur" | "home" | "conference" | "office"
 
 const VIDEO_BACKGROUND_CHOICES: Array<{ value: VideoBackgroundChoice; labelKey: string }> = [
@@ -139,13 +147,17 @@ function useRingtone(playing: boolean) {
 }
 
 export function CallRoom(props: CallRoomProps) {
+  const videoCaptureOptions = props.mode === "video"
+    ? ({ resolution: { width: 1280, height: 720, frameRate: 30 } } as any)
+    : false
+
   return (
     <LiveKitRoom
       token={props.token}
       serverUrl={props.serverUrl}
       connect={true}
       audio={true}
-      video={props.mode === "video"}
+      video={videoCaptureOptions}
     >
       <RoomAudioRenderer />
       <CallRoomInner {...props} displayName={props.displayName} />
@@ -217,7 +229,7 @@ function CallRoomInner({
   const [videoBackground, setVideoBackground] = useState<VideoBackgroundChoice>("none")
   const [showModerationPanel, setShowModerationPanel] = useState(false)
   const [roomLocked, setRoomLocked] = useState(false)
-  const [moderationParticipants, setModerationParticipants] = useState<Array<{ identity: string; name: string }>>([])
+  const [moderationParticipants, setModerationParticipants] = useState<ModerationParticipant[]>([])
   const [moderationLoading, setModerationLoading] = useState(false)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -284,7 +296,8 @@ function CallRoomInner({
     }
   }, [callId, roomLocked])
 
-  const removeRemoteParticipant = useCallback(async (identity: string) => {
+  const removeRemoteParticipant = useCallback(async (participant: ModerationParticipant) => {
+    const identity = participant.identity
     if (!callId || !identity) return
     setModerationLoading(true)
     try {
@@ -295,7 +308,7 @@ function CallRoomInner({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || "Failed to remove participant")
-      toast.success("Participant removed")
+      toast.success(`${participant.name || "Participant"} removed`)
       await refreshModeration()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to remove participant")
@@ -577,7 +590,7 @@ function CallRoomInner({
 
       const imagePath = getBackgroundImagePath(videoBackground)
       const targetMode = videoBackground === "blur"
-        ? ({ mode: "background-blur" as const, blurRadius: 12 })
+        ? ({ mode: "background-blur" as const, blurRadius: 16 })
         : ({ mode: "virtual-background" as const, imagePath: `${window.location.origin}${imagePath}` })
 
       try {
@@ -1405,11 +1418,18 @@ function CallRoomInner({
                   .map((p) => (
                     <div key={p.identity} className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
                       <div className="min-w-0">
-                        <p className="text-[11px] text-white/85 truncate">{p.name}</p>
-                        <p className="text-[10px] text-white/45 truncate">{p.identity}</p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="text-[11px] text-white/85 truncate">{p.name}</p>
+                          <span className="shrink-0 rounded-full border border-white/20 px-1.5 py-0.5 text-[9px] text-white/70">
+                            {p.roleLabel || "Participant"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-white/45 truncate">
+                          {p.shortIdentity || p.identity}
+                        </p>
                       </div>
                       <button
-                        onClick={() => removeRemoteParticipant(p.identity)}
+                        onClick={() => removeRemoteParticipant(p)}
                         disabled={moderationLoading}
                         className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-destructive bg-destructive/10 hover:bg-destructive/15 disabled:opacity-60"
                       >

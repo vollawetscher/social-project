@@ -167,32 +167,70 @@ export function GlobalIncomingCallListener() {
     }
   }, [incomingInvite])
 
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    try {
+      const client = createSupabaseClient()
+      if (!client) return {}
+      const { data } = await client.auth.getSession()
+      const token = data.session?.access_token
+      return token ? { Authorization: `Bearer ${token}` } : {}
+    } catch {
+      return {}
+    }
+  }, [])
+
   const acceptInvite = useCallback(async () => {
     if (!incomingInvite || joining) return
     setJoining(true)
     try {
-      const res = await fetch(`/api/calls/${incomingInvite.id}/accept`, { method: "POST" })
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch(`/api/calls/${incomingInvite.id}/accept`, {
+        method: "POST",
+        headers: authHeaders,
+      })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
+        if (res.status === 401) {
+          const redirect =
+            typeof window !== "undefined"
+              ? encodeURIComponent(window.location.pathname + window.location.search)
+              : encodeURIComponent("/calls")
+          router.push(`/login?redirect=${redirect}`)
+          return
+        }
         throw new Error(data.error || "Failed to accept call")
       }
       setIncomingInvite(null)
       router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${data.mode || "video"}`)
+    } catch {
+      // Keep listener resilient; user can retry from calls page.
     } finally {
       setJoining(false)
     }
-  }, [incomingInvite, joining, router])
+  }, [incomingInvite, joining, router, getAuthHeaders])
 
   const declineInvite = useCallback(async () => {
     if (!incomingInvite || joining) return
     setJoining(true)
     try {
-      await fetch(`/api/calls/${incomingInvite.id}/decline`, { method: "POST" })
+      const authHeaders = await getAuthHeaders()
+      const res = await fetch(`/api/calls/${incomingInvite.id}/decline`, {
+        method: "POST",
+        headers: authHeaders,
+      })
+      if (res.status === 401) {
+        const redirect =
+          typeof window !== "undefined"
+            ? encodeURIComponent(window.location.pathname + window.location.search)
+            : encodeURIComponent("/calls")
+        router.push(`/login?redirect=${redirect}`)
+        return
+      }
       setIncomingInvite(null)
     } finally {
       setJoining(false)
     }
-  }, [incomingInvite, joining])
+  }, [incomingInvite, joining, router, getAuthHeaders])
 
   if (onCallsPage) return null
 

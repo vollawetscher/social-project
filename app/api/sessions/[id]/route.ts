@@ -51,13 +51,20 @@ export async function GET(
 
     // Fetch in-call consent logs if this session is linked to a call
     let consentLogs: any[] = []
+    let linkedCallDurationSec: number | null = null
     const { data: linkedCall } = await db
       .from('calls')
-      .select('id')
+      .select('id, started_at, ended_at')
       .or(`session_id.eq.${params.id},callee_session_id.eq.${params.id}`)
       .maybeSingle()
 
     if (linkedCall?.id) {
+      const startedAtMs = linkedCall.started_at ? new Date(linkedCall.started_at).getTime() : 0
+      const endedAtMs = linkedCall.ended_at ? new Date(linkedCall.ended_at).getTime() : 0
+      if (startedAtMs > 0 && endedAtMs > startedAtMs) {
+        linkedCallDurationSec = Math.round((endedAtMs - startedAtMs) / 1000)
+      }
+
       const { data: consents } = await db
         .from('consent_logs')
         .select('participant_name, participant_identity, granted, created_at')
@@ -66,8 +73,18 @@ export async function GET(
       consentLogs = consents || []
     }
 
+    const normalizedDurationSec =
+      typeof session.duration_sec === 'number' && session.duration_sec > 0
+        ? (
+            linkedCallDurationSec && linkedCallDurationSec > 0
+              ? Math.min(session.duration_sec, linkedCallDurationSec)
+              : session.duration_sec
+          )
+        : session.duration_sec
+
     return NextResponse.json({
       ...session,
+      duration_sec: normalizedDurationSec,
       files: filesWithUrls,
       consent_logs: consentLogs,
     })
