@@ -137,7 +137,7 @@
       "call": "Call",
       "quickRecord": "Notissima Rec",
       "audioUpload": "Uploaded audio",
-      "textImport": "Pasted"
+      "textImport": "Pasted text"
     },
     "status": {
       "recording": "Recording",
@@ -1036,6 +1036,21 @@
     "title": "Review pasted text",
     "description": "Formatting and emojis have been stripped. Edit if needed, then import.",
     "stats": "{words} words · {characters} characters",
+    "detection": {
+      "kindTranscript": "Likely transcript",
+      "kindNonTranscript": "Likely note/document",
+      "kindMixed": "Mixed or unclear",
+      "confidence": "{percent}% confidence",
+      "detectedType": "Detected type",
+      "types": {
+        "speakerTurns": "Speaker turns",
+        "timestampedSpeakerTurns": "Timestamped speaker turns",
+        "subtitleLike": "Subtitle-style transcript",
+        "chatExport": "Chat export",
+        "nonTranscriptNote": "Non-transcript text",
+        "mixedOrUnknown": "Mixed or unknown"
+      }
+    },
     "cancel": "Cancel",
     "import": "Import",
     "importing": "Importing..."

@@ -29,6 +29,17 @@ export function needsStructureHeuristic(rawFileContent: string, filename: string
   )
   if (speakerLabelLines.length >= 2) return false
 
+  // German-style structured export (SPRECHER / ZEIT) is already transcript-like.
+  if (/\bSPRECHER\s*:/i.test(trimmed) && /\bZEIT\s*:\s*\d{2}:\d{2}:\d{2}[.,]\d{3}/i.test(trimmed)) {
+    return false
+  }
+
+  // Generic named-speaker turns (e.g. "Michael Westphal: ...", "Cornelius Klitzing: ...").
+  const namedSpeakerLines = trimmed.split(/\r?\n/).filter(l =>
+    /^\s*[A-Z][A-Za-z0-9.'’\- ]{1,70}\s*:\s+\S+/.test(l)
+  )
+  if (namedSpeakerLines.length >= 2) return false
+
   // TXT: check for messy patterns (chat, summaries, mixed)
   const messyPatterns = [
     /\b(chat|message|pm|dm)\s*(from|by|with)?\s*:?/i,

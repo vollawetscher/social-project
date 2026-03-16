@@ -137,7 +137,7 @@
       "call": "Llamada",
       "quickRecord": "Notissima Rec",
       "audioUpload": "Audio subido",
-      "textImport": "Pegado"
+      "textImport": "Texto pegado"
     },
     "status": {
       "recording": "Grabando",
@@ -1035,6 +1035,21 @@
     "title": "Revisar texto pegado",
     "description": "El formato y los emojis se han eliminado. Edita si hace falta y luego importa.",
     "stats": "{words} palabras · {characters} caracteres",
+    "detection": {
+      "kindTranscript": "Probable transcripcion",
+      "kindNonTranscript": "Probable nota/documento",
+      "kindMixed": "Mixto o poco claro",
+      "confidence": "{percent}% de confianza",
+      "detectedType": "Tipo detectado",
+      "types": {
+        "speakerTurns": "Turnos de hablante",
+        "timestampedSpeakerTurns": "Turnos de hablante con marcas de tiempo",
+        "subtitleLike": "Transcripcion tipo subtitulos",
+        "chatExport": "Exportacion de chat",
+        "nonTranscriptNote": "Texto no transcrito",
+        "mixedOrUnknown": "Mixto o desconocido"
+      }
+    },
     "cancel": "Cancelar",
     "import": "Importar",
     "importing": "Importando..."

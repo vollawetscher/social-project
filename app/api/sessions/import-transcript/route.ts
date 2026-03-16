@@ -11,6 +11,7 @@ import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { needsStructureHeuristic } from '@/lib/utils/transcript-structure-check'
 import { structureTranscript } from '@/lib/services/transcript-structurer'
 import { detectImportedTextSource } from '@/lib/utils/text-source-detection'
+import { detectTranscriptType, type TranscriptIngestionSource } from '@/lib/utils/transcript-type-detection'
 import { logError } from '@/lib/services/error-logger'
 
 interface ParsedSegment {
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       rawText: incomingRawText,
       rawFileContent,
       filename,
+      ingestionSource = 'unknown',
     }: {
       language?: string
       sessionName?: string
@@ -40,6 +42,7 @@ export async function POST(request: Request) {
       rawText: string
       rawFileContent?: string
       filename?: string
+      ingestionSource?: TranscriptIngestionSource
     } = body
 
     const { data: profile } = await supabase
@@ -131,9 +134,15 @@ export async function POST(request: Request) {
       userEmail: profile?.email || null,
       userDisplayName: profile?.display_name || profile?.full_name || null,
     })
+    const transcriptSignals = detectTranscriptType({
+      text: rawTextForCount || rawText || rawFileContent || '',
+      filename,
+      ingestionSource,
+    })
     const inputHint = sourceSignals.isExternalInquiry ? 'external_inquiry_email' : null
     const seededExtractedContext = {
       sourceSignals,
+      transcriptSignals,
     }
 
     // Create session (no audio)

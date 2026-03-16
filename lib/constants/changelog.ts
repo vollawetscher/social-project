@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.19',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.19',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Smarter Transcript Type Detection on Import',
+        description: 'The paste preview now shows transcript-type detection before import, and transcript uploads better detect speaker-labeled and timestamped formats across drag-and-drop, file picker, and clipboard paste flows.',
+      },
+    ],
+  },
+  {
+    version: '1.20.18',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.18',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Clearer Pasted vs Audio Session Labels',
+        description: 'Session source badges now better distinguish pasted text from audio uploads, including audio files with generic MIME types that were previously mislabeled as pasted text.',
+      },
+    ],
+  },
+  {
     version: '1.20.17',
     date: 'March 13, 2026',
     entries: [

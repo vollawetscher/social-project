@@ -137,7 +137,7 @@
       "call": "Anruf",
       "quickRecord": "Notissima Rec",
       "audioUpload": "Audio-Upload",
-      "textImport": "Eingefügt"
+      "textImport": "Eingefügter Text"
     },
     "status": {
       "recording": "Aufnahme",
@@ -1035,6 +1035,21 @@
     "title": "Eingefuegten Text pruefen",
     "description": "Formatierungen und Emojis wurden entfernt. Bei Bedarf bearbeiten und dann importieren.",
     "stats": "{words} Woerter · {characters} Zeichen",
+    "detection": {
+      "kindTranscript": "Wahrscheinlich Transkript",
+      "kindNonTranscript": "Wahrscheinlich Notiz/Dokument",
+      "kindMixed": "Gemischt oder unklar",
+      "confidence": "{percent}% Sicherheit",
+      "detectedType": "Erkannter Typ",
+      "types": {
+        "speakerTurns": "Sprecherwechsel",
+        "timestampedSpeakerTurns": "Sprecherwechsel mit Zeitstempeln",
+        "subtitleLike": "Untertitel-aehnliches Transkript",
+        "chatExport": "Chat-Export",
+        "nonTranscriptNote": "Kein Transkript (Text/Notiz)",
+        "mixedOrUnknown": "Gemischt oder unbekannt"
+      }
+    },
     "cancel": "Abbrechen",
     "import": "Importieren",
     "importing": "Wird importiert..."

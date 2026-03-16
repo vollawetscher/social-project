@@ -420,7 +420,11 @@ export default function SessionsPage() {
     transcriptInputRef.current?.click()
   }, [uploadingTranscript])
 
-  const importTranscriptContent = useCallback(async (rawFileContent: string, fileName: string): Promise<boolean> => {
+  const importTranscriptContent = useCallback(async (
+    rawFileContent: string,
+    fileName: string,
+    ingestionSource: 'drag_drop' | 'file_select' | 'clipboard_paste' = 'file_select'
+  ): Promise<boolean> => {
     const { segments, rawText } = parseTranscriptFile(rawFileContent, fileName)
     if (segments.length === 0) {
       toast.error(t('uploadMessages.noContent', { fileName }))
@@ -444,6 +448,7 @@ export default function SessionsPage() {
           rawText,
           ...(!parserProducedGoodSegments ? { rawFileContent } : {}),
           filename: fileName,
+          ingestionSource,
         }),
         signal: controller.signal,
       })
@@ -462,12 +467,18 @@ export default function SessionsPage() {
     }
   }, [language, t])
 
-  const processTranscriptFile = useCallback(async (file: File): Promise<boolean> => {
+  const processTranscriptFile = useCallback(async (
+    file: File,
+    source: 'drag_drop' | 'file_select' = 'file_select'
+  ): Promise<boolean> => {
     const rawFileContent = await file.text()
-    return importTranscriptContent(rawFileContent, file.name)
+    return importTranscriptContent(rawFileContent, file.name, source)
   }, [importTranscriptContent])
 
-  const processPastedTranscript = useCallback(async (rawContent: string): Promise<boolean> => {
+  const processPastedTranscript = useCallback(async (
+    rawContent: string,
+    source: 'clipboard_paste' | 'file_select' = 'clipboard_paste'
+  ): Promise<boolean> => {
     const trimmed = rawContent.trim()
     if (!trimmed || trimmed.length < 10) {
       toast.error(t('uploadMessages.emptyContent'))
@@ -488,7 +499,9 @@ export default function SessionsPage() {
           sessionName,
           segments: [{ start_ms: 0, end_ms: 0, speaker: '', text: trimmed }],
           rawText: trimmed,
+          rawFileContent: trimmed,
           filename: 'pasted.txt',
+          ingestionSource: source,
         }),
         signal: controller.signal,
       })
@@ -561,7 +574,7 @@ export default function SessionsPage() {
     let success = 0
     for (const file of transcriptFiles) {
       try {
-        if (await processTranscriptFile(file)) success++
+        if (await processTranscriptFile(file, 'file_select')) success++
       } catch (err: any) {
         toast.error(`${file.name}: ${err.message}`)
       }
@@ -590,8 +603,8 @@ export default function SessionsPage() {
     setUploadingTranscript(true)
     try {
       const imported = pastePreviewSource === 'file' && pastePreviewFileName
-        ? await importTranscriptContent(text, pastePreviewFileName)
-        : await processPastedTranscript(text)
+        ? await importTranscriptContent(text, pastePreviewFileName, 'file_select')
+        : await processPastedTranscript(text, 'clipboard_paste')
 
       if (imported) {
         toast.success(
@@ -648,7 +661,7 @@ export default function SessionsPage() {
       let success = 0
       for (const file of files) {
         try {
-          if (await processTranscriptFile(file)) success++
+          if (await processTranscriptFile(file, 'drag_drop')) success++
         } catch (err: any) {
           toast.error(`${file.name}: ${err.message}`)
         }
@@ -695,7 +708,7 @@ export default function SessionsPage() {
         let success = 0
         for (const file of transcriptFiles) {
           try {
-            if (await processTranscriptFile(file)) success++
+            if (await processTranscriptFile(file, 'drag_drop')) success++
           } catch (err: any) {
             toast.error(`${file.name}: ${err?.message || t('uploadMessages.importFailed')}`)
           }
@@ -1875,6 +1888,8 @@ export default function SessionsPage() {
         }
       }}
         initialText={pastePreviewText}
+        ingestionSource={pastePreviewSource === 'file' ? 'file_select' : 'clipboard_paste'}
+        fileName={pastePreviewFileName}
         onConfirm={handlePastePreviewConfirm}
         loading={uploadingTranscript}
       />

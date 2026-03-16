@@ -131,7 +131,9 @@ export async function GET(request: Request) {
 
       const hasAudioFile = files.some((f: any) => {
         const mime = String(f?.mime_type || '').toLowerCase()
-        return mime.startsWith('audio/') || mime.startsWith('video/')
+        const filename = String(f?.original_filename || '').toLowerCase()
+        const audioLikeByExtension = /\.(mp3|wav|m4a|m4v|mp4|ogg|aac|flac|weba|webm|amr|mpeg)$/i.test(filename)
+        return mime.startsWith('audio/') || mime.startsWith('video/') || audioLikeByExtension
       })
 
       const { outputs, files: _files, ...rest } = session
