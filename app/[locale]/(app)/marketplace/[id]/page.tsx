@@ -5,7 +5,7 @@ import { Link } from '@/i18n/navigation'
 import {
   ArrowLeft, Download, User, Copy, FileDown, Share2,
   Eye, Users, MessageSquare, Globe, Briefcase, FileText,
-  Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2,
+  Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2, RefreshCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -66,6 +66,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
   const [customizing, setCustomizing] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [installed, setInstalled] = useState(false)
+  const [hasDownloadRecord, setHasDownloadRecord] = useState(false)
   const [consentDialogOpen, setConsentDialogOpen] = useState(false)
   const [consentChecked, setConsentChecked] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -111,16 +112,24 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     setTemplate(enriched)
 
     if (user) {
-      const [ratingRes, downloadRes] = await Promise.all([
+      const [ratingRes, downloadRes, cloneRes] = await Promise.all([
         supabase.from('marketplace_ratings')
           .select('rating')
           .eq('template_id', id).eq('user_id', user.id).maybeSingle(),
         supabase.from('marketplace_downloads')
           .select('id')
           .eq('template_id', id).eq('user_id', user.id).maybeSingle(),
+        supabase.from('templates')
+          .select('id')
+          .eq('marketplace_source_id', id)
+          .eq('created_by', user.id)
+          .maybeSingle(),
       ])
       if (ratingRes.data) setUserRating(ratingRes.data.rating)
-      if (downloadRes.data) setInstalled(true)
+      const hasDownload = !!downloadRes.data
+      const hasClone = !!cloneRes.data
+      setHasDownloadRecord(hasDownload)
+      setInstalled(hasDownload && hasClone)
     }
 
     const cfg = tpl.template_config
@@ -194,6 +203,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Install failed')
       setInstalled(true)
+      setHasDownloadRecord(true)
       setConsentDialogOpen(false)
       toast.success(t('explore.installedSuccess'))
     } catch (err: any) {
@@ -326,16 +336,26 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : installed ? (
                     <CheckCircle2 className="h-4 w-4" />
+                  ) : hasDownloadRecord && !installed ? (
+                    <RefreshCw className="h-4 w-4" />
                   ) : (
                     <Plus className="h-4 w-4" />
                   )}
                   <span className="hidden sm:inline ml-1.5">
-                    {installed ? t('explore.addedToTemplates') : t('explore.addToMyTemplates')}
+                    {installed
+                      ? t('explore.addedToTemplates')
+                      : hasDownloadRecord
+                        ? t('explore.reinstall')
+                        : t('explore.addToMyTemplates')}
                   </span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent className="sm:hidden">
-                {installed ? t('explore.addedToTemplates') : t('explore.addToMyTemplates')}
+                {installed
+                  ? t('explore.addedToTemplates')
+                  : hasDownloadRecord
+                    ? t('explore.reinstall')
+                    : t('explore.addToMyTemplates')}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -437,7 +457,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                 )}
               </div>
               <div className="flex items-center gap-3">
-                {user && !isAuthor && installed ? (
+                {user && !isAuthor && (hasDownloadRecord || userRating > 0) ? (
                   <>
                     <StarRating
                       value={userRating}
@@ -446,7 +466,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                     />
                     {submittingRating && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                   </>
-                ) : user && !isAuthor && !installed ? (
+                ) : user && !isAuthor && !hasDownloadRecord ? (
                   <p className="text-xs text-muted-foreground">{t('template.installToRate')}</p>
                 ) : !user ? (
                   <Button asChild variant="ghost" size="sm">

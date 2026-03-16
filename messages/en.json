@@ -1296,6 +1296,7 @@
       "downloadedJSON": "Template downloaded!",
       "addToMyTemplates": "Add to My Templates",
       "addedToTemplates": "Added to Templates",
+      "reinstall": "Reinstall Template",
       "loginToInstall": "Log in to add to your templates",
       "installedSuccess": "Template added to your collection!",
       "installFailed": "Failed to add template",

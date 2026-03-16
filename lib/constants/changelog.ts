@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.21.2',
+    date: 'March 16, 2026',
+    entries: [
+      {
+        version: '1.21.2',
+        date: 'March 16, 2026',
+        category: 'fix',
+        title: 'Marketplace Install & Rating Fixes',
+        description: 'Fixed several issues with the marketplace: templates can now be reinstalled after deletion, ratings work correctly for all installed templates, and the install/rate status is always in sync.',
+      },
+    ],
+  },
+  {
     version: '1.21.1',
     date: 'March 16, 2026',
     entries: [

@@ -50,10 +50,31 @@ export async function POST(
     )
   }
 
-  await supabase.from('marketplace_downloads').insert({
-    template_id: params.id,
-    user_id: user.id,
-  })
+  const { data: existingClone } = await supabase
+    .from('templates')
+    .select('id')
+    .eq('marketplace_source_id', params.id)
+    .eq('created_by', user.id)
+    .maybeSingle()
+
+  if (existingClone) {
+    return NextResponse.json(
+      { error: 'Template already installed', already_installed: true },
+      { status: 409 }
+    )
+  }
+
+  const { error: downloadError } = await supabase
+    .from('marketplace_downloads')
+    .upsert(
+      { template_id: params.id, user_id: user.id },
+      { onConflict: 'template_id,user_id' }
+    )
+
+  if (downloadError) {
+    console.error('Error recording download:', downloadError)
+    return NextResponse.json({ error: 'Failed to record download' }, { status: 500 })
+  }
 
   const cfg = template.template_config || {}
 
