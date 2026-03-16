@@ -71,7 +71,7 @@ export function ShareToMarketplaceDialog({
         .select('id, description, category_id, tags, lead_capture_enabled')
         .eq('source_template_id', template.id)
         .maybeSingle()
-        .then(({ data }) => {
+        .then(({ data }: { data: any }) => {
           if (data) {
             setIsUpdate(true)
             setDescription(data.description || template.description || '')
