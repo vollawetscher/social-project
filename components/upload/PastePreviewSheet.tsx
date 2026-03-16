@@ -23,7 +23,7 @@ interface PastePreviewSheetProps {
   initialText: string
   ingestionSource?: TranscriptIngestionSource
   fileName?: string | null
-  onConfirm: (text: string) => void
+  onConfirm: (text: string, strategy: TranscriptParseStrategy) => void
   loading?: boolean
 }
 
@@ -153,7 +153,7 @@ export function PastePreviewSheet({
             {t('cancel')}
           </Button>
           <Button
-            onClick={() => onConfirm(trimmed)}
+            onClick={() => onConfirm(trimmed, parseModes[modeIndex])}
             disabled={loading || charCount < 10}
           >
             {loading ? (

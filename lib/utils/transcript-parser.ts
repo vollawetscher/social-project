@@ -118,6 +118,11 @@ function extractSpeakerFromText(text: string): { speaker: string; text: string }
     const speaker = `S${num}`
     return { speaker, text: (match[2] || '').trim() }
   }
+  // Generic named speaker label: "Karsten Milde: ...", "Michael Westphal: ..."
+  const nameMatch = trimmed.match(/^([A-ZÄÖÜ][\p{L}\p{N}.'’\- ]{1,80})\s*:\s*(.+)$/u)
+  if (nameMatch) {
+    return { speaker: nameMatch[1].trim(), text: (nameMatch[2] || '').trim() }
+  }
   return { speaker: 'S1', text: trimmed }
 }
 
@@ -249,7 +254,7 @@ function parseTimestampedSpeakerLines(content: string): ParseResult | null {
   const lines = content.trim().split(/\r?\n/).filter(l => l.trim().length > 0)
   if (lines.length < 2) return null
 
-  const linePattern = /^\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*(S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:\s*(.+)$/i
+  const linePattern = /^\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([A-ZÄÖÜ][\p{L}\p{N}.'’\- ]{1,80}|S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:\s*(.+)$/iu
   const matched: { startMs: number; speaker: string; text: string }[] = []
   let misses = 0
 
@@ -260,8 +265,11 @@ function parseTimestampedSpeakerLines(content: string): ParseResult | null {
       const secs = parseInt(m[2], 10)
       const extraSecs = m[3] ? parseInt(m[3], 10) : 0
       const startMs = (mins * 60 + secs + extraSecs) * 1000
-      const num = m[4].replace(/\D/g, '') || '1'
-      matched.push({ startMs, speaker: `S${num}`, text: m[5].trim() })
+      const rawSpeaker = m[4].trim()
+      const normalizedSpeaker = /^(S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)$/i.test(rawSpeaker)
+        ? `S${rawSpeaker.replace(/\D/g, '') || '1'}`
+        : rawSpeaker
+      matched.push({ startMs, speaker: normalizedSpeaker, text: m[5].trim() })
     } else {
       misses++
     }

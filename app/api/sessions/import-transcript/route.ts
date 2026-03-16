@@ -12,6 +12,7 @@ import { needsStructureHeuristic } from '@/lib/utils/transcript-structure-check'
 import { structureTranscript } from '@/lib/services/transcript-structurer'
 import { detectImportedTextSource } from '@/lib/utils/text-source-detection'
 import { detectTranscriptType, type TranscriptIngestionSource } from '@/lib/utils/transcript-type-detection'
+import type { TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
 import { logError } from '@/lib/services/error-logger'
 
 interface ParsedSegment {
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
       rawFileContent,
       filename,
       ingestionSource = 'unknown',
+      parseStrategy = 'auto',
     }: {
       language?: string
       sessionName?: string
@@ -43,6 +45,7 @@ export async function POST(request: Request) {
       rawFileContent?: string
       filename?: string
       ingestionSource?: TranscriptIngestionSource
+      parseStrategy?: TranscriptParseStrategy
     } = body
 
     const { data: profile } = await supabase
@@ -143,6 +146,7 @@ export async function POST(request: Request) {
     const seededExtractedContext = {
       sourceSignals,
       transcriptSignals,
+      parseStrategy,
     }
 
     // Create session (no audio)

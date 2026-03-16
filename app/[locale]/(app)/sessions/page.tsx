@@ -60,7 +60,7 @@ import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
 import { PastePreviewSheet } from "@/components/upload/PastePreviewSheet"
 import { getStorageMimeType } from "@/lib/utils/audio-format-detector"
 import { uploadToStorage } from "@/lib/utils/resumable-upload"
-import { parseTranscriptFile, cleanPastedContent } from "@/lib/utils/transcript-parser"
+import { parseTranscriptFile, cleanPastedContent, type TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
 import { formatDuration } from "@/lib/utils/date-formatters"
 import type { SessionStatus, Session } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
@@ -423,9 +423,10 @@ export default function SessionsPage() {
   const importTranscriptContent = useCallback(async (
     rawFileContent: string,
     fileName: string,
-    ingestionSource: 'drag_drop' | 'file_select' | 'clipboard_paste' = 'file_select'
+    ingestionSource: 'drag_drop' | 'file_select' | 'clipboard_paste' = 'file_select',
+    parseStrategy: TranscriptParseStrategy = 'auto'
   ): Promise<boolean> => {
-    const { segments, rawText } = parseTranscriptFile(rawFileContent, fileName)
+    const { segments, rawText } = parseTranscriptFile(rawFileContent, fileName, { strategy: parseStrategy })
     if (segments.length === 0) {
       toast.error(t('uploadMessages.noContent', { fileName }))
       return false
@@ -449,6 +450,7 @@ export default function SessionsPage() {
           ...(!parserProducedGoodSegments ? { rawFileContent } : {}),
           filename: fileName,
           ingestionSource,
+          parseStrategy,
         }),
         signal: controller.signal,
       })
@@ -477,63 +479,16 @@ export default function SessionsPage() {
 
   const processPastedTranscript = useCallback(async (
     rawContent: string,
-    source: 'clipboard_paste' | 'file_select' = 'clipboard_paste'
+    source: 'clipboard_paste' | 'file_select' = 'clipboard_paste',
+    parseStrategy: TranscriptParseStrategy = 'auto'
   ): Promise<boolean> => {
     const trimmed = rawContent.trim()
     if (!trimmed || trimmed.length < 10) {
       toast.error(t('uploadMessages.emptyContent'))
       return false
     }
-    const timestamp = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/[/,]/g, '-')
-    const sessionName = `Pasted ${timestamp}`
-
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 120_000)
-
-    try {
-      const res = await fetch('/api/sessions/import-transcript', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          language,
-          sessionName,
-          segments: [{ start_ms: 0, end_ms: 0, speaker: '', text: trimmed }],
-          rawText: trimmed,
-          rawFileContent: trimmed,
-          filename: 'pasted.txt',
-          ingestionSource: source,
-        }),
-        signal: controller.signal,
-      })
-      clearTimeout(timeoutId)
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || t('uploadMessages.importFailed'))
-      }
-      return true
-    } catch (err: any) {
-      clearTimeout(timeoutId)
-      if (err?.name === 'AbortError') {
-        // Log timeout to error service
-        fetch('/api/error-logs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            errorType: 'client_error',
-            severity: 'error',
-            message: `Transcript import timed out after 120s (content length: ${trimmed.length} chars)`,
-            metadata: {
-              step: 'client_fetch_timeout',
-              contentLength: trimmed.length,
-              url: window.location.href,
-            },
-          }),
-        }).catch(() => {})
-        throw new Error(t('uploadMessages.importTimeout'))
-      }
-      throw err
-    }
-  }, [language])
+    return importTranscriptContent(trimmed, 'pasted.txt', source, parseStrategy)
+  }, [importTranscriptContent, t])
 
   const handleTranscriptFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files ? Array.from(e.target.files) : []
@@ -599,12 +554,12 @@ export default function SessionsPage() {
     setPastePreviewOpen(true)
   }, [])
 
-  const handlePastePreviewConfirm = useCallback(async (text: string) => {
+  const handlePastePreviewConfirm = useCallback(async (text: string, parseStrategy: TranscriptParseStrategy) => {
     setUploadingTranscript(true)
     try {
       const imported = pastePreviewSource === 'file' && pastePreviewFileName
-        ? await importTranscriptContent(text, pastePreviewFileName, 'file_select')
-        : await processPastedTranscript(text, 'clipboard_paste')
+        ? await importTranscriptContent(text, pastePreviewFileName, 'file_select', parseStrategy)
+        : await processPastedTranscript(text, 'clipboard_paste', parseStrategy)
 
       if (imported) {
         toast.success(

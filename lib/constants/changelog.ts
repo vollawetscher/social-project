@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.21',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.21',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Speaker Names Preserved After Preview Import',
+        description: 'When importing from the text preview, selected parse mode is now applied during import so detected speaker names and existing timestamp structure are preserved instead of collapsing into unknown speaker labels.',
+      },
+    ],
+  },
+  {
     version: '1.20.20',
     date: 'March 13, 2026',
     entries: [
