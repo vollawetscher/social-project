@@ -15,13 +15,23 @@ export async function POST(
 
   const { data: template, error: tplError } = await supabase
     .from('marketplace_templates')
-    .select('*, author:profiles!author_id(email)')
+    .select('*')
     .eq('id', params.id)
     .eq('is_published', true)
     .maybeSingle()
 
   if (tplError || !template) {
     return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+  }
+
+  let creatorEmail: string | null = null
+  if (template.lead_capture_enabled && template.author_id) {
+    const { data: authorProfile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', template.author_id)
+      .maybeSingle()
+    creatorEmail = authorProfile?.email || null
   }
 
   let consent = false
@@ -78,7 +88,6 @@ export async function POST(
   }
 
   if (template.lead_capture_enabled && consent) {
-    const creatorEmail = (template.author as any)?.email
     if (creatorEmail) {
       sendCreatorLeadEmail({
         creatorEmail,
