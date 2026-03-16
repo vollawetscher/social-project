@@ -75,6 +75,8 @@ type CombineSuggestion = {
   signature: string
 }
 
+const ADMIN_VIEW_STORAGE_KEY = 'sessions_admin_view'
+
 const statusConfig: Record<SessionStatus, StatusDisplay> = {
   recording: { labelKey: "recording", variant: "secondary", className: "bg-primary/20 text-primary border-primary/30 animate-pulse", animated: true },
   uploading: { labelKey: "uploading", variant: "secondary", className: "bg-info/20 text-info border-info/30 animate-pulse", animated: true },
@@ -293,6 +295,7 @@ export default function SessionsPage() {
   const [isDraggingHeader, setIsDraggingHeader] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminView, setAdminView] = useState(false)
+  const [adminViewInitialized, setAdminViewInitialized] = useState(false)
   const [combiningSuggestion, setCombiningSuggestion] = useState(false)
   const [dismissedCombineSignatures, setDismissedCombineSignatures] = useState<string[]>([])
   const [locallyHiddenSessionIds, setLocallyHiddenSessionIds] = useState<string[]>([])
@@ -364,6 +367,41 @@ export default function SessionsPage() {
   useEffect(() => {
     if (user) fetchSessions()
   }, [user, adminView, fetchSessions])
+
+  useEffect(() => {
+    if (!isAdmin || adminViewInitialized) return
+    const fromQuery = searchParams.get('allUsers')
+    if (fromQuery !== null) {
+      setAdminView(fromQuery === '1' || fromQuery === 'true')
+      setAdminViewInitialized(true)
+      return
+    }
+    try {
+      const saved = window.localStorage.getItem(ADMIN_VIEW_STORAGE_KEY)
+      if (saved !== null) setAdminView(saved === '1')
+    } catch {
+      // Ignore localStorage access issues
+    }
+    setAdminViewInitialized(true)
+  }, [isAdmin, adminViewInitialized, searchParams])
+
+  useEffect(() => {
+    if (!isAdmin || !adminViewInitialized) return
+    try {
+      window.localStorage.setItem(ADMIN_VIEW_STORAGE_KEY, adminView ? '1' : '0')
+    } catch {
+      // Ignore localStorage access issues
+    }
+  }, [isAdmin, adminView, adminViewInitialized])
+
+  const handleAdminViewChange = useCallback((checked: boolean) => {
+    setAdminView(checked)
+    const params = new URLSearchParams(searchParams.toString())
+    if (checked) params.set('allUsers', '1')
+    else params.delete('allUsers')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname)
+  }, [searchParams, router, pathname])
 
   useEffect(() => {
     if (!pastePreviewOpen || pastePreviewTemplates.length > 0) return
@@ -1539,9 +1577,7 @@ export default function SessionsPage() {
                 <Switch
                   id="admin-view"
                   checked={adminView}
-                  onCheckedChange={(checked) => {
-                    setAdminView(checked)
-                  }}
+                  onCheckedChange={handleAdminViewChange}
                 />
                 <Label htmlFor="admin-view" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
                   {t('allUsers')}

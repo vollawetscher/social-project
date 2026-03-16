@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.30',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.30',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'All Users View Now Persists',
+        description: 'The “All users” switch on Sessions now remembers your last state and keeps it across navigation and reloads for admins.',
+      },
+    ],
+  },
+  {
+    version: '1.20.29',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.29',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Cleaner Parsing Controls in Transcript Flows',
+        description: 'Re-parse controls are now hidden for audio-origin sessions, and the preview parse button is compact and disabled after selecting a template to support a clearer parse-first workflow.',
+      },
+    ],
+  },
+  {
     version: '1.20.28',
     date: 'March 13, 2026',
     entries: [

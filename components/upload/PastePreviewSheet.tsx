@@ -171,11 +171,12 @@ export function PastePreviewSheet({
           <Button
             variant="secondary"
             onClick={handleTryNextParse}
-            disabled={loading}
-            className="text-foreground bg-muted hover:bg-muted/80 border border-border"
+            disabled={loading || !!selectedTemplateId}
+            title={`${t('tryNextParse')} (${modeLabelMap[parseModes[modeIndex]]})`}
+            className="max-w-[180px] text-foreground bg-muted hover:bg-muted/80 border border-border whitespace-nowrap overflow-hidden text-ellipsis"
           >
             <Shuffle className="h-4 w-4 mr-2" />
-            {t('tryNextParse')} ({modeLabelMap[parseModes[modeIndex]]})
+            {t('tryNextParse')}
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             {t('cancel')}

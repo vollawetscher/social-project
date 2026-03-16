@@ -148,6 +148,7 @@ export default function SessionDetailPage() {
   const [reparseModeIndex, setReparseModeIndex] = useState(0)
   const [reparsingTranscript, setReparsingTranscript] = useState(false)
   const tPastePreview = useTranslations('pastePreview')
+  const canShowTranscriptReparseControls = !session?.hasAudioFile
 
   const reparseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt']
   const reparseModeLabel: Record<TranscriptParseStrategy, string> = {
@@ -913,21 +914,23 @@ export default function SessionDetailPage() {
             <TabsTrigger value="outputs">{t('outputs')}</TabsTrigger>
           </TabsList>
           <TabsContent value="transcript" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
-            <div className="mb-2 flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setReparseModeIndex((i) => (i + 1) % reparseModes.length)}
-                disabled={reparsingTranscript}
-              >
-                <Shuffle className="h-3.5 w-3.5 mr-1.5" />
-                {tPastePreview('tryNextParse')}: {reparseModeLabel[reparseModes[reparseModeIndex]]}
-              </Button>
-              <Button size="sm" onClick={handleReparseTranscript} disabled={reparsingTranscript}>
-                {reparsingTranscript ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-                Apply
-              </Button>
-            </div>
+            {canShowTranscriptReparseControls && (
+              <div className="mb-2 flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setReparseModeIndex((i) => (i + 1) % reparseModes.length)}
+                  disabled={reparsingTranscript}
+                >
+                  <Shuffle className="h-3.5 w-3.5 mr-1.5" />
+                  {tPastePreview('tryNextParse')}: {reparseModeLabel[reparseModes[reparseModeIndex]]}
+                </Button>
+                <Button size="sm" onClick={handleReparseTranscript} disabled={reparsingTranscript}>
+                  {reparsingTranscript ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                  Apply
+                </Button>
+              </div>
+            )}
             <div className="h-full rounded-lg border border-border bg-card overflow-hidden">
               <TranscriptViewer 
                 segments={session.transcript}
@@ -1351,21 +1354,23 @@ export default function SessionDetailPage() {
           {/* Tab Content */}
           {activeTab === "transcript" && (
             <div className="flex-1 min-h-0 flex flex-col">
-              <div className="mb-2 flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setReparseModeIndex((i) => (i + 1) % reparseModes.length)}
-                  disabled={reparsingTranscript}
-                >
-                  <Shuffle className="h-3.5 w-3.5 mr-1.5" />
-                  {tPastePreview('tryNextParse')}: {reparseModeLabel[reparseModes[reparseModeIndex]]}
-                </Button>
-                <Button size="sm" onClick={handleReparseTranscript} disabled={reparsingTranscript}>
-                  {reparsingTranscript ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-                  Apply
-                </Button>
-              </div>
+              {canShowTranscriptReparseControls && (
+                <div className="mb-2 flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setReparseModeIndex((i) => (i + 1) % reparseModes.length)}
+                    disabled={reparsingTranscript}
+                  >
+                    <Shuffle className="h-3.5 w-3.5 mr-1.5" />
+                    {tPastePreview('tryNextParse')}: {reparseModeLabel[reparseModes[reparseModeIndex]]}
+                  </Button>
+                  <Button size="sm" onClick={handleReparseTranscript} disabled={reparsingTranscript}>
+                    {reparsingTranscript ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                    Apply
+                  </Button>
+                </div>
+              )}
               <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
                 <TranscriptViewer 
                   segments={session.transcript} 
