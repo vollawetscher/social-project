@@ -24,6 +24,9 @@ const LANG_NAMES: Record<string, string> = {
   ko: 'Korean', ar: 'Arabic', hi: 'Hindi',
 }
 
+const asSegmentArray = (value: unknown): { start_ms?: number; end_ms?: number; [k: string]: any }[] =>
+  Array.isArray(value) ? (value as { start_ms?: number; end_ms?: number; [k: string]: any }[]) : []
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -120,7 +123,7 @@ export async function POST(
     let timeOffset = 0
     const allSegments: any[] = []
     for (const t of transcripts) {
-      const segs = (t.raw_json || []) as { start_ms?: number; end_ms?: number; [k: string]: any }[]
+      const segs = asSegmentArray(t.raw_json)
       for (const seg of segs) {
         allSegments.push({
           ...seg,

@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.34',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.34',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'More Reliable Transcript Parsing and Re-Parse',
+        description: 'Speaker-label parsing is now stricter to avoid false speaker names, and transcript storage/re-parse handling is hardened to prevent JSON format issues in existing sessions.',
+      },
+    ],
+  },
+  {
+    version: '1.20.33',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.33',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Pasted Transcript Cleanup Removes Stray S1/S2 Headers',
+        description: 'When pasting transcript text, standalone legacy speaker-ID lines like “S1” are now removed if named speaker labels are present, preventing misleading speaker tags at the top of preview.',
+      },
+    ],
+  },
+  {
     version: '1.20.32',
     date: 'March 13, 2026',
     entries: [

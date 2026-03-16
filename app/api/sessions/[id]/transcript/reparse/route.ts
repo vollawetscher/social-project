@@ -36,12 +36,16 @@ export async function POST(
     }
 
     const transcript = transcripts[0]
+    const rawSegments = Array.isArray(transcript.raw_json) ? transcript.raw_json : []
+    const reconstructedFromSegments = rawSegments
+      .map((s: any) => `${s?.speaker || 'S1'}: ${s?.text || ''}`)
+      .join('\n')
+      .trim()
+    // Prefer structured segment-derived source for re-parse to preserve speaker boundaries.
     const sourceText =
+      reconstructedFromSegments ||
       (transcript.raw_text as string | null) ||
-      ((transcript.raw_json || [])
-        .map((s: any) => `${s?.speaker || 'S1'}: ${s?.text || ''}`)
-        .join('\n')
-        .trim())
+      ''
 
     if (!sourceText || sourceText.length < 10) {
       return NextResponse.json({ error: 'Transcript text is empty' }, { status: 400 })

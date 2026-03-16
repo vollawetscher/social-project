@@ -20,6 +20,12 @@ export function cleanPastedContent(raw: string): string {
   t = t.replace(/_{1,3}([^_]+)_{1,3}/g, '$1')
   // Strip heading markers
   t = t.replace(/^#{1,6}\s+/gm, '')
+  // Remove standalone legacy speaker-ID lines (e.g. "S1", "S2") when the body uses named speaker labels.
+  // This avoids showing a misleading synthetic "S1" header at the top of pasted imports.
+  const hasNamedSpeakerTurns = /[A-ZÄÖÜ][\p{L}\p{N}.'’\- ]{1,80}\s*:\s+/u.test(t)
+  if (hasNamedSpeakerTurns) {
+    t = t.replace(/^\s*S\d+\s*$/gim, '')
+  }
   // Collapse 3+ blank lines to 2
   t = t.replace(/\n{3,}/g, '\n\n')
   return t.trim()
@@ -42,6 +48,13 @@ export type TranscriptParseStrategy =
   | 'sprecher_zeit'
   | 'timestamped_speaker_lines'
   | 'plain_txt'
+
+// Strict speaker label shape to avoid sentence fragments being captured as speaker names.
+// Supports:
+// - "Michael Westphal:"
+// - "EXTERNAL Wussler Thomas (Media-Studios, BD/WPA-UCS4):"
+const STRICT_SPEAKER_LABEL =
+  '(?:(?:EXTERNAL|INTERNAL)\\s+)?[A-ZÄÖÜ][\\p{L}\\p{N}\'’\\-]*(?:\\s+[A-ZÄÖÜ][\\p{L}\\p{N}\'’\\-]*){0,5}(?:\\s*\\([^:\\n)]{1,120}\\))?'
 
 /**
  * Parse SRT format:
@@ -121,9 +134,7 @@ function extractSpeakerFromText(text: string): { speaker: string; text: string }
   // Generic named speaker label:
   // "Karsten Milde: ...", "Michael Westphal: ...",
   // "EXTERNAL Wussler Thomas (Media-Studios, BD/WPA-UCS4): ..."
-  const nameMatch = trimmed.match(
-    /^((?:(?:EXTERNAL|INTERNAL)\s+)?[A-ZÄÖÜ][\p{L}\p{N}.'’\-]*(?:\s+[A-Za-zÄÖÜäöü][\p{L}\p{N}.'’\-]*){0,6}(?:\s*\([^:\n)]{1,120}\))?)\s*:\s*(.+)$/u
-  )
+  const nameMatch = trimmed.match(new RegExp(`^(${STRICT_SPEAKER_LABEL})\\s*:\\s*(.+)$`, 'u'))
   if (nameMatch) {
     return { speaker: nameMatch[1].trim(), text: (nameMatch[2] || '').trim() }
   }
@@ -414,8 +425,7 @@ function parseInlineNamedSpeakerTurns(content: string): ParseResult | null {
 
   // Supports plain names and external/internal tagged names with org suffixes, e.g.
   // "Michael Westphal:" or "EXTERNAL Wussler Thomas (Media-Studios, BD/WPA-UCS4):"
-  const speakerPattern =
-    /(^|\s)((?:(?:EXTERNAL|INTERNAL)\s+)?[A-ZÄÖÜ][\p{L}\p{N}.'’\-]*(?:\s+[A-Za-zÄÖÜäöü][\p{L}\p{N}.'’\-]*){0,6}(?:\s*\([^:\n)]{1,120}\))?)\s*:\s*/gu
+  const speakerPattern = new RegExp(`(^|\\s)(${STRICT_SPEAKER_LABEL})\\s*:\\s*`, 'gu')
   const matches: Array<{ index: number; speaker: string; markerLength: number }> = []
   let m: RegExpExecArray | null
   while ((m = speakerPattern.exec(sanitized)) !== null) {

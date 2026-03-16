@@ -11,6 +11,9 @@ type Segment = {
   [key: string]: unknown
 }
 
+const asSegmentArray = (value: unknown): Segment[] =>
+  Array.isArray(value) ? (value as Segment[]) : []
+
 function offsetSegments(segments: Segment[], offsetMs: number): Segment[] {
   return segments.map((seg) => ({
     ...seg,
@@ -83,8 +86,10 @@ export async function POST(request: Request) {
       const mergedSessionTranscript = mergeTranscripts(rows)
       if (!mergedSessionTranscript) continue
 
-      const rawSegments = (mergedSessionTranscript.raw_json || []) as Segment[]
-      const redactedSegments = (mergedSessionTranscript.redacted_json || mergedSessionTranscript.raw_json || []) as Segment[]
+      const rawSegments = asSegmentArray(mergedSessionTranscript.raw_json)
+      const redactedSegments = asSegmentArray(mergedSessionTranscript.redacted_json).length
+        ? asSegmentArray(mergedSessionTranscript.redacted_json)
+        : rawSegments
 
       mergedRaw.push(...offsetSegments(rawSegments, offsetMs))
       mergedRedacted.push(...offsetSegments(redactedSegments, offsetMs))

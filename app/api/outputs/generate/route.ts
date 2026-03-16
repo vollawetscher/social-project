@@ -145,7 +145,7 @@ export async function POST(request: Request) {
     console.log('[Generate Output] Transcript text length:', transcriptText.length)
     
     // Extract speakers from raw_json segments (apply name corrections)
-    const segments = transcript.raw_json as any[]
+    const segments = Array.isArray(transcript.raw_json) ? (transcript.raw_json as any[]) : []
     const nameCorrections = corrections.name_corrections || {}
     const uniqueSpeakers = Array.from(
       new Set(segments.map((s: any) => nameCorrections[s.speaker] || s.speaker).filter(Boolean))
