@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.37',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.37',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'ICS Attachments Sent Reliably via Comm Hub',
+        description: 'Scheduled call invites now use the latest Comm Hub attachment format for ICS files, with compatibility fallback, so calendar attachments are delivered more reliably.',
+      },
+    ],
+  },
+  {
     version: '1.20.36',
     date: 'March 13, 2026',
     entries: [

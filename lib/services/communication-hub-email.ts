@@ -8,7 +8,9 @@ interface SendEmailParams {
   attachments?: Array<{
     filename: string
     contentType: string
-    contentBase64: string
+    contentBase64?: string
+    content?: string
+    contentEncoding?: 'base64' | 'utf-8'
   }>
 }
 
@@ -33,7 +35,7 @@ export async function sendCommunicationHubEmail(params: SendEmailParams): Promis
   }
 
   const endpoint = `${resolveCommunicationHubBaseUrl()}/api/email/send`
-  const buildPayload = (includeAttachments: boolean) => ({
+  const buildPayload = (includeAttachments: boolean, attachmentStyle: 'camel' | 'snake' = 'camel') => ({
     to: params.to,
     subject: params.subject,
     body: params.body,
@@ -44,8 +46,16 @@ export async function sendCommunicationHubEmail(params: SendEmailParams): Promis
       ? {
           attachments: params.attachments.map((a) => ({
             filename: a.filename,
-            content_type: a.contentType,
-            content_base64: a.contentBase64,
+            ...(attachmentStyle === 'camel'
+              ? {
+                  contentType: a.contentType,
+                  content: a.content || a.contentBase64 || '',
+                  contentEncoding: a.contentEncoding || 'base64',
+                }
+              : {
+                  content_type: a.contentType,
+                  content_base64: a.contentBase64 || a.content || '',
+                }),
           })),
         }
       : {}),
@@ -57,15 +67,31 @@ export async function sendCommunicationHubEmail(params: SendEmailParams): Promis
         'Content-Type': 'application/json',
         'X-API-Key': apiKey,
       },
-      body: JSON.stringify(buildPayload(true)),
+      body: JSON.stringify(buildPayload(true, 'camel')),
     })
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '')
-      // Attachment payloads may be unsupported in some provider versions.
-      // Retry without attachments so invite delivery still succeeds.
+      // Retry attachment payload in legacy snake_case for backward compatibility.
       if (params.attachments?.length) {
-        const fallbackResponse = await fetch(endpoint, {
+        const legacyResponse = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': apiKey,
+          },
+          body: JSON.stringify(buildPayload(true, 'snake')),
+        })
+        if (legacyResponse.ok) {
+          const legacyData = await legacyResponse.json().catch(() => ({}))
+          return {
+            success: true,
+            providerMessageId: legacyData?.id || legacyData?.messageId || null,
+          }
+        }
+
+        // Final fallback: retry without attachments so invite delivery still succeeds.
+        const noAttachmentResponse = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -73,8 +99,8 @@ export async function sendCommunicationHubEmail(params: SendEmailParams): Promis
           },
           body: JSON.stringify(buildPayload(false)),
         })
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json().catch(() => ({}))
+        if (noAttachmentResponse.ok) {
+          const fallbackData = await noAttachmentResponse.json().catch(() => ({}))
           return {
             success: true,
             providerMessageId: fallbackData?.id || fallbackData?.messageId || null,
