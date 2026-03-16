@@ -339,7 +339,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             </Tooltip>
           ) : (
             <Button asChild>
-              <Link href="/login">
+              <Link href={`/login?redirect=/marketplace/${id}`}>
                 <LogIn className="h-4 w-4 mr-2" />
                 {t('explore.loginToInstall')}
               </Link>
@@ -447,7 +447,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                   </>
                 ) : !user ? (
                   <Button asChild variant="ghost" size="sm">
-                    <Link href="/login">
+                    <Link href={`/login?redirect=/marketplace/${id}`}>
                       <LogIn className="h-3.5 w-3.5 mr-1.5" />
                       {t('template.loginToRate')}
                     </Link>
