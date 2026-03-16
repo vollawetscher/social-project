@@ -148,7 +148,11 @@ export default function SessionDetailPage() {
   const [reparseModeIndex, setReparseModeIndex] = useState(0)
   const [reparsingTranscript, setReparsingTranscript] = useState(false)
   const tPastePreview = useTranslations('pastePreview')
-  const canShowTranscriptReparseControls = !session?.hasAudioFile
+  const hasAudioInSession =
+    Boolean(session?.audioUrl) ||
+    Boolean(session?.hasAudioFile) ||
+    (sessionFiles?.length || 0) > 0
+  const canShowTranscriptReparseControls = !hasAudioInSession
 
   const reparseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt']
   const reparseModeLabel: Record<TranscriptParseStrategy, string> = {

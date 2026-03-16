@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.35',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.35',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Re-Parse Now Uses Detected Participant Hints',
+        description: 'When re-parsing transcripts, detected participant names from context are now used as speaker hints to better split S1-style blocks into real speaker turns.',
+      },
+    ],
+  },
+  {
     version: '1.20.34',
     date: 'March 13, 2026',
     entries: [

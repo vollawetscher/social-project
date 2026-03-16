@@ -414,7 +414,7 @@ function parseSprecherZeitFormat(content: string): ParseResult | null {
  * Parse inline named-speaker turns in dense text blocks, e.g.
  * "Michael Westphal: ... Alisa Mulic: ... Michael Westphal: ..."
  */
-function parseInlineNamedSpeakerTurns(content: string): ParseResult | null {
+function parseInlineNamedSpeakerTurns(content: string, speakerHints?: string[]): ParseResult | null {
   const sanitized = content
     .replace(/\r?\n/g, ' ')
     .replace(/\bS\d+\b/gi, ' ')
@@ -423,9 +423,23 @@ function parseInlineNamedSpeakerTurns(content: string): ParseResult | null {
 
   if (sanitized.length < 20) return null
 
-  // Supports plain names and external/internal tagged names with org suffixes, e.g.
-  // "Michael Westphal:" or "EXTERNAL Wussler Thomas (Media-Studios, BD/WPA-UCS4):"
-  const speakerPattern = new RegExp(`(^|\\s)(${STRICT_SPEAKER_LABEL})\\s*:\\s*`, 'gu')
+  const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const normalizedHints = Array.isArray(speakerHints)
+    ? Array.from(new Set(speakerHints.map((h) => String(h || '').trim()).filter((h) => h.length > 1)))
+    : []
+  const hintPattern =
+    normalizedHints.length >= 2
+      ? new RegExp(
+          `(^|\\s)(${normalizedHints
+            .sort((a, b) => b.length - a.length)
+            .map(escapeRegex)
+            .join('|')})\\s*:\\s*`,
+          'gu'
+        )
+      : null
+
+  // Prefer exact participant-name hints from context when available, fallback to generic pattern.
+  const speakerPattern = hintPattern || new RegExp(`(^|\\s)(${STRICT_SPEAKER_LABEL})\\s*:\\s*`, 'gu')
   const matches: Array<{ index: number; speaker: string; markerLength: number }> = []
   let m: RegExpExecArray | null
   while ((m = speakerPattern.exec(sanitized)) !== null) {
@@ -475,9 +489,9 @@ function parseInlineNamedSpeakerTurns(content: string): ParseResult | null {
  * Parse plain TXT: split by double newlines (paragraphs) or single newlines.
  * Assign sequential timestamps (~150 words/min ≈ 2.5 words/sec).
  */
-function parseTXT(content: string): ParseResult {
+function parseTXT(content: string, speakerHints?: string[]): ParseResult {
   // Even in plain-text mode, preserve obvious inline speaker turns when present.
-  const inlineNamedTurns = parseInlineNamedSpeakerTurns(content)
+  const inlineNamedTurns = parseInlineNamedSpeakerTurns(content, speakerHints)
   if (inlineNamedTurns) return inlineNamedTurns
 
   const paragraphs = content
@@ -527,19 +541,20 @@ function parseTXT(content: string): ParseResult {
 export function parseTranscriptFile(
   content: string,
   filename: string,
-  options?: { strategy?: TranscriptParseStrategy }
+  options?: { strategy?: TranscriptParseStrategy; speakerHints?: string[] }
 ): ParseResult {
   const strategy = options?.strategy || 'auto'
+  const speakerHints = Array.isArray(options?.speakerHints) ? options?.speakerHints : []
   const ext = filename.split('.').pop()?.toLowerCase() || ''
 
   if (strategy === 'sprecher_zeit') {
-    return parseSprecherZeitFormat(content) || parseTXT(content)
+    return parseSprecherZeitFormat(content) || parseTXT(content, speakerHints)
   }
   if (strategy === 'timestamped_speaker_lines') {
-    return parseTimestampedSpeakerLines(content) || parseTXT(content)
+    return parseTimestampedSpeakerLines(content) || parseTXT(content, speakerHints)
   }
   if (strategy === 'plain_txt') {
-    return parseTXT(content)
+    return parseTXT(content, speakerHints)
   }
 
   if (ext === 'srt') return parseSRT(content)
@@ -551,15 +566,15 @@ export function parseTranscriptFile(
     if (sprecherZeitResult) return sprecherZeitResult
     const timestampedResult = parseTimestampedSpeakerLines(content)
     if (timestampedResult) return timestampedResult
-    const inlineNamedTurnsResult = parseInlineNamedSpeakerTurns(content)
+    const inlineNamedTurnsResult = parseInlineNamedSpeakerTurns(content, speakerHints)
     if (inlineNamedTurnsResult) return inlineNamedTurnsResult
-    return parseTXT(content)
+    return parseTXT(content, speakerHints)
   }
   const sprecherZeitResult = parseSprecherZeitFormat(content)
   if (sprecherZeitResult) return sprecherZeitResult
   const timestampedResult = parseTimestampedSpeakerLines(content)
   if (timestampedResult) return timestampedResult
-  const inlineNamedTurnsResult = parseInlineNamedSpeakerTurns(content)
+  const inlineNamedTurnsResult = parseInlineNamedSpeakerTurns(content, speakerHints)
   if (inlineNamedTurnsResult) return inlineNamedTurnsResult
-  return parseTXT(content)
+  return parseTXT(content, speakerHints)
 }

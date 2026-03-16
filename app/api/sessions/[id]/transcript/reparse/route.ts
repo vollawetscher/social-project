@@ -47,11 +47,25 @@ export async function POST(
       (transcript.raw_text as string | null) ||
       ''
 
+    const { data: sessionData } = await db
+      .from('sessions')
+      .select('ai_extracted_context')
+      .eq('id', params.id)
+      .maybeSingle()
+    const participantHints = Array.isArray((sessionData as any)?.ai_extracted_context?.participants)
+      ? (sessionData as any).ai_extracted_context.participants
+          .map((p: any) => (typeof p === 'string' ? p : p?.name))
+          .filter((name: any): name is string => typeof name === 'string' && name.trim().length > 1)
+      : []
+
     if (!sourceText || sourceText.length < 10) {
       return NextResponse.json({ error: 'Transcript text is empty' }, { status: 400 })
     }
 
-    const parsed = parseTranscriptFile(sourceText, 'reparse.txt', { strategy })
+    const parsed = parseTranscriptFile(sourceText, 'reparse.txt', {
+      strategy,
+      speakerHints: participantHints,
+    })
     if (!parsed.segments.length) {
       return NextResponse.json({ error: 'Parser produced no segments' }, { status: 400 })
     }
