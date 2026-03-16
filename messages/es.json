@@ -444,6 +444,9 @@
     "editSubtitle": "Modificar ajustes y restricciones de la plantilla",
     "saving": "Guardando...",
     "saveChanges": "Guardar cambios",
+    "updateMarketplace": "Guardar y actualizar marketplace",
+    "marketplaceUpdated": "¡Plantilla guardada y marketplace actualizado!",
+    "marketplaceSyncFailed": "No se pudo actualizar el marketplace",
     "perspectives": "Perspectivas",
     "audience": "Audiencia",
     "styleRules": "Reglas de estilo",
@@ -1334,7 +1337,8 @@
       "rateThis": "Calificar plantilla",
       "yourRating": "Tu calificación",
       "ratingSubmitted": "¡Calificación enviada!",
-      "loginToRate": "Inicia sesión para calificar"
+      "loginToRate": "Inicia sesión para calificar",
+      "installToRate": "Instala la plantilla para calificarla"
     },
     "upload": {
       "title": "Compartir una Plantilla",
@@ -1346,6 +1350,10 @@
       "importJson": "Importar JSON",
       "importJsonDesc": "Pega un JSON exportado de Notissima para crear y compartir una plantilla.",
       "publishButton": "Publicar",
+      "updateButton": "Actualizar plantilla",
+      "updateTitle": "Actualizar plantilla del marketplace",
+      "updateDesc": "Tu plantilla ya está publicada. Se actualizará con los últimos cambios — las calificaciones y descargas se conservan.",
+      "updateSuccess": "¡Plantilla actualizada con éxito!",
       "cannotRepublish": "Las plantillas instaladas del marketplace no se pueden volver a publicar",
       "import": {
         "title": "Importar desde Notissima",

@@ -19,6 +19,20 @@ export async function POST(
     return NextResponse.json({ error: 'Rating must be 1-5' }, { status: 400 })
   }
 
+  const { data: download } = await supabase
+    .from('marketplace_downloads')
+    .select('id')
+    .eq('template_id', params.id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!download) {
+    return NextResponse.json(
+      { error: 'You must install this template before rating it' },
+      { status: 403 }
+    )
+  }
+
   const { error } = await supabase
     .from('marketplace_ratings')
     .upsert(

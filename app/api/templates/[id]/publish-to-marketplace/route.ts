@@ -37,13 +37,6 @@ export async function POST(
     .eq('author_id', user.id)
     .maybeSingle()
 
-  if (existing) {
-    return NextResponse.json(
-      { error: 'Already published', marketplace_id: existing.id },
-      { status: 409 }
-    )
-  }
-
   const body = await request.json()
   const { category_id, tags, description_override, language, lead_capture_enabled } = body
 
@@ -69,21 +62,44 @@ export async function POST(
     do_not_include: template.default_dont_instructions || '',
   }
 
+  const payload = {
+    author_id: user.id,
+    title: template.name,
+    description: finalDescription,
+    instructions: generationPrompt,
+    template_config: templateConfig,
+    category_id: category_id || null,
+    tags: tags || template.domain_tags || [],
+    is_published: true,
+    source_template_id: params.id,
+    language: language || null,
+    lead_capture_enabled: lead_capture_enabled === true,
+  }
+
+  if (existing) {
+    const { data: updated, error: updateError } = await supabase
+      .from('marketplace_templates')
+      .update(payload)
+      .eq('id', existing.id)
+      .select('id, title')
+      .single()
+
+    if (updateError) {
+      console.error('Error updating marketplace template:', updateError)
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      marketplace_id: updated.id,
+      title: updated.title,
+      updated: true,
+    })
+  }
+
   const { data: marketplaceTemplate, error: insertError } = await supabase
     .from('marketplace_templates')
-    .insert({
-      author_id: user.id,
-      title: template.name,
-      description: finalDescription,
-      instructions: generationPrompt,
-      template_config: templateConfig,
-      category_id: category_id || null,
-      tags: tags || template.domain_tags || [],
-      is_published: true,
-      source_template_id: params.id,
-      language: language || null,
-      lead_capture_enabled: lead_capture_enabled === true,
-    })
+    .insert(payload)
     .select('id, title')
     .single()
 
@@ -96,5 +112,6 @@ export async function POST(
     success: true,
     marketplace_id: marketplaceTemplate.id,
     title: marketplaceTemplate.title,
+    updated: false,
   }, { status: 201 })
 }

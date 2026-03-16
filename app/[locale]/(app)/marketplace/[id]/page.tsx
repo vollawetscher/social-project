@@ -111,15 +111,16 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     setTemplate(enriched)
 
     if (user) {
-      const { data: existingRating } = await supabase
-        .from('marketplace_ratings')
-        .select('rating')
-        .eq('template_id', id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (existingRating) {
-        setUserRating(existingRating.rating)
-      }
+      const [ratingRes, downloadRes] = await Promise.all([
+        supabase.from('marketplace_ratings')
+          .select('rating')
+          .eq('template_id', id).eq('user_id', user.id).maybeSingle(),
+        supabase.from('marketplace_downloads')
+          .select('id')
+          .eq('template_id', id).eq('user_id', user.id).maybeSingle(),
+      ])
+      if (ratingRes.data) setUserRating(ratingRes.data.rating)
+      if (downloadRes.data) setInstalled(true)
     }
 
     const cfg = tpl.template_config
@@ -436,7 +437,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                 )}
               </div>
               <div className="flex items-center gap-3">
-                {user && !isAuthor ? (
+                {user && !isAuthor && installed ? (
                   <>
                     <StarRating
                       value={userRating}
@@ -445,6 +446,8 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
                     />
                     {submittingRating && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                   </>
+                ) : user && !isAuthor && !installed ? (
+                  <p className="text-xs text-muted-foreground">{t('template.installToRate')}</p>
                 ) : !user ? (
                   <Button asChild variant="ghost" size="sm">
                     <Link href={`/login?redirect=/marketplace/${id}`}>
@@ -702,6 +705,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
       </div>
     </TooltipProvider>
   )

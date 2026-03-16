@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.21.1',
+    date: 'March 16, 2026',
+    entries: [
+      {
+        version: '1.21.1',
+        date: 'March 16, 2026',
+        category: 'improvement',
+        title: 'Update Templates Without Losing Ratings',
+        description: 'Template creators can now edit and update their published templates directly — description, tags, and settings — without losing any ratings or download counts. Re-sharing from "My Templates" also syncs the latest changes instead of creating a duplicate.',
+      },
+      {
+        version: '1.21.1',
+        date: 'March 16, 2026',
+        category: 'improvement',
+        title: 'Install-to-Rate',
+        description: 'Ratings are now only available to users who have actually installed a template, ensuring more meaningful and trustworthy reviews.',
+      },
+    ],
+  },
+  {
     version: '1.21.0',
     date: 'March 11, 2026',
     entries: [

@@ -13,6 +13,7 @@ import {
   Loader2,
   Sparkles,
   Lock,
+  Store,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +22,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/lib/supabase/client"
 import type { Template, ParticipantRole, Audience, Domain } from "@/lib/types-v0"
 import { participantRoleLabels } from "@/lib/mock/data"
 
@@ -37,8 +39,10 @@ export default function EditTemplatePage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [enhancingInstructions, setEnhancingInstructions] = useState(false)
   const [template, setTemplate] = useState<Template | null>(null)
+  const [isPublished, setIsPublished] = useState(false)
   
   // Form state
   const [name, setName] = useState("")
@@ -78,6 +82,14 @@ export default function EditTemplatePage() {
       setCustomInstructions(data.custom_instructions || data.customInstructions || '')
       setSelectedLanguage(data.language || null)
       setIsInstalled(!!data.marketplaceSourceId)
+
+      const supabase = createClient()
+      const { data: mp } = await supabase
+        .from('marketplace_templates')
+        .select('id')
+        .eq('source_template_id', templateId)
+        .maybeSingle()
+      setIsPublished(!!mp)
     } catch (error) {
       console.error('Error fetching template:', error)
       toast.error(t('loadFailed'))
@@ -162,6 +174,59 @@ export default function EditTemplatePage() {
     }
   }
 
+  const handleSaveAndSync = async () => {
+    if (!name.trim()) {
+      toast.error(t('nameRequired'))
+      return
+    }
+    setSyncing(true)
+    try {
+      const saveRes = await fetch(`/api/templates/${templateId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim(),
+          instructions: instructions.trim(),
+          intendedPerspectives: selectedPerspectives,
+          allowedAudience: selectedAudiences,
+          domainTags: selectedDomains,
+          styleRules: styleRules.split('\n').filter(r => r.trim()),
+          defaultDoInstructions: defaultDoInstructions.trim(),
+          defaultDontInstructions: defaultDontInstructions.trim(),
+          customInstructions: customInstructions.trim(),
+          language: selectedLanguage,
+        }),
+      })
+      if (!saveRes.ok) {
+        const errorData = await saveRes.json()
+        throw new Error(errorData.error || t('saveFailed'))
+      }
+
+      const syncRes = await fetch(`/api/templates/${templateId}/publish-to-marketplace`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description_override: description.trim(),
+          language: selectedLanguage,
+        }),
+      })
+      if (!syncRes.ok) {
+        const errorData = await syncRes.json()
+        throw new Error(errorData.error || t('marketplaceSyncFailed'))
+      }
+
+      toast.success(t('marketplaceUpdated'))
+      router.push('/templates')
+    } catch (error) {
+      console.error('Error syncing to marketplace:', error)
+      const errorMessage = error instanceof Error ? error.message : t('marketplaceSyncFailed')
+      toast.error(errorMessage)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const togglePerspective = (perspective: ParticipantRole) => {
     setSelectedPerspectives(prev =>
       prev.includes(perspective)
@@ -230,19 +295,31 @@ export default function EditTemplatePage() {
             </p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t('saving')}
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              {t('saveChanges')}
-            </>
+        <div className="flex items-center gap-2">
+          {isPublished && (
+            <Button variant="outline" onClick={handleSaveAndSync} disabled={saving || syncing}>
+              {syncing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Store className="mr-2 h-4 w-4" />
+              )}
+              {t('updateMarketplace')}
+            </Button>
           )}
-        </Button>
+          <Button onClick={handleSave} disabled={saving || syncing}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t('saving')}
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                {t('saveChanges')}
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Basic Information */}
@@ -498,19 +575,31 @@ export default function EditTemplatePage() {
             {tc('cancel')}
           </Button>
         </Link>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t('saving')}
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              {t('saveChanges')}
-            </>
+        <div className="flex items-center gap-2">
+          {isPublished && (
+            <Button variant="outline" onClick={handleSaveAndSync} disabled={saving || syncing}>
+              {syncing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Store className="mr-2 h-4 w-4" />
+              )}
+              {t('updateMarketplace')}
+            </Button>
           )}
-        </Button>
+          <Button onClick={handleSave} disabled={saving || syncing}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t('saving')}
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                {t('saveChanges')}
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   )

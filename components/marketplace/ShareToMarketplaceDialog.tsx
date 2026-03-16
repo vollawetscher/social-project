@@ -54,9 +54,10 @@ export function ShareToMarketplaceDialog({
   const [tags, setTags] = useState<string[]>([])
   const [publishing, setPublishing] = useState(false)
   const [leadCaptureEnabled, setLeadCaptureEnabled] = useState(false)
+  const [isUpdate, setIsUpdate] = useState(false)
 
   useEffect(() => {
-    if (open) {
+    if (open && template) {
       supabase
         .from('marketplace_categories')
         .select('*')
@@ -64,18 +65,30 @@ export function ShareToMarketplaceDialog({
         .then(({ data }: { data: any }) => {
           if (data) setCategories(data)
         })
-    }
-  }, [open, supabase])
 
-  useEffect(() => {
-    if (template && open) {
-      setDescription(template.description || '')
-      setTags(template.domainTags?.slice() || [])
-      setCategoryId('')
-      setTagInput('')
-      setLeadCaptureEnabled(false)
+      supabase
+        .from('marketplace_templates')
+        .select('id, description, category_id, tags, lead_capture_enabled')
+        .eq('source_template_id', template.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setIsUpdate(true)
+            setDescription(data.description || template.description || '')
+            setTags(data.tags || template.domainTags?.slice() || [])
+            setCategoryId(data.category_id || '')
+            setLeadCaptureEnabled(data.lead_capture_enabled || false)
+          } else {
+            setIsUpdate(false)
+            setDescription(template.description || '')
+            setTags(template.domainTags?.slice() || [])
+            setCategoryId('')
+            setLeadCaptureEnabled(false)
+          }
+          setTagInput('')
+        })
     }
-  }, [template, open])
+  }, [open, template, supabase])
 
   function handleAddTag(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' || e.key === ',') {
@@ -117,17 +130,11 @@ export function ShareToMarketplaceDialog({
 
       const data = await res.json()
 
-      if (res.status === 409) {
-        toast.info(tt('alreadyPublished'))
-        onOpenChange(false)
-        return
-      }
-
       if (!res.ok) {
         throw new Error(data.error || 'Failed to publish')
       }
 
-      toast.success(tt('publishSuccess'))
+      toast.success(data.updated ? t('upload.updateSuccess') : tt('publishSuccess'))
       onOpenChange(false)
       onSuccess?.(data.marketplace_id)
     } catch (err: any) {
@@ -151,10 +158,10 @@ export function ShareToMarketplaceDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Store className="h-5 w-5" />
-            {tt('shareToMarketplace')}
+            {isUpdate ? t('upload.updateTitle') : tt('shareToMarketplace')}
           </DialogTitle>
           <DialogDescription>
-            {tt('shareToMarketplaceDesc')}
+            {isUpdate ? t('upload.updateDesc') : tt('shareToMarketplaceDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -259,7 +266,7 @@ export function ShareToMarketplaceDialog({
           </Button>
           <Button onClick={handlePublish} disabled={publishing}>
             {publishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {t('upload.publishButton')}
+            {isUpdate ? t('upload.updateButton') : t('upload.publishButton')}
           </Button>
         </DialogFooter>
       </DialogContent>
