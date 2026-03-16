@@ -30,7 +30,7 @@ export async function POST(
     const db = createServiceRoleClient()
     const { data: call } = await db
       .from('calls')
-      .select('room_name, status, user_id, call_type, callee_user_id, accepted_at, scheduled_for, session_id, room_created_at_ms, call_mode, contact_name')
+      .select('room_name, status, user_id, call_type, callee_user_id, accepted_at, scheduled_for, session_id, room_created_at_ms, call_mode, contact_name, room_locked')
       .eq('id', callId)
       .maybeSingle()
 
@@ -114,6 +114,9 @@ export async function POST(
     let displayName: string
 
     if (user) {
+      if (call.room_locked && user.id !== call.user_id && call.callee_user_id !== user.id) {
+        return NextResponse.json({ error: 'Call is locked by host' }, { status: 403 })
+      }
       if (call.call_type === 'web' && call.callee_user_id && user.id !== call.user_id) {
         if (call.callee_user_id !== user.id) {
           return NextResponse.json({ error: 'You are not the invited participant for this call' }, { status: 403 })
@@ -134,6 +137,9 @@ export async function POST(
       displayName = participantName || profile?.display_name || profile?.email || 'User'
     } else {
       // Guest participant
+      if (call.room_locked) {
+        return NextResponse.json({ error: 'Call is locked by host' }, { status: 403 })
+      }
       if (!participantName || participantName.trim().length === 0) {
         return NextResponse.json({ error: 'participantName is required for guest access' }, { status: 400 })
       }

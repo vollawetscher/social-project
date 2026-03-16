@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.39',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.39',
+        date: 'March 13, 2026',
+        category: 'feature',
+        title: 'Initiator Host Controls for Live Calls',
+        description: 'Call initiators can now open host controls to lock/unlock room joins and remove participants directly during a live video call.',
+      },
+    ],
+  },
+  {
+    version: '1.20.38',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.38',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Video Call Layout Toggle Now Works',
+        description: 'The resize button in video calls now switches between gallery and focus layouts, so you can quickly choose the view that fits your conversation.',
+      },
+    ],
+  },
+  {
     version: '1.20.37',
     date: 'March 13, 2026',
     entries: [

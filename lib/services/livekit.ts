@@ -86,6 +86,12 @@ export async function listParticipants(roomName: string) {
   return roomService.listParticipants(roomName)
 }
 
+export async function removeParticipant(roomName: string, participantIdentity: string) {
+  const roomService = getRoomService()
+  await roomService.removeParticipant(roomName, participantIdentity)
+  console.log('[LiveKit] Participant removed:', participantIdentity, 'room:', roomName)
+}
+
 // --- Egress (recording) ---
 
 function getEgressClient(): EgressClient {

@@ -32,6 +32,10 @@ import {
   Link2,
   Check,
   Loader2,
+  Shield,
+  Lock,
+  Unlock,
+  UserX,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -211,6 +215,10 @@ function CallRoomInner({
   const [reconnectDeadline, setReconnectDeadline] = useState<number | null>(null)
   const [reconnectSecondsLeft, setReconnectSecondsLeft] = useState(Math.floor(RECONNECT_GRACE_MS / 1000))
   const [videoBackground, setVideoBackground] = useState<VideoBackgroundChoice>("none")
+  const [showModerationPanel, setShowModerationPanel] = useState(false)
+  const [roomLocked, setRoomLocked] = useState(false)
+  const [moderationParticipants, setModerationParticipants] = useState<Array<{ identity: string; name: string }>>([])
+  const [moderationLoading, setModerationLoading] = useState(false)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -242,6 +250,68 @@ function CallRoomInner({
   const isCameraOn = localParticipant.isCameraEnabled
   const isScreenSharing = localParticipant.isScreenShareEnabled
   const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
+
+  const refreshModeration = useCallback(async () => {
+    if (!isInitiator || !callId) return
+    try {
+      const res = await fetch(`/api/calls/${callId}/moderation`)
+      if (!res.ok) return
+      const data = await res.json()
+      setRoomLocked(Boolean(data?.roomLocked))
+      setModerationParticipants(Array.isArray(data?.participants) ? data.participants : [])
+    } catch {
+      // best effort
+    }
+  }, [isInitiator, callId])
+
+  const toggleRoomLock = useCallback(async () => {
+    if (!callId) return
+    setModerationLoading(true)
+    try {
+      const res = await fetch(`/api/calls/${callId}/moderation`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomLocked: !roomLocked }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to update room lock")
+      setRoomLocked(Boolean(data?.roomLocked))
+      toast.success(data?.roomLocked ? "Room locked" : "Room unlocked")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update room lock")
+    } finally {
+      setModerationLoading(false)
+    }
+  }, [callId, roomLocked])
+
+  const removeRemoteParticipant = useCallback(async (identity: string) => {
+    if (!callId || !identity) return
+    setModerationLoading(true)
+    try {
+      const res = await fetch(`/api/calls/${callId}/moderation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identity }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to remove participant")
+      toast.success("Participant removed")
+      await refreshModeration()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove participant")
+    } finally {
+      setModerationLoading(false)
+    }
+  }, [callId, refreshModeration])
+
+  useEffect(() => {
+    if (!isInitiator || !callId) return
+    refreshModeration()
+    const id = setInterval(() => {
+      refreshModeration()
+    }, 5000)
+    return () => clearInterval(id)
+  }, [isInitiator, callId, refreshModeration])
 
   const clearReconnectTimers = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -1238,6 +1308,7 @@ function CallRoomInner({
 
   // --- Video room view ---
   const participantCount = 1 + remoteParticipants.length
+  const isFocusLayout = layout === "focus"
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#111] items-center">
@@ -1251,7 +1322,7 @@ function CallRoomInner({
             <span className="text-xs text-white/50">{participantCount}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 relative">
           <label className="text-[10px] text-white/60 hidden sm:block">{t("background")}</label>
           <select
             value={videoBackground}
@@ -1294,6 +1365,7 @@ function CallRoomInner({
           )}
           <button
             onClick={() => setLayout(layout === "gallery" ? "focus" : "gallery")}
+            title={layout === "gallery" ? "Switch to focus layout" : "Switch to gallery layout"}
             className="h-7 w-7 rounded-md bg-white/10 flex items-center justify-center hover:bg-white/15 transition-colors"
           >
             {layout === "gallery" ? (
@@ -1302,6 +1374,56 @@ function CallRoomInner({
               <LayoutGrid className="h-3.5 w-3.5 text-white/70" />
             )}
           </button>
+          {isInitiator && (
+            <button
+              onClick={() => setShowModerationPanel((s) => !s)}
+              title="Host controls"
+              className={cn(
+                "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
+                showModerationPanel ? "bg-white/20" : "bg-white/10 hover:bg-white/15"
+              )}
+            >
+              <Shield className="h-3.5 w-3.5 text-white/80" />
+            </button>
+          )}
+          {isInitiator && showModerationPanel && (
+            <div className="absolute right-0 top-9 z-30 w-72 rounded-lg border border-white/15 bg-[#1a1a1a] shadow-2xl p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-white/80">Host controls</span>
+                <button
+                  onClick={toggleRoomLock}
+                  disabled={moderationLoading}
+                  className="inline-flex items-center gap-1 rounded-md border border-white/15 px-2 py-1 text-[11px] text-white/80 hover:bg-white/10 disabled:opacity-60"
+                >
+                  {roomLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  {roomLocked ? "Locked" : "Unlocked"}
+                </button>
+              </div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {moderationParticipants
+                  .filter((p) => p.identity !== localParticipant.identity)
+                  .map((p) => (
+                    <div key={p.identity} className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-white/85 truncate">{p.name}</p>
+                        <p className="text-[10px] text-white/45 truncate">{p.identity}</p>
+                      </div>
+                      <button
+                        onClick={() => removeRemoteParticipant(p.identity)}
+                        disabled={moderationLoading}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-destructive bg-destructive/10 hover:bg-destructive/15 disabled:opacity-60"
+                      >
+                        <UserX className="h-3 w-3" />
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                {moderationParticipants.filter((p) => p.identity !== localParticipant.identity).length === 0 && (
+                  <p className="text-[11px] text-white/45 py-2">No removable participants</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1362,12 +1484,10 @@ function CallRoomInner({
               </div>
             </div>
           </div>
-        ) : (
-          /* Normal layout: side by side / stacked */
-          <div className="h-full p-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-center md:overflow-hidden">
-            {/* Remote participant (or waiting placeholder) */}
-            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
-              <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
+        ) : isFocusLayout ? (
+          /* Focus layout: remote full-screen, local in floating PiP */
+          <div className="h-full p-2 relative">
+            <div className="h-full rounded-xl overflow-hidden">
               {remoteParticipants.length > 0 ? (
                 <div className={cn(
                   "h-full gap-2",
@@ -1403,12 +1523,8 @@ function CallRoomInner({
                   </button>
                 </div>
               )}
-              </div>
             </div>
-
-            {/* Local participant */}
-            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
-              <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
+            <div className="absolute bottom-4 right-4 w-32 h-44 sm:w-40 sm:h-56 rounded-xl overflow-hidden border border-white/20 shadow-2xl z-10">
               <LiveParticipantTile
                 name={t("you")}
                 isMuted={isMuted}
@@ -1416,6 +1532,59 @@ function CallRoomInner({
                 videoTrack={cameraTracks.find(tr => tr.participant.sid === localParticipant.sid)}
                 isLocal
               />
+            </div>
+          </div>
+        ) : (
+          /* Gallery layout: side by side */
+          <div className="h-full p-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-center md:overflow-hidden">
+            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
+              <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
+                {remoteParticipants.length > 0 ? (
+                  <div className={cn(
+                    "h-full gap-2",
+                    remoteParticipants.length > 1 ? "grid grid-cols-2" : ""
+                  )}>
+                    {remoteParticipants.map((rp) => {
+                      const remoteCamera = cameraTracks.find(t => t.participant.sid === rp.sid)
+                      return (
+                        <LiveParticipantTile
+                          key={rp.sid}
+                          name={rp.name || rp.identity}
+                          isMuted={!rp.isMicrophoneEnabled}
+                          hasVideo={rp.isCameraEnabled}
+                          videoTrack={remoteCamera}
+                        />
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="h-full rounded-xl bg-[#1a1a1a] flex flex-col items-center justify-center">
+                    <Avatar className="h-14 w-14 mb-3">
+                      <AvatarFallback className="bg-white/10 text-white text-lg">
+                        {contactInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <p className="text-sm text-white/50 mb-4">{t("waitingForOther")}</p>
+                    <button
+                      onClick={copyInviteLink}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 transition-colors"
+                    >
+                      {linkCopied ? <Check className="h-4 w-4 text-primary-foreground" /> : <Link2 className="h-4 w-4 text-primary-foreground" />}
+                      <span className="text-sm font-medium text-primary-foreground">{linkCopied ? tc("copied") : t("copyInviteLink")}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
+              <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
+                <LiveParticipantTile
+                  name={t("you")}
+                  isMuted={isMuted}
+                  hasVideo={isCameraOn}
+                  videoTrack={cameraTracks.find(tr => tr.participant.sid === localParticipant.sid)}
+                  isLocal
+                />
               </div>
             </div>
           </div>
