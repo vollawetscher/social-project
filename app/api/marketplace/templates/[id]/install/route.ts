@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendCreatorLeadEmail } from '@/lib/services/communication-hub-email'
 
@@ -26,7 +26,8 @@ export async function POST(
 
   let creatorEmail: string | null = null
   if (template.lead_capture_enabled && template.author_id) {
-    const { data: authorProfile } = await supabase
+    const adminClient = createServiceRoleClient()
+    const { data: authorProfile } = await adminClient
       .from('profiles')
       .select('email')
       .eq('id', template.author_id)
