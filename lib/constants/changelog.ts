@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.20',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.20',
+        date: 'March 13, 2026',
+        category: 'improvement',
+        title: 'Preview Parse Mode Switcher for Imports',
+        description: 'In the text import preview, you can now cycle through different parsing modes before importing, helping you choose the format that best preserves speaker and timestamp structure.',
+      },
+    ],
+  },
+  {
     version: '1.20.19',
     date: 'March 13, 2026',
     entries: [

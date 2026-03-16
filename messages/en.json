@@ -1036,6 +1036,13 @@
     "title": "Review pasted text",
     "description": "Formatting and emojis have been stripped. Edit if needed, then import.",
     "stats": "{words} words · {characters} characters",
+    "tryNextParse": "Try next parse",
+    "parseModes": {
+      "auto": "Auto",
+      "sprecherZeit": "SPRECHER/ZEIT",
+      "timestampedSpeakerLines": "Timestamped lines",
+      "plainText": "Plain text"
+    },
     "detection": {
       "kindTranscript": "Likely transcript",
       "kindNonTranscript": "Likely note/document",

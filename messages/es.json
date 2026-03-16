@@ -1035,6 +1035,13 @@
     "title": "Revisar texto pegado",
     "description": "El formato y los emojis se han eliminado. Edita si hace falta y luego importa.",
     "stats": "{words} palabras · {characters} caracteres",
+    "tryNextParse": "Probar siguiente parseo",
+    "parseModes": {
+      "auto": "Auto",
+      "sprecherZeit": "SPRECHER/ZEIT",
+      "timestampedSpeakerLines": "Lineas con marcas de tiempo",
+      "plainText": "Texto plano"
+    },
     "detection": {
       "kindTranscript": "Probable transcripcion",
       "kindNonTranscript": "Probable nota/documento",

@@ -1035,6 +1035,13 @@
     "title": "Eingefuegten Text pruefen",
     "description": "Formatierungen und Emojis wurden entfernt. Bei Bedarf bearbeiten und dann importieren.",
     "stats": "{words} Woerter · {characters} Zeichen",
+    "tryNextParse": "Naechste Parse-Variante",
+    "parseModes": {
+      "auto": "Auto",
+      "sprecherZeit": "SPRECHER/ZEIT",
+      "timestampedSpeakerLines": "Zeitstempel-Zeilen",
+      "plainText": "Klartext"
+    },
     "detection": {
       "kindTranscript": "Wahrscheinlich Transkript",
       "kindNonTranscript": "Wahrscheinlich Notiz/Dokument",

@@ -13,8 +13,9 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet'
-import { FileText, Loader2, Upload } from 'lucide-react'
+import { FileText, Loader2, Shuffle, Upload } from 'lucide-react'
 import { detectTranscriptType, type TranscriptIngestionSource } from '@/lib/utils/transcript-type-detection'
+import { parseTranscriptFile, type ParseResult, type TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
 
 interface PastePreviewSheetProps {
   open: boolean
@@ -37,10 +38,16 @@ export function PastePreviewSheet({
 }: PastePreviewSheetProps) {
   const t = useTranslations('pastePreview')
   const [text, setText] = useState(initialText)
+  const [modeIndex, setModeIndex] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  const parseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt']
+
   useEffect(() => {
-    if (open) setText(initialText)
+    if (open) {
+      setText(initialText)
+      setModeIndex(0)
+    }
   }, [open, initialText])
 
   useEffect(() => {
@@ -66,6 +73,34 @@ export function PastePreviewSheet({
     chat_export: t('detection.types.chatExport'),
     non_transcript_note: t('detection.types.nonTranscriptNote'),
     mixed_or_unknown: t('detection.types.mixedOrUnknown'),
+  }
+
+  const modeLabelMap: Record<TranscriptParseStrategy, string> = {
+    auto: t('parseModes.auto'),
+    sprecher_zeit: t('parseModes.sprecherZeit'),
+    timestamped_speaker_lines: t('parseModes.timestampedSpeakerLines'),
+    plain_txt: t('parseModes.plainText'),
+  }
+
+  const toPreviewText = (result: ParseResult) => {
+    const formatMs = (ms: number) => {
+      const totalSec = Math.max(0, Math.floor(ms / 1000))
+      const min = Math.floor(totalSec / 60)
+      const sec = totalSec % 60
+      return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    }
+    return result.segments
+      .map((seg) => `[${formatMs(seg.start_ms)}] ${seg.speaker}: ${seg.text}`)
+      .join('\n')
+      .trim()
+  }
+
+  const handleTryNextParse = () => {
+    const next = (modeIndex + 1) % parseModes.length
+    const nextMode = parseModes[next]
+    const parsed = parseTranscriptFile(initialText, fileName || 'pasted.txt', { strategy: nextMode })
+    setText(toPreviewText(parsed) || initialText)
+    setModeIndex(next)
   }
 
   return (
@@ -110,6 +145,10 @@ export function PastePreviewSheet({
           {t('stats', { words: wordCount.toLocaleString(), characters: charCount.toLocaleString() })}
         </div>
         <SheetFooter className="border-t pt-4">
+          <Button variant="secondary" onClick={handleTryNextParse} disabled={loading}>
+            <Shuffle className="h-4 w-4 mr-2" />
+            {t('tryNextParse')} ({modeLabelMap[parseModes[modeIndex]]})
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             {t('cancel')}
           </Button>

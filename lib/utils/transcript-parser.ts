@@ -37,6 +37,12 @@ export interface ParseResult {
   rawText: string
 }
 
+export type TranscriptParseStrategy =
+  | 'auto'
+  | 'sprecher_zeit'
+  | 'timestamped_speaker_lines'
+  | 'plain_txt'
+
 /**
  * Parse SRT format:
  * 1
@@ -278,6 +284,69 @@ function parseTimestampedSpeakerLines(content: string): ParseResult | null {
 }
 
 /**
+ * Parse German structured format like:
+ * SPRECHER: Karsten Milde, ZEIT: 00:00:01.550 Text...
+ */
+function parseSprecherZeitFormat(content: string): ParseResult | null {
+  const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  if (lines.length === 0) return null
+
+  const headerRe = /^SPRECHER:\s*([^,]+?)\s*,\s*ZEIT:\s*(\d{2}):(\d{2}):(\d{2})[.,](\d{3})\s*(.*)$/i
+  const segments: ParsedSegment[] = []
+  let current: ParsedSegment | null = null
+
+  const flushCurrent = () => {
+    if (!current) return
+    if (!current.text.trim()) {
+      current = null
+      return
+    }
+    segments.push(current)
+    current = null
+  }
+
+  for (const line of lines) {
+    // Ignore standalone legacy speaker tags (e.g. "S1", "S2")
+    if (/^S\d+$/i.test(line)) continue
+
+    const m = line.match(headerRe)
+    if (m) {
+      flushCurrent()
+      const hh = parseInt(m[2], 10)
+      const mm = parseInt(m[3], 10)
+      const ss = parseInt(m[4], 10)
+      const ms = parseInt(m[5], 10)
+      const startMs = hh * 3600000 + mm * 60000 + ss * 1000 + ms
+      const speaker = m[1].trim()
+      const initialText = (m[6] || '').trim()
+      current = {
+        start_ms: startMs,
+        end_ms: startMs + 5000,
+        speaker: speaker || 'S1',
+        text: initialText,
+      }
+      continue
+    }
+
+    // If we are inside a speaker block, append continuation lines.
+    if (current) {
+      current.text = `${current.text} ${line}`.trim()
+    }
+  }
+
+  flushCurrent()
+  if (segments.length < 1) return null
+
+  for (let i = 0; i < segments.length; i++) {
+    const nextStart = i + 1 < segments.length ? segments[i + 1].start_ms : segments[i].start_ms + 5000
+    segments[i].end_ms = Math.max(nextStart, segments[i].start_ms + 1000)
+  }
+
+  const rawText = segments.map((s) => `${s.speaker}: ${s.text}`.trim()).join('\n')
+  return { segments, rawText }
+}
+
+/**
  * Parse plain TXT: split by double newlines (paragraphs) or single newlines.
  * Assign sequential timestamps (~150 words/min ≈ 2.5 words/sec).
  */
@@ -328,18 +397,35 @@ function parseTXT(content: string): ParseResult {
  */
 export function parseTranscriptFile(
   content: string,
-  filename: string
+  filename: string,
+  options?: { strategy?: TranscriptParseStrategy }
 ): ParseResult {
+  const strategy = options?.strategy || 'auto'
   const ext = filename.split('.').pop()?.toLowerCase() || ''
+
+  if (strategy === 'sprecher_zeit') {
+    return parseSprecherZeitFormat(content) || parseTXT(content)
+  }
+  if (strategy === 'timestamped_speaker_lines') {
+    return parseTimestampedSpeakerLines(content) || parseTXT(content)
+  }
+  if (strategy === 'plain_txt') {
+    return parseTXT(content)
+  }
+
   if (ext === 'srt') return parseSRT(content)
   if (ext === 'vtt') return parseVTT(content)
   if (ext === 'txt' || ext === '') {
     const chatResult = parseChatFormat(content)
     if (chatResult) return chatResult
+    const sprecherZeitResult = parseSprecherZeitFormat(content)
+    if (sprecherZeitResult) return sprecherZeitResult
     const timestampedResult = parseTimestampedSpeakerLines(content)
     if (timestampedResult) return timestampedResult
     return parseTXT(content)
   }
+  const sprecherZeitResult = parseSprecherZeitFormat(content)
+  if (sprecherZeitResult) return sprecherZeitResult
   const timestampedResult = parseTimestampedSpeakerLines(content)
   if (timestampedResult) return timestampedResult
   return parseTXT(content)
