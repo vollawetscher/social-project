@@ -396,6 +396,66 @@ function parseSprecherZeitFormat(content: string): ParseResult | null {
 }
 
 /**
+ * Parse inline named-speaker turns in dense text blocks, e.g.
+ * "Michael Westphal: ... Alisa Mulic: ... Michael Westphal: ..."
+ */
+function parseInlineNamedSpeakerTurns(content: string): ParseResult | null {
+  const sanitized = content
+    .replace(/\r?\n/g, ' ')
+    .replace(/\bS\d+\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (sanitized.length < 20) return null
+
+  // Supports 1-4 token names starting with uppercase letters (incl. umlauts).
+  const speakerPattern = /(^|\s)([A-ZÄÖÜ][\p{L}\p{N}.'’\-]*(?:\s+[A-ZÄÖÜ][\p{L}\p{N}.'’\-]*){0,3})\s*:\s*/gu
+  const matches: Array<{ index: number; speaker: string; markerLength: number }> = []
+  let m: RegExpExecArray | null
+  while ((m = speakerPattern.exec(sanitized)) !== null) {
+    const prefixLen = (m[1] || '').length
+    const speaker = (m[2] || '').trim()
+    const markerStart = m.index + prefixLen
+    const markerLength = `${speaker}:`.length
+    matches.push({ index: markerStart, speaker, markerLength })
+  }
+
+  if (matches.length < 2) return null
+  const uniqueSpeakers = new Set(matches.map((x) => x.speaker))
+  if (uniqueSpeakers.size < 2) return null
+
+  const turns: Array<{ speaker: string; text: string }> = []
+  for (let i = 0; i < matches.length; i++) {
+    const curr = matches[i]
+    const textStart = curr.index + curr.markerLength
+    const nextStart = i + 1 < matches.length ? matches[i + 1].index : sanitized.length
+    const text = sanitized.slice(textStart, nextStart).trim().replace(/^[,.;:\-–—\s]+/, '').trim()
+    if (!text) continue
+    turns.push({ speaker: curr.speaker, text })
+  }
+
+  if (turns.length < 2) return null
+
+  const segments: ParsedSegment[] = []
+  let currentMs = 0
+  const msPerWord = 380
+  for (const turn of turns) {
+    const words = turn.text.split(/\s+/).filter(Boolean)
+    const durationMs = Math.max(1200, words.length * msPerWord)
+    segments.push({
+      start_ms: currentMs,
+      end_ms: currentMs + durationMs,
+      speaker: turn.speaker,
+      text: turn.text,
+    })
+    currentMs += durationMs
+  }
+
+  const rawText = segments.map((s) => `${s.speaker}: ${s.text}`).join('\n')
+  return { segments, rawText }
+}
+
+/**
  * Parse plain TXT: split by double newlines (paragraphs) or single newlines.
  * Assign sequential timestamps (~150 words/min ≈ 2.5 words/sec).
  */
@@ -471,11 +531,15 @@ export function parseTranscriptFile(
     if (sprecherZeitResult) return sprecherZeitResult
     const timestampedResult = parseTimestampedSpeakerLines(content)
     if (timestampedResult) return timestampedResult
+    const inlineNamedTurnsResult = parseInlineNamedSpeakerTurns(content)
+    if (inlineNamedTurnsResult) return inlineNamedTurnsResult
     return parseTXT(content)
   }
   const sprecherZeitResult = parseSprecherZeitFormat(content)
   if (sprecherZeitResult) return sprecherZeitResult
   const timestampedResult = parseTimestampedSpeakerLines(content)
   if (timestampedResult) return timestampedResult
+  const inlineNamedTurnsResult = parseInlineNamedSpeakerTurns(content)
+  if (inlineNamedTurnsResult) return inlineNamedTurnsResult
   return parseTXT(content)
 }

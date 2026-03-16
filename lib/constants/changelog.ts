@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.28',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.28',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Better Parsing for Dense Inline Speaker Text',
+        description: 'Transcript imports now better detect long single-block conversations with inline speaker names (e.g., “Name: ... Name: ...”), preserving speaker turns instead of collapsing into one speaker.',
+      },
+    ],
+  },
+  {
     version: '1.20.27',
     date: 'March 13, 2026',
     entries: [
