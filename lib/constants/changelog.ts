@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.32',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.32',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'External Speaker Labels Parse Correctly',
+        description: 'Transcript parsing now handles labels like “EXTERNAL Name (Org/Team): …”, so external speakers keep their names and turns instead of collapsing into one speaker.',
+      },
+    ],
+  },
+  {
+    version: '1.20.31',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.31',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'Plain-Text Parse Now Keeps Inline Speaker Turns',
+        description: 'When transcript text contains inline labels like “Name: ... Name: ...”, parsing now preserves speaker turns even if Plain text mode is selected.',
+      },
+    ],
+  },
+  {
     version: '1.20.30',
     date: 'March 13, 2026',
     entries: [

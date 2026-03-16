@@ -118,8 +118,12 @@ function extractSpeakerFromText(text: string): { speaker: string; text: string }
     const speaker = `S${num}`
     return { speaker, text: (match[2] || '').trim() }
   }
-  // Generic named speaker label: "Karsten Milde: ...", "Michael Westphal: ..."
-  const nameMatch = trimmed.match(/^([A-ZÄÖÜ][\p{L}\p{N}.'’\- ]{1,80})\s*:\s*(.+)$/u)
+  // Generic named speaker label:
+  // "Karsten Milde: ...", "Michael Westphal: ...",
+  // "EXTERNAL Wussler Thomas (Media-Studios, BD/WPA-UCS4): ..."
+  const nameMatch = trimmed.match(
+    /^((?:(?:EXTERNAL|INTERNAL)\s+)?[A-ZÄÖÜ][\p{L}\p{N}.'’\-]*(?:\s+[A-Za-zÄÖÜäöü][\p{L}\p{N}.'’\-]*){0,6}(?:\s*\([^:\n)]{1,120}\))?)\s*:\s*(.+)$/u
+  )
   if (nameMatch) {
     return { speaker: nameMatch[1].trim(), text: (nameMatch[2] || '').trim() }
   }
@@ -408,8 +412,10 @@ function parseInlineNamedSpeakerTurns(content: string): ParseResult | null {
 
   if (sanitized.length < 20) return null
 
-  // Supports 1-4 token names starting with uppercase letters (incl. umlauts).
-  const speakerPattern = /(^|\s)([A-ZÄÖÜ][\p{L}\p{N}.'’\-]*(?:\s+[A-ZÄÖÜ][\p{L}\p{N}.'’\-]*){0,3})\s*:\s*/gu
+  // Supports plain names and external/internal tagged names with org suffixes, e.g.
+  // "Michael Westphal:" or "EXTERNAL Wussler Thomas (Media-Studios, BD/WPA-UCS4):"
+  const speakerPattern =
+    /(^|\s)((?:(?:EXTERNAL|INTERNAL)\s+)?[A-ZÄÖÜ][\p{L}\p{N}.'’\-]*(?:\s+[A-Za-zÄÖÜäöü][\p{L}\p{N}.'’\-]*){0,6}(?:\s*\([^:\n)]{1,120}\))?)\s*:\s*/gu
   const matches: Array<{ index: number; speaker: string; markerLength: number }> = []
   let m: RegExpExecArray | null
   while ((m = speakerPattern.exec(sanitized)) !== null) {
@@ -460,6 +466,10 @@ function parseInlineNamedSpeakerTurns(content: string): ParseResult | null {
  * Assign sequential timestamps (~150 words/min ≈ 2.5 words/sec).
  */
 function parseTXT(content: string): ParseResult {
+  // Even in plain-text mode, preserve obvious inline speaker turns when present.
+  const inlineNamedTurns = parseInlineNamedSpeakerTurns(content)
+  if (inlineNamedTurns) return inlineNamedTurns
+
   const paragraphs = content
     .trim()
     .split(/\r?\n\r?\n+/)
