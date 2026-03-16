@@ -311,103 +311,67 @@ function parseTimestampedSpeakerLines(content: string): ParseResult | null {
  * SPRECHER: Karsten Milde, ZEIT: 00:00:01.550 Text...
  */
 function parseSprecherZeitFormat(content: string): ParseResult | null {
-  const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-  if (lines.length === 0) return null
+  const normalized = content.replace(/\r?\n/g, ' ').trim()
+  if (!normalized) return null
 
-  const headerRe = /^SPRECHER:\s*([^,]+?)\s*,\s*ZEIT:\s*(\d{2}):(\d{2}):(\d{2})[.,](\d{3})\s*(.*)$/i
-  type InternalSegment = ParsedSegment & { explicitEnd: boolean }
-  const segments: InternalSegment[] = []
-  let current: InternalSegment | null = null
+  // Accept variants like:
+  // SPRECHER: Name, ZEIT: 00:00:01.550 ...
+  // SPRECHER: Name, [00:01] ZEIT: 00:00:01.550 ...
+  // ... - : [01:22] SPRECHER: Name, [01:24] ZEIT: 00:01:26.880 ...
+  const tokenRe =
+    /SPRECHER:\s*([^,\n]+?)\s*,\s*(?:\[\d{1,2}:\d{2}(?::\d{2})?\]\s*)?ZEIT:\s*(\d{2}):(\d{2}):(\d{2})[.,](\d{3})\s*/gi
 
-  const parseLooseTimecodeToMs = (value: string): number | null => {
-    const m = value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
-    if (!m) return null
-    const first = parseInt(m[1], 10)
-    const second = parseInt(m[2], 10)
-    const third = m[3] ? parseInt(m[3], 10) : null
-    if (Number.isNaN(first) || Number.isNaN(second)) return null
-    if (third !== null) return first * 3600000 + second * 60000 + third * 1000
-    return first * 60000 + second * 1000
+  const matches: Array<{
+    idx: number
+    end: number
+    speaker: string
+    startMs: number
+  }> = []
+
+  let m: RegExpExecArray | null
+  while ((m = tokenRe.exec(normalized)) !== null) {
+    const hh = parseInt(m[2], 10)
+    const mm = parseInt(m[3], 10)
+    const ss = parseInt(m[4], 10)
+    const ms = parseInt(m[5], 10)
+    matches.push({
+      idx: m.index,
+      end: tokenRe.lastIndex,
+      speaker: (m[1] || '').trim(),
+      startMs: hh * 3600000 + mm * 60000 + ss * 1000 + ms,
+    })
   }
 
-  const extractTrailingLooseTimecode = (value: string): { text: string; endMs: number | null } => {
-    const m = value.match(/^(.*?)(?:\s+|^)(\d{1,2}:\d{2}(?::\d{2})?)\s*$/)
-    if (!m) return { text: value.trim(), endMs: null }
-    const parsed = parseLooseTimecodeToMs(m[2])
-    if (parsed === null) return { text: value.trim(), endMs: null }
-    return { text: m[1].trim(), endMs: parsed }
+  if (matches.length === 0) return null
+
+  const segments: ParsedSegment[] = []
+  for (let i = 0; i < matches.length; i++) {
+    const curr = matches[i]
+    const nextStart = i + 1 < matches.length ? matches[i + 1].idx : normalized.length
+    let text = normalized.slice(curr.end, nextStart).trim()
+    // Remove separator artifacts between blocks, e.g. "- : [01:22]"
+    text = text.replace(/^-?\s*:\s*\[\d{1,2}:\d{2}(?::\d{2})?\]\s*/g, '').trim()
+    // Remove standalone legacy labels accidentally embedded.
+    text = text.replace(/\bS\d+\b/g, '').replace(/\s{2,}/g, ' ').trim()
+    if (!text) continue
+
+    segments.push({
+      start_ms: curr.startMs,
+      end_ms: curr.startMs + 1000, // resolved in second pass
+      speaker: curr.speaker || 'S1',
+      text,
+    })
   }
 
-  const flushCurrent = () => {
-    if (!current) return
-    if (!current.text.trim()) {
-      current = null
-      return
-    }
-    segments.push(current)
-    current = null
-  }
-
-  for (const line of lines) {
-    // Ignore standalone legacy speaker tags (e.g. "S1", "S2")
-    if (/^S\d+$/i.test(line)) continue
-    // Standalone timeline markers (e.g. "1:26", "01:30", "1:02:15")
-    const standaloneTimeMs = parseLooseTimecodeToMs(line)
-    if (standaloneTimeMs !== null) {
-      if (current) {
-        current.end_ms = Math.max(current.start_ms + 1000, standaloneTimeMs)
-        current.explicitEnd = true
-      }
-      continue
-    }
-
-    const m = line.match(headerRe)
-    if (m) {
-      flushCurrent()
-      const hh = parseInt(m[2], 10)
-      const mm = parseInt(m[3], 10)
-      const ss = parseInt(m[4], 10)
-      const ms = parseInt(m[5], 10)
-      const startMs = hh * 3600000 + mm * 60000 + ss * 1000 + ms
-      const speaker = m[1].trim()
-      const parsedTail = extractTrailingLooseTimecode((m[6] || '').trim())
-      current = {
-        start_ms: startMs,
-        end_ms: startMs + 1000,
-        speaker: speaker || 'S1',
-        text: parsedTail.text,
-        explicitEnd: parsedTail.endMs !== null,
-      }
-      if (parsedTail.endMs !== null) {
-        current.end_ms = Math.max(startMs + 1000, parsedTail.endMs)
-      }
-      continue
-    }
-
-    // If we are inside a speaker block, append continuation lines.
-    if (current) {
-      const parsedTail = extractTrailingLooseTimecode(line)
-      current.text = `${current.text} ${parsedTail.text}`.trim()
-      if (parsedTail.endMs !== null) {
-        current.end_ms = Math.max(current.start_ms + 1000, parsedTail.endMs)
-        current.explicitEnd = true
-      }
-    }
-  }
-
-  flushCurrent()
-  if (segments.length < 1) return null
+  if (segments.length === 0) return null
 
   for (let i = 0; i < segments.length; i++) {
-    if (!segments[i].explicitEnd) {
-      const nextStart = i + 1 < segments.length ? segments[i + 1].start_ms : segments[i].start_ms + 5000
-      segments[i].end_ms = Math.max(nextStart, segments[i].start_ms + 1000)
-    }
+    const next = i + 1 < segments.length ? segments[i + 1].start_ms : segments[i].start_ms + 5000
+    segments[i].end_ms = Math.max(next, segments[i].start_ms + 1000)
   }
 
-  const normalizedSegments: ParsedSegment[] = segments.map(({ explicitEnd: _explicitEnd, ...seg }) => seg)
-  const rawText = normalizedSegments.map((s) => `${s.speaker}: ${s.text}`.trim()).join('\n')
-  return { segments: normalizedSegments, rawText }
+  const rawText = segments.map((s) => `${s.speaker}: ${s.text}`.trim()).join('\n')
+  return { segments, rawText }
 }
 
 /**

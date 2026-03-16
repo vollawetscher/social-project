@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.20.36',
+    date: 'March 13, 2026',
+    entries: [
+      {
+        version: '1.20.36',
+        date: 'March 13, 2026',
+        category: 'fix',
+        title: 'SPRECHER/ZEIT Parser Handles Inline Marker Variants',
+        description: 'Transcript parsing now correctly reads SPRECHER and ZEIT blocks even when extra inline markers (like [00:01] or separator snippets) are present between fields.',
+      },
+    ],
+  },
+  {
     version: '1.20.35',
     date: 'March 13, 2026',
     entries: [
