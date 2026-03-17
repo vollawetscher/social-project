@@ -4,6 +4,7 @@
  */
 
 type SupportedLocale = 'en' | 'de' | 'es'
+import { resolveCallerIdForDestination } from '@/lib/services/pstn-routing'
 
 interface TwilioCallResult {
   success: boolean
@@ -56,7 +57,7 @@ export async function placeNotificationCall(
 ): Promise<TwilioCallResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const authToken = process.env.TWILIO_AUTH_TOKEN
-  const callerId = process.env.TWILIO_CALLER_ID
+  const callerId = resolveCallerIdForDestination(to)
 
   if (!accountSid || !authToken || !callerId) {
     console.error('[TwilioVoice] Missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_CALLER_ID')
@@ -125,7 +126,7 @@ export async function placeConsentCall({
 }: PlaceConsentCallParams): Promise<TwilioCallResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const authToken = process.env.TWILIO_AUTH_TOKEN
-  const callerId = process.env.TWILIO_CALLER_ID
+  const callerId = resolveCallerIdForDestination(to)
 
   if (!accountSid || !authToken || !callerId) {
     console.error('[TwilioVoice] Missing TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_CALLER_ID')

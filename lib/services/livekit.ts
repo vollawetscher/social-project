@@ -10,6 +10,7 @@ import {
   S3Upload,
 } from 'livekit-server-sdk'
 import type { EgressInfo } from 'livekit-server-sdk'
+import { resolveCallerIdForDestination } from '@/lib/services/pstn-routing'
 
 // LiveKit Cloud uses wss:// for client, https:// for server API
 function getLivekitHttpUrl(): string {
@@ -245,7 +246,8 @@ export async function createSipParticipant(
   const sipTrunkId = process.env.LIVEKIT_SIP_TRUNK_ID
   if (!sipTrunkId) throw new Error('LIVEKIT_SIP_TRUNK_ID is not configured')
 
-  const callerId = process.env.TWILIO_CALLER_ID
+  const callerId = resolveCallerIdForDestination(phoneNumber)
+  if (!callerId) throw new Error('TWILIO_CALLER_ID is not configured')
   const sipClient = getSipClient()
 
   const participant = await sipClient.createSipParticipant(

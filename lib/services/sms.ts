@@ -1,9 +1,12 @@
 /**
- * seven.io SMS Service Integration
+ * SMS delivery service.
  *
- * Handles SMS OTP delivery for phone authentication
- * Supports German-speaking EU countries (DE, AT, CH)
+ * Provider routing:
+ * - +1 (NANP) numbers: Twilio (when configured)
+ * - Other numbers: seven.io (existing behavior)
  */
+
+import { resolveCallerIdForDestination } from '@/lib/services/pstn-routing'
 
 type SupportedLocale = 'en' | 'de' | 'es'
 
@@ -18,14 +21,17 @@ interface SendSMSParams {
   text: string;
 }
 
-async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
+function isNanpNumber(to: string): boolean {
+  return /^\+1\d{10}$/.test(to)
+}
+
+async function sendViaSeven({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
   const apiKey = process.env.SEVEN_IO_API_KEY;
 
   if (!apiKey) {
-    console.error('SEVEN_IO_API_KEY is not configured');
     return {
       success: false,
-      error: 'SMS service not configured',
+      error: 'seven.io SMS service not configured',
     };
   }
 
@@ -68,12 +74,81 @@ async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
       error: errorMessage,
     };
   } catch (error) {
-    console.error('SMS service error:', error);
+    console.error('seven.io SMS service error:', error);
     return {
       success: false,
       error: 'Network error sending SMS',
     };
   }
+}
+
+async function sendViaTwilio({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID
+  const authToken = process.env.TWILIO_AUTH_TOKEN
+  const fromNumber = resolveCallerIdForDestination(to)
+
+  if (!accountSid || !authToken || !fromNumber) {
+    return {
+      success: false,
+      error: 'Twilio SMS service not configured',
+    };
+  }
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`
+    const body = new URLSearchParams({
+      To: to,
+      From: fromNumber,
+      Body: text,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Twilio SMS error:', response.status, errorData)
+      return {
+        success: false,
+        error: errorData.message || `HTTP ${response.status}`,
+      }
+    }
+
+    const data = await response.json()
+    return {
+      success: true,
+      messageId: data.sid,
+    }
+  } catch (error) {
+    console.error('Twilio SMS service error:', error)
+    return {
+      success: false,
+      error: 'Network error sending SMS',
+    };
+  }
+}
+
+async function sendSMS({ to, text }: SendSMSParams): Promise<SendSMSResponse> {
+  // Use Twilio for +1 destinations so US sends can use the US Twilio number.
+  if (isNanpNumber(to)) {
+    const twilioResult = await sendViaTwilio({ to, text })
+    if (twilioResult.success) return twilioResult
+    // Fallback to existing provider if Twilio path fails.
+    console.warn('Twilio SMS failed for +1; falling back to seven.io:', twilioResult.error)
+  }
+
+  const sevenResult = await sendViaSeven({ to, text })
+  if (sevenResult.success) return sevenResult
+
+  // Final fallback: if seven.io is unavailable and Twilio is configured for this destination, try Twilio.
+  const twilioFallback = await sendViaTwilio({ to, text })
+  return twilioFallback.success ? twilioFallback : sevenResult
 }
 
 export function generateOTP(): string {

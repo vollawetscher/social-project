@@ -80,6 +80,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Dialpad Tab Label Simplified',
         description: 'The Calls tab label is now simply “Dialpad” for a cleaner, less cluttered navigation label.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Country-Based PSTN Caller ID Routing',
+        description: 'Outbound PSTN calls can now route caller ID by destination country code, including support for a dedicated US number for +1 calls.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'US Invite SMS Now Uses Twilio Route',
+        description: 'Invite SMS messages to +1 numbers now route through Twilio with country-aware sender selection, improving consistency for US call invites.',
+      },
     ],
   },
   {
