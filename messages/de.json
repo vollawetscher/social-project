@@ -462,6 +462,11 @@
     "descriptionHelp": "Dies ist das wichtigste Feld — es teilt der KI genau mit, welche Art von Dokument erstellt und wie es strukturiert werden soll.",
     "generationInstructions": "Generierungsanweisungen",
     "generationInstructionsDesc": "Der KI-Prompt, der steuert, welches Dokument generiert wird und wie es strukturiert ist.",
+    "outputType": "Ausgabe-Typ",
+    "outputTypeDescription": "Wähle, ob diese Vorlage einen strukturierten Bericht oder einen reinen E-Mail-Text erzeugt.",
+    "outputTypeMarkdown": "Strukturierter Bericht (Markdown)",
+    "outputTypeEmailText": "Nur E-Mail (Klartext)",
+    "outputTypeEmailHint": "E-Mail-Vorlagen erzeugen immer reine Textausgabe ohne Markdown-Tags.",
     "instructionsPlaceholder": "z.B. Erstelle ein strukturiertes Besprechungsprotokoll mit Teilnehmern, Agendapunkten, Entscheidungen, Aufgaben mit Fristen...",
     "instructionsHelp": "Dies ist der KI-Prompt — er teilt der KI genau mit, was generiert werden soll. Wird nie öffentlich angezeigt.",
     "shortDescriptionPlaceholder": "z.B. Ein strukturiertes Besprechungsprotokoll mit Aufgaben und Nachverfolgungen",
@@ -1250,7 +1255,8 @@
     },
     "formats": {
       "markdown": "Markdown",
-      "json": "JSON"
+      "json": "JSON",
+      "email": "E-Mail (Klartext)"
     }
   },
   "localeSwitcher": {

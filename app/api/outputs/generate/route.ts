@@ -12,6 +12,26 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+function sanitizeGeneratedEmailText(input: string): string {
+  let text = input || ''
+  // Remove fenced code blocks markers.
+  text = text.replace(/```[\s\S]*?```/g, (block) => block.replace(/```/g, ''))
+  // Strip common markdown line prefixes.
+  text = text
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/^\s{0,3}[-*+]\s+/gm, '')
+    .replace(/^\s{0,3}\d+\.\s+/gm, '')
+  // Strip inline markdown markers.
+  text = text
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/_([^_\n]+)_/g, '$1')
+  return text.trim()
+}
+
 export async function POST(request: Request) {
   try {
     const internalSecret = request.headers.get('x-internal-secret')
@@ -318,10 +338,12 @@ export async function POST(request: Request) {
       meeting_notes: 'meeting notes',
       action_items: 'a list of action items'
     }
+    const isEmailOutput = config.format === 'email' || template?.output_format === 'email_text'
+    const persistedFormat = isEmailOutput ? 'email' : config.format
 
     let systemPrompt = `You are a professional report writer specializing in creating high-quality, accurate summaries and reports from conversation transcripts.
 
-Your task is to generate ${formatMap[config.format] || 'a report'} from the following conversation.
+Your task is to generate ${formatMap[persistedFormat] || 'a report'} from the following conversation.
 
 Key requirements:
 - Perspective: Write from the viewpoint of ${perspectiveInstruction}
@@ -331,6 +353,12 @@ Key requirements:
 - Include a clear "Date/Time" line near the top of the output using the provided session start date/time value.
 - Do NOT use any emojis or emoticons anywhere in the output.
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
+
+    if (isEmailOutput) {
+      systemPrompt += `\n- Output format rule (strict): return plain text only.
+- Do NOT use markdown tags, markdown headings, bullet markers, numbering markers, code fences, or JSON.
+- Return one copy/paste-ready email body block.`
+    }
 
     if (template) {
       const generationInstructions = template.instructions || template.description || ''
@@ -431,6 +459,10 @@ Please generate the requested output following all requirements and guidelines.`
       generatedContent = `${label}: ${formatted}\n\n${generatedContent}`
     }
 
+    if (isEmailOutput) {
+      generatedContent = sanitizeGeneratedEmailText(generatedContent)
+    }
+
     const sanitizedContent = sanitizeOutputText(generatedContent)
 
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
@@ -454,7 +486,7 @@ Please generate the requested output following all requirements and guidelines.`
       audience: config.audience || 'internal',
       language: resolvedLanguageCode,
       tone: config.tone,
-      format: config.format,
+      format: persistedFormat,
       content_length: sanitizedContent.length,
       created_by: userId,
     })
@@ -469,7 +501,7 @@ Please generate the requested output following all requirements and guidelines.`
         audience: config.audience || 'internal',
         language: resolvedLanguageCode,
         tone: config.tone,
-        format: config.format,
+        format: persistedFormat,
         content: sanitizedContent,
         transcript_version_hash: transcript.id,
         cite_timestamps: config.citeTimestamps || false,
@@ -556,7 +588,7 @@ Please generate the requested output following all requirements and guidelines.`
         : `Custom output format: ${templateName}`
       const styleRules: string[] = []
       if (config.tone) styleRules.push(`Tone: ${config.tone}`)
-      if (config.format) styleRules.push(`Format: ${config.format}`)
+      if (persistedFormat) styleRules.push(`Format: ${persistedFormat}`)
       const instructions = config.doInstructions
         ? `Generate a ${templateName}. ${config.doInstructions}`
         : `Generate a ${templateName} following the defined style.`
@@ -572,6 +604,7 @@ Please generate the requested output following all requirements and guidelines.`
           required_inputs: [],
           style_rules: styleRules.length > 0 ? styleRules : [`Generate ${templateName} with professional tone and clear structure.`],
           instructions,
+          output_format: persistedFormat === 'email' ? 'email_text' : (persistedFormat === 'json' ? 'json' : 'markdown'),
           created_by: userId,
           is_system: false,
         })

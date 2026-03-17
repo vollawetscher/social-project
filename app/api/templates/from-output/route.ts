@@ -46,6 +46,7 @@ export async function POST(request: Request) {
         style_rules: [`Tone: ${output.tone || 'neutral'}`, `Format: ${output.format || 'markdown'}`],
         instructions,
         sample_content: sampleContent || null,
+        output_format: output.format === 'email' ? 'email_text' : (output.format === 'json' ? 'json' : 'markdown'),
         created_by: user.id,
         is_system: false,
       })

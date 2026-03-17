@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import type { ParticipantRole, Audience, Domain } from "@/lib/types-v0"
+import { Badge } from "@/components/ui/badge"
+import type { ParticipantRole, Audience, Domain, TemplateOutputFormat } from "@/lib/types-v0"
 import { participantRoleLabels } from "@/lib/mock/data"
 
 const availablePerspectives: ParticipantRole[] = ["party_a", "party_b", "observer"]
@@ -33,6 +34,7 @@ export default function CreateTemplateFromScratchPage() {
   const [selectedPerspectives, setSelectedPerspectives] = useState<ParticipantRole[]>(["party_a", "party_b", "observer"])
   const [selectedAudiences, setSelectedAudiences] = useState<Audience[]>(["internal"])
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
+  const [outputFormat, setOutputFormat] = useState<TemplateOutputFormat>('markdown')
 
   const togglePerspective = (p: ParticipantRole) => {
     setSelectedPerspectives((prev) =>
@@ -107,6 +109,7 @@ export default function CreateTemplateFromScratchPage() {
           suggestionTriggers: [],
           instructions: instructions.trim() || `Generate a ${name.trim()} following the defined structure and style.`,
           language: locale,
+          outputFormat,
         }),
       })
 
@@ -205,6 +208,33 @@ export default function CreateTemplateFromScratchPage() {
           <p className="text-xs text-muted-foreground">
             {t('instructionsHelp')}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle>{t('outputType')}</CardTitle>
+          <CardDescription>{t('outputTypeDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { code: 'markdown', label: t('outputTypeMarkdown') },
+              { code: 'email_text', label: t('outputTypeEmailText') },
+            ].map(({ code, label }) => (
+              <Badge
+                key={code}
+                variant={outputFormat === code ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => setOutputFormat(code as TemplateOutputFormat)}
+              >
+                {label}
+              </Badge>
+            ))}
+          </div>
+          {outputFormat === 'email_text' && (
+            <p className="text-xs text-muted-foreground mt-2">{t('outputTypeEmailHint')}</p>
+          )}
         </CardContent>
       </Card>
 

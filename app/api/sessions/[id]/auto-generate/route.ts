@@ -41,13 +41,13 @@ export async function POST(
     const body = await request.json()
     const { templateId, action, language = 'de' } = body
 
-    let template: { id: string; name: string } | null = null
+    let template: { id: string; name: string; output_format?: string } | null = null
 
     if (templateId) {
       // Template-based: fetch by ID (user's or system)
       const { data, error } = await supabase
         .from('templates')
-        .select('id, name')
+        .select('id, name, output_format')
         .eq('id', templateId)
         .or(`is_system.eq.true,created_by.eq.${userId}`)
         .single()
@@ -117,7 +117,7 @@ export async function POST(
           audience: 'internal',
           language: languageCode,
           tone: 'neutral',
-          format: 'markdown',
+          format: template.output_format === 'email_text' ? 'email' : 'markdown',
           doInstructions: '',
           dontInstructions: '',
           createTemplateFromConfig: false,

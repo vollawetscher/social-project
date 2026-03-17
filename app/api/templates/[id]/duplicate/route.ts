@@ -42,6 +42,7 @@ export async function POST(
         sample_content: originalTemplate.sample_content,
         default_do_instructions: originalTemplate.default_do_instructions || '',
         default_dont_instructions: originalTemplate.default_dont_instructions || '',
+        output_format: originalTemplate.output_format || 'markdown',
         created_by: user.id,
         is_system: false, // User copies are never system templates
       })

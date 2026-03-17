@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import type { Template, ParticipantRole, Audience, Domain } from "@/lib/types-v0"
+import type { Template, ParticipantRole, Audience, Domain, TemplateOutputFormat } from "@/lib/types-v0"
 import { participantRoleLabels } from "@/lib/mock/data"
 
 const availablePerspectives: ParticipantRole[] = ["party_a", "party_b", "observer"]
@@ -52,6 +52,7 @@ export default function EditTemplatePage() {
   const [defaultDoInstructions, setDefaultDoInstructions] = useState("")
   const [defaultDontInstructions, setDefaultDontInstructions] = useState("")
   const [customInstructions, setCustomInstructions] = useState("")
+  const [outputFormat, setOutputFormat] = useState<TemplateOutputFormat>('markdown')
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
@@ -76,6 +77,7 @@ export default function EditTemplatePage() {
       setDefaultDoInstructions(data.default_do_instructions || data.defaultDoInstructions || '')
       setDefaultDontInstructions(data.default_dont_instructions || data.defaultDontInstructions || '')
       setCustomInstructions(data.custom_instructions || data.customInstructions || '')
+      setOutputFormat(data.output_format || data.outputFormat || 'markdown')
       setIsInstalled(!!data.marketplaceSourceId)
     } catch (error) {
       console.error('Error fetching template:', error)
@@ -142,6 +144,7 @@ export default function EditTemplatePage() {
           defaultDontInstructions: defaultDontInstructions.trim(),
           customInstructions: customInstructions.trim(),
           language: locale,
+          outputFormat,
         }),
       })
 
@@ -426,6 +429,33 @@ export default function EditTemplatePage() {
             placeholder="e.g., Use bullet points&#10;Keep paragraphs under 3 sentences&#10;Use active voice"
             rows={6}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('outputType')}</CardTitle>
+          <CardDescription>{t('outputTypeDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { code: 'markdown', label: t('outputTypeMarkdown') },
+              { code: 'email_text', label: t('outputTypeEmailText') },
+            ].map(({ code, label }) => (
+              <Badge
+                key={code}
+                variant={outputFormat === code ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => setOutputFormat(code as TemplateOutputFormat)}
+              >
+                {label}
+              </Badge>
+            ))}
+          </div>
+          {outputFormat === 'email_text' && (
+            <p className="text-xs text-muted-foreground mt-2">{t('outputTypeEmailHint')}</p>
+          )}
         </CardContent>
       </Card>
 

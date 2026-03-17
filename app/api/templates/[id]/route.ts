@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import type { Template } from '@/lib/types-v0'
+import type { Template, TemplateOutputFormat } from '@/lib/types-v0'
+
+const allowedOutputFormats: TemplateOutputFormat[] = ['markdown', 'json', 'email_text']
 
 export async function GET(
   request: Request,
@@ -45,6 +47,7 @@ export async function GET(
       marketplaceSourceId: template.marketplace_source_id || null,
       customInstructions: template.custom_instructions || '',
       language: template.language || null,
+      outputFormat: (allowedOutputFormats.includes(template.output_format) ? template.output_format : 'markdown') as TemplateOutputFormat,
       instructions: isInstalled ? '' : (template.instructions || ''),
     }
 
@@ -83,6 +86,7 @@ export async function PUT(
       defaultDontInstructions,
       customInstructions,
       language,
+      outputFormat,
     } = body
 
     const { data: existing } = await supabase
@@ -93,6 +97,9 @@ export async function PUT(
       .single()
 
     const isInstalled = !!existing?.marketplace_source_id
+
+    const normalizedOutputFormat: TemplateOutputFormat =
+      allowedOutputFormats.includes(outputFormat) ? outputFormat : 'markdown'
 
     const updatePayload: Record<string, unknown> = {
       name,
@@ -106,6 +113,7 @@ export async function PUT(
       default_dont_instructions: defaultDontInstructions ?? '',
       custom_instructions: customInstructions ?? '',
       language: language || null,
+      output_format: normalizedOutputFormat,
     }
 
     if (!isInstalled) {
@@ -144,6 +152,7 @@ export async function PUT(
       marketplaceSourceId: template.marketplace_source_id || null,
       customInstructions: template.custom_instructions || '',
       language: template.language || null,
+      outputFormat: (allowedOutputFormats.includes(template.output_format) ? template.output_format : 'markdown') as TemplateOutputFormat,
       instructions: isInstalled ? '' : (template.instructions || ''),
     }
 

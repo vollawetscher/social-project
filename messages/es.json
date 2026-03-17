@@ -462,6 +462,11 @@
     "descriptionHelp": "Este es el campo más importante — le dice a la IA exactamente qué tipo de documento generar y cómo estructurarlo.",
     "generationInstructions": "Instrucciones de generación",
     "generationInstructionsDesc": "El prompt de IA que controla qué documento se genera y cómo se estructura.",
+    "outputType": "Tipo de salida",
+    "outputTypeDescription": "Elige si esta plantilla genera un informe estructurado o solo texto de correo.",
+    "outputTypeMarkdown": "Informe estructurado (Markdown)",
+    "outputTypeEmailText": "Solo email (texto plano)",
+    "outputTypeEmailHint": "Las plantillas de email siempre generan salida de texto sin etiquetas Markdown.",
     "instructionsPlaceholder": "ej. Crea un protocolo estructurado de reunión con participantes, puntos de agenda, decisiones, tareas con plazos...",
     "instructionsHelp": "Este es el prompt de IA — le dice a la IA exactamente qué generar. Nunca se muestra públicamente.",
     "shortDescriptionPlaceholder": "ej. Un protocolo estructurado de reunión con tareas y seguimientos",
@@ -1250,7 +1255,8 @@
     },
     "formats": {
       "markdown": "Markdown",
-      "json": "JSON"
+      "json": "JSON",
+      "email": "Email (Texto plano)"
     }
   },
   "localeSwitcher": {

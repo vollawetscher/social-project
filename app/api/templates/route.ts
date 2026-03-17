@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import type { Template } from '@/lib/types-v0'
+import type { Template, TemplateOutputFormat } from '@/lib/types-v0'
+
+const allowedOutputFormats: TemplateOutputFormat[] = ['markdown', 'json', 'email_text']
 
 export async function GET() {
   try {
@@ -41,6 +43,7 @@ export async function GET() {
       sampleContent: t.sample_content || null,
       defaultDoInstructions: t.default_do_instructions || '',
       defaultDontInstructions: t.default_dont_instructions || '',
+      outputFormat: (allowedOutputFormats.includes(t.output_format) ? t.output_format : 'markdown') as TemplateOutputFormat,
     }))
 
     return NextResponse.json(formattedTemplates)
@@ -75,12 +78,16 @@ export async function POST(request: Request) {
       defaultDoInstructions,
       defaultDontInstructions,
       language,
+      outputFormat,
     } = body
 
     // Validate required fields
     if (!name || !description) {
       return NextResponse.json({ error: 'Name and description are required' }, { status: 400 })
     }
+
+    const normalizedOutputFormat: TemplateOutputFormat =
+      allowedOutputFormats.includes(outputFormat) ? outputFormat : 'markdown'
 
     // Insert template
     const { data: template, error } = await supabase
@@ -99,6 +106,7 @@ export async function POST(request: Request) {
         default_do_instructions: defaultDoInstructions || '',
         default_dont_instructions: defaultDontInstructions || '',
         language: language || null,
+        output_format: normalizedOutputFormat,
         created_by: user.id,
         is_system: false,
       })
@@ -132,6 +140,7 @@ export async function POST(request: Request) {
       sampleContent: template.sample_content || null,
       defaultDoInstructions: template.default_do_instructions || '',
       defaultDontInstructions: template.default_dont_instructions || '',
+      outputFormat: (allowedOutputFormats.includes(template.output_format) ? template.output_format : 'markdown') as TemplateOutputFormat,
     }
 
     return NextResponse.json(formattedTemplate, { status: 201 })

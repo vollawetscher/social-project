@@ -189,6 +189,7 @@ export function GenerateOutputModal({
   }, [template, initialTemplateId, templates])
 
   const currentTemplate = templates.find((t) => t.id === selectedTemplate)
+  const isEmailTemplate = currentTemplate?.outputFormat === 'email_text'
 
   // Pre-fill do/don't instructions from template defaults when template selection changes,
   // and fetch previous instructions for this template
@@ -303,7 +304,7 @@ export function GenerateOutputModal({
             audience: selectedAudience,
             language: resolveLanguageCodeForRequest(),
             tone,
-            format,
+            format: isEmailTemplate ? 'email' : format,
             doInstructions,
             dontInstructions,
             createTemplateFromConfig: createTemplate,
@@ -638,18 +639,24 @@ export function GenerateOutputModal({
                 {/* Format */}
                 <div className="space-y-2">
                   <Label>{t('outputFormat')}</Label>
-                  <Select value={format} onValueChange={(v) => setFormat(v as OutputFormat)}>
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {['markdown', 'json'].map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {tl('formats.' + key)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {isEmailTemplate ? (
+                    <div className="rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground">
+                      {tl('formats.email')}
+                    </div>
+                  ) : (
+                    <Select value={format} onValueChange={(v) => setFormat(v as OutputFormat)}>
+                      <SelectTrigger className="bg-secondary border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['markdown', 'json'].map((key) => (
+                          <SelectItem key={key} value={key}>
+                            {tl('formats.' + key)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 {/* Do Instructions */}

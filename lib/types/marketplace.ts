@@ -18,7 +18,7 @@ export interface MarketplaceCategory {
 export type Perspective = 'party_a' | 'party_b' | 'observer'
 export type Audience = 'internal' | 'external' | 'client_facing' | 'legal' | 'executive'
 export type Tone = 'direct' | 'neutral' | 'formal' | 'casual' | 'funny' | 'technical'
-export type OutputFormat = 'markdown' | 'json'
+export type OutputFormat = 'markdown' | 'json' | 'email'
 export type OutputLanguage = 'en' | 'de' | 'fr' | 'es' | 'it' | 'pt' | 'nl' | 'pl'
 export type MarketplaceDomain = 'psychology' | 'medical' | 'sales' | 'legal' | 'education' | 'it' | 'consulting' | 'hr' | 'general' | 'meetings' | 'business' | 'support' | 'technical'
 

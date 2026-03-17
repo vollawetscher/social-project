@@ -54,7 +54,8 @@ export type Audience = 'internal' | 'external' | 'client' | 'legal' | 'executive
 
 export type OutputTone = 'direct' | 'neutral' | 'formal' | 'casual' | 'funny' | 'technical'
 
-export type OutputFormat = 'markdown' | 'json'
+export type OutputFormat = 'markdown' | 'json' | 'email'
+export type TemplateOutputFormat = 'markdown' | 'json' | 'email_text'
 
 export type UserRole = 'internal' | 'external' // Declaration of UserRole
 
@@ -186,6 +187,7 @@ export interface Template {
   marketplaceSourceId?: string | null
   customInstructions?: string
   language?: string | null
+  outputFormat?: TemplateOutputFormat
 }
 
 export interface Output {

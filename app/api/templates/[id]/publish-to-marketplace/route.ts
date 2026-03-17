@@ -61,7 +61,7 @@ export async function POST(
     perspectives: template.intended_perspectives || [],
     audiences: template.allowed_audience || [],
     tone: 'neutral' as const,
-    output_format: 'markdown' as const,
+    output_format: template.output_format === 'email_text' ? 'email' as const : (template.output_format === 'json' ? 'json' as const : 'markdown' as const),
     languages: language ? [language] : ['en'],
     domains: template.domain_tags || [],
     generation_prompt: generationPrompt,

@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.21.4',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.21.4',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Email-Only Templates with Plain-Text Output',
+        description: 'You can now create templates that generate email-only output as plain text, so content is ready to copy and paste without Markdown formatting.',
+      },
+    ],
+  },
+  {
     version: '1.21.3',
     date: 'March 17, 2026',
     entries: [

@@ -463,6 +463,11 @@
     "customInstructionsHelp": "These instructions are added to the original prompt when generating output. Use them to customize the template for your needs.",
     "generationInstructions": "Generation Instructions",
     "generationInstructionsDesc": "The AI prompt that controls what document is generated and how it is structured.",
+    "outputType": "Output Type",
+    "outputTypeDescription": "Choose whether this template generates a structured report or a plain-text email body.",
+    "outputTypeMarkdown": "Structured report (Markdown)",
+    "outputTypeEmailText": "Email only (plain text)",
+    "outputTypeEmailHint": "Email-only templates always generate text-only output with no Markdown tags.",
     "instructionsPlaceholder": "e.g. Create a structured meeting protocol with attendees, agenda items, decisions, action items with deadlines...",
     "instructionsHelp": "This is the AI prompt — it tells the AI exactly what to generate. This is never shown publicly.",
     "shortDescriptionPlaceholder": "e.g. A structured meeting protocol with action items and follow-ups",
@@ -1251,7 +1256,8 @@
     },
     "formats": {
       "markdown": "Markdown",
-      "json": "JSON"
+      "json": "JSON",
+      "email": "Email (Plain Text)"
     }
   },
   "localeSwitcher": {

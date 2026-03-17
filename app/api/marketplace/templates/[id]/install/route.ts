@@ -99,6 +99,7 @@ export async function POST(
     suggestion_triggers: template.tags || [],
     default_do_instructions: cfg.do_include || '',
     default_dont_instructions: cfg.do_not_include || '',
+    output_format: cfg.output_format === 'email' ? 'email_text' : (cfg.output_format === 'json' ? 'json' : 'markdown'),
     created_by: user.id,
     is_system: false,
     marketplace_source_id: params.id,
