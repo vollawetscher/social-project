@@ -69,6 +69,9 @@ export default function LandingPage() {
               <Link href="/marketplace" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Community
               </Link>
+              <Link href="/login" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
+                Log in
+              </Link>
               <Link href="/signup" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Join the Beta
               </Link>

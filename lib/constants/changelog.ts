@@ -38,6 +38,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Web vs PSTN Call Paths Made Clearer',
         description: 'Call labels now better distinguish browser-based web calls from phone-network (PSTN) calls, helping you pick the right option faster.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Email Output Type Added to Sample Wizard',
+        description: 'Templates created from sample files can now be set to email-only output, so they no longer default to Markdown when you intend plain-text emails.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Mobile Landing Menu Restores Log In Access',
+        description: 'The mobile landing menu now includes a direct Log in option, so returning users can sign in without switching to desktop.',
+      },
     ],
   },
   {

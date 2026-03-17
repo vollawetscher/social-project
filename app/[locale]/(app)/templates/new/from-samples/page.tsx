@@ -29,8 +29,16 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { participantRoleLabels } from "@/lib/mock/data"
+import type { TemplateOutputFormat } from "@/lib/types-v0"
 
 interface UploadedFile {
   name: string
@@ -40,6 +48,7 @@ interface UploadedFile {
 
 export default function TemplateWizardPage() {
   const t = useTranslations('templateFromSamples')
+  const tt = useTranslations('templates')
   const tc = useTranslations('common')
   const steps = [
     { id: 1, name: t('uploadSamples'), description: t('uploadHint') },
@@ -74,6 +83,7 @@ export default function TemplateWizardPage() {
   // Constraints
   const [selectedPerspectives, setSelectedPerspectives] = useState<string[]>(["party_a", "party_b"])
   const [selectedAudience, setSelectedAudience] = useState<string[]>(["external"])
+  const [outputFormat, setOutputFormat] = useState<TemplateOutputFormat>('markdown')
 
   // Template details
   const [templateName, setTemplateName] = useState("")
@@ -181,6 +191,7 @@ export default function TemplateWizardPage() {
           ],
           suggestion_triggers: [],
           instructions: analysisResults.suggestedInstructions || `Generate a ${templateName} following the detected structure and style.`,
+          outputFormat,
         }),
       })
 
@@ -507,6 +518,23 @@ export default function TemplateWizardPage() {
                 </div>
               </div>
 
+              {/* Output Type */}
+              <div className="space-y-3">
+                <Label>{tt('outputType')}</Label>
+                <Select value={outputFormat} onValueChange={(v) => setOutputFormat(v as TemplateOutputFormat)}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="markdown">{tt('outputTypeMarkdown')}</SelectItem>
+                    <SelectItem value="email_text">{tt('outputTypeEmailText')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {outputFormat === 'email_text' && (
+                  <p className="text-xs text-muted-foreground">{tt('outputTypeEmailHint')}</p>
+                )}
+              </div>
+
             </CardContent>
           </>
         )}
@@ -570,6 +598,12 @@ export default function TemplateWizardPage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t('audience')}</span>
                     <span className="font-medium capitalize">{selectedAudience.join(", ")}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{tt('outputType')}</span>
+                    <span className="font-medium">
+                      {outputFormat === 'email_text' ? tt('outputTypeEmailText') : tt('outputTypeMarkdown')}
+                    </span>
                   </div>
                 </div>
               </div>
