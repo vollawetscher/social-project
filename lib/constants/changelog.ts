@@ -94,6 +94,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'US Invite SMS Now Uses Twilio Route',
         description: 'Invite SMS messages to +1 numbers now route through Twilio with country-aware sender selection, improving consistency for US call invites.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Automatic Marketplace Language Matching',
+        description: 'The marketplace now automatically shows templates in your selected language — no manual language filter needed. Switch your app language and the marketplace adapts instantly.',
+      },
     ],
   },
   {

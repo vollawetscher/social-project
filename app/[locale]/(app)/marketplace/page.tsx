@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
-import { Search, Download, User, SlidersHorizontal, Loader2, X, Globe, Share2 } from 'lucide-react'
+import { Search, Download, User, SlidersHorizontal, Loader2, X, Share2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -49,7 +49,6 @@ export default function MarketplacePage() {
   const [categories, setCategories] = useState<MarketplaceCategory[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('popular')
-  const [languageFilter, setLanguageFilter] = useState<string | null>(locale)
   const [selectedCreator, setSelectedCreator] = useState<string | null>(null)
   const [creatorName, setCreatorName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -88,11 +87,9 @@ export default function MarketplacePage() {
       query = query.eq('author_id', selectedCreator)
     }
 
-    if (languageFilter) {
-      query = query.or(
-        `language.eq.${languageFilter},and(language.is.null,template_config->languages.cs.["${languageFilter}"])`
-      )
-    }
+    query = query.or(
+      `language.eq.${locale},and(language.is.null,template_config->languages.cs.["${locale}"])`
+    )
 
     if (searchQuery.trim()) {
       query = query.or(
@@ -138,7 +135,7 @@ export default function MarketplacePage() {
     }
 
     setLoading(false)
-  }, [searchQuery, selectedCategory, sortBy, selectedCreator, languageFilter, supabase])
+  }, [searchQuery, selectedCategory, sortBy, selectedCreator, locale, supabase])
 
   useEffect(() => {
     fetchTemplates()
@@ -179,7 +176,6 @@ export default function MarketplacePage() {
   const activeFilterCount = [
     selectedCategory,
     selectedCreator,
-    languageFilter && languageFilter !== locale ? languageFilter : null,
   ].filter(Boolean).length
 
   return (
@@ -254,27 +250,6 @@ export default function MarketplacePage() {
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-              {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
-                <Badge
-                  key={code}
-                  variant={languageFilter === code ? 'default' : 'outline'}
-                  className="cursor-pointer"
-                  onClick={() => setLanguageFilter(languageFilter === code ? null : code)}
-                >
-                  {label}
-                </Badge>
-              ))}
-              <Badge
-                variant={languageFilter === null ? 'default' : 'outline'}
-                className="cursor-pointer"
-                onClick={() => setLanguageFilter(null)}
-              >
-                {t('explore.allLanguages')}
-              </Badge>
-            </div>
-
             {selectedCreator && (
               <div className="flex items-center gap-2">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
@@ -301,15 +276,6 @@ export default function MarketplacePage() {
         ) : templates.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <p>{t('explore.noResults')}</p>
-            {languageFilter && (
-              <Button
-                variant="link"
-                className="mt-2"
-                onClick={() => setLanguageFilter(null)}
-              >
-                {t('explore.showAllLanguages')}
-              </Button>
-            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
