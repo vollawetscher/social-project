@@ -14,6 +14,13 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { ParticipantRole, Audience, Domain, TemplateOutputFormat } from "@/lib/types-v0"
 import { participantRoleLabels } from "@/lib/mock/data"
 
@@ -217,21 +224,15 @@ export default function CreateTemplateFromScratchPage() {
           <CardDescription>{t('outputTypeDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { code: 'markdown', label: t('outputTypeMarkdown') },
-              { code: 'email_text', label: t('outputTypeEmailText') },
-            ].map(({ code, label }) => (
-              <Badge
-                key={code}
-                variant={outputFormat === code ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => setOutputFormat(code as TemplateOutputFormat)}
-              >
-                {label}
-              </Badge>
-            ))}
-          </div>
+          <Select value={outputFormat} onValueChange={(v) => setOutputFormat(v as TemplateOutputFormat)}>
+            <SelectTrigger className="bg-secondary border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="markdown">{t('outputTypeMarkdown')}</SelectItem>
+              <SelectItem value="email_text">{t('outputTypeEmailText')}</SelectItem>
+            </SelectContent>
+          </Select>
           {outputFormat === 'email_text' && (
             <p className="text-xs text-muted-foreground mt-2">{t('outputTypeEmailHint')}</p>
           )}
