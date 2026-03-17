@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useParams } from "next/navigation"
 import { Link, useRouter } from "@/i18n/navigation"
 import { toast } from "sonner"
@@ -31,6 +31,7 @@ const availableDomains: Domain[] = ["legal", "sales", "hr", "medical", "educatio
 export default function EditTemplatePage() {
   const t = useTranslations('templateEdit')
   const tc = useTranslations('common')
+  const locale = useLocale()
   const params = useParams()
   const router = useRouter()
   const templateId = params.id as string
@@ -51,7 +52,6 @@ export default function EditTemplatePage() {
   const [defaultDoInstructions, setDefaultDoInstructions] = useState("")
   const [defaultDontInstructions, setDefaultDontInstructions] = useState("")
   const [customInstructions, setCustomInstructions] = useState("")
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
@@ -76,7 +76,6 @@ export default function EditTemplatePage() {
       setDefaultDoInstructions(data.default_do_instructions || data.defaultDoInstructions || '')
       setDefaultDontInstructions(data.default_dont_instructions || data.defaultDontInstructions || '')
       setCustomInstructions(data.custom_instructions || data.customInstructions || '')
-      setSelectedLanguage(data.language || null)
       setIsInstalled(!!data.marketplaceSourceId)
     } catch (error) {
       console.error('Error fetching template:', error)
@@ -142,7 +141,7 @@ export default function EditTemplatePage() {
           defaultDoInstructions: defaultDoInstructions.trim(),
           defaultDontInstructions: defaultDontInstructions.trim(),
           customInstructions: customInstructions.trim(),
-          language: selectedLanguage,
+          language: locale,
         }),
       })
 
@@ -411,35 +410,6 @@ export default function EditTemplatePage() {
               </Badge>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Template Language */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('templateLanguage')}</CardTitle>
-          <CardDescription>{t('templateLanguageDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { code: 'de', label: 'Deutsch' },
-              { code: 'en', label: 'English' },
-              { code: 'es', label: 'Español' },
-            ].map(({ code, label }) => (
-              <Badge
-                key={code}
-                variant={selectedLanguage === code ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => setSelectedLanguage(selectedLanguage === code ? null : code)}
-              >
-                {label}
-              </Badge>
-            ))}
-          </div>
-          {!selectedLanguage && (
-            <p className="text-xs text-muted-foreground mt-2">{t('templateLanguageHint')}</p>
-          )}
         </CardContent>
       </Card>
 

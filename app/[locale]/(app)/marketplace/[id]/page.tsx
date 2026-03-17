@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
 import {
-  ArrowLeft, Download, User, Copy, FileDown, Share2,
+  ArrowLeft, Download, User, Share2,
   Eye, Users, MessageSquare, Globe, Briefcase, FileText,
   Loader2, CheckCircle2, XCircle, Plus, LogIn, Trash2, RefreshCw,
 } from 'lucide-react'
@@ -28,7 +28,6 @@ import { useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import { copyExportJSON, downloadExportJSON } from '@/lib/utils/marketplace-export'
 import { StarRating } from '@/components/marketplace/StarRating'
 import type {
   MarketplaceTemplate, MarketplaceProfile, MarketplaceCategory,
@@ -153,32 +152,6 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
 
   function toggleItem<T>(list: T[], item: T, setter: (v: T[]) => void) {
     setter(list.includes(item) ? list.filter((x) => x !== item) : [...list, item])
-  }
-
-  function buildCustomTemplate(): MarketplaceTemplate {
-    return {
-      ...template!,
-      template_config: {
-        perspectives, audiences, tone,
-        output_format: outputFormat,
-        languages, domains,
-        generation_prompt: template!.template_config?.generation_prompt || '',
-        do_include: doInclude,
-        do_not_include: doNotInclude,
-      },
-    }
-  }
-
-  async function handleCopyJSON() {
-    const tpl = customizing ? buildCustomTemplate() : template!
-    await copyExportJSON(tpl, !!isAuthor)
-    toast.success(t('explore.copiedJSON'))
-  }
-
-  function handleDownloadJSON() {
-    const tpl = customizing ? buildCustomTemplate() : template!
-    downloadExportJSON(tpl, !!isAuthor)
-    toast.success(t('explore.downloadedJSON'))
   }
 
   function onInstallClick() {
@@ -367,35 +340,15 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
             </Button>
           )}
           {isAuthor && (
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" className="bg-transparent" onClick={handleCopyJSON}>
-                    <Copy className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-1.5">{t('explore.copyJSON')}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t('explore.copyJSONTooltip')}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" className="bg-transparent" onClick={handleDownloadJSON}>
-                    <FileDown className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-1.5">{t('explore.downloadJSON')}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t('explore.downloadJSONTooltip')}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" className="bg-transparent" onClick={handleShareLink}>
-                    <Share2 className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-1.5">{t('explore.shareLink')}</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t('explore.shareLinkTooltip')}</TooltipContent>
-              </Tooltip>
-            </>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" className="bg-transparent" onClick={handleShareLink}>
+                  <Share2 className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1.5">{t('explore.shareLink')}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('explore.shareLinkTooltip')}</TooltipContent>
+            </Tooltip>
           )}
 
           {isAuthor && (

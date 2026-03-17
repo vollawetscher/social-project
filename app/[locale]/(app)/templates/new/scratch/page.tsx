@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Link, useRouter } from "@/i18n/navigation"
 import { toast } from "sonner"
 import { ArrowLeft, Save, Loader2, Sparkles } from "lucide-react"
@@ -13,17 +13,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
 import type { ParticipantRole, Audience, Domain } from "@/lib/types-v0"
 import { participantRoleLabels } from "@/lib/mock/data"
 
 const availablePerspectives: ParticipantRole[] = ["party_a", "party_b", "observer"]
 const availableAudiences: Audience[] = ["internal", "external"]
-const availableDomains: Domain[] = ["legal", "sales", "hr", "medical", "education", "consulting", "general"]
+const availableDomains: Domain[] = ["psychology", "medical", "sales", "legal", "education", "it", "consulting", "hr", "general", "meetings", "business", "support", "technical"]
 
 export default function CreateTemplateFromScratchPage() {
   const t = useTranslations('templateEdit')
   const tc = useTranslations('common')
+  const locale = useLocale()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [enhancingInstructions, setEnhancingInstructions] = useState(false)
@@ -33,7 +33,6 @@ export default function CreateTemplateFromScratchPage() {
   const [selectedPerspectives, setSelectedPerspectives] = useState<ParticipantRole[]>(["party_a", "party_b", "observer"])
   const [selectedAudiences, setSelectedAudiences] = useState<Audience[]>(["internal"])
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([])
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null)
 
   const togglePerspective = (p: ParticipantRole) => {
     setSelectedPerspectives((prev) =>
@@ -107,7 +106,7 @@ export default function CreateTemplateFromScratchPage() {
           styleRules: [],
           suggestionTriggers: [],
           instructions: instructions.trim() || `Generate a ${name.trim()} following the defined structure and style.`,
-          language: selectedLanguage,
+          language: locale,
         }),
       })
 
@@ -259,28 +258,6 @@ export default function CreateTemplateFromScratchPage() {
             <p className="text-xs text-muted-foreground">
               {t('domainDefaultHint')}
             </p>
-          </div>
-          <div className="space-y-2">
-            <Label>{t('templateLanguage')}</Label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { code: 'de', label: 'Deutsch' },
-                { code: 'en', label: 'English' },
-                { code: 'es', label: 'Español' },
-              ].map(({ code, label }) => (
-                <Badge
-                  key={code}
-                  variant={selectedLanguage === code ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedLanguage(selectedLanguage === code ? null : code)}
-                >
-                  {label}
-                </Badge>
-              ))}
-            </div>
-            {!selectedLanguage && (
-              <p className="text-xs text-muted-foreground">{t('templateLanguageHint')}</p>
-            )}
           </div>
         </CardContent>
       </Card>

@@ -16,14 +16,20 @@ export type RecordingType =
   | 'lecture'                  // Legacy: lecture
   | 'other'
 
-export type Domain = 
-  | 'legal' 
-  | 'sales' 
-  | 'hr' 
-  | 'medical' 
-  | 'education' 
-  | 'consulting' 
+export type Domain =
+  | 'psychology'
+  | 'medical'
+  | 'sales'
+  | 'legal'
+  | 'education'
+  | 'it'
+  | 'consulting'
+  | 'hr'
   | 'general'
+  | 'meetings'
+  | 'business'
+  | 'support'
+  | 'technical'
 
 // Participant role in the conversation (assigned at transcription level)
 export type ParticipantRole = 'party_a' | 'party_b' | 'observer'
