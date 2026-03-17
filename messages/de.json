@@ -1226,13 +1226,19 @@
       "other": "Sonstiges"
     },
     "domains": {
-      "legal": "Recht",
-      "sales": "Vertrieb",
-      "hr": "Personalwesen",
+      "psychology": "Psychologie",
       "medical": "Medizin",
+      "sales": "Vertrieb",
+      "legal": "Recht",
       "education": "Bildung",
+      "it": "IT",
       "consulting": "Beratung",
-      "general": "Allgemein"
+      "hr": "Personalwesen",
+      "general": "Allgemein",
+      "meetings": "Meetings",
+      "business": "Geschaeft",
+      "support": "Support",
+      "technical": "Technik"
     },
     "tones": {
       "direct": "Direkt",

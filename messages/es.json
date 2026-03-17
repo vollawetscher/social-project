@@ -1226,13 +1226,19 @@
       "other": "Otro"
     },
     "domains": {
-      "legal": "Legal",
-      "sales": "Ventas",
-      "hr": "Recursos Humanos",
+      "psychology": "Psicología",
       "medical": "Médico",
+      "sales": "Ventas",
+      "legal": "Legal",
       "education": "Educación",
+      "it": "TI",
       "consulting": "Consultoría",
-      "general": "General"
+      "hr": "Recursos Humanos",
+      "general": "General",
+      "meetings": "Reuniones",
+      "business": "Negocios",
+      "support": "Soporte",
+      "technical": "Técnico"
     },
     "tones": {
       "direct": "Directo",

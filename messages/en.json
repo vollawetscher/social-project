@@ -1227,13 +1227,19 @@
       "other": "Other"
     },
     "domains": {
-      "legal": "Legal",
-      "sales": "Sales",
-      "hr": "Human Resources",
+      "psychology": "Psychology",
       "medical": "Medical",
+      "sales": "Sales",
+      "legal": "Legal",
       "education": "Education",
+      "it": "IT",
       "consulting": "Consulting",
-      "general": "General"
+      "hr": "Human Resources",
+      "general": "General",
+      "meetings": "Meetings",
+      "business": "Business",
+      "support": "Support",
+      "technical": "Technical"
     },
     "tones": {
       "direct": "Direct",

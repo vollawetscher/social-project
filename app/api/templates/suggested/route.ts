@@ -12,36 +12,52 @@ import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/h
 import type { Template } from '@/lib/types-v0'
 
 // Domain type used in templates
-const DOMAIN_TAGS = ['legal', 'sales', 'hr', 'medical', 'education', 'consulting', 'general'] as const
+const DOMAIN_TAGS = ['psychology', 'medical', 'sales', 'legal', 'education', 'it', 'consulting', 'hr', 'general', 'meetings', 'business', 'support', 'technical'] as const
 type DomainTag = (typeof DOMAIN_TAGS)[number]
 
 // Map AI domain names (primary/specialty) to template domain_tags
 const PRIMARY_TO_DOMAIN: Record<string, DomainTag> = {
+  psychology: 'psychology',
+  therapy: 'psychology',
+  counseling: 'psychology',
   medical: 'medical',
+  healthcare: 'medical',
   legal: 'legal',
   law: 'legal',
   sales: 'sales',
-  hr: 'hr',
-  'human resources': 'hr',
   education: 'education',
+  training: 'education',
+  it: 'it',
+  technology: 'it',
+  software: 'it',
   consulting: 'consulting',
   finance: 'consulting',
   insurance: 'consulting',
+  hr: 'hr',
+  'human resources': 'hr',
+  recruitment: 'hr',
   general: 'general',
+  meetings: 'meetings',
+  business: 'business',
+  management: 'business',
+  support: 'support',
+  'customer service': 'support',
+  technical: 'technical',
+  engineering: 'technical',
 }
 
 // Map recording_type to domain when no suggested_domains
 const RECORDING_TYPE_TO_DOMAIN: Record<string, DomainTag> = {
   sales_call: 'sales',
   legal_deposition: 'legal',
-  meeting: 'general',
+  meeting: 'meetings',
   interview: 'hr',
   presentation: 'education',
-  consultation: 'general', // Will be overridden by suggested_domains when available
-  call_inbound: 'general',
-  call_outbound: 'general',
+  consultation: 'consulting',
+  call_inbound: 'support',
+  call_outbound: 'sales',
   dictation: 'general',
-  ai_agent_conversation: 'general',
+  ai_agent_conversation: 'it',
   lecture: 'education',
   other: 'general',
 }

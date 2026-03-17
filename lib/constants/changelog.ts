@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.21.3',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.21.3',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Unified Domain Tags',
+        description: 'All 13 domain categories are now available everywhere — when editing templates, creating new ones, and browsing the marketplace. Previously some areas only showed 7 of the 13 domains.',
+      },
+    ],
+  },
+  {
     version: '1.21.2',
     date: 'March 16, 2026',
     entries: [

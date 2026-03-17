@@ -26,7 +26,7 @@ import { participantRoleLabels } from "@/lib/mock/data"
 
 const availablePerspectives: ParticipantRole[] = ["party_a", "party_b", "observer"]
 const availableAudiences: Audience[] = ["internal", "external"]
-const availableDomains: Domain[] = ["legal", "sales", "hr", "medical", "education", "consulting", "general"]
+const availableDomains: Domain[] = ["psychology", "medical", "sales", "legal", "education", "it", "consulting", "hr", "general", "meetings", "business", "support", "technical"]
 
 export default function EditTemplatePage() {
   const t = useTranslations('templateEdit')

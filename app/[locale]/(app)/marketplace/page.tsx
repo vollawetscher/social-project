@@ -25,14 +25,18 @@ const LANGUAGE_LABELS: Record<string, string> = {
 }
 
 const categoryColors: Record<string, string> = {
+  psychology: 'bg-violet-500/20 text-violet-600 border-violet-500/30',
   business: 'bg-indigo-500/20 text-indigo-600 border-indigo-500/30',
   legal: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
   medical: 'bg-red-500/20 text-red-600 border-red-500/30',
   technical: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
   education: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30',
+  it: 'bg-cyan-500/20 text-cyan-600 border-cyan-500/30',
   sales: 'bg-green-500/20 text-green-600 border-green-500/30',
   consulting: 'bg-teal-500/20 text-teal-600 border-teal-500/30',
   hr: 'bg-pink-500/20 text-pink-600 border-pink-500/30',
+  meetings: 'bg-amber-500/20 text-amber-600 border-amber-500/30',
+  support: 'bg-emerald-500/20 text-emerald-600 border-emerald-500/30',
   general: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 }
 
