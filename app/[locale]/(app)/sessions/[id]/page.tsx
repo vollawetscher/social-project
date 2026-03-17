@@ -835,6 +835,7 @@ export default function SessionDetailPage() {
               onClick={() => setLanguageMismatch(null)}
               className="shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="Dismiss"
+              title="Dismiss"
             >
               <X className="h-4 w-4" />
             </button>

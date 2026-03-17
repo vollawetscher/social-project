@@ -235,7 +235,7 @@ export default function TemplateWizardPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href="/templates">
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" title={tc('back')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
@@ -350,6 +350,7 @@ export default function TemplateWizardPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveFile(file.name)}
+                        title={tc('delete')}
                       >
                         <X className="h-4 w-4" />
                       </Button>

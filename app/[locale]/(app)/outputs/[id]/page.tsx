@@ -444,6 +444,7 @@ export default function OutputDetailPage() {
             size="sm" 
             asChild 
             className="mb-3 -ml-2"
+            title={tc('back')}
           >
             <Link href={backHref}>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -680,6 +681,7 @@ export default function OutputDetailPage() {
                   "absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity",
                   section.copied && "opacity-100"
                 )}
+                title={section.copied ? tc('copied') : tc('copy')}
               >
                 {section.copied ? (
                   <Check className="h-4 w-4 text-success" />

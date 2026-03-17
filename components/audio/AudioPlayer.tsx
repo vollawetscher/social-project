@@ -238,6 +238,7 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
             size="icon"
             onClick={togglePlay}
             className="h-10 w-10"
+            title={isPlaying ? "Pause audio" : "Play audio"}
           >
             {isPlaying ? (
               <Pause className="h-5 w-5" />
@@ -264,6 +265,7 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
             size="sm"
             onClick={changePlaybackRate}
             className="text-xs font-mono w-12"
+            title="Change playback speed"
           >
             {playbackRate}x
           </Button>
@@ -282,6 +284,7 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
               size="icon"
               onClick={toggleMute}
               className="h-8 w-8"
+              title={isMuted || volume === 0 ? "Unmute" : "Mute"}
             >
               {isMuted || volume === 0 ? (
                 <VolumeX className="h-4 w-4" />

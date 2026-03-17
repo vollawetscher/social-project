@@ -320,7 +320,7 @@ export default function UploadRecordingsPage() {
     <div className="min-h-screen bg-slate-50 p-4">
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label={t('actions.back')}>
+          <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label={t('actions.back')} title={t('actions.back')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>

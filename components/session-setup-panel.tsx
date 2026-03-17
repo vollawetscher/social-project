@@ -700,6 +700,7 @@ export function SessionSetupPanel({
                       variant="ghost"
                       className="h-6 w-6 shrink-0"
                       onClick={() => handleRemoveWordCorrection(orig)}
+                      title="Remove correction"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

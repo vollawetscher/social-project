@@ -167,7 +167,7 @@ function TemplateDetailSheet({ template }: { template: Template }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" title="Open details">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </SheetTrigger>
@@ -466,7 +466,7 @@ export default function TemplatesPage() {
                   <TemplateDetailSheet template={template} />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title={t('openMenu')}>
                         <MoreHorizontal className="h-4 w-4" />
                         <span className="sr-only">{t('openMenu')}</span>
                       </Button>
@@ -595,6 +595,7 @@ export default function TemplatesPage() {
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title={t('openMenu')}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">{t('openMenu')}</span>

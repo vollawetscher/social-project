@@ -205,6 +205,7 @@ export default function CaseDetailPage() {
             variant="ghost"
             size="icon"
             onClick={() => router.push('/dashboard')}
+            title="Back to projects"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -229,6 +230,7 @@ export default function CaseDetailPage() {
             variant="outline"
             size="icon"
             onClick={handleOpenEditDialog}
+            title="Edit project details"
           >
             <Settings className="h-4 w-4" />
           </Button>

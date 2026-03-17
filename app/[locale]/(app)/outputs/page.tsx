@@ -173,7 +173,7 @@ function OutputDetailSheet({ output }: { output: Output }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1.5">
+        <Button variant="ghost" size="sm" className="gap-1.5" title={t('view')}>
           <Eye className="h-4 w-4" />
           <span className="hidden sm:inline">{t('view')}</span>
         </Button>
@@ -542,7 +542,7 @@ export default function OutputsPage() {
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2 self-end sm:self-start">
                     <OutputDetailSheet output={output} />
-                    <Button variant="ghost" size="sm" className="gap-1.5" asChild>
+                    <Button variant="ghost" size="sm" className="gap-1.5" asChild title={t('open')}>
                       <Link href={`/outputs/${output.id}`}>
                         <ExternalLink className="h-4 w-4" />
                         <span className="hidden sm:inline">{t('open')}</span>
@@ -555,6 +555,7 @@ export default function OutputsPage() {
                           size="sm" 
                           className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
                           disabled={deletingId === output.id}
+                          title={tc('delete')}
                         >
                           {deletingId === output.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

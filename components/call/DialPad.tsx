@@ -71,6 +71,7 @@ export function DialPad({ onCall, disabled, initialNumber = "" }: DialPadProps) 
             onClick={handleDelete}
             className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
             aria-label={t('deleteDigit')}
+            title={t('deleteDigit')}
           >
             <Delete className="h-5 w-5" />
           </button>
@@ -106,6 +107,7 @@ export function DialPad({ onCall, disabled, initialNumber = "" }: DialPadProps) 
             onClick={() => number && onCall(number, "audio")}
             disabled={!number || disabled}
             className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90"
+            title={t('audioCall')}
           >
             <Phone className="h-7 w-7" />
           </Button>

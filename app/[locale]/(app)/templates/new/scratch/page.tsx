@@ -137,7 +137,7 @@ export default function CreateTemplateFromScratchPage() {
     <div className="max-w-2xl mx-auto space-y-6 pb-24">
       <div className="flex items-center gap-3">
         <Link href="/templates">
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" title={tc('back')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>

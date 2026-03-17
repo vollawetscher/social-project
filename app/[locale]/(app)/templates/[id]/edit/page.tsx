@@ -228,7 +228,7 @@ export default function EditTemplatePage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/templates">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" title={t('backToTemplates')}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>

@@ -14,6 +14,33 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.21.5',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Clearer Icon Tooltips Across Core Screens',
+        description: 'Added more hover tooltips to icon-only controls in key areas like sessions, templates, calls, and audio handling, so actions are easier to understand at a glance.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Clearer Audio and Video Call Labels',
+        description: 'Call options now use simpler, user-focused wording so it is easier to choose between a quick voice call and a face-to-face video call.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Web vs PSTN Call Paths Made Clearer',
+        description: 'Call labels now better distinguish browser-based web calls from phone-network (PSTN) calls, helping you pick the right option faster.',
+      },
+    ],
+  },
+  {
     version: '1.21.4',
     date: 'March 17, 2026',
     entries: [

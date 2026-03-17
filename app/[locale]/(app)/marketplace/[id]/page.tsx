@@ -269,7 +269,7 @@ export default function TemplateDetailPage({ params }: { params: { id: string } 
     <TooltipProvider delayDuration={0}>
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-start gap-4">
-          <Button asChild variant="ghost" size="icon" className="mt-1 shrink-0">
+          <Button asChild variant="ghost" size="icon" className="mt-1 shrink-0" title={t('template.backToExplore')}>
             <Link href="/marketplace">
               <ArrowLeft className="h-5 w-5" />
             </Link>

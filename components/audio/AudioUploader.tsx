@@ -177,6 +177,7 @@ export function AudioUploader({ onFileSelected }: AudioUploaderProps) {
                 size="icon"
                 onClick={handleRemoveFile}
                 className="flex-shrink-0"
+                title="Remove selected file"
               >
                 <X className="h-4 w-4" />
               </Button>
