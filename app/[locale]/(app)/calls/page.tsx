@@ -870,10 +870,10 @@ export default function CallsPage() {
           <button
             onClick={() => { setPendingCallMode("video"); setVideoDialogStep("choose"); setRingPhone(""); setRingContactName(""); fetchContacts() }}
             disabled={creating}
-            className="flex items-center gap-3 p-3 rounded-xl bg-info/10 hover:bg-info/15 transition-colors disabled:opacity-50"
+            className="flex items-center gap-3 p-3 rounded-xl border border-sky-200 bg-sky-100 hover:bg-sky-200 transition-colors disabled:opacity-50"
           >
-            <div className="h-10 w-10 rounded-full bg-info flex items-center justify-center shrink-0">
-              <Video className="h-5 w-5 text-info-foreground" />
+            <div className="h-10 w-10 rounded-full bg-sky-600 flex items-center justify-center shrink-0">
+              <Video className="h-5 w-5 text-white" />
             </div>
             <div className="text-left">
               <p className="text-sm font-medium text-foreground">{t('videoCall')}</p>
@@ -912,36 +912,41 @@ export default function CallsPage() {
                       {` · ${Number(call.scheduled_duration_min || 30)} ${t('minutes')}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                  <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
-                      className="flex-1 sm:flex-none text-destructive hover:text-destructive"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
                       disabled={deletingScheduledCallId === call.id}
                       onClick={() => handleDeleteScheduledCall(call)}
+                      title={t('deleteScheduled')}
+                      aria-label={t('deleteScheduled')}
                     >
-                      {deletingScheduledCallId === call.id ? t('sending') : t('deleteScheduled')}
+                      {deletingScheduledCallId === call.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
-                      className="flex-1 sm:flex-none"
+                      className="h-8 w-8"
                       onClick={() => handleCopyScheduledInvite(call)}
+                      title={t('copyInvite')}
+                      aria-label={t('copyInvite')}
                     >
-                      {t('copyInvite')}
+                      <Link2 className="h-4 w-4" />
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="outline"
-                      className="flex-1 sm:flex-none"
+                      className="h-8 w-8"
                       onClick={() => handleShareScheduledInviteWhatsApp(call)}
+                      title={t('shareWhatsApp')}
+                      aria-label={t('shareWhatsApp')}
                     >
-                      <MessageCircle className="h-4 w-4 mr-1" />
-                      {t('shareWhatsApp')}
+                      <MessageCircle className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
-                      className="flex-1 sm:flex-none"
+                      className="ml-auto sm:ml-0"
                       variant={canJoin ? "default" : "outline"}
                       onClick={() => canJoin ? handleJoinScheduledCall(call) : toast.info(t('scheduleTooEarly'))}
                     >
