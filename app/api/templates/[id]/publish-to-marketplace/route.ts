@@ -37,6 +37,13 @@ export async function POST(
     .eq('author_id', user.id)
     .maybeSingle()
 
+  if (existing) {
+    return NextResponse.json(
+      { error: 'Template is already published. Delete the existing listing first to re-publish.' },
+      { status: 409 }
+    )
+  }
+
   const body = await request.json()
   const { category_id, tags, description_override, language, lead_capture_enabled } = body
 
@@ -76,27 +83,6 @@ export async function POST(
     lead_capture_enabled: lead_capture_enabled === true,
   }
 
-  if (existing) {
-    const { data: updated, error: updateError } = await supabase
-      .from('marketplace_templates')
-      .update(payload)
-      .eq('id', existing.id)
-      .select('id, title')
-      .single()
-
-    if (updateError) {
-      console.error('Error updating marketplace template:', updateError)
-      return NextResponse.json({ error: updateError.message }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      marketplace_id: updated.id,
-      title: updated.title,
-      updated: true,
-    })
-  }
-
   const { data: marketplaceTemplate, error: insertError } = await supabase
     .from('marketplace_templates')
     .insert(payload)
@@ -112,6 +98,5 @@ export async function POST(
     success: true,
     marketplace_id: marketplaceTemplate.id,
     title: marketplaceTemplate.title,
-    updated: false,
   }, { status: 201 })
 }

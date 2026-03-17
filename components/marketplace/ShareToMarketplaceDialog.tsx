@@ -54,7 +54,6 @@ export function ShareToMarketplaceDialog({
   const [tags, setTags] = useState<string[]>([])
   const [publishing, setPublishing] = useState(false)
   const [leadCaptureEnabled, setLeadCaptureEnabled] = useState(false)
-  const [isUpdate, setIsUpdate] = useState(false)
 
   useEffect(() => {
     if (open && template) {
@@ -66,27 +65,11 @@ export function ShareToMarketplaceDialog({
           if (data) setCategories(data)
         })
 
-      supabase
-        .from('marketplace_templates')
-        .select('id, description, category_id, tags, lead_capture_enabled')
-        .eq('source_template_id', template.id)
-        .maybeSingle()
-        .then(({ data }: { data: any }) => {
-          if (data) {
-            setIsUpdate(true)
-            setDescription(data.description || template.description || '')
-            setTags(data.tags || template.domainTags?.slice() || [])
-            setCategoryId(data.category_id || '')
-            setLeadCaptureEnabled(data.lead_capture_enabled || false)
-          } else {
-            setIsUpdate(false)
-            setDescription(template.description || '')
-            setTags(template.domainTags?.slice() || [])
-            setCategoryId('')
-            setLeadCaptureEnabled(false)
-          }
-          setTagInput('')
-        })
+      setDescription(template.description || '')
+      setTags(template.domainTags?.slice() || [])
+      setCategoryId('')
+      setLeadCaptureEnabled(false)
+      setTagInput('')
     }
   }, [open, template, supabase])
 
@@ -134,7 +117,7 @@ export function ShareToMarketplaceDialog({
         throw new Error(data.error || 'Failed to publish')
       }
 
-      toast.success(data.updated ? t('upload.updateSuccess') : tt('publishSuccess'))
+      toast.success(tt('publishSuccess'))
       onOpenChange(false)
       onSuccess?.(data.marketplace_id)
     } catch (err: any) {
@@ -158,10 +141,10 @@ export function ShareToMarketplaceDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Store className="h-5 w-5" />
-            {isUpdate ? t('upload.updateTitle') : tt('shareToMarketplace')}
+            {tt('shareToMarketplace')}
           </DialogTitle>
           <DialogDescription>
-            {isUpdate ? t('upload.updateDesc') : tt('shareToMarketplaceDesc')}
+            {tt('shareToMarketplaceDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -266,7 +249,7 @@ export function ShareToMarketplaceDialog({
           </Button>
           <Button onClick={handlePublish} disabled={publishing}>
             {publishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {isUpdate ? t('upload.updateButton') : t('upload.publishButton')}
+            {t('upload.publishButton')}
           </Button>
         </DialogFooter>
       </DialogContent>
