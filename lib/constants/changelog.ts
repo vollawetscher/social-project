@@ -241,6 +241,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Use-Case Finder Now Generates Recommendations for Any Role',
         description: 'The landing widget now uses AI to generate role-specific use cases and documentation outputs dynamically for any job title instead of relying on fixed profession profiles.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Use-Case Finder Improves Domain-Aware Self-Descriptions',
+        description: 'Step 1 now supports richer role descriptions (not just job titles), extracts a clearer domain signal, and feeds it into recommendations for better fit across diverse profiles.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Use-Case Finder Streamlines to One AI Call',
+        description: 'The landing flow now turns your self-description into immediate personalized output in one step, with an optional correction path for quick refinements.',
+      },
     ],
   },
   {
