@@ -136,6 +136,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Participant Identity Auto-Detects from User Name',
         description: 'Context editing now auto-detects which participant is you by comparing participant names with your profile name, reducing manual role-selection steps.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Richer Speechmatics Session Summaries',
+        description: 'Session-level Speechmatics summaries now use a more detailed mode to preserve more context for project history and follow-up workflows.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Dynamic Speechmatics Dictionary from Session Context',
+        description: 'Transcription now sends a richer vocabulary built from participants, context, corrections, and call contact names to improve recognition accuracy and summary quality.',
+      },
     ],
   },
   {

@@ -11,6 +11,16 @@ export interface SpeechmaticsTranscript {
   summary?: string
 }
 
+function sanitizeAdditionalVocabTerm(raw: string): string | null {
+  const value = String(raw || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!value) return null
+  if (value.length < 2 || value.length > 80) return null
+  return value
+}
+
 export class SpeechmaticsService {
   private apiKey: string
   private baseUrl = 'https://asr.api.speechmatics.com/v2'
@@ -22,7 +32,7 @@ export class SpeechmaticsService {
   async transcribeAudio(
     audioBuffer: Buffer,
     mimeType: string,
-    options?: { contentType?: 'conversational' | 'informative'; language?: string }
+    options?: { contentType?: 'conversational' | 'informative'; language?: string; additionalVocab?: string[] }
   ): Promise<SpeechmaticsTranscript> {
     console.log('[Speechmatics] Starting transcription')
     console.log('[Speechmatics] Audio buffer size:', audioBuffer.length, 'bytes')
@@ -39,6 +49,16 @@ export class SpeechmaticsService {
     const audioBlob = new Blob([audioBuffer], { type: normalizedMime })
     formData.append('data_file', audioBlob, `audio.${fileExtension}`)
 
+    const dynamicAdditionalVocab = Array.from(
+      new Set(
+        (options?.additionalVocab || [])
+          .map(sanitizeAdditionalVocabTerm)
+          .filter(Boolean)
+      )
+    )
+      .slice(0, 120)
+      .map((content) => ({ content: content as string }))
+
     const config: Record<string, any> = {
       type: 'transcription',
       transcription_config: {
@@ -48,11 +68,12 @@ export class SpeechmaticsService {
         enable_entities: false,
         additional_vocab: [
           { content: 'Notissima', sounds_like: ['Notiz immer', 'Notiz ima', 'no ti si ma', 'Notisima'] },
+          ...dynamicAdditionalVocab,
         ],
       },
       summarization_config: {
         content_type: options?.contentType ?? 'conversational',
-        summary_length: 'brief',
+        summary_length: 'detailed',
       },
     }
 

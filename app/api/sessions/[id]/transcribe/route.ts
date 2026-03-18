@@ -7,6 +7,60 @@ import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/h
 import { generateReport } from '@/lib/services/report-generator'
 import { createErrorLogger } from '@/lib/services/error-logger'
 
+function normalizeVocabCandidate(raw: string): string | null {
+  const value = String(raw || '')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!value) return null
+  if (value.length < 2 || value.length > 80) return null
+  return value
+}
+
+function buildSpeechmaticsAdditionalVocab(input: {
+  sessionRow: any
+  callContactName?: string | null
+  participantNames?: string[]
+}): string[] {
+  const sessionRow = input.sessionRow || {}
+  const extracted = (sessionRow.ai_extracted_context || {}) as Record<string, any>
+  const corrections = (sessionRow.transcript_corrections || {}) as Record<string, any>
+
+  const candidates: string[] = []
+
+  if (sessionRow.internal_case_id) candidates.push(String(sessionRow.internal_case_id))
+  if (sessionRow.context_note) candidates.push(String(sessionRow.context_note))
+  if (sessionRow.context_text) candidates.push(String(sessionRow.context_text))
+  if (input.callContactName) candidates.push(String(input.callContactName))
+  for (const participantName of input.participantNames || []) {
+    candidates.push(String(participantName))
+  }
+
+  const participants = Array.isArray(extracted.participants) ? extracted.participants : []
+  for (const p of participants) {
+    if (typeof p === 'string') candidates.push(p)
+    else if (p?.name) candidates.push(String(p.name))
+  }
+
+  const topics = Array.isArray(extracted.topics) ? extracted.topics : []
+  const agenda = Array.isArray(extracted.agenda) ? extracted.agenda : []
+  for (const t of topics) candidates.push(String(t))
+  for (const a of agenda) candidates.push(String(a))
+  if (extracted.purpose) candidates.push(String(extracted.purpose))
+  if (extracted.venue) candidates.push(String(extracted.venue))
+
+  const nameCorrections = corrections.name_corrections || {}
+  const wordCorrections = corrections.word_corrections || {}
+  for (const v of Object.values(nameCorrections)) candidates.push(String(v))
+  for (const v of Object.values(wordCorrections)) candidates.push(String(v))
+
+  // Split long mixed text blobs into phrase-like chunks.
+  const flattened = candidates.flatMap((c) => c.split(/[;|•,]/g).map((x) => x.trim()).filter(Boolean))
+  const normalized = flattened.map(normalizeVocabCandidate).filter(Boolean) as string[]
+
+  return Array.from(new Set(normalized)).slice(0, 120)
+}
+
 /**
  * After the caller's session is transcribed, copy the transcript to any pending
  * callee session that was claimed before transcription completed.
@@ -93,15 +147,45 @@ async function processTranscriptionJob(sessionId: string) {
   const errorLogger = await createErrorLogger(supabase)
   
   try {
-    // Get session for input_hint and language
+    // Get session context and language hints for Speechmatics
     const { data: sessionRow } = await supabase
       .from('sessions')
-      .select('input_hint, language')
+      .select('user_id, input_hint, language, internal_case_id, context_note, context_text, ai_extracted_context, transcript_corrections')
       .eq('id', sessionId)
       .single()
     const inputHint = (sessionRow as any)?.input_hint || ''
     const rawLang = (sessionRow as any)?.language?.slice(0, 2) || null
     const sessionLanguage = rawLang === 'au' ? null : rawLang // 'auto' → null → Speechmatics auto-detect
+    const { data: linkedCall } = await supabase
+      .from('calls')
+      .select('user_id, callee_user_id, contact_name, session_id, callee_session_id')
+      .or(`session_id.eq.${sessionId},callee_session_id.eq.${sessionId}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const participantUserIds = Array.from(
+      new Set(
+        [sessionRow?.user_id, linkedCall?.user_id, linkedCall?.callee_user_id]
+          .filter(Boolean)
+      )
+    ) as string[]
+    let participantNames: string[] = []
+    if (participantUserIds.length > 0) {
+      const { data: participantProfiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, full_name, company_name')
+        .in('id', participantUserIds)
+      participantNames = (participantProfiles || [])
+        .map((p: any) => p.display_name || p.full_name || p.company_name)
+        .filter((n: any) => typeof n === 'string' && n.trim().length > 0)
+    }
+
+    const additionalVocab = buildSpeechmaticsAdditionalVocab({
+      sessionRow,
+      callContactName: linkedCall?.contact_name || null,
+      participantNames,
+    })
 
     // Get all files for this session
     const { data: files } = await supabase
@@ -201,11 +285,12 @@ async function processTranscriptionJob(sessionId: string) {
       console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)
 
       const contentType = (inputHint === 'presentation' || inputHint === 'voice_note') ? 'informative' : 'conversational'
-      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage })
+      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage, additionalVocabCount: additionalVocab.length })
       const speechmatics = createSpeechmaticsService()
       const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, {
         contentType,
         language: sessionLanguage || undefined,
+        additionalVocab,
       })
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 
