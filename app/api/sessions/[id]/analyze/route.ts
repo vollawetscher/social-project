@@ -112,7 +112,7 @@ function buildPstnSpeakerNormalization(params: {
     bySpeaker.set(speaker, cur)
   }
 
-  const ranked = [...bySpeaker.values()]
+  const ranked = Array.from(bySpeaker.values())
     .sort((a, b) => (b.totalMs - a.totalMs) || (b.turns - a.turns))
     .slice(0, 2)
   if (ranked.length < 2) return null

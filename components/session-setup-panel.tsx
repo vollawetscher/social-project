@@ -272,7 +272,7 @@ export function SessionSetupPanel({
       const participantObjects = participantNames.map((name) => {
         const isUser =
           isLikelyUserName(name, profileUserName) ||
-          [...existingUserNames].some((n) => isLikelyUserName(name, n))
+          Array.from(existingUserNames).some((n) => isLikelyUserName(name, n))
         
         return {
           name,
