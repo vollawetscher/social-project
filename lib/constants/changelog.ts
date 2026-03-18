@@ -192,6 +192,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Infrastructure Card Adds Compliance Matrix',
         description: 'Settings now include a searchable compliance matrix with provider DPA, security, and subprocessor links, making legal and security checks faster and easier.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'seven.io Added to Infrastructure Compliance View',
+        description: 'The Infrastructure and Security section now includes seven.io in both provider cards and the compliance matrix, so SMS routing documentation is visible alongside the rest of the stack.',
+      },
     ],
   },
   {

@@ -153,6 +153,20 @@ export default function SettingsPage() {
       lastReviewed: "2026-03-17",
     },
     {
+      id: "sevenio",
+      name: t('serviceSeven'),
+      purpose: t('complianceSevenPurpose'),
+      dataCategories: "Phone numbers and SMS delivery metadata",
+      region: "EU",
+      retention: "Provider policy + customer-controlled deletion",
+      transferMechanism: "SCCs",
+      dpaUrl: "https://www.seven.io/en/company/data-protection/",
+      securityUrl: "https://www.seven.io/en/company/data-protection/",
+      subprocessorUrl: "https://www.seven.io/en/company/data-protection/",
+      status: "review" as const,
+      lastReviewed: "2026-03-17",
+    },
+    {
       id: "livekit",
       name: t('serviceLiveKit'),
       purpose: t('complianceLivekitPurpose'),
@@ -866,6 +880,26 @@ export default function SettingsPage() {
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceEuHosted')}</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">E2E encrypted</Badge>
                   <Badge variant="outline" className="text-[9px] h-4 px-1.5">DTLS/SRTP</Badge>
+                </div>
+              </div>
+
+              {/* SMS Routing Service */}
+              <div className="p-4 rounded-lg border border-border bg-secondary/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                    <span className="text-xs font-bold text-primary">SMS</span>
+                  </div>
+                  <Badge className="bg-success/20 text-success border-success/30">
+                    {t('connected')}
+                  </Badge>
+                </div>
+                <h4 className="font-medium text-foreground">{t('serviceSeven')}</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t('serviceSevenDesc')}
+                </p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">{t('serviceEuHosted')}</Badge>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5">GDPR DPA</Badge>
                 </div>
               </div>
             </div>

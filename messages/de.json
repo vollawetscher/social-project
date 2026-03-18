@@ -718,6 +718,8 @@
     "serviceRailwayDesc": "Anwendungshosting",
     "serviceTwilio": "Twilio",
     "serviceTwilioDesc": "PSTN-Anrufe und SMS",
+    "serviceSeven": "seven.io",
+    "serviceSevenDesc": "SMS-Routing und Zustellung",
     "serviceEncryptedSignaling": "Verschluesselte Signalisierung",
     "serviceLiveKit": "LiveKit",
     "serviceLiveKitDesc": "Video- und Audiokonferenzen",
@@ -741,6 +743,7 @@
     "complianceClaudePurpose": "KI-Generierung fuer Zusammenfassungen und Ausgaben",
     "complianceSupabasePurpose": "Datenbank, Authentifizierung und Dateispeicher",
     "complianceTwilioPurpose": "PSTN-Anrufe und SMS-Zustellung",
+    "complianceSevenPurpose": "SMS-Zustellung, Routing und Fallback-Handling",
     "complianceLivekitPurpose": "Echtzeit-Medien fuer Webanrufe",
     "complianceRailwayPurpose": "Application Hosting und Runtime-Betrieb"
   },
