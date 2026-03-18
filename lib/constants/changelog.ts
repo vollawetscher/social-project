@@ -220,6 +220,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Landing Page Adds Interactive Use-Case Finder',
         description: 'A new 3-step inline widget helps you map your role to practical Notissima outputs and conversation sources before starting your free trial.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Use-Case Finder Adds Multi-Select and Deeper Personalization',
+        description: 'The landing use-case flow now supports multiple selected use cases, includes work-mode profiling (owner vs in-house), adds stronger role-specific suggestions such as HR interview summaries, and better highlights templates and output formats.',
+      },
     ],
   },
   {

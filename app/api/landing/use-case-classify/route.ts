@@ -71,6 +71,14 @@ function fallbackClassification(jobTitle: string): UseCaseClassification {
       suggestedContexts: ['Client Calls', 'Deal Reviews', 'Team Handoffs'],
     }
   }
+  if (/(hr|human resources|talent|recruit|people ops|people operations)/.test(title)) {
+    return {
+      industry: 'Human Resources',
+      role: 'HR Manager/Recruiter',
+      context: 'Hiring & People Operations',
+      suggestedContexts: ['Hiring Interviews', 'People Operations', 'Performance & Development Reviews'],
+    }
+  }
   return {
     industry: 'Professional Services',
     role: 'Knowledge Worker',
