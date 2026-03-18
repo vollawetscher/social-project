@@ -1148,6 +1148,7 @@
     "locked": "Bloqueado",
     "recordingType": "Tipo de grabación",
     "overrideSelection": "Anular selección...",
+    "overrideLockedByConfidence": "Anulación deshabilitada con confianza de IA >= {threshold}%",
     "domain": "Dominio",
     "extractedContext": "Contexto extraído",
     "participants": "Participantes",

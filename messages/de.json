@@ -1148,6 +1148,7 @@
     "locked": "Gesperrt",
     "recordingType": "Aufnahmetyp",
     "overrideSelection": "Auswahl überschreiben...",
+    "overrideLockedByConfidence": "Überschreiben ab >= {threshold}% KI-Konfidenz deaktiviert",
     "domain": "Bereich",
     "extractedContext": "Extrahierter Kontext",
     "participants": "Teilnehmer",

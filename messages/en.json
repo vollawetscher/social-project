@@ -1149,6 +1149,7 @@
     "locked": "Locked",
     "recordingType": "Recording Type",
     "overrideSelection": "Override selection...",
+    "overrideLockedByConfidence": "Override disabled at >= {threshold}% AI confidence",
     "domain": "Domain",
     "extractedContext": "Extracted Context",
     "participants": "Participants",

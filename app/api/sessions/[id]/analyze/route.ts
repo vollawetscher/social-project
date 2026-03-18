@@ -8,11 +8,23 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
 
-function resolveOutputLanguageCode(preferredReportLanguage: string | null | undefined, sessionLanguage: string | null | undefined): string {
+function normalizeLanguageCode(raw: string | null | undefined): string | null {
+  const value = (raw || '').toLowerCase().trim()
+  if (!value || value === 'auto' || value === 'session') return null
+  return value.slice(0, 2)
+}
+
+function resolveOutputLanguageCode(
+  preferredReportLanguage: string | null | undefined,
+  sessionLanguage: string | null | undefined,
+  detectedTranscriptLanguage?: string | null
+): string {
   const pref = (preferredReportLanguage || '').toLowerCase()
   if (pref && pref !== 'session' && pref !== 'auto') return pref.slice(0, 2)
-  const sessionLang = (sessionLanguage || '').toLowerCase()
-  if (sessionLang && sessionLang !== 'auto') return sessionLang.slice(0, 2)
+  const transcriptLang = normalizeLanguageCode(detectedTranscriptLanguage)
+  if (transcriptLang) return transcriptLang
+  const sessionLang = normalizeLanguageCode(sessionLanguage)
+  if (sessionLang) return sessionLang
   return 'de'
 }
 
@@ -26,6 +38,136 @@ const LANG_NAMES: Record<string, string> = {
 
 const asSegmentArray = (value: unknown): { start_ms?: number; end_ms?: number; [k: string]: any }[] =>
   Array.isArray(value) ? (value as { start_ms?: number; end_ms?: number; [k: string]: any }[]) : []
+
+type PstnSpeakerNormalization = {
+  participants: Array<{ name: string; role: string | null; isUser: boolean }>
+  nameCorrections: Record<string, string>
+  reason: string
+}
+
+const normalizeHumanName = (name: string | null | undefined): string =>
+  String(name || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+
+const firstName = (name: string | null | undefined): string =>
+  normalizeHumanName(name).split(' ')[0]?.toLowerCase() || ''
+
+const normalizeForMatch = (value: string | null | undefined): string =>
+  String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s'-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+function selfIntroMatchesName(text: string, name: string): boolean {
+  const fn = firstName(name)
+  if (!fn) return false
+  const t = normalizeForMatch(text)
+  return (
+    new RegExp(`\\b(this is|it is|it's|i am|my name is)\\s+${fn}\\b`).test(t) ||
+    new RegExp(`\\b${fn}\\b`).test(t.slice(0, 40)) // e.g. "Patrick. It's Christian..."
+  )
+}
+
+function buildPstnSpeakerNormalization(params: {
+  segments: Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>
+  callType?: string | null
+  callUserId?: string | null
+  sessionUserId?: string | null
+  callerName?: string | null
+  calleeName?: string | null
+}): PstnSpeakerNormalization | null {
+  const isPstn = (params.callType || '').includes('pstn')
+  if (!isPstn) return null
+
+  type SpeakerAgg = {
+    speaker: string
+    turns: number
+    totalMs: number
+    firstStart: number
+    texts: string[]
+  }
+  const bySpeaker = new Map<string, SpeakerAgg>()
+
+  for (const seg of params.segments) {
+    const speaker = String(seg.speaker || '').trim()
+    if (!speaker) continue
+    const start = Number(seg.start_ms || 0)
+    const end = Number(seg.end_ms || start)
+    const dur = Math.max(0, end - start)
+    const text = String(seg.text || '')
+
+    const cur = bySpeaker.get(speaker) || {
+      speaker,
+      turns: 0,
+      totalMs: 0,
+      firstStart: Number.MAX_SAFE_INTEGER,
+      texts: [],
+    }
+    cur.turns += 1
+    cur.totalMs += dur
+    cur.firstStart = Math.min(cur.firstStart, start)
+    if (text.trim()) cur.texts.push(text.trim())
+    bySpeaker.set(speaker, cur)
+  }
+
+  const ranked = [...bySpeaker.values()]
+    .sort((a, b) => (b.totalMs - a.totalMs) || (b.turns - a.turns))
+    .slice(0, 2)
+  if (ranked.length < 2) return null
+
+  const majorA = ranked[0]
+  const majorB = ranked[1]
+  const majorByStart = [majorA, majorB].sort((a, b) => a.firstStart - b.firstStart)
+
+  const caller = normalizeHumanName(params.callerName)
+  const callee = normalizeHumanName(params.calleeName)
+  let callerSpeaker: string | null = null
+  let calleeSpeaker: string | null = null
+
+  for (const sp of [majorA, majorB]) {
+    const introWindow = sp.texts.slice(0, 4).join(' ')
+    if (!callerSpeaker && caller && selfIntroMatchesName(introWindow, caller)) {
+      callerSpeaker = sp.speaker
+    }
+    if (!calleeSpeaker && callee && selfIntroMatchesName(introWindow, callee)) {
+      calleeSpeaker = sp.speaker
+    }
+  }
+
+  if (!callerSpeaker && !calleeSpeaker) {
+    // Outbound PSTN commonly starts with callee greeting.
+    calleeSpeaker = majorByStart[0].speaker
+    callerSpeaker = majorByStart[1].speaker
+  } else if (!callerSpeaker && calleeSpeaker) {
+    callerSpeaker = [majorA.speaker, majorB.speaker].find((s) => s !== calleeSpeaker) || null
+  } else if (!calleeSpeaker && callerSpeaker) {
+    calleeSpeaker = [majorA.speaker, majorB.speaker].find((s) => s !== callerSpeaker) || null
+  }
+
+  if (!callerSpeaker || !calleeSpeaker) return null
+
+  const isCallerSession = !!params.callUserId && !!params.sessionUserId && params.callUserId === params.sessionUserId
+  const userIsCaller = isCallerSession
+
+  const callerLabel = caller || 'Caller'
+  const calleeLabel = callee || 'Callee'
+
+  const nameCorrections: Record<string, string> = {
+    [callerSpeaker]: callerLabel,
+    [calleeSpeaker]: calleeLabel,
+  }
+
+  return {
+    participants: [
+      { name: callerLabel, role: null, isUser: userIsCaller },
+      { name: calleeLabel, role: null, isUser: !userIsCaller },
+    ],
+    nameCorrections,
+    reason: caller && callee ? 'pstn_metadata+self_intro' : 'pstn_metadata+turn_order',
+  }
+}
 
 export async function POST(
   request: Request,
@@ -114,6 +256,10 @@ export async function POST(
     const transcripts = (session.transcripts || []).sort((a: any, b: any) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     )
+    const detectedTranscriptLanguage =
+      transcripts
+        .map((t: any) => normalizeLanguageCode(t?.language))
+        .find((lang: string | null) => !!lang) || null
     if (transcripts.length === 0 || !transcripts[0]?.raw_json) {
       console.log('[Analyze API] No transcript or raw_json found')
       return NextResponse.json({ error: 'No transcript found' }, { status: 400 })
@@ -138,6 +284,39 @@ export async function POST(
 
     // Sample from start, 25%, 50%, 75%, end to avoid misleading analysis of long transcripts
     const segments = allSegments
+    const { data: linkedCall } = await sessionClient
+      .from('calls')
+      .select('id, user_id, call_type, contact_name, session_id, callee_session_id')
+      .or(`session_id.eq.${params.id},callee_session_id.eq.${params.id}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const callOwnerName =
+      linkedCall?.user_id && linkedCall.user_id !== userId
+        ? (
+            await sessionClient
+              .from('profiles')
+              .select('display_name, full_name, company_name')
+              .eq('id', linkedCall.user_id)
+              .maybeSingle()
+          ).data
+        : null
+    const linkedCallerName =
+      linkedCall?.user_id === userId
+        ? userName
+        : (callOwnerName?.display_name || callOwnerName?.full_name || callOwnerName?.company_name || null)
+    const linkedCalleeName =
+      linkedCall?.user_id === userId
+        ? (linkedCall?.contact_name || null)
+        : userName
+    const pstnNormalization = buildPstnSpeakerNormalization({
+      segments: segments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
+      callType: linkedCall?.call_type,
+      callUserId: linkedCall?.user_id,
+      sessionUserId: userId,
+      callerName: linkedCallerName,
+      calleeName: linkedCalleeName,
+    })
     const formatSegment = (seg: any) => `${seg.speaker || 'S1'}: ${seg.text}`
     const n = segments.length
     const segsPerChunk = Math.max(1, Math.floor(n / 20))
@@ -157,11 +336,53 @@ export async function POST(
     
     if (session.context_locked || alreadyAnalyzed) {
       console.log('[Analyze API] Using cached analysis (locked or already analyzed)')
+      const existingCorrections = ((session as any)?.transcript_corrections || {}) as Record<string, any>
+      const existingNameCorrections = (existingCorrections.name_corrections || {}) as Record<string, string>
+      const normalizedContext = ((session as any)?.ai_extracted_context || {}) as Record<string, any>
+      let patchedContext = normalizedContext
+      let patchedCorrections = existingCorrections
+      let shouldPatch = false
+
+      if (pstnNormalization) {
+        const mergedNames = { ...existingNameCorrections, ...pstnNormalization.nameCorrections }
+        const hasNewMapping = Object.keys(pstnNormalization.nameCorrections).some(
+          (k) => existingNameCorrections[k] !== pstnNormalization.nameCorrections[k]
+        )
+        const contextParticipants = Array.isArray(normalizedContext.participants) ? normalizedContext.participants : []
+        const hasUnresolvedSpeaker = contextParticipants.some((p: any) => typeof p?.name === 'string' && /^S\d+$/i.test(p.name))
+        if (hasNewMapping || hasUnresolvedSpeaker) {
+          shouldPatch = true
+          patchedCorrections = {
+            ...existingCorrections,
+            name_corrections: mergedNames,
+          }
+          patchedContext = {
+            ...normalizedContext,
+            participants: pstnNormalization.participants,
+            speakerIdentification: {
+              ...(normalizedContext.speakerIdentification || {}),
+              strategy: pstnNormalization.reason,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        }
+      }
+
+      if (shouldPatch) {
+        await supabase
+          .from('sessions')
+          .update({
+            ai_extracted_context: patchedContext,
+            transcript_corrections: patchedCorrections,
+          })
+          .eq('id', params.id)
+      }
+
       return NextResponse.json({
         recordingType: session.user_recording_type || session.recording_type,
         recordingTypeConfidence: session.recording_type_confidence || 1.0,
         domains: session.user_domains || session.suggested_domains || [],
-        extractedContext: session.ai_extracted_context || {},
+        extractedContext: shouldPatch ? patchedContext : (session.ai_extracted_context || {}),
         suggestedOutputFormats: (session as any).suggested_output_formats || [],
         locked: session.context_locked || false,
         cached: true
@@ -169,7 +390,11 @@ export async function POST(
     }
 
     // Resolve target language for suggested output format titles/descriptions
-    const outputLangCode = resolveOutputLanguageCode(profile?.preferred_report_language, session.language)
+    const outputLangCode = resolveOutputLanguageCode(
+      profile?.preferred_report_language,
+      session.language,
+      detectedTranscriptLanguage
+    )
     const outputLangName = LANG_NAMES[outputLangCode] || outputLangCode
 
     // Call Claude to analyze with enhanced context extraction
@@ -331,10 +556,31 @@ Respond in this exact JSON format:
         : analysis.recordingTypeConfidence
 
     const existingExtractedContext = ((session as any)?.ai_extracted_context || {}) as Record<string, any>
+    const existingCorrections = ((session as any)?.transcript_corrections || {}) as Record<string, any>
+    const existingNameCorrections = (existingCorrections.name_corrections || {}) as Record<string, string>
     const mergedExtractedContext = {
       ...analysis.extractedContext,
       sourceSignals: existingExtractedContext.sourceSignals || sourceSignals || null,
+      ...(pstnNormalization
+        ? {
+            participants: pstnNormalization.participants,
+            speakerIdentification: {
+              ...(analysis.extractedContext?.speakerIdentification || {}),
+              strategy: pstnNormalization.reason,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        : {}),
     }
+    const mergedTranscriptCorrections = pstnNormalization
+      ? {
+          ...existingCorrections,
+          name_corrections: {
+            ...existingNameCorrections,
+            ...pstnNormalization.nameCorrections,
+          },
+        }
+      : existingCorrections
 
     // Update session with AI suggestions and extracted context
     console.log('[Analyze API] Updating session in database...')
@@ -349,6 +595,7 @@ Respond in this exact JSON format:
         suggested_domains: analysis.domains,
         ai_extracted_context: mergedExtractedContext,
         suggested_output_formats: suggestedFormats,
+        transcript_corrections: mergedTranscriptCorrections,
       })
       .eq('id', params.id)
 
@@ -381,7 +628,8 @@ Respond in this exact JSON format:
       }
       const preferredOutputLanguage = resolveOutputLanguageCode(
         profile?.preferred_report_language,
-        (session as any)?.language
+        (session as any)?.language,
+        detectedTranscriptLanguage
       )
       fetch(`${request.url.split('/analyze')[0]}/auto-generate`, {
         method: 'POST',
@@ -459,7 +707,11 @@ Respond in this exact JSON format:
                 templateId: commandTemplateId,
                 perspective: 'observer',
                 audience: 'internal',
-                language: resolveOutputLanguageCode(profile?.preferred_report_language, (session as any)?.language),
+                language: resolveOutputLanguageCode(
+                  profile?.preferred_report_language,
+                  (session as any)?.language,
+                  detectedTranscriptLanguage
+                ),
                 tone: 'neutral',
                 format: 'markdown',
                 // Use the exact spoken phrase as the generation instruction

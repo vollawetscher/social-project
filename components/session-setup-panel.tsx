@@ -88,6 +88,38 @@ const DOMAINS: Domain[] = [
   'legal', 'sales', 'hr', 'medical', 'education', 'consulting', 'general',
 ]
 
+const OVERRIDE_CONFIDENCE_THRESHOLD = 0.85
+
+function normalizeNameForMatch(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\w\s'-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isLikelyUserName(candidate: string, userName: string): boolean {
+  const c = normalizeNameForMatch(candidate)
+  const u = normalizeNameForMatch(userName)
+  if (!c || !u) return false
+  if (c === u) return true
+  if (u.includes(c) || c.includes(u)) return true
+  const cTokens = c.split(' ').filter(Boolean)
+  const uTokens = u.split(' ').filter(Boolean)
+  if (cTokens.length === 0 || uTokens.length === 0) return false
+  // Match first+last token when available, otherwise first token.
+  const cFirst = cTokens[0]
+  const cLast = cTokens[cTokens.length - 1]
+  const uFirst = uTokens[0]
+  const uLast = uTokens[uTokens.length - 1]
+  if (cFirst && uFirst && cFirst === uFirst) {
+    if (cTokens.length === 1 || uTokens.length === 1) return true
+    if (cLast && uLast && cLast === uLast) return true
+  }
+  return false
+}
+
 function ConfidenceBadge({ confidence }: { confidence: number }) {
   const isHigh = confidence >= 0.8
   const isMedium = confidence >= 0.6 && confidence < 0.8
@@ -144,14 +176,7 @@ export function SessionSetupPanel({
   })
   const [applyToTranscript, setApplyToTranscript] = useState(!hasPlaceholderNames)
   
-  // Track which speaker/participant is the user
-  const [userIdentity, setUserIdentity] = useState<string>(() => {
-    // Try to find which participant has isUser: true
-    const userParticipant = session.extractedContext?.participants?.find((p: any) => 
-      typeof p === 'object' && p.isUser
-    )
-    return userParticipant ? (typeof userParticipant === 'string' ? userParticipant : userParticipant.name) : 'none'
-  })
+  const [profileUserName, setProfileUserName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
 
   // Word corrections: original (misheard) → corrected
@@ -161,6 +186,17 @@ export function SessionSetupPanel({
   const [newOriginal, setNewOriginal] = useState('')
   const [newCorrected, setNewCorrected] = useState('')
   const [savingWordCorrections, setSavingWordCorrections] = useState(false)
+
+  const topRecordingTypeConfidence = recordingTypeSuggestions.reduce(
+    (max, suggestion) => Math.max(max, suggestion.confidence || 0),
+    0
+  )
+  const topDomainConfidence = domainSuggestions.reduce(
+    (max, suggestion) => Math.max(max, suggestion.confidence || 0),
+    0
+  )
+  const canOverrideRecordingType = topRecordingTypeConfidence < OVERRIDE_CONFIDENCE_THRESHOLD
+  const canOverrideDomain = topDomainConfidence < OVERRIDE_CONFIDENCE_THRESHOLD
 
   // Initial values for comparison
   const [initialValues, setInitialValues] = useState({
@@ -195,6 +231,16 @@ export function SessionSetupPanel({
     setWordCorrections(session.transcriptCorrections?.word_corrections || {})
   }, [session])
 
+  useEffect(() => {
+    fetch('/api/profile')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((profile) => {
+        const detected = profile?.display_name || profile?.full_name || profile?.company_name || ""
+        setProfileUserName(typeof detected === 'string' ? detected : "")
+      })
+      .catch(() => {})
+  }, [])
+
   // Check for changes
   useEffect(() => {
     const changed = 
@@ -211,14 +257,22 @@ export function SessionSetupPanel({
   const handleSaveContext = async () => {
     setIsSaving(true)
     try {
+      const recordingTypeChanged = selectedRecordingType !== initialValues.recordingType
+      const domainChanged = selectedDomain !== initialValues.domain
+
       // Build participant objects with isUser flag
       const participantNames = participants.split(',').map(p => p.trim()).filter(Boolean)
-      const speakerIds = getSpeakerIds(session)
+      const existingUserNames = new Set(
+        (session.extractedContext?.participants || [])
+          .filter((p: any) => typeof p === 'object' && p?.isUser)
+          .map((p: any) => String(p?.name || '').trim())
+          .filter(Boolean)
+      )
       
-      const participantObjects = participantNames.map((name, idx) => {
-        const speakerId = speakerIds[idx]
-        const isUser = userIdentity === speakerId || 
-                       (userIdentity !== 'none' && userIdentity !== 'listener' && name.toLowerCase().includes(userIdentity.toLowerCase()))
+      const participantObjects = participantNames.map((name) => {
+        const isUser =
+          isLikelyUserName(name, profileUserName) ||
+          [...existingUserNames].some((n) => isLikelyUserName(name, n))
         
         return {
           name,
@@ -230,20 +284,28 @@ export function SessionSetupPanel({
       console.log('[Save Context] Built participant objects:', participantObjects)
 
       // Save context first
+      const payload: Record<string, unknown> = {
+        extractedContext: {
+          participants: participantObjects,
+          purpose,
+          agenda: agenda.split('\n').filter(Boolean),
+          venue
+        },
+        lockContext: true,
+      }
+
+      // Preserve AI-derived classification unless user explicitly changed it.
+      if (recordingTypeChanged) {
+        payload.recordingType = selectedRecordingType
+      }
+      if (domainChanged) {
+        payload.domains = selectedDomain ? [{ domain: selectedDomain, confidence: 1.0 }] : []
+      }
+
       const response = await fetch(`/api/sessions/${session.id}/context`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recordingType: selectedRecordingType,
-          domains: selectedDomain ? [{ domain: selectedDomain, confidence: 1.0 }] : [],
-          extractedContext: {
-            participants: participantObjects,
-            purpose,
-            agenda: agenda.split('\n').filter(Boolean),
-            venue
-          },
-          lockContext: true
-        })
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
@@ -414,9 +476,11 @@ export function SessionSetupPanel({
                 {recordingTypeSuggestions.map((suggestion) => (
                   <button
                     key={suggestion.value}
-                    onClick={() => setSelectedRecordingType(suggestion.value)}
+                    onClick={() => canOverrideRecordingType && setSelectedRecordingType(suggestion.value)}
+                    disabled={!canOverrideRecordingType}
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors",
+                      !canOverrideRecordingType && "opacity-60 cursor-not-allowed",
                       selectedRecordingType === suggestion.value
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary hover:bg-accent text-foreground"
@@ -430,6 +494,7 @@ export function SessionSetupPanel({
               <Select
                 value={selectedRecordingType}
                 onValueChange={(v) => setSelectedRecordingType(v as RecordingType)}
+                disabled={!canOverrideRecordingType}
               >
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue placeholder={t('overrideSelection')} />
@@ -442,6 +507,11 @@ export function SessionSetupPanel({
                   ))}
                 </SelectContent>
               </Select>
+              {!canOverrideRecordingType && (
+                <p className="text-[11px] text-muted-foreground">
+                  {t('overrideLockedByConfidence', { threshold: Math.round(OVERRIDE_CONFIDENCE_THRESHOLD * 100) })}
+                </p>
+              )}
             </div>
 
             {/* Domain */}
@@ -451,9 +521,11 @@ export function SessionSetupPanel({
                 {domainSuggestions.map((suggestion) => (
                   <button
                     key={suggestion.value}
-                    onClick={() => setSelectedDomain(suggestion.value)}
+                    onClick={() => canOverrideDomain && setSelectedDomain(suggestion.value)}
+                    disabled={!canOverrideDomain}
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors",
+                      !canOverrideDomain && "opacity-60 cursor-not-allowed",
                       selectedDomain === suggestion.value
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary hover:bg-accent text-foreground"
@@ -467,6 +539,7 @@ export function SessionSetupPanel({
               <Select
                 value={selectedDomain}
                 onValueChange={(v) => setSelectedDomain(v as Domain)}
+                disabled={!canOverrideDomain}
               >
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue placeholder={t('overrideSelection')} />
@@ -479,6 +552,11 @@ export function SessionSetupPanel({
                   ))}
                 </SelectContent>
               </Select>
+              {!canOverrideDomain && (
+                <p className="text-[11px] text-muted-foreground">
+                  {t('overrideLockedByConfidence', { threshold: Math.round(OVERRIDE_CONFIDENCE_THRESHOLD * 100) })}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -529,27 +607,6 @@ export function SessionSetupPanel({
                       >
                         {t('applyNameCorrections')}
                       </Label>
-                    </div>
-                    
-                    {/* User Identity Selection */}
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        {t('whichParticipant')}
-                      </Label>
-                      <Select value={userIdentity} onValueChange={setUserIdentity}>
-                        <SelectTrigger className="h-8 text-xs bg-secondary border-border">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">{t('notInConversation')}</SelectItem>
-                          <SelectItem value="listener">{t('listenerOnly')}</SelectItem>
-                          {getSpeakerIds(session).map((speaker) => (
-                            <SelectItem key={speaker} value={speaker}>
-                              {speaker}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
                 </div>
