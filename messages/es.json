@@ -739,6 +739,7 @@
     "complianceDpa": "DPA",
     "complianceSecurityDocs": "Documentos de seguridad",
     "complianceSubprocessors": "Subencargados",
+    "complianceAccessRestricted": "Acceso restringido",
     "complianceSpeechmaticsPurpose": "Transcripcion de voz a texto para sesiones",
     "complianceClaudePurpose": "Generacion con IA para resumenes y salidas",
     "complianceSupabasePurpose": "Base de datos, autenticacion y almacenamiento de archivos",

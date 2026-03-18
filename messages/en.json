@@ -740,6 +740,7 @@
     "complianceDpa": "DPA",
     "complianceSecurityDocs": "Security docs",
     "complianceSubprocessors": "Subprocessors",
+    "complianceAccessRestricted": "Access restricted",
     "complianceSpeechmaticsPurpose": "Speech-to-text transcription for sessions",
     "complianceClaudePurpose": "AI generation for summaries and outputs",
     "complianceSupabasePurpose": "Database, auth, and file storage",

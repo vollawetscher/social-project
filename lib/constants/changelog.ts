@@ -199,6 +199,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'seven.io Added to Infrastructure Compliance View',
         description: 'The Infrastructure and Security section now includes seven.io in both provider cards and the compliance matrix, so SMS routing documentation is visible alongside the rest of the stack.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Compliance Links Updated for LiveKit, Railway, and seven.io',
+        description: 'Provider documentation links and verification status were updated with current DPA, security, and subprocessor sources to make compliance checks more accurate.',
+      },
     ],
   },
   {

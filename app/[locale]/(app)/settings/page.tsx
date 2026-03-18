@@ -162,8 +162,8 @@ export default function SettingsPage() {
       transferMechanism: "SCCs",
       dpaUrl: "https://www.seven.io/en/company/data-protection/",
       securityUrl: "https://www.seven.io/en/company/data-protection/",
-      subprocessorUrl: "https://www.seven.io/en/company/data-protection/",
-      status: "review" as const,
+      subprocessorUrl: "https://www.seven.io/en/annex-subcontractors/",
+      status: "verified" as const,
       lastReviewed: "2026-03-17",
     },
     {
@@ -174,10 +174,10 @@ export default function SettingsPage() {
       region: "EU",
       retention: "Operational metadata only",
       transferMechanism: "SCCs",
-      dpaUrl: "https://livekit.io/dpa",
-      securityUrl: "https://livekit.io/security",
-      subprocessorUrl: "https://livekit.io/subprocessors",
-      status: "review" as const,
+      dpaUrl: "https://livekit.io/legal/data-processing-addendum",
+      securityUrl: "https://livekit.io/legal/security",
+      subprocessorUrl: "https://livekit.io/legal/sub-processors",
+      status: "verified" as const,
       lastReviewed: "2026-03-17",
     },
     {
@@ -189,9 +189,9 @@ export default function SettingsPage() {
       retention: "Operational retention windows",
       transferMechanism: "SCCs",
       dpaUrl: "https://railway.com/legal/dpa",
-      securityUrl: "https://railway.com/security",
-      subprocessorUrl: "https://railway.com/legal/subprocessors",
-      status: "review" as const,
+      securityUrl: "https://trust.railway.com",
+      subprocessorUrl: "https://trust.railway.com",
+      status: "verified" as const,
       lastReviewed: "2026-03-17",
     },
   ]), [t])
@@ -748,6 +748,11 @@ export default function SettingsPage() {
                                 </Button>
                               </a>
                             </div>
+                            {provider.id === 'railway' && (
+                              <p className="mt-2 text-[11px] text-muted-foreground">
+                                {t('complianceAccessRestricted')}: trust center content may require login.
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>
