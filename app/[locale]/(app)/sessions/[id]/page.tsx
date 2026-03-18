@@ -178,6 +178,41 @@ export default function SessionDetailPage() {
       .catch(() => {})
   }, [])
 
+  const normalizePersonName = useCallback((value: string | null | undefined) => {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[^\w\s'-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }, [])
+
+  const isParticipantYou = useCallback((participant: any, allParticipants: any[]) => {
+    const explicitExists = allParticipants.some((p: any) => typeof p === 'object' && p?.isUser === true)
+    if (explicitExists) return typeof participant === 'object' && participant?.isUser === true
+
+    const role = typeof participant === 'object' && participant?.role
+      ? String(participant.role).toLowerCase()
+      : ''
+    if (role) {
+      if (session?.isFromCall) {
+        if (role.includes('recipient') || role.includes('callee')) return true
+      } else {
+        if (role.includes('caller') || role.includes('initiator')) return true
+      }
+    }
+
+    const participantName = normalizePersonName(typeof participant === 'string' ? participant : participant?.name)
+    const userName = normalizePersonName(
+      (profile as any)?.display_name ||
+      (profile as any)?.full_name ||
+      (profile as any)?.company_name ||
+      ''
+    )
+    if (!participantName || !userName) return false
+    return participantName === userName || userName.includes(participantName) || participantName.includes(userName)
+  }, [normalizePersonName, profile, session?.isFromCall])
+
   // Handle seeking to a specific time from transcript click
   const handleSeekToTime = (time: number) => {
     if (audioPlayerRef.current) {
@@ -1033,7 +1068,7 @@ export default function SessionDetailPage() {
                           {session.extractedContext.participants.map((participant: any, idx: number) => {
                             const name = typeof participant === 'string' ? participant : participant.name
                             const role = typeof participant === 'object' && participant.role ? participant.role : null
-                            const isUser = participant.isUser || false
+                            const isUser = isParticipantYou(participant, session.extractedContext.participants)
                             
                             return (
                               <div key={idx} className="flex items-center gap-2 flex-wrap">
@@ -1477,7 +1512,7 @@ export default function SessionDetailPage() {
                           {session.extractedContext.participants.map((participant: any, idx: number) => {
                             const name = typeof participant === 'string' ? participant : participant.name
                             const role = typeof participant === 'object' && participant.role ? participant.role : null
-                            const isUser = participant.isUser || false
+                            const isUser = isParticipantYou(participant, session.extractedContext.participants)
                             
                             return (
                               <div key={idx} className="flex items-center gap-2 flex-wrap">
