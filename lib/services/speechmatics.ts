@@ -73,7 +73,7 @@ export class SpeechmaticsService {
       },
       summarization_config: {
         content_type: options?.contentType ?? 'conversational',
-        summary_length: 'detailed',
+        summary_length: 'brief',
       },
     }
 

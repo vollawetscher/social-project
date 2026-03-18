@@ -94,6 +94,23 @@ function FormattedSummary({ text }: { text: string }) {
             </ul>
           )
         }
+        const sentenceItems = block
+          .split(/(?<=[.!?])\s+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+        const shouldAutoList = lines.length <= 2 && block.length > 220 && sentenceItems.length >= 3
+        if (shouldAutoList) {
+          return (
+            <ul key={i} className="list-none space-y-2 pl-0">
+              {sentenceItems.slice(0, 8).map((line, j) => (
+                <li key={j} className="flex gap-2">
+                  <span className="text-muted-foreground shrink-0">•</span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          )
+        }
         return (
           <p key={i} className="text-foreground">
             {block.trim()}

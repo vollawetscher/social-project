@@ -61,6 +61,49 @@ function buildSpeechmaticsAdditionalVocab(input: {
   return Array.from(new Set(normalized)).slice(0, 120)
 }
 
+function compactSpeechmaticsSummary(raw: string): string {
+  const normalized = String(raw || '')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  if (!normalized) return ''
+
+  const MAX_BULLETS = 8
+  const MAX_CHARS = 1200
+  const bulletLike = normalized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .some((line) => /^[-*•]\s+/.test(line))
+
+  let points: string[] = []
+  if (bulletLike) {
+    points = normalized
+      .split('\n')
+      .map((line) => line.trim().replace(/^[-*•]\s+/, ''))
+      .filter(Boolean)
+  } else {
+    points = normalized
+      .split(/\n+/)
+      .flatMap((block) => block.split(/(?<=[.!?])\s+/))
+      .map((item) => item.trim())
+      .filter(Boolean)
+  }
+
+  const deduped = Array.from(new Set(points))
+    .filter((item) => item.length >= 8)
+    .slice(0, MAX_BULLETS)
+
+  if (deduped.length === 0) return normalized.slice(0, MAX_CHARS)
+
+  let compact = deduped.map((item) => `- ${item}`).join('\n')
+  if (compact.length > MAX_CHARS) {
+    compact = `${compact.slice(0, MAX_CHARS - 1).trimEnd()}…`
+  }
+  return compact
+}
+
 /**
  * After the caller's session is transcribed, copy the transcript to any pending
  * callee session that was claimed before transcription completed.
@@ -397,7 +440,7 @@ async function processTranscriptionJob(sessionId: string) {
       .map((t: any) => t?.summary?.trim())
       .filter(Boolean)
     if (summaries.length > 0) {
-      const mergedSummary = summaries.join('\n\n')
+      const mergedSummary = compactSpeechmaticsSummary(summaries.join('\n\n'))
       await supabase
         .from('sessions')
         .update({ speechmatics_summary: mergedSummary })

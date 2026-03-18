@@ -14,12 +14,69 @@ import { detectImportedTextSource } from '@/lib/utils/text-source-detection'
 import { detectTranscriptType, type TranscriptIngestionSource } from '@/lib/utils/transcript-type-detection'
 import type { TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
 import { logError } from '@/lib/services/error-logger'
+import Anthropic from '@anthropic-ai/sdk'
 
 interface ParsedSegment {
   start_ms: number
   end_ms: number
   speaker: string
   text: string
+}
+
+const anthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null
+
+async function generateImportedContentSummary(input: {
+  text: string
+  languageCode: string
+}): Promise<string | null> {
+  if (!anthropic) return null
+
+  const transcriptText = String(input.text || '').trim()
+  if (!transcriptText || transcriptText.length < 80) return null
+
+  const languageHint = input.languageCode && input.languageCode !== 'auto'
+    ? input.languageCode
+    : 'same as transcript'
+
+  const truncatedText = transcriptText.slice(0, 24000)
+  const prompt = `Summarize the following transcript/imported conversation.
+
+Rules:
+- Return 4-8 concise bullet points.
+- Each bullet must be one line.
+- Keep factual and scannable.
+- No headings or intro text.
+- Keep output language in ${languageHint}.
+- If the text is not a real conversation, still summarize the key intent and important details.
+
+Content:
+${truncatedText}`
+
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-5-20250929',
+    max_tokens: 700,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
+  const cleaned = String(text || '')
+    .replace(/```(?:text|markdown)?/gi, '')
+    .replace(/```/g, '')
+    .trim()
+  if (!cleaned) return null
+
+  const lines = cleaned
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter((line) => line.length > 0)
+    .slice(0, 8)
+
+  if (lines.length === 0) return null
+  return lines.map((line) => `- ${line}`).join('\n')
 }
 
 export async function POST(request: Request) {
@@ -243,6 +300,23 @@ export async function POST(request: Request) {
         session_id: session.id,
       }))
       await supabase.from('pii_hits').insert(piiHitsWithSession)
+    }
+
+    // Generate and persist a concise session summary for pasted/uploaded text imports.
+    // Best-effort only: summary failures must not block successful imports.
+    try {
+      const summaryText = await generateImportedContentSummary({
+        text: rawText || segments.map((s: ParsedSegment) => s.text).join(' '),
+        languageCode: langCode,
+      })
+      if (summaryText) {
+        await supabase
+          .from('sessions')
+          .update({ speechmatics_summary: summaryText })
+          .eq('id', session.id)
+      }
+    } catch (summaryError: any) {
+      console.error('[Import Transcript] Summary generation failed:', summaryError?.message || summaryError)
     }
 
     // Trigger post-transcribe (analyze + auto-generate) if user has preference

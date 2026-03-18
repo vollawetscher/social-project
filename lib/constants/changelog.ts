@@ -164,6 +164,27 @@ export const changelog: ChangelogVersion[] = [
         title: 'Suggested Outputs Now Show Target Audience',
         description: 'AI suggestions now include the intended audience (such as internal, client-facing, or executive), so one-click generation better matches who the output is meant for.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Speechmatics Summaries Are Now Compact and Structured',
+        description: 'Session summaries are now generated in a shorter format and normalized into clear bullet points, making them easier to scan without losing key points.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Uploaded Audio Outputs Use Recording Date/Time',
+        description: 'Outputs generated from uploaded audio now use the recording session date and time instead of the current time, so report timing matches the actual conversation.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Text Imports Now Include Session Summaries',
+        description: 'Sessions created from pasted or uploaded transcript content now include an automatic concise summary, so key points are visible immediately even without audio transcription.',
+      },
     ],
   },
   {

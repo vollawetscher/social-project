@@ -113,14 +113,20 @@ export async function POST(request: Request) {
     const callContext = callRows?.[0]
     const fileContext = fileRows?.[0]
     const userTimezone = profileData?.timezone || 'Europe/Berlin'
+    const sessionRecordedAt = (session as any)?.recorded_at || null
 
     const eventStartIso =
       callContext?.started_at ||
       callContext?.scheduled_for ||
+      sessionRecordedAt ||
       fileContext?.created_at ||
       (session as any).created_at ||
       null
     const eventEndIso = callContext?.ended_at || null
+    const isUploadedAudioSession =
+      !callContext &&
+      !!fileContext?.mime_type &&
+      /^(audio|video)\//i.test(String(fileContext.mime_type))
 
     // Fetch transcripts (multiple rows if session has multiple audio files)
     const { data: transcriptRows, error: transcriptError } = await supabase
@@ -351,6 +357,7 @@ Key requirements:
 - Tone: Use a ${toneMap[config.tone] || 'professional'} tone
 - Language: Generate the ENTIRE output in ${outputLanguage}, including all section headers, titles, labels, and body text. Do NOT leave any headers or structural elements in another language.
 - Include a clear "Date/Time" line near the top of the output using the provided session start date/time value.
+- Do NOT use the current date/time when session timing is provided; use the provided session timing context instead.
 - Do NOT use any emojis or emoticons anywhere in the output.
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
@@ -441,20 +448,26 @@ Please generate the requested output following all requirements and guidelines.`
       : ''
 
     if (config.includeDate) {
-      const now = new Date()
-      const dateLabelMap: Record<string, string> = {
-        de: 'Datum', en: 'Date', es: 'Fecha', fr: 'Date', it: 'Data',
-        pt: 'Data', nl: 'Datum', pl: 'Data', ja: '日付', ko: '날짜',
-        zh: '日期', ar: 'التاريخ', ru: 'Дата', tr: 'Tarih', vi: 'Ngày',
-        th: 'วันที่',
+      const referenceDateIso =
+        (isUploadedAudioSession
+          ? (sessionRecordedAt || fileContext?.created_at || eventStartIso)
+          : eventStartIso) || null
+      const referenceDate = referenceDateIso ? new Date(referenceDateIso) : new Date()
+      const dateTimeLabelMap: Record<string, string> = {
+        de: 'Datum/Uhrzeit', en: 'Date/Time', es: 'Fecha/Hora', fr: 'Date/Heure', it: 'Data/Ora',
+        pt: 'Data/Hora', nl: 'Datum/Tijd', pl: 'Data/Godzina', ja: '日時', ko: '날짜/시간',
+        zh: '日期/时间', ar: 'التاريخ/الوقت', ru: 'Дата/Время', tr: 'Tarih/Saat', vi: 'Ngày/Giờ',
+        th: 'วันที่/เวลา',
       }
       const loc = dateLocaleCodeMap[resolvedLanguageCode] || 'en-US'
-      const label = dateLabelMap[resolvedLanguageCode] || 'Date'
-      const formatted = now.toLocaleDateString(loc, {
+      const label = dateTimeLabelMap[resolvedLanguageCode] || 'Date/Time'
+      const formatted = referenceDate.toLocaleString(loc, {
         timeZone: userTimezone,
         year: 'numeric',
         month: 'long',
         day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       })
       generatedContent = `${label}: ${formatted}\n\n${generatedContent}`
     }
