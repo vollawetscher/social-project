@@ -46,42 +46,10 @@ function parseClassification(raw: string): UseCaseClassification | null {
 }
 
 function fallbackClassification(jobTitle: string): UseCaseClassification {
-  const title = jobTitle.toLowerCase()
-  if (/(doctor|nurse|therap|clinic|hospital|logop|physio|med)/.test(title)) {
-    return {
-      industry: 'Healthcare',
-      role: 'Therapist/Clinician',
-      context: 'Clinic/Rehab',
-      suggestedContexts: ['Clinic/Rehab', 'Private Practice', 'Home Visits'],
-    }
-  }
-  if (/(law|attorney|legal|paralegal|counsel)/.test(title)) {
-    return {
-      industry: 'Legal',
-      role: 'Lawyer',
-      context: 'Client Advisory',
-      suggestedContexts: ['Client Advisory', 'Case Prep', 'Internal Legal Review'],
-    }
-  }
-  if (/(sales|account executive|business development|bdr|sdr)/.test(title)) {
-    return {
-      industry: 'Sales',
-      role: 'Sales Professional',
-      context: 'Client Calls',
-      suggestedContexts: ['Client Calls', 'Deal Reviews', 'Team Handoffs'],
-    }
-  }
-  if (/(hr|human resources|talent|recruit|people ops|people operations)/.test(title)) {
-    return {
-      industry: 'Human Resources',
-      role: 'HR Manager/Recruiter',
-      context: 'Hiring & People Operations',
-      suggestedContexts: ['Hiring Interviews', 'People Operations', 'Performance & Development Reviews'],
-    }
-  }
+  const role = jobTitle.trim() || 'Knowledge Worker'
   return {
     industry: 'Professional Services',
-    role: 'Knowledge Worker',
+    role,
     context: 'Client/Project Work',
     suggestedContexts: ['Client/Project Work', 'Internal Meetings', 'Operations'],
   }
@@ -94,6 +62,9 @@ export async function POST(request: Request) {
 
     if (!jobTitle) {
       return NextResponse.json({ error: 'jobTitle is required' }, { status: 400 })
+    }
+    if (jobTitle.length > 120) {
+      return NextResponse.json({ error: 'jobTitle too long' }, { status: 400 })
     }
 
     if (!process.env.ANTHROPIC_API_KEY) {

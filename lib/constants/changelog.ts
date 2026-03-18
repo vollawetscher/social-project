@@ -227,6 +227,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Use-Case Finder Adds Multi-Select and Deeper Personalization',
         description: 'The landing use-case flow now supports multiple selected use cases, includes work-mode profiling (owner vs in-house), adds stronger role-specific suggestions such as HR interview summaries, and better highlights templates and output formats.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Use-Case Finder Adds Journalism-Specific Suggestions',
+        description: 'Journalist and editor profiles now get newsroom-relevant use cases and output mappings such as quote extraction, editorial recaps, and fact-check logs instead of generic documentation suggestions.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Use-Case Finder Now Generates Recommendations for Any Role',
+        description: 'The landing widget now uses AI to generate role-specific use cases and documentation outputs dynamically for any job title instead of relying on fixed profession profiles.',
+      },
     ],
   },
   {

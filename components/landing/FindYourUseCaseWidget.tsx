@@ -26,112 +26,102 @@ type OutputRow = {
   sourceConversation: string
 }
 
-function buildUseCaseOptions(classification: Classification, jobTitle: string): UseCaseOption[] {
-  const industry = classification.industry.toLowerCase()
-  const role = classification.role.toLowerCase()
-  const title = jobTitle.toLowerCase()
-  const hrLike = /(hr|human resources|talent|recruit|people ops|people operations)/.test(`${role} ${title}`)
-
-  if (hrLike) {
-    return [
-      { id: 'interview-summaries', label: 'Interview summaries and candidate evaluations' },
-      { id: 'documentation', label: 'Hiring meeting documentation' },
-      { id: 'reporting', label: 'Hiring pipeline and team reporting' },
-      { id: 'client-communication', label: 'Candidate and hiring-manager communication drafts' },
-      { id: 'compliance', label: 'Compliance-ready hiring records' },
-      { id: 'internal', label: 'Internal handoff notes between recruiters and hiring teams' },
-    ]
-  }
-
-  if (industry.includes('health')) {
-    return [
-      { id: 'documentation', label: 'Session documentation' },
-      { id: 'reporting', label: 'Progress and outcome reporting' },
-      { id: 'client-communication', label: 'Patient or family communication' },
-      { id: 'handover', label: 'Interdisciplinary handover notes' },
-      { id: 'compliance', label: 'Compliance-ready records' },
-    ]
-  }
-  if (industry.includes('legal')) {
-    return [
-      { id: 'documentation', label: 'Case documentation' },
-      { id: 'reporting', label: 'Matter status reporting' },
-      { id: 'client-communication', label: 'Client updates and next steps' },
-      { id: 'internal', label: 'Internal legal strategy notes' },
-      { id: 'compliance', label: 'Evidence and audit trail prep' },
-    ]
-  }
-  if (industry.includes('sales')) {
-    return [
-      { id: 'documentation', label: 'Call notes and CRM-ready summaries' },
-      { id: 'reporting', label: 'Pipeline and deal reporting' },
-      { id: 'client-communication', label: 'Client follow-up drafts' },
-      { id: 'internal', label: 'Internal handoff and enablement notes' },
-      { id: 'insights', label: 'Signal/risk insights from calls' },
-    ]
-  }
-  return [
-    { id: 'documentation', label: 'Meeting documentation' },
-    { id: 'reporting', label: 'Executive and team reporting' },
-    { id: 'client-communication', label: 'Client communication drafts' },
-    { id: 'internal', label: 'Internal alignment notes' },
-    { id: 'compliance', label: 'Compliance and audit summaries' },
-  ]
+type RecommendationPayload = {
+  useCaseOptions: UseCaseOption[]
+  documentsByUseCase: Record<string, OutputRow[]>
+  valueProp: string
 }
 
-function buildOutputRowsForUseCase(classification: Classification, useCaseId: string): OutputRow[] {
-  const context = classification.context
-  switch (useCaseId) {
-    case 'interview-summaries':
-      return [
-        { documentType: 'Interview summary by candidate', sourceConversation: 'Recruiter and panel interviews' },
-        { documentType: 'Scorecard-aligned candidate evaluation', sourceConversation: 'Structured interview debriefs' },
-        { documentType: 'Hiring recommendation brief', sourceConversation: 'Decision and calibration meetings' },
-      ]
-    case 'documentation':
-      return [
-        { documentType: 'Structured conversation notes', sourceConversation: `${context} meetings or calls` },
-        { documentType: 'Action items with owners', sourceConversation: 'Team syncs and decision calls' },
-        { documentType: 'Timeline-ready summary', sourceConversation: 'Weekly project conversations' },
-      ]
-    case 'reporting':
-      return [
-        { documentType: 'Weekly status report', sourceConversation: `${context} updates` },
-        { documentType: 'Risk and blocker summary', sourceConversation: 'Escalation and planning calls' },
-        { documentType: 'Decision log', sourceConversation: 'Leadership and stakeholder meetings' },
-      ]
-    case 'client-communication':
-      return [
-        { documentType: 'Client-facing follow-up email', sourceConversation: 'Client calls and meetings' },
-        { documentType: 'Plain-language summary', sourceConversation: 'Complex review conversations' },
-        { documentType: 'Next-step confirmation', sourceConversation: 'Commitment and deadline discussions' },
-      ]
-    case 'compliance':
-      return [
-        { documentType: 'Compliance-ready record', sourceConversation: `${context} consultations` },
-        { documentType: 'Consent and commitments summary', sourceConversation: 'Regulated conversations' },
-        { documentType: 'Audit trail brief', sourceConversation: 'Cross-team review calls' },
-      ]
-    default:
-      return [
-        { documentType: 'Internal briefing note', sourceConversation: `${context} coordination calls` },
-        { documentType: 'Handover summary', sourceConversation: 'Cross-functional syncs' },
-        { documentType: 'Priority action list', sourceConversation: 'Operations and planning meetings' },
-      ]
-  }
-}
-
-function buildValueProp(classification: Classification, useCaseLabels: string[], workMode: string): string {
-  const joinedUseCases = useCaseLabels.length > 1
-    ? `${useCaseLabels.slice(0, -1).join(', ')}, and ${useCaseLabels[useCaseLabels.length - 1]}`
-    : (useCaseLabels[0] || 'your workflow')
+function fallbackRecommendations(classification: Classification, workMode: string): RecommendationPayload {
+  const context = classification.context || 'project'
   const workContext =
     workMode === 'owner'
       ? 'as an owner'
       : workMode === 'employer'
-        ? 'as part of a larger organization'
-        : 'across both independent and team settings'
-  return `For ${classification.role.toLowerCase()} workflows in ${classification.industry}, Notissima turns conversations into reliable outputs for ${joinedUseCases.toLowerCase()}. It helps you standardize quality ${workContext}, reduce manual documentation work, and convert every meeting or call into decisions, follow-ups, and client-ready communication. You move faster with less admin overhead and clearer execution across your workday.`
+        ? 'inside larger teams'
+        : 'across independent and in-house work'
+
+  const useCaseOptions: UseCaseOption[] = [
+    { id: 'documentation', label: 'Conversation documentation' },
+    { id: 'reporting', label: 'Status and decision reporting' },
+    { id: 'client-communication', label: 'Client communication drafts' },
+    { id: 'follow-ups', label: 'Follow-up actions and commitments' },
+    { id: 'compliance', label: 'Compliance and audit-ready records' },
+  ]
+
+  const documentsByUseCase: Record<string, OutputRow[]> = {
+    documentation: [
+      { documentType: 'Structured meeting/call notes', sourceConversation: `${context} meetings and calls` },
+      { documentType: 'Topic and decision summary', sourceConversation: 'Planning and alignment conversations' },
+      { documentType: 'Action tracker with owners', sourceConversation: 'Execution and handoff conversations' },
+    ],
+    reporting: [
+      { documentType: 'Weekly status report', sourceConversation: `${context} update calls` },
+      { documentType: 'Decision and risk log', sourceConversation: 'Leadership and stakeholder discussions' },
+      { documentType: 'Outcome summary for teams', sourceConversation: 'Cross-functional syncs' },
+    ],
+    'client-communication': [
+      { documentType: 'Client follow-up email draft', sourceConversation: 'Client meetings and clarification calls' },
+      { documentType: 'Summary for external recipients', sourceConversation: 'Review and negotiation conversations' },
+      { documentType: 'Next-step confirmation', sourceConversation: 'Commitment and deadline discussions' },
+    ],
+    'follow-ups': [
+      { documentType: 'Action plan by owner and deadline', sourceConversation: 'Project checkpoint calls' },
+      { documentType: 'Open questions list', sourceConversation: 'Problem-solving and escalation conversations' },
+      { documentType: 'Dependency tracker', sourceConversation: 'Cross-team coordination meetings' },
+    ],
+    compliance: [
+      { documentType: 'Compliance-ready record', sourceConversation: 'Regulated or sensitive conversations' },
+      { documentType: 'Consent and commitment summary', sourceConversation: 'Client/service consent and obligation calls' },
+      { documentType: 'Audit trail brief', sourceConversation: 'Review and verification meetings' },
+    ],
+  }
+
+  const valueProp = `Notissima turns your conversations into the documentation your role actually needs ${workContext}. Instead of manually rewriting notes, you get reliable outputs for reporting, follow-ups, and communication in minutes. This helps you reduce admin effort, improve execution quality, and keep decisions traceable across your workflow.`
+  return { useCaseOptions, documentsByUseCase, valueProp }
+}
+
+function normalizeRecommendationPayload(raw: unknown, fallback: RecommendationPayload): RecommendationPayload {
+  if (!raw || typeof raw !== 'object') return fallback
+  const value = raw as Record<string, unknown>
+
+  const useCaseOptions = Array.isArray(value.useCaseOptions)
+    ? value.useCaseOptions
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const row = item as Record<string, unknown>
+        const id = String(row.id || '').trim()
+        const label = String(row.label || '').trim()
+        if (!id || !label) return null
+        return { id, label }
+      })
+      .filter(Boolean) as UseCaseOption[]
+    : []
+
+  const docsRaw = value.documentsByUseCase && typeof value.documentsByUseCase === 'object'
+    ? value.documentsByUseCase as Record<string, unknown>
+    : {}
+  const documentsByUseCase: Record<string, OutputRow[]> = {}
+  for (const option of useCaseOptions) {
+    const rowsRaw = docsRaw[option.id]
+    const rows = Array.isArray(rowsRaw)
+      ? rowsRaw
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null
+          const row = item as Record<string, unknown>
+          const documentType = String(row.documentType || '').trim()
+          const sourceConversation = String(row.sourceConversation || '').trim()
+          if (!documentType || !sourceConversation) return null
+          return { documentType, sourceConversation }
+        })
+        .filter(Boolean) as OutputRow[]
+      : []
+    if (rows.length > 0) documentsByUseCase[option.id] = rows
+  }
+
+  const valueProp = String(value.valueProp || '').trim()
+  if (useCaseOptions.length === 0 || Object.keys(documentsByUseCase).length === 0 || !valueProp) return fallback
+  return { useCaseOptions, documentsByUseCase, valueProp }
 }
 
 export default function FindYourUseCaseWidget() {
@@ -144,10 +134,12 @@ export default function FindYourUseCaseWidget() {
   const [workMode, setWorkMode] = useState<'owner' | 'employer' | 'both' | ''>('')
   const [selectedUseCases, setSelectedUseCases] = useState<string[]>([])
   const [classificationError, setClassificationError] = useState<string | null>(null)
+  const [recommendationLoading, setRecommendationLoading] = useState(false)
+  const [recommendations, setRecommendations] = useState<RecommendationPayload | null>(null)
 
   const useCaseOptions = useMemo(
-    () => (classification ? buildUseCaseOptions(classification, jobTitle) : []),
-    [classification, jobTitle]
+    () => recommendations?.useCaseOptions || [],
+    [recommendations]
   )
 
   const selectedUseCaseLabels = useMemo(
@@ -157,19 +149,21 @@ export default function FindYourUseCaseWidget() {
 
   const outputRows = useMemo(() => {
     if (!classification || selectedUseCases.length === 0) return []
-    const rows = selectedUseCases.flatMap((id) =>
-      buildOutputRowsForUseCase({ ...classification, context: selectedContext || classification.context }, id)
+    const source = recommendations || fallbackRecommendations(
+      { ...classification, context: selectedContext || classification.context },
+      workMode || 'both'
     )
+    const rows = selectedUseCases.flatMap((id) => source.documentsByUseCase[id] || [])
     const deduped = Array.from(
       new Map(rows.map((row) => [`${row.documentType}|${row.sourceConversation}`, row])).values()
     )
     return deduped.slice(0, 8)
-  }, [classification, selectedUseCases, selectedContext])
+  }, [classification, selectedUseCases, selectedContext, recommendations, workMode])
 
   const valueProp = useMemo(() => {
     if (!classification || selectedUseCaseLabels.length === 0 || !workMode) return ''
-    return buildValueProp(classification, selectedUseCaseLabels, workMode)
-  }, [classification, selectedUseCaseLabels, workMode])
+    return recommendations?.valueProp || fallbackRecommendations(classification, workMode).valueProp
+  }, [classification, selectedUseCaseLabels, workMode, recommendations])
 
   const switchStep = (next: Step) => {
     setTransitioning(true)
@@ -197,11 +191,47 @@ export default function FindYourUseCaseWidget() {
       setClassification(parsed)
       setSelectedContext(parsed.context)
       setSelectedUseCases([])
+      setRecommendations(null)
     } catch (error) {
       console.error('Classification failed:', error)
       setClassificationError('Could not classify right now. Please try again.')
     } finally {
       setClassifying(false)
+    }
+  }
+
+  const generateRecommendations = async () => {
+    if (!classification || !selectedContext || !workMode) return
+    setRecommendationLoading(true)
+    try {
+      const fallback = fallbackRecommendations(
+        { ...classification, context: selectedContext || classification.context },
+        workMode
+      )
+      const res = await fetch('/api/landing/use-case-recommendations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobTitle: jobTitle.trim(),
+          industry: classification.industry,
+          role: classification.role,
+          context: selectedContext || classification.context,
+          workMode,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to generate recommendations')
+      setRecommendations(normalizeRecommendationPayload(data?.recommendations, fallback))
+    } catch (error) {
+      console.error('Recommendation generation failed:', error)
+      setRecommendations(
+        fallbackRecommendations(
+          { ...classification, context: selectedContext || classification.context },
+          workMode
+        )
+      )
+    } finally {
+      setRecommendationLoading(false)
     }
   }
 
@@ -240,23 +270,15 @@ export default function FindYourUseCaseWidget() {
                 </Button>
               </div>
             </div>
-            {classificationError && (
-              <p className="text-xs text-rose-300">{classificationError}</p>
-            )}
+            {classificationError && <p className="text-xs text-rose-300">{classificationError}</p>}
 
             {classification && (
               <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/70 p-3">
                 <p className="text-sm text-slate-300">We classified this as:</p>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="bg-slate-800 text-slate-100 border-slate-700">
-                    {classification.industry}
-                  </Badge>
-                  <Badge variant="secondary" className="bg-slate-800 text-slate-100 border-slate-700">
-                    {classification.role}
-                  </Badge>
-                  <Badge variant="secondary" className="bg-slate-800 text-slate-100 border-slate-700">
-                    {selectedContext || classification.context}
-                  </Badge>
+                  <Badge variant="secondary" className="bg-slate-800 text-slate-100 border-slate-700">{classification.industry}</Badge>
+                  <Badge variant="secondary" className="bg-slate-800 text-slate-100 border-slate-700">{classification.role}</Badge>
+                  <Badge variant="secondary" className="bg-slate-800 text-slate-100 border-slate-700">{selectedContext || classification.context}</Badge>
                 </div>
 
                 <div className="space-y-2">
@@ -307,7 +329,10 @@ export default function FindYourUseCaseWidget() {
 
             <div className="pt-1">
               <Button
-                onClick={() => switchStep(2)}
+                onClick={async () => {
+                  await generateRecommendations()
+                  switchStep(2)
+                }}
                 disabled={!canProceedStep1}
                 className="w-full sm:w-auto bg-white text-slate-900 hover:bg-slate-100"
               >
@@ -327,6 +352,9 @@ export default function FindYourUseCaseWidget() {
             <p className="text-sm text-slate-300">
               Which use cases matter most in <span className="text-slate-100">{selectedContext}</span>? (Select one or more)
             </p>
+            {recommendationLoading && (
+              <p className="text-xs text-slate-400">Preparing role-specific recommendations...</p>
+            )}
             <div className="grid gap-2 sm:grid-cols-2">
               {useCaseOptions.map((option) => (
                 <button
@@ -390,9 +418,7 @@ export default function FindYourUseCaseWidget() {
               </table>
             </div>
 
-            <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
-              {valueProp}
-            </p>
+            <p className="text-sm sm:text-base text-slate-200 leading-relaxed">{valueProp}</p>
 
             <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3 space-y-2">
               <p className="text-sm font-medium text-slate-100">You can also tailor this your way:</p>
