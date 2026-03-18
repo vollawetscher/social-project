@@ -79,6 +79,7 @@ export default function SettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [complianceOpen, setComplianceOpen] = useState(false)
   const [complianceQuery, setComplianceQuery] = useState("")
+  const [showMissingOnly, setShowMissingOnly] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState("")
   const [deletingAccount, setDeletingAccount] = useState(false)
 
@@ -196,22 +197,47 @@ export default function SettingsPage() {
     },
   ]), [t])
 
+  const complianceProvidersWithChecklist = useMemo(() => {
+    return complianceProviders.map((provider) => {
+      const missingItems: string[] = []
+      if (!provider.dpaUrl) missingItems.push(t('complianceMissingDpa'))
+      if (!provider.securityUrl) missingItems.push(t('complianceMissingSecurityDocs'))
+      if (!provider.subprocessorUrl) missingItems.push(t('complianceMissingSubprocessors'))
+      if (!provider.region) missingItems.push(t('complianceMissingRegion'))
+      if (!provider.retention) missingItems.push(t('complianceMissingRetention'))
+      if (!provider.transferMechanism) missingItems.push(t('complianceMissingTransferMechanism'))
+      if (!provider.lastReviewed) missingItems.push(t('complianceMissingLastReviewed'))
+
+      return {
+        ...provider,
+        status: missingItems.length === 0 ? "verified" as const : "review" as const,
+        missingItems,
+        checklistComplete: missingItems.length === 0,
+      }
+    })
+  }, [complianceProviders, t])
+
   const complianceFilteredProviders = useMemo(() => {
     const q = complianceQuery.trim().toLowerCase()
-    if (!q) return complianceProviders
-    return complianceProviders.filter((provider) => {
+    const source = showMissingOnly
+      ? complianceProvidersWithChecklist.filter((p) => !p.checklistComplete)
+      : complianceProvidersWithChecklist
+    if (!q) return source
+    return source.filter((provider) => {
       return [
         provider.name,
         provider.purpose,
         provider.dataCategories,
         provider.region,
         provider.retention,
+        provider.missingItems.join(' '),
       ].join(" ").toLowerCase().includes(q)
     })
-  }, [complianceProviders, complianceQuery])
+  }, [complianceProvidersWithChecklist, complianceQuery, showMissingOnly])
 
-  const complianceCompleteCount = complianceProviders.filter((p) => p.status === "verified").length
-  const complianceLastReviewed = complianceProviders
+  const complianceCompleteCount = complianceProvidersWithChecklist.filter((p) => p.checklistComplete).length
+  const complianceMissingCount = complianceProvidersWithChecklist.filter((p) => !p.checklistComplete).length
+  const complianceLastReviewed = complianceProvidersWithChecklist
     .map((p) => new Date(p.lastReviewed).getTime())
     .filter((n) => Number.isFinite(n) && n > 0)
     .reduce((acc, value) => Math.max(acc, value), 0)
@@ -707,6 +733,19 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div className="space-y-3 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={showMissingOnly ? "default" : "outline"}
+                            onClick={() => setShowMissingOnly((prev) => !prev)}
+                          >
+                            {showMissingOnly ? t('complianceShowAll') : t('complianceShowMissingOnly')}
+                          </Button>
+                          <Badge variant="outline" className="text-[11px]">
+                            {t('complianceMissingCount', { count: complianceMissingCount })}
+                          </Badge>
+                        </div>
                         {complianceFilteredProviders.map((provider) => (
                           <div key={provider.id} className="rounded-lg border border-border bg-card p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -747,6 +786,15 @@ export default function SettingsPage() {
                                   <ExternalLink className="h-3 w-3 ml-1" />
                                 </Button>
                               </a>
+                            </div>
+                            <div className="mt-2">
+                              {provider.checklistComplete ? (
+                                <p className="text-[11px] text-success">{t('complianceChecklistComplete')}</p>
+                              ) : (
+                                <p className="text-[11px] text-warning">
+                                  {t('complianceMissingItems')}: {provider.missingItems.join(', ')}
+                                </p>
+                              )}
                             </div>
                             {provider.id === 'railway' && (
                               <p className="mt-2 text-[11px] text-muted-foreground">

@@ -206,6 +206,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Compliance Links Updated for LiveKit, Railway, and seven.io',
         description: 'Provider documentation links and verification status were updated with current DPA, security, and subprocessor sources to make compliance checks more accurate.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Compliance Matrix Adds Missing-Items Checklist',
+        description: 'The compliance matrix now highlights missing documentation fields per provider and includes a one-click filter to review unresolved items faster.',
+      },
     ],
   },
   {
