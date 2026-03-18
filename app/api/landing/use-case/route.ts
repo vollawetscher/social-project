@@ -14,6 +14,11 @@ type UseCaseResponse = {
   }
   useCases: Array<{ id: string; label: string }>
   documents: Array<{ documentType: string; sourceConversation: string }>
+  affirmationsByUseCase: Array<{
+    useCaseId: string
+    complianceAffirmation: string
+    securityAffirmation: string
+  }>
   valueProp: string
 }
 
@@ -32,7 +37,7 @@ function parseJson(raw: string): UseCaseResponse | null {
     const industry = String(classification.industry || '').trim()
     const role = String(classification.role || '').trim()
     const context = String(classification.context || '').trim()
-    const useCases = Array.isArray(parsed.useCases)
+    const useCases: UseCaseResponse['useCases'] = Array.isArray(parsed.useCases)
       ? parsed.useCases
         .map((u: any) => ({ id: String(u?.id || '').trim(), label: String(u?.label || '').trim() }))
         .filter((u: any) => u.id && u.label)
@@ -47,14 +52,36 @@ function parseJson(raw: string): UseCaseResponse | null {
         .filter((d: any) => d.documentType && d.sourceConversation)
         .slice(0, 10)
       : []
+    const affirmationsByUseCase: UseCaseResponse['affirmationsByUseCase'] = Array.isArray(parsed.affirmationsByUseCase)
+      ? parsed.affirmationsByUseCase
+        .map((a: any) => ({
+          useCaseId: String(a?.useCaseId || '').trim(),
+          complianceAffirmation: String(a?.complianceAffirmation || '').trim(),
+          securityAffirmation: String(a?.securityAffirmation || '').trim(),
+        }))
+        .filter((a: any) => a.useCaseId && a.complianceAffirmation && a.securityAffirmation)
+        .slice(0, 8)
+      : []
     const valueProp = String(parsed.valueProp || '').trim()
-    if (!domain || !industry || !role || !context || useCases.length === 0 || documents.length === 0 || !valueProp) {
+    const useCaseIds = new Set(useCases.map((u) => u.id))
+    const linkedAffirmations = affirmationsByUseCase.filter((a) => useCaseIds.has(a.useCaseId))
+    if (
+      !domain ||
+      !industry ||
+      !role ||
+      !context ||
+      useCases.length === 0 ||
+      documents.length === 0 ||
+      linkedAffirmations.length === 0 ||
+      !valueProp
+    ) {
       return null
     }
     return {
       classification: { domain, industry, role, context },
       useCases,
       documents,
+      affirmationsByUseCase: linkedAffirmations,
       valueProp,
     }
   } catch {
@@ -82,6 +109,28 @@ function fallback(selfDescription: string): UseCaseResponse {
       { documentType: 'Decision and action summary', sourceConversation: 'Planning and alignment conversations' },
       { documentType: 'Follow-up checklist', sourceConversation: 'Execution and handoff meetings' },
       { documentType: 'Stakeholder update brief', sourceConversation: 'Status and review calls' },
+    ],
+    affirmationsByUseCase: [
+      {
+        useCaseId: 'documentation',
+        complianceAffirmation: 'Meeting documentation can follow your retention and accountability requirements with traceable version history.',
+        securityAffirmation: 'Conversation-derived notes can be access-scoped to approved collaborators only.',
+      },
+      {
+        useCaseId: 'reporting',
+        complianceAffirmation: 'Status reporting can standardize required fields for governance, audit, or stakeholder review.',
+        securityAffirmation: 'Reporting outputs can be shared with role-based access controls and controlled distribution.',
+      },
+      {
+        useCaseId: 'client-communication',
+        complianceAffirmation: 'Client communication drafts can align to approved language and documentation obligations.',
+        securityAffirmation: 'Externally shared drafts can be reviewed before send to prevent unintended disclosure.',
+      },
+      {
+        useCaseId: 'follow-ups',
+        complianceAffirmation: 'Action follow-ups can preserve accountable ownership and due-date traceability.',
+        securityAffirmation: 'Follow-up records can stay inside protected workspaces with auditable access.',
+      },
     ],
     valueProp:
       'Notissima turns your conversations into ready-to-use documentation, follow-ups, and reporting outputs in minutes. Instead of manually rewriting notes, you get consistent structure and clearer decisions from every meeting. This helps reduce admin effort while improving execution quality.',
@@ -139,12 +188,22 @@ Return strict JSON:
   "documents": [
     { "documentType": "string", "sourceConversation": "string" }
   ],
+  "affirmationsByUseCase": [
+    {
+      "useCaseId": "kebab-case",
+      "complianceAffirmation": "string",
+      "securityAffirmation": "string"
+    }
+  ],
   "valueProp": "2-3 sentences"
 }
 
 Constraints:
 - useCases: 4-6
 - documents: 5-10
+- affirmationsByUseCase: exactly one item per use case id
+- each complianceAffirmation must be concrete and use-case specific
+- each securityAffirmation must be concrete and use-case specific
 - sourceConversation must be concrete (e.g. "customer implementation calls", "editorial planning meetings")
 - documentType should sound like something professionals actually use
 - No markdown, no explanation, JSON only.`,

@@ -18,6 +18,11 @@ type UseCaseResult = {
   }
   useCases: Array<{ id: string; label: string }>
   documents: Array<{ documentType: string; sourceConversation: string }>
+  affirmationsByUseCase: Array<{
+    useCaseId: string
+    complianceAffirmation: string
+    securityAffirmation: string
+  }>
   valueProp: string
 }
 
@@ -128,6 +133,27 @@ export default function FindYourUseCaseWidget() {
             </div>
 
             <p className="text-sm sm:text-base text-slate-200 leading-relaxed">{result.valueProp}</p>
+
+            <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3 space-y-3">
+              <p className="text-sm font-medium text-slate-100">Use-case specific compliance and security affirmations</p>
+              <div className="space-y-2">
+                {result.useCases.map((useCase) => {
+                  const affirmations = result.affirmationsByUseCase.find((item) => item.useCaseId === useCase.id)
+                  if (!affirmations) return null
+                  return (
+                    <div key={useCase.id} className="rounded-md border border-slate-800 bg-slate-950/70 p-3 space-y-1">
+                      <p className="text-sm font-medium text-slate-100">{useCase.label}</p>
+                      <p className="text-xs text-slate-300">
+                        <span className="text-slate-200">Compliance:</span> {affirmations.complianceAffirmation}
+                      </p>
+                      <p className="text-xs text-slate-300">
+                        <span className="text-slate-200">Security:</span> {affirmations.securityAffirmation}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
 
             <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3 space-y-2">
               <p className="text-sm font-medium text-slate-100">Optional correction</p>

@@ -255,6 +255,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Use-Case Finder Streamlines to One AI Call',
         description: 'The landing flow now turns your self-description into immediate personalized output in one step, with an optional correction path for quick refinements.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Use-Case Finder Adds Compliance and Security Affirmations',
+        description: 'Use-case results now include dedicated compliance and security affirmations per recommendation so trust and governance expectations are clear from the first output.',
+      },
     ],
   },
   {
