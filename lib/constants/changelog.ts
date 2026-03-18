@@ -213,6 +213,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Compliance Matrix Adds Missing-Items Checklist',
         description: 'The compliance matrix now highlights missing documentation fields per provider and includes a one-click filter to review unresolved items faster.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Landing Page Adds Interactive Use-Case Finder',
+        description: 'A new 3-step inline widget helps you map your role to practical Notissima outputs and conversation sources before starting your free trial.',
+      },
     ],
   },
   {

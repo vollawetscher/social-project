@@ -6,6 +6,7 @@ import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Menu, X } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/locale-switcher'
+import FindYourUseCaseWidget from '@/components/landing/FindYourUseCaseWidget'
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -72,9 +73,9 @@ export default function LandingPage() {
               <Link href="/login" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Log in
               </Link>
-              <Link href="/signup" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
-                Join the Beta
-              </Link>
+              <a href="#find-use-case" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
+                Find out what it can do for you
+              </a>
               <div className="pt-2 border-t border-slate-100">
                 <LocaleSwitcher />
               </div>
@@ -107,10 +108,10 @@ export default function LandingPage() {
 
           <div className="mt-10">
             <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100 font-semibold px-8">
-              <Link href="/signup" className="inline-flex items-center gap-2">
-                Join the Beta
+              <a href="#find-use-case" className="inline-flex items-center gap-2">
+                Find out what it can do for you
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </a>
             </Button>
           </div>
         </div>
@@ -204,18 +205,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-20 px-6 bg-white">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
-            Join the beta. Get more out of your next conversation instantly!
+      <section id="find-use-case" className="py-20 px-6 bg-slate-950">
+        <div className="max-w-5xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+            Find out what it can do for you
           </h2>
-          <div className="mt-8">
-            <Button asChild size="lg" className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8">
-              <Link href="/signup" className="inline-flex items-center gap-2">
-                Join the Beta
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+          <p className="mt-3 text-sm sm:text-base text-slate-300">
+            A quick 3-step flow to discover the best Notissima outputs for your role.
+          </p>
+          <div className="mt-8 text-left">
+            <FindYourUseCaseWidget />
           </div>
         </div>
       </section>
