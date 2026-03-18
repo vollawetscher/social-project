@@ -35,6 +35,10 @@ const LANG_NAMES: Record<string, string> = {
   sv: 'Swedish', ru: 'Russian', ja: 'Japanese', zh: 'Chinese',
   ko: 'Korean', ar: 'Arabic', hi: 'Hindi',
 }
+const ALLOWED_SUGGESTION_AUDIENCES = ['internal', 'external', 'client', 'legal', 'executive'] as const
+function isAllowedSuggestionAudience(value: unknown): value is (typeof ALLOWED_SUGGESTION_AUDIENCES)[number] {
+  return typeof value === 'string' && ALLOWED_SUGGESTION_AUDIENCES.includes(value as (typeof ALLOWED_SUGGESTION_AUDIENCES)[number])
+}
 
 const asSegmentArray = (value: unknown): { start_ms?: number; end_ms?: number; [k: string]: any }[] =>
   Array.isArray(value) ? (value as { start_ms?: number; end_ms?: number; [k: string]: any }[]) : []
@@ -435,7 +439,8 @@ export async function POST(
    - Legal: deposition summary, client status memo, billing timeline notes
    - Medical: consultation notes, referral summary, patient-facing summary
    - General: meeting minutes, action items, executive summary
-   Customize suggestions for the ACTUAL domain and conversation type. Each needs: title (short), description (1 line), generationInstructions (detailed prompt for AI to generate this output).
+  Customize suggestions for the ACTUAL domain and conversation type. Each needs: title (short), description (1 line), generationInstructions (detailed prompt for AI to generate this output), audience.
+  Audience must be one of: "internal", "external", "client", "legal", "executive".
    **LANGUAGE for suggestedOutputFormats**: Write the title and description fields in **${outputLangName}**. The generationInstructions should also be in ${outputLangName}.
 
 Transcript sample:
@@ -485,9 +490,9 @@ Respond in this exact JSON format:
     ]
   },
   "suggestedOutputFormats": [
-    {"title": "...", "description": "...", "generationInstructions": "..."},
-    {"title": "...", "description": "...", "generationInstructions": "..."},
-    {"title": "...", "description": "...", "generationInstructions": "..."}
+    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "internal"},
+    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "external"},
+    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "client"}
   ]
 }
 
@@ -585,7 +590,19 @@ Respond in this exact JSON format:
     // Update session with AI suggestions and extracted context
     console.log('[Analyze API] Updating session in database...')
     const suggestedFormats = Array.isArray(analysis.suggestedOutputFormats)
-      ? analysis.suggestedOutputFormats.slice(0, 3)
+      ? analysis.suggestedOutputFormats
+          .slice(0, 3)
+          .map((s: unknown) => {
+            const suggestion = (typeof s === 'object' && s !== null ? s : {}) as Record<string, unknown>
+            return {
+              title: String(suggestion.title || ''),
+              description: String(suggestion.description || ''),
+              generationInstructions: String(suggestion.generationInstructions || ''),
+              audience: isAllowedSuggestionAudience(suggestion.audience)
+                ? suggestion.audience
+                : 'internal',
+            }
+          })
       : []
     const { error: updateError } = await supabase
       .from('sessions')

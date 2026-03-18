@@ -68,6 +68,12 @@ import { useAuth } from "@/lib/auth/AuthProvider"
 import { BugReporter } from "@/components/error/BugReporter"
 import type { TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
 
+const SUGGESTION_AUDIENCES = ['internal', 'external', 'client', 'legal', 'executive'] as const
+type SuggestionAudience = (typeof SUGGESTION_AUDIENCES)[number]
+function isSuggestionAudience(value: unknown): value is SuggestionAudience {
+  return typeof value === 'string' && SUGGESTION_AUDIENCES.includes(value as SuggestionAudience)
+}
+
 /** Renders Speechmatics summary with paragraphs and bullet lists */
 function FormattedSummary({ text }: { text: string }) {
   const blocks = text.split(/\n\n+/).filter(Boolean)
@@ -106,6 +112,7 @@ export default function SessionDetailPage() {
   const tCommon = useTranslations('common')
   const tOutputs = useTranslations('outputs')
   const tErrors = useTranslations('errors')
+  const tLabels = useTranslations('labels')
   const locale = useLocale()
   const { user, profile } = useAuth()
   const isAdmin = (profile as any)?.role === 'admin'
@@ -332,6 +339,9 @@ export default function SessionDetailPage() {
   // Generate output from AI suggestion (quick one-click)
   const handleGenerateFromSuggestion = async (suggestion: SuggestedOutputFormat, index: number) => {
     if (!session) return
+    const suggestionAudience = isSuggestionAudience(suggestion.audience)
+      ? suggestion.audience
+      : 'internal'
     setGeneratingSuggestionIndex(index)
     try {
       const response = await fetch('/api/outputs/generate', {
@@ -343,7 +353,7 @@ export default function SessionDetailPage() {
             templateId: null,
             templateName: suggestion.title,
             perspective: 'observer',
-            audience: 'internal',
+            audience: suggestionAudience,
             language: profileLanguage || session.languageCode || 'de',
             tone: 'neutral',
             format: 'markdown',
@@ -365,6 +375,11 @@ export default function SessionDetailPage() {
     } finally {
       setGeneratingSuggestionIndex(null)
     }
+  }
+
+  const getSuggestionAudienceLabel = (audience?: SuggestedOutputFormat['audience']) => {
+    const normalizedAudience = isSuggestionAudience(audience) ? audience : 'internal'
+    return tLabels(`audiences.${normalizedAudience}`)
   }
 
   const handleSaveOutputAsTemplate = async (outputId: string) => {
@@ -1026,9 +1041,7 @@ export default function SessionDetailPage() {
                   </h3>
                   <div className="space-y-2">
                     {session?.recordingType && (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                        {/* TODO: i18n - "Type" label needs a new key */}
-                        <span className="text-sm text-muted-foreground">Type</span>
+                      <div className="flex items-center p-3 rounded-lg bg-secondary/50">
                         <Badge variant="outline" className="capitalize">
                           {session.recordingType.replace(/_/g, ' ')}
                         </Badge>
@@ -1220,6 +1233,11 @@ export default function SessionDetailPage() {
                         className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2 overflow-hidden min-w-0"
                       >
                         <h4 className="text-sm font-medium text-foreground break-words line-clamp-2">{suggestion.title}</h4>
+                        <div>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {getSuggestionAudienceLabel(suggestion.audience)}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-muted-foreground flex-1 break-words line-clamp-3">
                           {suggestion.description}
                         </p>
@@ -1468,9 +1486,7 @@ export default function SessionDetailPage() {
                   </h3>
                   <div className="space-y-2">
                     {session?.recordingType && (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                        {/* TODO: i18n - "Type" label needs a new key */}
-                        <span className="text-sm text-muted-foreground">Type</span>
+                      <div className="flex items-center p-3 rounded-lg bg-secondary/50">
                         <Badge variant="outline" className="capitalize">
                           {session.recordingType.replace(/_/g, ' ')}
                         </Badge>
@@ -1665,6 +1681,11 @@ export default function SessionDetailPage() {
                         className="p-4 rounded-lg border border-border bg-secondary/30 hover:border-primary/30 transition-colors flex flex-col gap-2 overflow-hidden min-w-0"
                       >
                         <h4 className="text-sm font-medium text-foreground break-words line-clamp-2">{suggestion.title}</h4>
+                        <div>
+                          <Badge variant="secondary" className="text-[10px]">
+                            {getSuggestionAudienceLabel(suggestion.audience)}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-muted-foreground flex-1 break-words line-clamp-3">
                           {suggestion.description}
                         </p>

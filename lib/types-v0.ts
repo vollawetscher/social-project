@@ -160,6 +160,7 @@ export interface SuggestedOutputFormat {
   title: string
   description: string
   generationInstructions: string
+  audience?: Audience
 }
 
 export interface TemplateSection {

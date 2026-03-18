@@ -150,6 +150,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Dynamic Speechmatics Dictionary from Session Context',
         description: 'Transcription now sends a richer vocabulary built from participants, context, corrections, and call contact names to improve recognition accuracy and summary quality.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Cleaner Recording Classification Badge',
+        description: 'The recording classification badge now appears left-aligned without the extra “Type” label, making the context panel cleaner and easier to scan.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Suggested Outputs Now Show Target Audience',
+        description: 'AI suggestions now include the intended audience (such as internal, client-facing, or executive), so one-click generation better matches who the output is meant for.',
+      },
     ],
   },
   {
