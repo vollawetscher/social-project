@@ -1065,10 +1065,10 @@ export default function SessionDetailPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">{t('speakers')}</p>
                         <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
-                          {session.extractedContext.participants.map((participant: any, idx: number) => {
+                          {(session.extractedContext.participants || []).map((participant: any, idx: number) => {
                             const name = typeof participant === 'string' ? participant : participant.name
                             const role = typeof participant === 'object' && participant.role ? participant.role : null
-                            const isUser = isParticipantYou(participant, session.extractedContext.participants)
+                            const isUser = isParticipantYou(participant, session?.extractedContext?.participants || [])
                             
                             return (
                               <div key={idx} className="flex items-center gap-2 flex-wrap">
@@ -1509,10 +1509,10 @@ export default function SessionDetailPage() {
                       <div className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">{t('speakers')}</p>
                         <div className="text-sm p-3 rounded-lg bg-secondary/50 space-y-1.5">
-                          {session.extractedContext.participants.map((participant: any, idx: number) => {
+                          {(session.extractedContext.participants || []).map((participant: any, idx: number) => {
                             const name = typeof participant === 'string' ? participant : participant.name
                             const role = typeof participant === 'object' && participant.role ? participant.role : null
-                            const isUser = isParticipantYou(participant, session.extractedContext.participants)
+                            const isUser = isParticipantYou(participant, session?.extractedContext?.participants || [])
                             
                             return (
                               <div key={idx} className="flex items-center gap-2 flex-wrap">
