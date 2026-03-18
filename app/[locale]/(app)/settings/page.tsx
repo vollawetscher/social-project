@@ -20,7 +20,7 @@ import {
   Loader2,
   Save,
   Eye,
-  EyeOff,
+  Search,
   Phone,
   Video,
 } from "lucide-react"
@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import {
   Select,
   SelectContent,
@@ -76,6 +77,8 @@ export default function SettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [complianceOpen, setComplianceOpen] = useState(false)
+  const [complianceQuery, setComplianceQuery] = useState("")
   const [deleteConfirmText, setDeleteConfirmText] = useState("")
   const [deletingAccount, setDeletingAccount] = useState(false)
 
@@ -91,6 +94,116 @@ export default function SettingsPage() {
     ],
     [localizedSupportedLanguages, t]
   )
+
+  const complianceProviders = useMemo(() => ([
+    {
+      id: "speechmatics",
+      name: t('serviceSpeechmatics'),
+      purpose: t('complianceSpeechmaticsPurpose'),
+      dataCategories: "Audio content, transcripts, language metadata",
+      region: "EU",
+      retention: t('serviceNoDataRetention'),
+      transferMechanism: "SCCs (if cross-region processing applies)",
+      dpaUrl: "https://www.speechmatics.com/privacy-policy",
+      securityUrl: "https://www.speechmatics.com/security",
+      subprocessorUrl: "https://www.speechmatics.com/privacy-policy",
+      status: "verified" as const,
+      lastReviewed: "2026-03-17",
+    },
+    {
+      id: "anthropic",
+      name: t('serviceClaude'),
+      purpose: t('complianceClaudePurpose'),
+      dataCategories: "Transcript excerpts, prompts, generated outputs",
+      region: "US/EU (service dependent)",
+      retention: t('serviceNoTraining'),
+      transferMechanism: "SCCs",
+      dpaUrl: "https://www.anthropic.com/legal/commercial-terms",
+      securityUrl: "https://trust.anthropic.com/",
+      subprocessorUrl: "https://trust.anthropic.com/",
+      status: "verified" as const,
+      lastReviewed: "2026-03-17",
+    },
+    {
+      id: "supabase",
+      name: t('serviceSupabase'),
+      purpose: t('complianceSupabasePurpose'),
+      dataCategories: "Account data, files, transcripts, metadata",
+      region: "EU",
+      retention: "Configurable by customer policy",
+      transferMechanism: "SCCs",
+      dpaUrl: "https://supabase.com/legal/dpa",
+      securityUrl: "https://supabase.com/security",
+      subprocessorUrl: "https://supabase.com/legal/subprocessors",
+      status: "verified" as const,
+      lastReviewed: "2026-03-17",
+    },
+    {
+      id: "twilio",
+      name: t('serviceTwilio'),
+      purpose: t('complianceTwilioPurpose'),
+      dataCategories: "Phone numbers, call metadata, SMS metadata",
+      region: "Global (route dependent)",
+      retention: "Provider policy + customer-controlled deletion",
+      transferMechanism: "SCCs",
+      dpaUrl: "https://www.twilio.com/legal/data-protection-addendum",
+      securityUrl: "https://www.twilio.com/en-us/security",
+      subprocessorUrl: "https://www.twilio.com/legal/privacy/subprocessors",
+      status: "verified" as const,
+      lastReviewed: "2026-03-17",
+    },
+    {
+      id: "livekit",
+      name: t('serviceLiveKit'),
+      purpose: t('complianceLivekitPurpose'),
+      dataCategories: "Realtime media streams, call session metadata",
+      region: "EU",
+      retention: "Operational metadata only",
+      transferMechanism: "SCCs",
+      dpaUrl: "https://livekit.io/dpa",
+      securityUrl: "https://livekit.io/security",
+      subprocessorUrl: "https://livekit.io/subprocessors",
+      status: "review" as const,
+      lastReviewed: "2026-03-17",
+    },
+    {
+      id: "railway",
+      name: t('serviceRailway'),
+      purpose: t('complianceRailwayPurpose'),
+      dataCategories: "Application runtime logs, infrastructure metadata",
+      region: "EU",
+      retention: "Operational retention windows",
+      transferMechanism: "SCCs",
+      dpaUrl: "https://railway.com/legal/dpa",
+      securityUrl: "https://railway.com/security",
+      subprocessorUrl: "https://railway.com/legal/subprocessors",
+      status: "review" as const,
+      lastReviewed: "2026-03-17",
+    },
+  ]), [t])
+
+  const complianceFilteredProviders = useMemo(() => {
+    const q = complianceQuery.trim().toLowerCase()
+    if (!q) return complianceProviders
+    return complianceProviders.filter((provider) => {
+      return [
+        provider.name,
+        provider.purpose,
+        provider.dataCategories,
+        provider.region,
+        provider.retention,
+      ].join(" ").toLowerCase().includes(q)
+    })
+  }, [complianceProviders, complianceQuery])
+
+  const complianceCompleteCount = complianceProviders.filter((p) => p.status === "verified").length
+  const complianceLastReviewed = complianceProviders
+    .map((p) => new Date(p.lastReviewed).getTime())
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .reduce((acc, value) => Math.max(acc, value), 0)
+  const complianceLastReviewedLabel = complianceLastReviewed
+    ? new Date(complianceLastReviewed).toLocaleDateString()
+    : "n/a"
 
   // Fetch user profile and templates on mount
   useEffect(() => {
@@ -541,6 +654,93 @@ export default function SettingsPage() {
                   <p className="text-[10px] text-muted-foreground">{item.detail}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Service Cards */}
+            <div className="rounded-lg border border-border bg-secondary/20 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">{t('complianceMatrixTitle')}</p>
+                  <p className="text-xs text-muted-foreground">{t('complianceMatrixDescription')}</p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <Badge variant="outline" className="text-[11px]">
+                      {t('complianceComplete', { complete: complianceCompleteCount, total: complianceProviders.length })}
+                    </Badge>
+                    <Badge variant="outline" className="text-[11px]">
+                      {t('complianceLastReviewed', { date: complianceLastReviewedLabel })}
+                    </Badge>
+                  </div>
+                </div>
+                <Sheet open={complianceOpen} onOpenChange={setComplianceOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      {t('openComplianceMatrix')}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="sm:max-w-2xl w-full">
+                    <SheetHeader>
+                      <SheetTitle>{t('complianceMatrixTitle')}</SheetTitle>
+                      <SheetDescription>{t('complianceMatrixDescription')}</SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-4 space-y-4">
+                      <div className="relative">
+                        <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Input
+                          value={complianceQuery}
+                          onChange={(e) => setComplianceQuery(e.target.value)}
+                          className="pl-9"
+                          placeholder={t('complianceSearchPlaceholder')}
+                        />
+                      </div>
+                      <div className="space-y-3 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
+                        {complianceFilteredProviders.map((provider) => (
+                          <div key={provider.id} className="rounded-lg border border-border bg-card p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <h4 className="text-sm font-semibold text-foreground">{provider.name}</h4>
+                              <Badge
+                                className={
+                                  provider.status === "verified"
+                                    ? "bg-success/20 text-success border-success/30"
+                                    : "bg-warning/20 text-warning border-warning/30"
+                                }
+                              >
+                                {provider.status === "verified" ? t('complianceStatusVerified') : t('complianceStatusReview')}
+                              </Badge>
+                            </div>
+                            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                              <p><span className="text-foreground">{t('compliancePurpose')}:</span> {provider.purpose}</p>
+                              <p><span className="text-foreground">{t('complianceDataCategories')}:</span> {provider.dataCategories}</p>
+                              <p><span className="text-foreground">{t('complianceRegion')}:</span> {provider.region}</p>
+                              <p><span className="text-foreground">{t('complianceRetention')}:</span> {provider.retention}</p>
+                              <p><span className="text-foreground">{t('complianceTransferMechanism')}:</span> {provider.transferMechanism}</p>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <a href={provider.dpaUrl} target="_blank" rel="noopener noreferrer">
+                                <Button type="button" size="sm" variant="outline" className="h-7 text-xs">
+                                  {t('complianceDpa')}
+                                  <ExternalLink className="h-3 w-3 ml-1" />
+                                </Button>
+                              </a>
+                              <a href={provider.securityUrl} target="_blank" rel="noopener noreferrer">
+                                <Button type="button" size="sm" variant="outline" className="h-7 text-xs">
+                                  {t('complianceSecurityDocs')}
+                                  <ExternalLink className="h-3 w-3 ml-1" />
+                                </Button>
+                              </a>
+                              <a href={provider.subprocessorUrl} target="_blank" rel="noopener noreferrer">
+                                <Button type="button" size="sm" variant="outline" className="h-7 text-xs">
+                                  {t('complianceSubprocessors')}
+                                  <ExternalLink className="h-3 w-3 ml-1" />
+                                </Button>
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
 
             {/* Service Cards */}

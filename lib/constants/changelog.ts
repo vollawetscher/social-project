@@ -185,6 +185,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Text Imports Now Include Session Summaries',
         description: 'Sessions created from pasted or uploaded transcript content now include an automatic concise summary, so key points are visible immediately even without audio transcription.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Infrastructure Card Adds Compliance Matrix',
+        description: 'Settings now include a searchable compliance matrix with provider DPA, security, and subprocessor links, making legal and security checks faster and easier.',
+      },
     ],
   },
   {
