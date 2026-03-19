@@ -1153,16 +1153,38 @@ export default function SessionsPage() {
     if (!assignSessionId) return
     setAssigningSaving(true)
     try {
-      const projectId = selectedProjectId === '__none__' ? null : selectedProjectId
+      let projectId: string | null = selectedProjectId === '__none__' ? null : selectedProjectId
+      let projectTitle: string | null = null
+
+      // Create a new project inline if "+ New project" was selected
+      if (selectedProjectId === '__new__') {
+        if (!newProjectTitle.trim()) return
+        const createRes = await fetch('/api/cases', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: newProjectTitle.trim(),
+            client_identifier: newProjectClientId.trim(),
+            description: '',
+          }),
+        })
+        if (!createRes.ok) throw new Error()
+        const created = await createRes.json()
+        setProjects((prev) => [created, ...prev])
+        projectId = created.id
+        projectTitle = created.title
+        setNewProjectTitle('')
+        setNewProjectClientId('')
+      } else {
+        projectTitle = projectId ? (projects.find((p) => p.id === projectId)?.title ?? null) : null
+      }
+
       const res = await fetch(`/api/sessions/${assignSessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ case_id: projectId }),
       })
       if (!res.ok) throw new Error()
-      const projectTitle = projectId
-        ? projects.find((p) => p.id === projectId)?.title ?? null
-        : null
       setSessions((prev) =>
         prev.map((s) =>
           s.id === assignSessionId
@@ -2150,15 +2172,6 @@ export default function SessionsPage() {
                           <FolderOpen className="mr-2 h-4 w-4" />
                           {t('projects.assignToProject')}
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setCreateAndAssignSessionId(session.id)
-                            setShowCreateProjectDialog(true)
-                          }}
-                        >
-                          <FolderPlus className="mr-2 h-4 w-4" />
-                          {t('projects.createProject')}
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           className="text-destructive"
@@ -2356,15 +2369,6 @@ export default function SessionsPage() {
                               <FolderOpen className="mr-2 h-4 w-4" />
                               {t('projects.assignToProject')}
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setCreateAndAssignSessionId(session.id)
-                                setShowCreateProjectDialog(true)
-                              }}
-                            >
-                              <FolderPlus className="mr-2 h-4 w-4" />
-                              {t('projects.createProject')}
-                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               className="text-destructive"
@@ -2411,34 +2415,21 @@ export default function SessionsPage() {
         loading={uploadingTranscript}
       />
 
-      {/* Assign to Project Dialog */}
-      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+      {/* Assign to Project Dialog — dropdown includes "+ New project" inline */}
+      <Dialog open={showAssignDialog} onOpenChange={(open) => {
+        setShowAssignDialog(open)
+        if (!open) { setNewProjectTitle(''); setNewProjectClientId('') }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('projects.assignDialog.title')}</DialogTitle>
             <DialogDescription>{t('projects.assignDialog.description')}</DialogDescription>
           </DialogHeader>
-          <div className="py-2">
+          <div className="space-y-3 py-2">
             {loadingProjects ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {tc('loading')}
-              </div>
-            ) : projects.length === 0 ? (
-              <div className="text-center py-3">
-                <p className="text-sm text-muted-foreground mb-3">{t('projects.assignDialog.noProjects')}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowAssignDialog(false)
-                    setCreateAndAssignSessionId(assignSessionId)
-                    setShowCreateProjectDialog(true)
-                  }}
-                >
-                  <FolderPlus className="mr-2 h-4 w-4" />
-                  {t('projects.createProject')}
-                </Button>
               </div>
             ) : (
               <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
@@ -2450,19 +2441,51 @@ export default function SessionsPage() {
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                   ))}
+                  <SelectItem value="__new__" className="text-primary font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <FolderPlus className="h-3.5 w-3.5" />
+                      {t('projects.createProject')}
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+            )}
+            {/* Inline new-project form — shown when "+ New project" is selected */}
+            {selectedProjectId === '__new__' && (
+              <div className="space-y-2 pt-1 border-t border-border">
+                <Input
+                  autoFocus
+                  placeholder={t('projects.createDialog.namePlaceholder')}
+                  value={newProjectTitle}
+                  onChange={(e) => setNewProjectTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && newProjectTitle.trim() && handleAssignToProject()}
+                />
+                <Input
+                  placeholder={t('projects.createDialog.clientIdPlaceholder')}
+                  value={newProjectClientId}
+                  onChange={(e) => setNewProjectClientId(e.target.value)}
+                />
+              </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
               {tc('cancel')}
             </Button>
-            {projects.length > 0 && (
-              <Button onClick={handleAssignToProject} disabled={assigningSaving}>
-                {assigningSaving ? t('projects.assignDialog.assigning') : t('projects.assignDialog.confirm')}
-              </Button>
-            )}
+            <Button
+              onClick={handleAssignToProject}
+              disabled={
+                assigningSaving ||
+                (selectedProjectId === '__new__' && !newProjectTitle.trim()) ||
+                (!loadingProjects && projects.length === 0 && selectedProjectId !== '__new__')
+              }
+            >
+              {assigningSaving
+                ? t('projects.assignDialog.assigning')
+                : selectedProjectId === '__new__'
+                  ? t('projects.createDialog.create')
+                  : t('projects.assignDialog.confirm')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
