@@ -148,6 +148,10 @@ export default function CallsPage() {
   // Video call dialog: choose "Copy Link" vs "Ring + SMS"
   const [pendingCallMode, setPendingCallMode] = useState<CallMode | null>(null)
   const [videoDialogStep, setVideoDialogStep] = useState<"choose" | "ring-sms">("choose")
+  const [voiceDialogStep, setVoiceDialogStep] = useState<"choose" | "phone">("choose")
+  const [voicePhone, setVoicePhone] = useState("")
+  const [voiceContactName, setVoiceContactName] = useState("")
+  const [voiceSaveAsContact, setVoiceSaveAsContact] = useState(false)
   const [ringPhone, setRingPhone] = useState("")
   const [ringContactName, setRingContactName] = useState("")
   const [ringSending, setRingSending] = useState(false)
@@ -662,6 +666,31 @@ export default function CallsPage() {
     }
   }
 
+  async function handleVoicePhoneCall() {
+    const phone = voicePhone.trim()
+    const name = voiceContactName.trim()
+    if (!phone) return
+    if (voiceSaveAsContact && name) {
+      fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone_number: normalizePhone(phone) || phone, email: null }),
+      })
+        .then((r) => r.json())
+        .then((contact) => {
+          setContacts((prev) => [...prev, contact].sort((a, b) => a.name.localeCompare(b.name)))
+          toast.success(t('contactAdded', { name: contact.name }))
+        })
+        .catch(() => {})
+    }
+    setPendingCallMode(null)
+    setVoiceDialogStep("choose")
+    setVoicePhone("")
+    setVoiceContactName("")
+    setVoiceSaveAsContact(false)
+    await handleDialpadCall(phone, "audio", name || undefined)
+  }
+
   async function fetchContacts() {
     setContactsLoading(true)
     try {
@@ -855,7 +884,7 @@ export default function CallsPage() {
         <h1 className="text-lg font-semibold text-foreground mb-3">{t('title')}</h1>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
-            onClick={() => setPendingCallMode("audio")}
+            onClick={() => { setPendingCallMode("audio"); setVoiceDialogStep("choose"); setVoicePhone(""); setVoiceContactName(""); setVoiceSaveAsContact(false); fetchContacts() }}
             disabled={creating}
             className="flex items-center gap-3 p-3 rounded-xl bg-primary/10 hover:bg-primary/15 transition-colors disabled:opacity-50"
           >
@@ -863,8 +892,8 @@ export default function CallsPage() {
               <Phone className="h-5 w-5 text-primary-foreground" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-medium text-foreground">{t('audioCall')}</p>
-              <p className="text-[11px] text-muted-foreground">{t('audioCallSubtitle')}</p>
+              <p className="text-sm font-medium text-foreground">{t('voiceCall')}</p>
+              <p className="text-[11px] text-muted-foreground">{t('voiceCallSubtitle')}</p>
             </div>
           </button>
           <button
@@ -1219,30 +1248,111 @@ export default function CallsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Audio call confirmation dialog */}
-      <Dialog open={pendingCallMode === "audio"} onOpenChange={(open) => { if (!open) setPendingCallMode(null) }}>
+      {/* Voice Call picker dialog */}
+      <Dialog open={pendingCallMode === "audio"} onOpenChange={(open) => {
+        if (!open) { setPendingCallMode(null); setVoiceDialogStep("choose"); setVoicePhone(""); setVoiceContactName(""); setVoiceSaveAsContact(false) }
+      }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5 text-primary" />
-              {t('startAudioCall')}
+              {t('voiceCall')}
             </DialogTitle>
             <DialogDescription>
-              {t('audioCallDescription')}
+              {voiceDialogStep === "choose" ? t('voiceCallChooseDescription') : t('voiceCallPhoneDescription')}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-row gap-3 justify-end pt-2">
-            <Button variant="outline" onClick={() => setPendingCallMode(null)} disabled={creating}>
-              {t('cancel')}
-            </Button>
-            <Button
-              onClick={() => { setPendingCallMode(null); handleNewCall("audio") }}
-              disabled={creating}
-            >
-              {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Phone className="h-4 w-4 mr-2" />}
-              {t('startCall')}
-            </Button>
-          </div>
+
+          {voiceDialogStep === "choose" ? (
+            <div className="flex flex-col gap-3 pt-2">
+              {/* WebCall option */}
+              <button
+                onClick={() => { setPendingCallMode(null); handleNewCall("audio") }}
+                disabled={creating}
+                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent transition-colors text-left disabled:opacity-50"
+              >
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Link2 className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{t('webCall')}</p>
+                  <p className="text-xs text-muted-foreground">{t('webCallDescription')}</p>
+                </div>
+              </button>
+              {/* Phone Network option */}
+              <button
+                onClick={() => setVoiceDialogStep("phone")}
+                disabled={creating}
+                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent transition-colors text-left disabled:opacity-50"
+              >
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <PhoneOutgoing className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{t('phoneNetwork')}</p>
+                  <p className="text-xs text-muted-foreground">{t('phoneNetworkDescription')}</p>
+                </div>
+              </button>
+              <Button variant="ghost" size="sm" onClick={() => setPendingCallMode(null)} className="mt-1">
+                {t('cancel')}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 pt-2">
+              <Input
+                type="text"
+                inputMode="tel"
+                placeholder={t('phonePlaceholder')}
+                value={voicePhone}
+                onChange={(e) => setVoicePhone(e.target.value)}
+                autoFocus
+              />
+              <Input
+                type="text"
+                placeholder={t('contactNameOptional')}
+                value={voiceContactName}
+                onChange={(e) => setVoiceContactName(e.target.value)}
+              />
+              {voiceContactName.trim() && (
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={voiceSaveAsContact}
+                    onChange={(e) => setVoiceSaveAsContact(e.target.checked)}
+                    className="rounded"
+                  />
+                  {t('saveAsContact')}
+                </label>
+              )}
+              {contacts.length > 0 && (
+                <div className="max-h-36 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+                  {contacts.filter((c) => c.phone_number).map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setVoicePhone(c.phone_number || ""); setVoiceContactName(c.name); setVoiceSaveAsContact(false) }}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent text-left text-sm"
+                    >
+                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate font-medium">{c.name}</span>
+                      <span className="text-xs text-muted-foreground ml-auto shrink-0">{c.phone_number}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setVoiceDialogStep("choose")}>
+                  {t('back')}
+                </Button>
+                <Button
+                  onClick={handleVoicePhoneCall}
+                  disabled={creating || !voicePhone.trim()}
+                >
+                  {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PhoneOutgoing className="h-4 w-4 mr-2" />}
+                  {t('call')}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
