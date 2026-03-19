@@ -171,7 +171,7 @@ export default function SharedOutputPage() {
     }
   }
 
-  async function handleDownload(format: 'md' | 'pdf' | 'docx') {
+  async function handleDownload(format: 'md' | 'pdf' | 'docx' | 'gdoc') {
     if (!output) return
     if (format === 'pdf' && !isPdfExportSupportedLanguage(output.language)) {
       toast.error('PDF export is not available for this output language. Use DOCX instead.')
@@ -329,6 +329,7 @@ export default function SharedOutputPage() {
                     <DropdownMenuItem onClick={() => handleDownload('pdf')}>PDF</DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => handleDownload('docx')}>DOCX</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDownload('gdoc')}>Google Docs</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
