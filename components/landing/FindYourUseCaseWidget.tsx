@@ -120,6 +120,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
 
       setResult(data.result as UseCaseResult)
       switchStep(2)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (e) {
       console.error('Use case generation failed:', e)
       setError('Could not generate your use-case output right now. Please try again.')

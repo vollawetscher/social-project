@@ -181,7 +181,7 @@ export default function LandingPage() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-5 text-teal-200 text-center [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
             Get more out of your most valuable asset. Communication.
           </h1>
-          <p className="text-center text-lg sm:text-xl text-white/85 leading-relaxed max-w-2xl mx-auto [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
+          <p className="text-center text-lg sm:text-xl text-white leading-relaxed max-w-2xl mx-auto [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
             Notissima turns every call, meeting, and email into structured intelligence —
             decisions, risks, and actions your team can actually use.
           </p>
