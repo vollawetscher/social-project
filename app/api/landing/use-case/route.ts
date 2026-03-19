@@ -164,18 +164,31 @@ export async function POST(request: Request) {
       messages: [
         {
           role: 'user',
-          content: `You are generating a fast "find your use case" output for Notissima.
+          content: `You are generating a "find your use case" output for Notissima — a communication intelligence platform for professionals whose work involves structured verbal communication: client calls, project meetings, consultations, negotiations, team briefings, case reviews, etc.
 
 Input self-description:
 "${selfDescription}"${correctionInstruction}
 
-Task:
+STEP 1 — Relevance gate:
+Assess whether this role plausibly involves regular structured professional communication where capturing decisions, actions, or documentation from calls/meetings adds real value.
+
+Relevant: executives, managers, consultants, lawyers, doctors, project leads, sales professionals, HR, team leads, researchers, coaches, account managers, coordinators, analysts, therapists, auditors, officers, directors, specialists — essentially any knowledge worker or professional who holds or participates in consequential verbal communications.
+
+NOT relevant: purely manual/physical trade roles with no professional communication documentation need (e.g. bus driver, factory operator, cashier), obviously fictional/joke inputs, or inputs that are not a professional role description at all.
+
+If NOT relevant, return ONLY this JSON:
+{ "relevant": false, "notRelevantMessage": "One friendly sentence explaining Notissima is designed for professionals who manage calls, meetings, and client communication — and inviting them to try describing a work context where they lead or participate in those conversations." }
+
+If relevant, proceed to STEP 2.
+
+STEP 2 — Output (only if relevant):
 1) Classify into domain, industry, role, and context.
 2) Propose the most-used documentation outputs from verbal communication for this profile.
 3) Return practical, high-value suggestions (not generic fluff).
 
 Return strict JSON:
 {
+  "relevant": true,
   "classification": {
     "domain": "string",
     "industry": "string",
@@ -212,6 +225,20 @@ Constraints:
     })
 
     const raw = message.content[0]?.type === 'text' ? message.content[0].text : ''
+
+    // Check for not-relevant gate response first
+    try {
+      let text = raw.trim()
+      if (text.startsWith('```')) {
+        const m = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
+        if (m?.[1]) text = m[1]
+      }
+      const gate = JSON.parse(text)
+      if (gate?.relevant === false && gate?.notRelevantMessage) {
+        return NextResponse.json({ notRelevant: true, notRelevantMessage: gate.notRelevantMessage })
+      }
+    } catch { /* fall through to normal parse */ }
+
     const parsed = parseJson(raw) || fallback(selfDescription)
     return NextResponse.json({ result: parsed })
   } catch (error) {

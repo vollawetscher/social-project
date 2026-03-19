@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 
-type Step = 1 | 2
+type Step = 1 | 2 | 'not-relevant'
 
 type UseCaseResult = {
   classification: {
@@ -39,6 +39,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<UseCaseResult | null>(null)
+  const [notRelevantMessage, setNotRelevantMessage] = useState<string | null>(null)
 
   const switchStep = (next: Step) => {
     setTransitioning(true)
@@ -65,6 +66,12 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || 'Failed to generate use case output')
+
+      if (data.notRelevant) {
+        setNotRelevantMessage(data.notRelevantMessage || 'Notissima is designed for professionals who manage calls, meetings, and client communication.')
+        switchStep('not-relevant')
+        return
+      }
 
       setResult(data.result as UseCaseResult)
       switchStep(2)
@@ -108,6 +115,20 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
               </div>
             </div>
             {error && <p className="text-xs text-rose-300">{error}</p>}
+          </div>
+        )}
+
+        {step === 'not-relevant' && (
+          <div className="space-y-4 text-center py-2">
+            <p className="text-slate-200 leading-relaxed">{notRelevantMessage}</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setNotRelevantMessage(null); setSelfDescription(''); switchStep(1) }}
+              className="border-white/30 bg-transparent text-slate-200 hover:bg-white/10"
+            >
+              Try again
+            </Button>
           </div>
         )}
 
@@ -201,7 +222,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => switchStep(1)}
+                onClick={() => { setSelfDescription(''); switchStep(1) }}
                 className="border-slate-700 bg-transparent text-slate-200 hover:bg-slate-900"
               >
                 Back
