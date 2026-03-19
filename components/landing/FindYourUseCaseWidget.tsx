@@ -1,22 +1,16 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/navigation'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 
-const THINKING_STEPS = [
-  { label: 'Reading your role description…',        ms: 0 },
-  { label: 'Identifying your professional context…', ms: 1800 },
-  { label: 'Mapping relevant use cases…',            ms: 3800 },
-  { label: 'Selecting documentation outputs…',       ms: 6000 },
-  { label: 'Checking compliance & security fit…',    ms: 8500 },
-  { label: 'Preparing your personalised result…',    ms: 11000 },
-]
+const THINKING_STEP_MS = [0, 1800, 3800, 6000, 8500, 11000]
 
-function ThinkingIndicator() {
+function ThinkingIndicator({ steps }: { steps: Array<{ label: string; ms: number }> }) {
   const [stepIndex, setStepIndex] = useState(0)
   const [dots, setDots] = useState('')
   const startRef = useRef(Date.now())
@@ -25,21 +19,26 @@ function ThinkingIndicator() {
     startRef.current = Date.now()
     const interval = setInterval(() => {
       const elapsed = Date.now() - startRef.current
-      const next = THINKING_STEPS.findLastIndex((s) => elapsed >= s.ms)
+      const next = steps.findLastIndex((s) => elapsed >= s.ms)
       setStepIndex(Math.max(0, next))
       setDots((d) => (d.length >= 3 ? '' : d + '.'))
     }, 400)
     return () => clearInterval(interval)
-  }, [])
+  }, [steps])
 
   return (
     <div className="space-y-3 py-2">
-      {THINKING_STEPS.map((s, i) => {
+      {steps.map((s, i) => {
         const done = i < stepIndex
         const active = i === stepIndex
         return (
-          <div key={s.label} className={`flex items-center gap-2.5 text-sm transition-opacity duration-500 ${i > stepIndex ? 'opacity-20' : 'opacity-100'}`}>
-            <span className={`h-2 w-2 rounded-full shrink-0 transition-colors duration-300 ${done ? 'bg-teal-400' : active ? 'bg-teal-300 animate-pulse' : 'bg-slate-600'}`} />
+          <div
+            key={s.label}
+            className={`flex items-center gap-2.5 text-sm transition-opacity duration-500 ${i > stepIndex ? 'opacity-20' : 'opacity-100'}`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full shrink-0 transition-colors duration-300 ${done ? 'bg-teal-400' : active ? 'bg-teal-300 animate-pulse' : 'bg-slate-600'}`}
+            />
             <span className={`${done ? 'text-teal-400 line-through decoration-teal-600' : active ? 'text-white' : 'text-slate-500'}`}>
               {s.label}{active ? dots : ''}
             </span>
@@ -77,6 +76,7 @@ interface FindYourUseCaseWidgetProps {
 }
 
 export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCaseWidgetProps) {
+  const t = useTranslations('landing')
   const [step, setStep] = useState<Step>(1)
   const [transitioning, setTransitioning] = useState(false)
   const [selfDescription, setSelfDescription] = useState('')
@@ -85,6 +85,12 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<UseCaseResult | null>(null)
   const [notRelevantMessage, setNotRelevantMessage] = useState<string | null>(null)
+
+  const examples = t.raw('widget.examples') as string[]
+  const thinkingSteps = (t.raw('widget.thinking') as string[]).map((label, i) => ({
+    label,
+    ms: THINKING_STEP_MS[i] ?? i * 2000,
+  }))
 
   const switchStep = (next: Step) => {
     setTransitioning(true)
@@ -98,6 +104,9 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
     const text = selfDescription.trim()
     if (!text) return
 
+    const browserLocale =
+      typeof navigator !== 'undefined' ? (navigator.language || '') : ''
+
     setLoading(true)
     setError(null)
     try {
@@ -106,6 +115,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           selfDescription: text,
+          browserLocale,
           ...(nextCorrection?.trim() ? { correction: nextCorrection.trim() } : {}),
         }),
       })
@@ -113,7 +123,10 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
       if (!res.ok) throw new Error(data?.error || 'Failed to generate use case output')
 
       if (data.notRelevant) {
-        setNotRelevantMessage(data.notRelevantMessage || 'Notissima is designed for professionals who manage calls, meetings, and client communication.')
+        setNotRelevantMessage(
+          data.notRelevantMessage ||
+            'Notissima is designed for professionals who manage calls, meetings, and client communication.',
+        )
         switchStep('not-relevant')
         return
       }
@@ -132,29 +145,31 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
   return (
     <div className="w-full max-w-4xl mx-auto rounded-2xl border border-white/20 bg-black/75 backdrop-blur-md p-4 sm:p-6 text-slate-100 shadow-2xl">
       <div className={`transition-opacity duration-300 ${transitioning ? 'opacity-0' : 'opacity-100'}`}>
+
+        {/* ── Step 1: input ── */}
         {step === 1 && (
           <div className="space-y-3">
             {!compact && (
-              <div>
-                <h3 className="text-xl sm:text-2xl font-semibold">Find out what it can do for you</h3>
-              </div>
+              <h3 className="text-xl sm:text-2xl font-semibold">
+                {t('widget.step2Title')}
+              </h3>
             )}
 
-            {/* Plain-text guidance */}
             <p className="text-sm text-slate-300 leading-relaxed">
-              For the best result, include your <span className="text-white font-medium">role</span>,{' '}
-              <span className="text-white font-medium">company or organisation type</span>,{' '}
-              <span className="text-white font-medium">domain or industry</span>, and{' '}
-              <span className="text-white font-medium">location</span>.
+              {t.rich('widget.guidance', {
+                role: (chunks) => <span className="text-white font-medium">{chunks}</span>,
+                c: (chunks) => <span className="text-white font-medium">{chunks}</span>,
+                d: (chunks) => <span className="text-white font-medium">{chunks}</span>,
+                l: (chunks) => <span className="text-white font-medium">{chunks}</span>,
+              })}
             </p>
 
-            {/* Input + button */}
             <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 value={selfDescription}
                 onChange={(e) => setSelfDescription(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !loading && selfDescription.trim() && runUseCase()}
-                placeholder='e.g. "Senior project manager at a mid-sized engineering firm in Germany"'
+                placeholder={t('widget.placeholder')}
                 className="bg-white/90 border-transparent text-slate-900 placeholder:text-slate-400 focus:border-teal-400 focus:bg-white h-11"
               />
               <Button
@@ -162,20 +177,16 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
                 disabled={!selfDescription.trim() || loading}
                 className="sm:w-auto w-full h-11 bg-teal-500 hover:bg-teal-400 text-white font-semibold shrink-0"
               >
-                {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Working…</> : 'Explain'}
+                {loading
+                  ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />{t('widget.workingButton')}</>
+                  : t('widget.explainButton')}
               </Button>
             </div>
 
-            {/* Example chips */}
             <div className="space-y-1.5">
-              <p className="text-xs text-slate-500">Examples — click to try:</p>
+              <p className="text-xs text-slate-500">{t('widget.examplesLabel')}</p>
               <div className="flex flex-wrap gap-2">
-                {[
-                  'Managing partner at a boutique law firm in London',
-                  'Sales director at a B2B SaaS company in the US',
-                  'Head of HR at a 500-person manufacturing company in Germany',
-                  'Independent management consultant working with mid-market clients across Europe',
-                ].map((example) => (
+                {examples.map((example) => (
                   <button
                     key={example}
                     type="button"
@@ -190,7 +201,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
 
             {loading && (
               <div className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 mt-1">
-                <ThinkingIndicator />
+                <ThinkingIndicator steps={thinkingSteps} />
               </div>
             )}
 
@@ -198,6 +209,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
           </div>
         )}
 
+        {/* ── Not relevant ── */}
         {step === 'not-relevant' && (
           <div className="space-y-4 text-center py-2">
             <p className="text-slate-200 leading-relaxed">{notRelevantMessage}</p>
@@ -207,16 +219,17 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
               onClick={() => { setNotRelevantMessage(null); setSelfDescription(''); switchStep(1) }}
               className="border-white/30 bg-transparent text-slate-200 hover:bg-white/10"
             >
-              Try again
+              {t('widget.tryAgainButton')}
             </Button>
           </div>
         )}
 
+        {/* ── Step 2: results ── */}
         {step === 2 && result && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-xl sm:text-2xl font-semibold">Your personalised output</h3>
-              <p className="text-sm text-slate-300 mt-1">Based on your role description</p>
+              <h3 className="text-xl sm:text-2xl font-semibold">{t('widget.step2Title')}</h3>
+              <p className="text-sm text-slate-300 mt-1">{t('widget.step2Subtitle')}</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -230,8 +243,8 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-900">
                   <tr className="text-slate-200">
-                    <th className="px-3 py-2 font-medium">Document type</th>
-                    <th className="px-3 py-2 font-medium">Source conversation</th>
+                    <th className="px-3 py-2 font-medium">{t('widget.documentTypeHeader')}</th>
+                    <th className="px-3 py-2 font-medium">{t('widget.sourceHeader')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,7 +261,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
             <p className="text-sm sm:text-base text-slate-200 leading-relaxed">{result.valueProp}</p>
 
             <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3 space-y-3">
-              <p className="text-sm font-medium text-slate-100">Use-case specific compliance and security affirmations</p>
+              <p className="text-sm font-medium text-slate-100">{t('widget.affirmationsTitle')}</p>
               <div className="space-y-2">
                 {result.useCases.map((useCase) => {
                   const affirmations = result.affirmationsByUseCase.find((item) => item.useCaseId === useCase.id)
@@ -257,10 +270,12 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
                     <div key={useCase.id} className="rounded-md border border-slate-800 bg-slate-950/70 p-3 space-y-1">
                       <p className="text-sm font-medium text-slate-100">{useCase.label}</p>
                       <p className="text-xs text-slate-300">
-                        <span className="text-slate-200">Compliance:</span> {affirmations.complianceAffirmation}
+                        <span className="text-slate-200">{t('widget.complianceLabel')}</span>{' '}
+                        {affirmations.complianceAffirmation}
                       </p>
                       <p className="text-xs text-slate-300">
-                        <span className="text-slate-200">Security:</span> {affirmations.securityAffirmation}
+                        <span className="text-slate-200">{t('widget.securityLabel')}</span>{' '}
+                        {affirmations.securityAffirmation}
                       </p>
                     </div>
                   )
@@ -269,12 +284,16 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
             </div>
 
             <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3 space-y-2">
-              <p className="text-sm font-medium text-slate-100">Optional correction</p>
+              <p className="text-sm font-medium text-slate-100">{t('widget.correctionTitle')}</p>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   value={correction}
                   onChange={(e) => setCorrection(e.target.value)}
-                  placeholder={result.correctionPlaceholder ? `e.g. "${result.correctionPlaceholder}"` : 'e.g. "Focus more on client-facing work, less on internal reporting"'}
+                  placeholder={
+                    result.correctionPlaceholder
+                      ? `e.g. "${result.correctionPlaceholder}"`
+                      : 'e.g. "Focus more on client-facing work, less on internal reporting"'
+                  }
                   className="bg-slate-900 border-slate-700 text-slate-100 placeholder:text-slate-500"
                 />
                 <Button
@@ -284,17 +303,17 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
                   disabled={!correction.trim() || loading}
                   className="border-slate-700 bg-transparent text-slate-200 hover:bg-slate-900"
                 >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply correction'}
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('widget.correctionButton')}
                 </Button>
               </div>
             </div>
 
             <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3 space-y-2">
-              <p className="text-sm font-medium text-slate-100">You can also tailor this your way:</p>
+              <p className="text-sm font-medium text-slate-100">{t('widget.tailorTitle')}</p>
               <ul className="text-sm text-slate-300 space-y-1">
-                <li>• Create templates from scratch for your exact workflow and terminology.</li>
-                <li>• Reuse existing report formats and adapt them per team, client, or project.</li>
-                <li>• Export and share in Markdown, PDF, DOCX, JSON, or plain-text email-ready format.</li>
+                {(t.raw('widget.tailorItems') as string[]).map((item) => (
+                  <li key={item}>• {item}</li>
+                ))}
               </ul>
             </div>
 
@@ -302,14 +321,14 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => { setSelfDescription(''); switchStep(1) }}
+                onClick={() => { setSelfDescription(''); switchStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                 className="border-slate-700 bg-transparent text-slate-200 hover:bg-slate-900"
               >
-                Back
+                {t('widget.backButton')}
               </Button>
               <Button asChild className="bg-white text-slate-900 hover:bg-slate-100 font-semibold">
                 <Link href="/signup" className="inline-flex items-center gap-2">
-                  Start free — no credit card needed
+                  {t('widget.startFreeButton')}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -320,4 +339,3 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
     </div>
   )
 }
-

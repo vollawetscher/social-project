@@ -1603,5 +1603,110 @@
       "edit": "Edit",
       "back": "Back"
     }
+  },
+  "landing": {
+    "nav": {
+      "discover": "Discover",
+      "qa": "Q&A",
+      "community": "Community",
+      "login": "Log in"
+    },
+    "hero": {
+      "headline": "Get more out of your most valuable asset. Communication.",
+      "tagline": "Notissima turns every call, meeting, and email into structured intelligence — decisions, risks, and actions you, your team and your clients can actually use.",
+      "widgetLabel": "Find out what Notissima can do for you"
+    },
+    "widget": {
+      "guidance": "For the best result, include your <role>role</role>, <c>company or organisation type</c>, <d>domain or industry</d>, and <l>location</l>.",
+      "placeholder": "e.g. \"Senior project manager at a mid-sized engineering firm in Germany\"",
+      "explainButton": "Explain",
+      "workingButton": "Working…",
+      "examplesLabel": "Examples — click to try:",
+      "examples": [
+        "Managing partner at a boutique law firm in London",
+        "Sales director at a B2B SaaS company in the US",
+        "Head of HR at a 500-person manufacturing company in Germany",
+        "Independent management consultant working with mid-market clients across Europe"
+      ],
+      "step2Title": "Your personalised output",
+      "step2Subtitle": "Based on your role description",
+      "documentTypeHeader": "Document type",
+      "sourceHeader": "Source conversation",
+      "affirmationsTitle": "Use-case specific compliance and security affirmations",
+      "complianceLabel": "Compliance:",
+      "securityLabel": "Security:",
+      "tailorTitle": "You can also tailor this your way:",
+      "tailorItems": [
+        "Create templates from scratch for your exact workflow and terminology.",
+        "Reuse existing report formats and adapt them per team, client, or project.",
+        "Export and share in Markdown, PDF, DOCX, JSON, or plain-text email-ready format."
+      ],
+      "correctionTitle": "Optional correction",
+      "correctionButton": "Apply correction",
+      "startFreeButton": "Start free — no credit card needed",
+      "backButton": "Back",
+      "tryAgainButton": "Try again",
+      "thinking": [
+        "Reading your role description…",
+        "Identifying your professional context…",
+        "Mapping relevant use cases…",
+        "Selecting documentation outputs…",
+        "Checking compliance & security fit…",
+        "Preparing your personalised result…"
+      ]
+    },
+    "faq": {
+      "title": "Questions & Answers",
+      "subtitle": "Everything you need to know about Notissima.",
+      "startFreeButton": "Start free — no credit card needed",
+      "items": [
+        {
+          "q": "What is Notissima?",
+          "a": "Notissima is a communication intelligence platform that turns your calls, meetings, recordings, and text imports into structured professional documentation — automatically. Instead of raw transcripts, you get decision logs, action plans, strategic memos, and risk summaries tailored to your role and workflow."
+        },
+        {
+          "q": "Who is Notissima for?",
+          "a": "Notissima is built for professionals who run meetings, client calls, project reviews, consultations, or any high-stakes conversation. That includes project managers, consultants, healthcare practitioners, lawyers, salespeople, executives, and anyone else whose work depends on accurate communication records."
+        },
+        {
+          "q": "How does Notissima create outputs from a conversation?",
+          "a": "You bring the communication — paste text, upload a file, record audio, or start a call directly in Notissima. The platform automatically detects the type of conversation, selects the right output templates for your domain, and generates structured documentation. No manual configuration needed."
+        },
+        {
+          "q": "What kind of outputs does Notissima produce?",
+          "a": "Outputs include meeting summaries, decision logs, action plans, risk registers, project briefs, client memos, follow-up checklists, and more. Every output is generated using domain-tested templates — structured the way professionals actually work, not generic AI summaries. Formats include Markdown, PDF, DOCX, and JSON."
+        },
+        {
+          "q": "What languages does Notissima support?",
+          "a": "Notissima supports transcription and output generation in 50+ languages with automatic language detection. You can record or upload in one language and generate outputs in another — useful for multilingual teams and international client work."
+        },
+        {
+          "q": "Does Notissima integrate with tools like Notion, Slack, or HubSpot?",
+          "a": "Yes. All outputs are Markdown-native, which means they paste cleanly into Notion, Slack, HubSpot, Confluence, and any other tool your team uses. For automated workflows, Notissima outputs are compatible with Zapier and similar integration platforms — no custom integration required."
+        },
+        {
+          "q": "How is my data and call content handled?",
+          "a": "Your data is processed securely and never used to train AI models. Calls and recordings are stored with encryption, and all personally identifiable information (PII) in transcripts is automatically flagged and redacted. Notissima is designed to meet the compliance requirements of regulated industries."
+        },
+        {
+          "q": "Can I use Notissima for video and phone calls, not just recordings?",
+          "a": "Yes. Notissima includes a built-in calling feature supporting browser-based video and voice calls, as well as outbound phone network (PSTN) calls. All calls are automatically recorded and processed into structured outputs — no need to use a separate meeting tool."
+        },
+        {
+          "q": "How does Notissima differ from a standard AI transcription service?",
+          "a": "Transcription services give you a text version of what was said. Notissima goes further: it comprehends the purpose of the conversation, extracts decisions, risks, and commitments, and produces documentation that is immediately usable in a professional context. It also tracks these elements across multiple sessions over time."
+        },
+        {
+          "q": "How do I get started with Notissima?",
+          "a": "You can start a free trial directly on this page — no credit card required. Use the 'Find out what it can do for you' section below to discover the most relevant outputs for your role, or sign up and start with your first call or upload immediately."
+        }
+      ]
+    },
+    "footer": {
+      "imprint": "Imprint",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "contact": "Contact"
+    }
   }
 }

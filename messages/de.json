@@ -1602,5 +1602,110 @@
       "edit": "Bearbeiten",
       "back": "Zurück"
     }
+  },
+  "landing": {
+    "nav": {
+      "discover": "Entdecken",
+      "qa": "Fragen & Antworten",
+      "community": "Community",
+      "login": "Anmelden"
+    },
+    "hero": {
+      "headline": "Holen Sie mehr aus Ihrem wertvollsten Kapital heraus. Kommunikation.",
+      "tagline": "Notissima verwandelt jeden Anruf, jedes Meeting und jede E-Mail in strukturierte Informationen — Entscheidungen, Risiken und Maßnahmen, die Sie, Ihr Team und Ihre Kunden wirklich nutzen können.",
+      "widgetLabel": "Herausfinden, was Notissima für Sie tun kann"
+    },
+    "widget": {
+      "guidance": "Für das beste Ergebnis geben Sie Ihre <role>Rolle</role>, den <c>Unternehmens- oder Organisationstyp</c>, die <d>Branche</d> und Ihren <l>Standort</l> an.",
+      "placeholder": "z. B. „Leitender Projektmanager in einem mittelständischen Ingenieurbüro in Deutschland"",
+      "explainButton": "Erklären",
+      "workingButton": "Wird bearbeitet…",
+      "examplesLabel": "Beispiele — zum Ausprobieren klicken:",
+      "examples": [
+        "Geschäftsführender Gesellschafter einer Boutique-Kanzlei in Berlin",
+        "Vertriebsleiter bei einem B2B-SaaS-Unternehmen in Deutschland",
+        "Personalleitung in einem Industrieunternehmen mit 500 Mitarbeitern in Bayern",
+        "Selbstständige Unternehmensberaterin für mittelständische Kunden in der DACH-Region"
+      ],
+      "step2Title": "Ihre persönliche Ausgabe",
+      "step2Subtitle": "Basierend auf Ihrer Rollenbeschreibung",
+      "documentTypeHeader": "Dokumenttyp",
+      "sourceHeader": "Quellgespräch",
+      "affirmationsTitle": "Anwendungsspezifische Compliance- und Sicherheitshinweise",
+      "complianceLabel": "Compliance:",
+      "securityLabel": "Sicherheit:",
+      "tailorTitle": "Sie können dies auch nach Ihren Wünschen anpassen:",
+      "tailorItems": [
+        "Erstellen Sie Vorlagen von Grund auf für Ihren genauen Workflow und Ihre Terminologie.",
+        "Nutzen Sie vorhandene Berichtsformate und passen Sie sie je nach Team, Kunde oder Projekt an.",
+        "Exportieren und teilen Sie in Markdown, PDF, DOCX, JSON oder einfachem Text per E-Mail."
+      ],
+      "correctionTitle": "Optionale Korrektur",
+      "correctionButton": "Korrektur anwenden",
+      "startFreeButton": "Kostenlos starten — keine Kreditkarte erforderlich",
+      "backButton": "Zurück",
+      "tryAgainButton": "Erneut versuchen",
+      "thinking": [
+        "Ihre Rollenbeschreibung wird gelesen…",
+        "Ihren beruflichen Kontext wird ermittelt…",
+        "Relevante Anwendungsfälle werden zugeordnet…",
+        "Dokumentationsausgaben werden ausgewählt…",
+        "Compliance- und Sicherheitseignung wird geprüft…",
+        "Ihr personalisiertes Ergebnis wird vorbereitet…"
+      ]
+    },
+    "faq": {
+      "title": "Fragen & Antworten",
+      "subtitle": "Alles, was Sie über Notissima wissen müssen.",
+      "startFreeButton": "Kostenlos starten — keine Kreditkarte erforderlich",
+      "items": [
+        {
+          "q": "Was ist Notissima?",
+          "a": "Notissima ist eine Kommunikationsintelligenz-Plattform, die Ihre Anrufe, Meetings, Aufzeichnungen und Textimporte automatisch in strukturierte professionelle Dokumentation umwandelt. Anstelle von rohen Transkripten erhalten Sie Entscheidungsprotokolle, Maßnahmenpläne, strategische Vermerke und Risikoübersichten, die auf Ihre Rolle und Ihren Workflow zugeschnitten sind."
+        },
+        {
+          "q": "Für wen ist Notissima geeignet?",
+          "a": "Notissima richtet sich an Fachleute, die Meetings, Kundengespräche, Projektreviews, Beratungen oder andere wichtige Gespräche führen. Dazu gehören Projektmanager, Berater, Ärzte, Rechtsanwälte, Vertriebsmitarbeiter, Führungskräfte und alle, die auf genaue Kommunikationsaufzeichnungen angewiesen sind."
+        },
+        {
+          "q": "Wie erstellt Notissima Ausgaben aus einem Gespräch?",
+          "a": "Sie bringen die Kommunikation mit — fügen Sie Text ein, laden Sie eine Datei hoch, nehmen Sie Audio auf oder starten Sie einen Anruf direkt in Notissima. Die Plattform erkennt automatisch den Gesprächstyp, wählt die richtigen Ausgabevorlagen für Ihre Branche aus und erstellt strukturierte Dokumentation. Keine manuelle Konfiguration erforderlich."
+        },
+        {
+          "q": "Welche Ausgaben produziert Notissima?",
+          "a": "Zu den Ausgaben gehören Meetingzusammenfassungen, Entscheidungsprotokolle, Maßnahmenpläne, Risikoregister, Projektbriefings, Kundenvermerke, Nachfassnotizen und mehr. Jede Ausgabe wird mit branchenerprobten Vorlagen erstellt — strukturiert, wie Fachleute wirklich arbeiten, nicht als generische KI-Zusammenfassungen. Formate umfassen Markdown, PDF, DOCX und JSON."
+        },
+        {
+          "q": "Welche Sprachen unterstützt Notissima?",
+          "a": "Notissima unterstützt Transkription und Ausgabeerstellung in über 50 Sprachen mit automatischer Spracherkennung. Sie können in einer Sprache aufnehmen oder hochladen und Ausgaben in einer anderen erstellen — nützlich für mehrsprachige Teams und internationale Kundenprojekte."
+        },
+        {
+          "q": "Lässt sich Notissima mit Tools wie Notion, Slack oder HubSpot integrieren?",
+          "a": "Ja. Alle Ausgaben sind Markdown-nativ, das heißt, sie lassen sich problemlos in Notion, Slack, HubSpot, Confluence und jedes andere Tool Ihres Teams einfügen. Für automatisierte Workflows sind Notissima-Ausgaben mit Zapier und ähnlichen Integrationsplattformen kompatibel — keine individuelle Integration erforderlich."
+        },
+        {
+          "q": "Wie werden meine Daten und Gesprächsinhalte verarbeitet?",
+          "a": "Ihre Daten werden sicher verarbeitet und niemals zum Training von KI-Modellen verwendet. Anrufe und Aufzeichnungen werden verschlüsselt gespeichert, und alle personenbezogenen Daten (PII) in Transkripten werden automatisch gekennzeichnet und geschwärzt. Notissima ist darauf ausgelegt, die Compliance-Anforderungen regulierter Branchen zu erfüllen."
+        },
+        {
+          "q": "Kann ich Notissima für Video- und Telefonanrufe verwenden, nicht nur für Aufzeichnungen?",
+          "a": "Ja. Notissima enthält eine integrierte Anruffunktion, die browserbasierte Video- und Sprachanrufe sowie ausgehende Telefonnetzanrufe (PSTN) unterstützt. Alle Anrufe werden automatisch aufgezeichnet und in strukturierte Ausgaben verarbeitet — kein separates Meeting-Tool erforderlich."
+        },
+        {
+          "q": "Wie unterscheidet sich Notissima von einem Standard-KI-Transkriptionsdienst?",
+          "a": "Transkriptionsdienste liefern Ihnen eine Textversion des Gesagten. Notissima geht weiter: Es versteht den Zweck des Gesprächs, extrahiert Entscheidungen, Risiken und Verpflichtungen und erstellt Dokumentation, die im beruflichen Kontext sofort verwendbar ist. Es verfolgt diese Elemente auch über mehrere Sitzungen hinweg."
+        },
+        {
+          "q": "Wie starte ich mit Notissima?",
+          "a": "Sie können direkt auf dieser Seite eine kostenlose Testversion starten — keine Kreditkarte erforderlich. Nutzen Sie den Bereich „Herausfinden, was Notissima für Sie tun kann" unten, um die relevantesten Ausgaben für Ihre Rolle zu entdecken, oder melden Sie sich an und starten Sie sofort mit Ihrem ersten Anruf oder Upload."
+        }
+      ]
+    },
+    "footer": {
+      "imprint": "Impressum",
+      "privacy": "Datenschutz",
+      "terms": "AGB",
+      "contact": "Kontakt"
+    }
   }
 }

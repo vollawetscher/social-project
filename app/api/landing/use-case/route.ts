@@ -140,11 +140,58 @@ function fallback(selfDescription: string): UseCaseResponse {
   }
 }
 
+function browserLocaleToJurisdiction(browserLocale: string): string {
+  if (!browserLocale) return ''
+  const tag = browserLocale.toLowerCase()
+  const regionMap: Record<string, string> = {
+    'de': 'Germany (German/civil law jurisdiction)',
+    'de-de': 'Germany (German/civil law jurisdiction)',
+    'de-at': 'Austria (Austrian/civil law jurisdiction)',
+    'de-ch': 'Switzerland (Swiss/civil law jurisdiction)',
+    'fr': 'France (French/civil law jurisdiction)',
+    'fr-fr': 'France (French/civil law jurisdiction)',
+    'fr-be': 'Belgium (Belgian/civil law jurisdiction)',
+    'fr-ch': 'Switzerland (Swiss/civil law jurisdiction)',
+    'nl': 'Netherlands (Dutch/civil law jurisdiction)',
+    'nl-nl': 'Netherlands (Dutch/civil law jurisdiction)',
+    'nl-be': 'Belgium (Belgian/civil law jurisdiction)',
+    'es': 'Spain (Spanish civil law jurisdiction)',
+    'es-es': 'Spain (Spanish civil law jurisdiction)',
+    'es-mx': 'Mexico (Mexican civil law jurisdiction)',
+    'es-ar': 'Argentina (Argentine civil law jurisdiction)',
+    'es-co': 'Colombia (Colombian civil law jurisdiction)',
+    'pt': 'Portugal (Portuguese civil law jurisdiction)',
+    'pt-pt': 'Portugal (Portuguese civil law jurisdiction)',
+    'pt-br': 'Brazil (Brazilian civil law jurisdiction)',
+    'it': 'Italy (Italian civil law jurisdiction)',
+    'it-it': 'Italy (Italian civil law jurisdiction)',
+    'pl': 'Poland (Polish civil law jurisdiction)',
+    'sv': 'Sweden (Swedish/Nordic civil law jurisdiction)',
+    'sv-se': 'Sweden (Swedish/Nordic civil law jurisdiction)',
+    'nb': 'Norway (Norwegian/Nordic civil law jurisdiction)',
+    'da': 'Denmark (Danish/Nordic civil law jurisdiction)',
+    'fi': 'Finland (Finnish/Nordic civil law jurisdiction)',
+    'en-gb': 'United Kingdom (English common law jurisdiction)',
+    'en-au': 'Australia (Australian common law jurisdiction)',
+    'en-ca': 'Canada (Canadian common law jurisdiction)',
+    'en-nz': 'New Zealand (NZ common law jurisdiction)',
+    'en-in': 'India (Indian common law jurisdiction)',
+    'en-us': 'United States (US common law jurisdiction)',
+    'ja': 'Japan (Japanese law)',
+    'ko': 'South Korea (Korean law)',
+    'zh': 'China (Chinese law)',
+    'zh-cn': 'China (Chinese law)',
+    'zh-tw': 'Taiwan (Taiwanese law)',
+  }
+  return regionMap[tag] || regionMap[tag.split('-')[0]] || ''
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
     const selfDescription = String(body?.selfDescription || '').trim()
     const correction = String(body?.correction || '').trim()
+    const browserLocale = String(body?.browserLocale || '').trim()
 
     if (!selfDescription) {
       return NextResponse.json({ error: 'selfDescription is required' }, { status: 400 })
@@ -161,6 +208,11 @@ export async function POST(request: Request) {
       ? `\nUser correction to apply:\n"${correction}"\nTreat this correction as higher priority than your first-pass assumption.`
       : ''
 
+    const jurisdictionFallback = browserLocaleToJurisdiction(browserLocale)
+    const jurisdictionHint = jurisdictionFallback
+      ? `\nBrowser locale signal (use ONLY if no location is mentioned in the input): the user appears to be in ${jurisdictionFallback}.`
+      : ''
+
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1400,
@@ -170,7 +222,7 @@ export async function POST(request: Request) {
           content: `You are generating a "find your use case" output for Notissima — a communication intelligence platform for professionals whose work involves structured verbal communication: client calls, project meetings, consultations, negotiations, team briefings, case reviews, etc.
 
 Input self-description:
-"${selfDescription}"${correctionInstruction}
+"${selfDescription}"${correctionInstruction}${jurisdictionHint}
 
 STEP 1 — Relevance gate:
 Assess whether this role plausibly involves regular structured professional communication where capturing decisions, actions, or documentation from calls/meetings adds real value.
@@ -188,7 +240,7 @@ STEP 2 — Output (only if relevant):
 1) Classify into domain, industry, role, and context.
 2) Propose the most-used documentation outputs from verbal communication for this profile.
 3) Return practical, high-value suggestions (not generic fluff).
-4) IMPORTANT — jurisdiction and location awareness: if the input mentions a country, region, or legal system, ALL terminology, document types, use cases, and examples MUST reflect that jurisdiction. For example: a lawyer in Germany operates under German/civil law — use terms like Mandantengespräch, Aktennotiz, Beratungsprotokoll, Schriftsatzvorbereitung, not common-law concepts like Discovery, Deposition, or Pleadings. A doctor in France follows French healthcare regulations, not US HIPAA. Always adapt to the stated or implied local professional context — never default to Anglo-American terminology when a different jurisdiction is indicated.
+4) IMPORTANT — jurisdiction and location awareness: if the input explicitly mentions a country, region, or legal system, ALL terminology, document types, use cases, and examples MUST reflect that jurisdiction. If no location is mentioned in the input but a browser locale hint is provided above, use that as the fallback jurisdiction. For example: a lawyer in Germany operates under German/civil law — use terms like Mandantengespräch, Aktennotiz, Beratungsprotokoll, Schriftsatzvorbereitung, not common-law concepts like Discovery, Deposition, or Pleadings. A doctor in France follows French healthcare regulations, not US HIPAA. Always adapt to the stated or implied local professional context — never default to Anglo-American terminology when a different jurisdiction is indicated.
 
 Return strict JSON:
 {
