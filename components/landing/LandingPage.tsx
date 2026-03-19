@@ -167,33 +167,32 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero — full-screen video + inline use-case widget ── */}
-      <section className="relative min-h-screen flex items-start justify-center">
+      <section className="relative min-h-screen flex flex-col justify-between">
         <div className="absolute inset-0 overflow-hidden">
           <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-90">
             <source src="/notissima-hero.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-black/90" />
+          {/* Lighter gradient — video stays visible, bottom dark enough for widget */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/70" />
         </div>
 
-        <div className="relative z-10 w-full max-w-4xl mx-auto px-6 pt-28 pb-20">
-          {/* Headline */}
+        {/* Upper two-thirds: headline + tagline */}
+        <div className="relative z-10 w-full max-w-4xl mx-auto px-6 pt-28 flex-1 flex flex-col items-center justify-center pb-8">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-5 text-teal-200 text-center [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
             Get more out of your most valuable asset. Communication.
           </h1>
-
-          {/* Tagline */}
-          <p className="text-center text-lg sm:text-xl text-white/80 leading-relaxed mb-10 max-w-2xl mx-auto">
+          <p className="text-center text-lg sm:text-xl text-white/85 leading-relaxed max-w-2xl mx-auto [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
             Notissima turns every call, meeting, and email into structured intelligence —
             decisions, risks, and actions your team can actually use.
           </p>
+        </div>
 
-          {/* Inline use-case widget */}
-          <div id="find-use-case">
-            <p className="text-center text-sm text-teal-300 mb-3 tracking-widest uppercase font-semibold [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
-              Find out what Notissima can do for you
-            </p>
-            <FindYourUseCaseWidget compact />
-          </div>
+        {/* Lower third: use-case widget pinned to bottom */}
+        <div id="find-use-case" className="relative z-10 w-full max-w-4xl mx-auto px-6 pb-10">
+          <p className="text-center text-sm text-teal-300 mb-3 tracking-widest uppercase font-semibold [text-shadow:0_1px_8px_rgba(0,0,0,0.9)]">
+            Find out what Notissima can do for you
+          </p>
+          <FindYourUseCaseWidget compact />
         </div>
       </section>
 

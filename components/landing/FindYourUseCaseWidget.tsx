@@ -94,15 +94,13 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
               </div>
             )}
 
-            {/* What to include hint */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
-              <span className="text-slate-500">Include:</span>
-              {['Role', 'Company / Organisation', 'Domain or industry', 'Location'].map((tag) => (
-                <span key={tag} className="px-2 py-0.5 rounded-full border border-white/15 bg-white/8 text-slate-300">
-                  {tag}
-                </span>
-              ))}
-            </div>
+            {/* Plain-text guidance */}
+            <p className="text-sm text-slate-300 leading-relaxed">
+              For the best result, include your <span className="text-white font-medium">role</span>,{' '}
+              <span className="text-white font-medium">company or organisation type</span>,{' '}
+              <span className="text-white font-medium">domain or industry</span>, and{' '}
+              <span className="text-white font-medium">location</span>.
+            </p>
 
             {/* Input + button */}
             <div className="flex flex-col sm:flex-row gap-2">
@@ -111,12 +109,12 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
                 onChange={(e) => setSelfDescription(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !loading && selfDescription.trim() && runUseCase()}
                 placeholder='e.g. "Senior project manager at a mid-sized engineering firm in Germany"'
-                className="bg-white/15 border-white/30 text-white placeholder:text-slate-400 focus:border-teal-400/60 focus:bg-white/20 h-11"
+                className="bg-white/90 border-transparent text-slate-900 placeholder:text-slate-400 focus:border-teal-400 focus:bg-white h-11"
               />
               <Button
                 onClick={() => runUseCase()}
                 disabled={!selfDescription.trim() || loading}
-                className="sm:w-auto w-full h-11 bg-white text-slate-900 hover:bg-slate-100 font-semibold shrink-0"
+                className="sm:w-auto w-full h-11 bg-teal-500 hover:bg-teal-400 text-white font-semibold shrink-0"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Explain'}
               </Button>
