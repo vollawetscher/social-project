@@ -1,11 +1,55 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from '@/i18n/navigation'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+
+const THINKING_STEPS = [
+  { label: 'Reading your role description…',        ms: 0 },
+  { label: 'Identifying your professional context…', ms: 1800 },
+  { label: 'Mapping relevant use cases…',            ms: 3800 },
+  { label: 'Selecting documentation outputs…',       ms: 6000 },
+  { label: 'Checking compliance & security fit…',    ms: 8500 },
+  { label: 'Preparing your personalised result…',    ms: 11000 },
+]
+
+function ThinkingIndicator() {
+  const [stepIndex, setStepIndex] = useState(0)
+  const [dots, setDots] = useState('')
+  const startRef = useRef(Date.now())
+
+  useEffect(() => {
+    startRef.current = Date.now()
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startRef.current
+      const next = THINKING_STEPS.findLastIndex((s) => elapsed >= s.ms)
+      setStepIndex(Math.max(0, next))
+      setDots((d) => (d.length >= 3 ? '' : d + '.'))
+    }, 400)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <div className="space-y-3 py-2">
+      {THINKING_STEPS.map((s, i) => {
+        const done = i < stepIndex
+        const active = i === stepIndex
+        return (
+          <div key={s.label} className={`flex items-center gap-2.5 text-sm transition-opacity duration-500 ${i > stepIndex ? 'opacity-20' : 'opacity-100'}`}>
+            <span className={`h-2 w-2 rounded-full shrink-0 transition-colors duration-300 ${done ? 'bg-teal-400' : active ? 'bg-teal-300 animate-pulse' : 'bg-slate-600'}`} />
+            <span className={`${done ? 'text-teal-400 line-through decoration-teal-600' : active ? 'text-white' : 'text-slate-500'}`}>
+              {s.label}{active ? dots : ''}
+            </span>
+            {done && <span className="text-teal-500 text-xs ml-auto">✓</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 type Step = 1 | 2 | 'not-relevant'
 
@@ -117,7 +161,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
                 disabled={!selfDescription.trim() || loading}
                 className="sm:w-auto w-full h-11 bg-teal-500 hover:bg-teal-400 text-white font-semibold shrink-0"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Explain'}
+                {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Working…</> : 'Explain'}
               </Button>
             </div>
 
@@ -142,6 +186,12 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
                 ))}
               </div>
             </div>
+
+            {loading && (
+              <div className="rounded-xl border border-white/10 bg-black/40 px-4 py-3 mt-1">
+                <ThinkingIndicator />
+              </div>
+            )}
 
             {error && <p className="text-xs text-rose-300">{error}</p>}
           </div>
