@@ -35,6 +35,10 @@ export interface Case {
   status: CaseStatus
   created_at: string
   updated_at: string
+  archived_at?: string | null
+  retention_days: number
+  last_output_at?: string | null
+  scheduled_deletion_at?: string | null
 }
 
 export interface Session {

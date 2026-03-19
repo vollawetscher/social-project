@@ -339,6 +339,16 @@ export default function SessionsPage() {
   const [creatingProject, setCreatingProject] = useState(false)
   // When set, the newly created project will be auto-assigned to this session id
   const [createAndAssignSessionId, setCreateAndAssignSessionId] = useState<string | null>(null)
+  // Archive / Delete dialog state
+  const [archiveTargetProject, setArchiveTargetProject] = useState<any | null>(null)
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false)
+  const [archiving, setArchiving] = useState(false)
+  const [deleteTargetProject, setDeleteTargetProject] = useState<any | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteMode, setDeleteMode] = useState<'keep_sessions' | 'delete_all'>('keep_sessions')
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
   const selectedSessionId = useMemo(() => {
     const match = pathname.match(/\/sessions\/([^/]+)/)
     return match?.[1] ?? null
@@ -1221,6 +1231,7 @@ export default function SessionsPage() {
     }
   }
 
+  // Keep old simple delete (used internally); real UX goes through dialogs below
   const handleDeleteProject = async (projectId: string) => {
     if (!confirm(tc('deleteConfirm'))) return
     try {
@@ -1233,6 +1244,90 @@ export default function SessionsPage() {
       toast.success(tc('deleted'))
     } catch {
       toast.error(tc('error'))
+    }
+  }
+
+  const handleArchiveProject = async () => {
+    if (!archiveTargetProject) return
+    setArchiving(true)
+    try {
+      const res = await fetch(`/api/cases/${archiveTargetProject.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'archive' }),
+      })
+      if (!res.ok) throw new Error()
+      const updated = await res.json()
+      setProjects((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+      toast.success(t('projects.archiveSuccess'))
+      setShowArchiveDialog(false)
+      setArchiveTargetProject(null)
+    } catch {
+      toast.error(tc('error'))
+    } finally {
+      setArchiving(false)
+    }
+  }
+
+  const handleRestoreProject = async (project: any) => {
+    try {
+      const res = await fetch(`/api/cases/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restore' }),
+      })
+      if (!res.ok) throw new Error()
+      const updated = await res.json()
+      setProjects((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+      toast.success(t('projects.restoreSuccess'))
+    } catch {
+      toast.error(tc('error'))
+    }
+  }
+
+  const handleExtendProject = async (project: any) => {
+    try {
+      const res = await fetch(`/api/cases/${project.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'extend', days: 90 }),
+      })
+      if (!res.ok) throw new Error()
+      const updated = await res.json()
+      setProjects((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)))
+      toast.success(t('projects.extendSuccess'))
+    } catch {
+      toast.error(tc('error'))
+    }
+  }
+
+  const handleConfirmDeleteProject = async () => {
+    if (!deleteTargetProject) return
+    if (deleteMode === 'delete_all' && deleteConfirmName !== deleteTargetProject.title) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/cases/${deleteTargetProject.id}?mode=${deleteMode}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error()
+      setProjects((prev) => prev.filter((p) => p.id !== deleteTargetProject.id))
+      if (deleteMode === 'keep_sessions') {
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.caseId === deleteTargetProject.id ? { ...s, caseId: null, caseTitle: null } : s
+          )
+        )
+      } else {
+        setSessions((prev) => prev.filter((s) => s.caseId !== deleteTargetProject.id))
+      }
+      toast.success(tc('deleted'))
+      setShowDeleteDialog(false)
+      setDeleteTargetProject(null)
+      setDeleteConfirmName('')
+    } catch {
+      toast.error(tc('error'))
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -1770,26 +1865,50 @@ export default function SessionsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
-                {projects.map((project) => (
+                {projects.map((project) => {
+                  const isArchived = project.status === 'archived'
+                  const deletionDate = project.scheduled_deletion_at
+                    ? new Date(project.scheduled_deletion_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                    : null
+                  return (
                   <div
                     key={project.id}
-                    className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer group"
+                    className={cn(
+                      "border rounded-lg p-4 transition-all cursor-pointer group",
+                      isArchived
+                        ? "bg-muted/30 border-border/50 opacity-70 hover:opacity-90"
+                        : "bg-card border-border hover:border-primary/40 hover:shadow-sm"
+                    )}
                     onClick={() => router.push(`/projects/${project.id}`)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground truncate">{project.title}</h3>
+                        <h3 className={cn("font-medium truncate", isArchived ? "text-muted-foreground" : "text-foreground")}>
+                          {project.title}
+                        </h3>
                         {project.description && (
                           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{project.description}</p>
                         )}
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] px-1.5 py-0 h-5",
+                              isArchived && "bg-muted text-muted-foreground border-border/50"
+                            )}
+                          >
                             {t(`projects.status.${project.status ?? 'active'}`)}
                           </Badge>
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <FolderOpen className="h-3 w-3" />
                             {t('projects.sessions', { count: project.session_count ?? 0 })}
                           </span>
+                          {isArchived && deletionDate && (
+                            <span className="text-[10px] text-destructive/70 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {t('projects.scheduledDeletion', { date: deletionDate })}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <DropdownMenu>
@@ -1809,18 +1928,47 @@ export default function SessionsPage() {
                             {t('projects.openProject')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
+                          {isArchived ? (
+                            <>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRestoreProject(project) }}>
+                                <FolderOpen className="mr-2 h-4 w-4" />
+                                {t('projects.restore')}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleExtendProject(project) }}>
+                                <Clock className="mr-2 h-4 w-4" />
+                                {t('projects.extend')}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          ) : (
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation()
+                              setArchiveTargetProject(project)
+                              setShowArchiveDialog(true)
+                            }}>
+                              <FolderOpen className="mr-2 h-4 w-4" />
+                              {t('projects.archive')}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id) }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeleteTargetProject(project)
+                              setDeleteMode('keep_sessions')
+                              setDeleteConfirmName('')
+                              setShowDeleteDialog(true)
+                            }}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            {tc('delete')}
+                            {t('projects.deleteProject')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -2354,6 +2502,116 @@ export default function SessionsPage() {
             </Button>
             <Button onClick={handleCreateProject} disabled={creatingProject || !newProjectTitle.trim()}>
               {creatingProject ? t('projects.createDialog.creating') : t('projects.createDialog.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive Project Dialog */}
+      <Dialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('projects.archiveDialog.title')}</DialogTitle>
+            <DialogDescription>
+              {archiveTargetProject && t('projects.archiveDialog.retentionNote', {
+                days: archiveTargetProject.retention_days ?? 90,
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 text-sm text-muted-foreground">
+            {t('projects.archiveDialog.description', {
+              date: archiveTargetProject?.scheduled_deletion_at
+                ? new Date(archiveTargetProject.scheduled_deletion_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+                : '—',
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowArchiveDialog(false)}>
+              {tc('cancel')}
+            </Button>
+            <Button onClick={handleArchiveProject} disabled={archiving}>
+              {archiving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{tc('saving')}</> : t('projects.archiveDialog.confirmLabel')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Project Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={(open) => {
+        setShowDeleteDialog(open)
+        if (!open) { setDeleteConfirmName(''); setDeleteMode('keep_sessions') }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('projects.deleteDialog.title')}</DialogTitle>
+            <DialogDescription>{t('projects.deleteDialog.description')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {/* Option 1: keep sessions */}
+            <label className={cn(
+              "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+              deleteMode === 'keep_sessions' ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+            )}>
+              <input
+                type="radio"
+                name="deleteMode"
+                value="keep_sessions"
+                checked={deleteMode === 'keep_sessions'}
+                onChange={() => setDeleteMode('keep_sessions')}
+                className="mt-1 shrink-0"
+              />
+              <div>
+                <p className="font-medium text-sm">{t('projects.deleteDialog.keepSessions')}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t('projects.deleteDialog.keepSessionsHint')}</p>
+              </div>
+            </label>
+            {/* Option 2: delete everything */}
+            <label className={cn(
+              "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+              deleteMode === 'delete_all' ? "border-destructive bg-destructive/5" : "border-border hover:bg-muted/50"
+            )}>
+              <input
+                type="radio"
+                name="deleteMode"
+                value="delete_all"
+                checked={deleteMode === 'delete_all'}
+                onChange={() => setDeleteMode('delete_all')}
+                className="mt-1 shrink-0"
+              />
+              <div>
+                <p className="font-medium text-sm text-destructive">{t('projects.deleteDialog.deleteAll')}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t('projects.deleteDialog.deleteAllHint')}</p>
+              </div>
+            </label>
+            {/* Type-to-confirm for nuclear option */}
+            {deleteMode === 'delete_all' && (
+              <div className="space-y-1.5 pt-1">
+                <Label className="text-sm text-muted-foreground">
+                  {t('projects.deleteDialog.confirmLabel')}
+                </Label>
+                <Input
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={deleteTargetProject?.title ?? t('projects.deleteDialog.confirmPlaceholder')}
+                  className="border-destructive/40 focus-visible:ring-destructive/30"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              {tc('cancel')}
+            </Button>
+            <Button
+              variant={deleteMode === 'delete_all' ? 'destructive' : 'default'}
+              onClick={handleConfirmDeleteProject}
+              disabled={deleting || (deleteMode === 'delete_all' && deleteConfirmName !== deleteTargetProject?.title)}
+            >
+              {deleting
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('projects.deleteDialog.deleting')}</>
+                : deleteMode === 'delete_all'
+                  ? t('projects.deleteDialog.confirm')
+                  : tc('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

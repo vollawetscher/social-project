@@ -30,7 +30,6 @@ export async function GET(
     await requireCaseOwnership(params.id, user.id)
     const supabase = await createClient()
 
-    // Get case details
     const { data: caseData, error: caseError } = await supabase
       .from('cases')
       .select('*')
@@ -41,7 +40,6 @@ export async function GET(
       return NextResponse.json({ error: caseError.message }, { status: 404 })
     }
 
-    // Get all sessions for this case
     const { data: sessions, error: sessionsError } = await supabase
       .from('sessions')
       .select('*')
@@ -52,10 +50,7 @@ export async function GET(
       return NextResponse.json({ error: sessionsError.message }, { status: 500 })
     }
 
-    return NextResponse.json({
-      ...caseData,
-      sessions: sessions || []
-    })
+    return NextResponse.json({ ...caseData, sessions: sessions || [] })
   } catch (error) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)
@@ -65,7 +60,12 @@ export async function GET(
   }
 }
 
-// PATCH /api/cases/[id] - Update case
+// PATCH /api/cases/[id]
+// Supports named actions via body.action:
+//   action: 'archive'           — archive project, stamp retention_days from user profile
+//   action: 'restore'           — restore to active, clear archived_at + scheduled_deletion_at
+//   action: 'extend', days: N   — add N days to retention_days (re-stamps scheduled_deletion_at)
+//   (no action)                 — generic field update (title, description, status, etc.)
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
@@ -76,9 +76,51 @@ export async function PATCH(
     const supabase = await createClient()
     const body = await request.json()
 
+    const { action, days, ...fields } = body
+
+    let updatePayload: Record<string, any>
+
+    if (action === 'archive') {
+      // Fetch the user's default retention period
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('default_retention_days')
+        .eq('id', user.id)
+        .single()
+
+      const retentionDays = profile?.default_retention_days ?? 90
+      updatePayload = {
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        retention_days: retentionDays,
+        // scheduled_deletion_at is kept in sync by DB trigger
+      }
+    } else if (action === 'restore') {
+      updatePayload = {
+        status: 'active',
+        archived_at: null,
+        // trigger will null out scheduled_deletion_at automatically
+      }
+    } else if (action === 'extend') {
+      const extraDays = Number(days) || 90
+      // Increment retention_days; trigger recomputes scheduled_deletion_at
+      const { data: current } = await supabase
+        .from('cases')
+        .select('retention_days')
+        .eq('id', params.id)
+        .single()
+      updatePayload = {
+        retention_days: (current?.retention_days ?? 90) + extraDays,
+      }
+    } else {
+      // Generic update — strip any potentially dangerous fields
+      const { action: _a, ...safe } = body
+      updatePayload = safe
+    }
+
     const { data: updatedCase, error } = await supabase
       .from('cases')
-      .update(body)
+      .update(updatePayload)
       .eq('id', params.id)
       .select()
       .single()
@@ -97,7 +139,10 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/cases/[id] - Delete case (and all associated sessions)
+// DELETE /api/cases/[id]
+// Query param: mode=keep_sessions (default) | mode=delete_all
+//   keep_sessions — unlinks all sessions (sets case_id=null), then deletes the project
+//   delete_all    — deletes sessions + audio + outputs, then deletes the project
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
@@ -107,13 +152,29 @@ export async function DELETE(
     await requireCaseOwnership(params.id, user.id)
     const supabase = await createClient()
 
-    // Get all sessions for this case to delete their audio files
+    const { searchParams } = new URL(request.url)
+    const mode = searchParams.get('mode') ?? 'keep_sessions'
+
+    if (mode === 'keep_sessions') {
+      // Unlink all sessions from this project
+      await supabase
+        .from('sessions')
+        .update({ case_id: null })
+        .eq('case_id', params.id)
+
+      // Delete the project record
+      const { error } = await supabase.from('cases').delete().eq('id', params.id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+      return NextResponse.json({ success: true, mode: 'keep_sessions' })
+    }
+
+    // mode === 'delete_all': delete audio files first, then cascade via DB
     const { data: sessions } = await supabase
       .from('sessions')
       .select('id')
       .eq('case_id', params.id)
 
-    // Delete audio files for each session
     if (sessions && sessions.length > 0) {
       for (const session of sessions) {
         const { data: files } = await supabase
@@ -122,23 +183,19 @@ export async function DELETE(
           .eq('session_id', session.id)
 
         if (files && files.length > 0) {
-          const paths = files.map((f) => f.storage_path)
-          await supabase.storage.from('rohbericht-audio').remove(paths)
+          const paths = files.map((f: any) => f.storage_path).filter(Boolean)
+          if (paths.length > 0) {
+            await supabase.storage.from('rohbericht-audio').remove(paths)
+          }
         }
       }
     }
 
-    // Delete the case (sessions will cascade delete)
-    const { error } = await supabase
-      .from('cases')
-      .delete()
-      .eq('id', params.id)
+    // Delete the project (sessions cascade via FK ON DELETE CASCADE)
+    const { error } = await supabase.from('cases').delete().eq('id', params.id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, mode: 'delete_all' })
   } catch (error) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)

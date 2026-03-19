@@ -72,6 +72,7 @@ export default function SettingsPage() {
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [sessionTimeout, setSessionTimeout] = useState(true)
   const [retentionPolicy, setRetentionPolicy] = useState("90")
+  const [retentionCustomDays, setRetentionCustomDays] = useState("90")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [changingPassword, setChangingPassword] = useState(false)
@@ -272,6 +273,10 @@ export default function SettingsPage() {
         setPreferredReportLanguage(data.preferred_report_language || 'de')
         setTimezone(data.timezone || 'Europe/Berlin')
         setAfterTranscriptTemplateId(data.after_transcript_template_id || '')
+        const days = data.default_retention_days ?? 90
+        const presets = ['90', '180', '365', '1095', '1825', '3650']
+        setRetentionPolicy(presets.includes(String(days)) ? String(days) : 'custom')
+        setRetentionCustomDays(String(days))
       } catch (error) {
         console.error('Error fetching profile:', error)
         toast.error(t('loadFailed'))
@@ -299,6 +304,9 @@ export default function SettingsPage() {
           preferred_report_language: preferredReportLanguage,
           timezone: timezone,
           after_transcript_template_id: afterTranscriptTemplateId || null,
+          default_retention_days: retentionPolicy === 'custom'
+            ? Math.max(1, parseInt(retentionCustomDays, 10) || 90)
+            : parseInt(retentionPolicy, 10),
         })
       })
 
@@ -630,31 +638,50 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Retention Policy */}
-            <div className="space-y-2">
+            {/* Default Retention Period for Projects */}
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Label htmlFor="retention" className="font-medium">
-                  {t('dataRetentionPolicy')}
+                  {t('retentionDaysLabel')}
                 </Label>
-                <Badge variant="outline" className="text-[10px]">
-                  GDPR
-                </Badge>
+                <Badge variant="outline" className="text-[10px]">GDPR</Badge>
               </div>
-              <p className="text-sm text-muted-foreground mb-2">
-                {t('dataRetentionPolicyHint')}
+              <p className="text-sm text-muted-foreground">
+                {t('dataRetentionDescription')}
               </p>
-              <Select value={retentionPolicy} onValueChange={setRetentionPolicy}>
-                <SelectTrigger className="w-[200px] bg-secondary border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30">{t('retention30')}</SelectItem>
-                  <SelectItem value="90">{t('retention90')}</SelectItem>
-                  <SelectItem value="180">{t('retention180')}</SelectItem>
-                  <SelectItem value="365">{t('retention365')}</SelectItem>
-                  <SelectItem value="never">{t('retentionNever')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select value={retentionPolicy} onValueChange={setRetentionPolicy}>
+                  <SelectTrigger className="w-[220px] bg-secondary border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="90">{t('retentionPresets.90')}</SelectItem>
+                    <SelectItem value="180">{t('retentionPresets.180')}</SelectItem>
+                    <SelectItem value="365">{t('retentionPresets.365')}</SelectItem>
+                    <SelectItem value="1095">{t('retentionPresets.1095')}</SelectItem>
+                    <SelectItem value="1825">{t('retentionPresets.1825')}</SelectItem>
+                    <SelectItem value="3650">{t('retentionPresets.3650')}</SelectItem>
+                    <SelectItem value="custom">{t('retentionPresets.custom')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {retentionPolicy === 'custom' && (
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10000}
+                    value={retentionCustomDays}
+                    onChange={(e) => setRetentionCustomDays(e.target.value)}
+                    className="w-24 bg-secondary border-border"
+                    placeholder="days"
+                  />
+                )}
+              </div>
+              <Alert className="border-warning/30 bg-warning/10">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <AlertDescription className="text-foreground/80 text-sm">
+                  {t('retentionGdprNote')}
+                </AlertDescription>
+              </Alert>
             </div>
 
             <Alert className="border-warning/30 bg-warning/10">

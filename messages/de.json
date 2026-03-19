@@ -239,7 +239,34 @@
       "assignToProject": "Projekt zuweisen",
       "removeFromProject": "Aus Projekt entfernen",
       "openProject": "Projekt öffnen",
-      "projectBadgePrefix": ""
+      "projectBadgePrefix": "",
+      "archive": "Archivieren",
+      "restore": "Wiederherstellen",
+      "extend": "Um 90 Tage verlängern",
+      "deleteProject": "Projekt löschen…",
+      "archiveSuccess": "Projekt archiviert",
+      "restoreSuccess": "Projekt wiederhergestellt",
+      "extendSuccess": "Aufbewahrungsfrist verlängert",
+      "scheduledDeletion": "Wird gelöscht am {date}",
+      "retentionDays": "{days} Tage Aufbewahrung",
+      "archiveDialog": {
+        "title": "Projekt archivieren",
+        "description": "Das Projekt wird aus der aktiven Liste ausgeblendet. Gemäß Ihrer Aufbewahrungseinstellung werden alle Daten am {date} dauerhaft gelöscht.",
+        "confirmLabel": "Archivieren",
+        "retentionNote": "Aufbewahrungsfrist: {days} Tage ab letzter Aktivität"
+      },
+      "deleteDialog": {
+        "title": "Projekt löschen",
+        "description": "Wählen Sie, was mit den Sitzungen dieses Projekts passiert.",
+        "keepSessions": "Projekt entfernen, Sitzungen behalten",
+        "keepSessionsHint": "Sitzungen bleiben erhalten und werden nicht mehr einem Projekt zugeordnet.",
+        "deleteAll": "Projekt und alle Sitzungen löschen",
+        "deleteAllHint": "Alle Sitzungen, Transkripte, Audiodateien und Ausgaben werden dauerhaft gelöscht.",
+        "confirmLabel": "Geben Sie den Projektnamen ein, um zu bestätigen:",
+        "confirmPlaceholder": "Projektname",
+        "confirm": "Dauerhaft löschen",
+        "deleting": "Wird gelöscht…"
+      }
     }
   },
   "sessionDetail": {
@@ -714,6 +741,19 @@
     "deleteAccountFailed": "Konto konnte nicht gelöscht werden. Bitte erneut versuchen.",
     "saveSuccess": "Einstellungen gespeichert",
     "saveFailed": "Einstellungen konnten nicht gespeichert werden",
+    "dataRetention": "Datenspeicherung",
+    "dataRetentionDescription": "Standard-Aufbewahrungsfrist in Tagen, bevor archivierte Projekte dauerhaft gelöscht werden. Wird beim Archivieren festgelegt – Sie können dies pro Projekt überschreiben.",
+    "retentionDaysLabel": "Standard-Aufbewahrungsfrist (Tage)",
+    "retentionPresets": {
+      "90": "90 Tage (empfohlen)",
+      "180": "180 Tage",
+      "365": "1 Jahr",
+      "1095": "3 Jahre",
+      "1825": "5 Jahre",
+      "3650": "10 Jahre",
+      "custom": "Benutzerdefiniert"
+    },
+    "retentionGdprNote": "Gemäß DSGVO dürfen Daten nicht länger als für den ursprünglichen Zweck erforderlich gespeichert werden. Konsultieren Sie Ihr Rechts- oder Compliance-Team für die für Ihren Beruf angemessene Aufbewahrungsfrist.",
     "infrastructure": "Infrastruktur & Sicherheit",
     "infrastructureDescription": "Verbundene Dienste und deren Sicherheitsmaßnahmen",
     "euHosting": "EU-Hosting",

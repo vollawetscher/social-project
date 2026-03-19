@@ -239,7 +239,34 @@
       "assignToProject": "Asignar a proyecto",
       "removeFromProject": "Eliminar del proyecto",
       "openProject": "Abrir proyecto",
-      "projectBadgePrefix": ""
+      "projectBadgePrefix": "",
+      "archive": "Archivar",
+      "restore": "Restaurar",
+      "extend": "Ampliar 90 días",
+      "deleteProject": "Eliminar proyecto…",
+      "archiveSuccess": "Proyecto archivado",
+      "restoreSuccess": "Proyecto restaurado",
+      "extendSuccess": "Período de retención ampliado",
+      "scheduledDeletion": "Se eliminará el {date}",
+      "retentionDays": "Retención de {days} días",
+      "archiveDialog": {
+        "title": "Archivar proyecto",
+        "description": "El proyecto se ocultará de la lista activa. Según su configuración de retención, todos los datos se eliminarán permanentemente el {date}.",
+        "confirmLabel": "Archivar",
+        "retentionNote": "Período de retención: {days} días desde la última actividad"
+      },
+      "deleteDialog": {
+        "title": "Eliminar proyecto",
+        "description": "Elija qué ocurre con las sesiones de este proyecto.",
+        "keepSessions": "Eliminar proyecto, conservar sesiones",
+        "keepSessionsHint": "Las sesiones permanecen intactas y quedan sin asignar.",
+        "deleteAll": "Eliminar proyecto y todas las sesiones",
+        "deleteAllHint": "Todas las sesiones, transcripciones, archivos de audio y salidas se eliminan permanentemente.",
+        "confirmLabel": "Escriba el nombre del proyecto para confirmar:",
+        "confirmPlaceholder": "Nombre del proyecto",
+        "confirm": "Eliminar permanentemente",
+        "deleting": "Eliminando…"
+      }
     }
   },
   "sessionDetail": {
@@ -714,6 +741,19 @@
     "deleteAccountFailed": "No se pudo eliminar la cuenta. Inténtalo de nuevo.",
     "saveSuccess": "Ajustes guardados",
     "saveFailed": "No se pudieron guardar los ajustes",
+    "dataRetention": "Retención de datos",
+    "dataRetentionDescription": "Número predeterminado de días antes de que los proyectos archivados se eliminen permanentemente. Se aplica al archivar — puede anularlo por proyecto.",
+    "retentionDaysLabel": "Período de retención predeterminado (días)",
+    "retentionPresets": {
+      "90": "90 días (recomendado)",
+      "180": "180 días",
+      "365": "1 año",
+      "1095": "3 años",
+      "1825": "5 años",
+      "3650": "10 años",
+      "custom": "Personalizado"
+    },
+    "retentionGdprNote": "Según el RGPD, los datos no deben conservarse más tiempo del necesario para su propósito original. Consulte a su equipo legal o de cumplimiento para determinar el período de retención adecuado para su profesión.",
     "infrastructure": "Infraestructura y Seguridad",
     "infrastructureDescription": "Servicios conectados y sus medidas de seguridad",
     "euHosting": "Hosting en la UE",

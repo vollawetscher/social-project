@@ -239,7 +239,34 @@
       "assignToProject": "Assign to project",
       "removeFromProject": "Remove from project",
       "openProject": "Open project",
-      "projectBadgePrefix": ""
+      "projectBadgePrefix": "",
+      "archive": "Archive",
+      "restore": "Restore",
+      "extend": "Extend by 90 days",
+      "deleteProject": "Delete project…",
+      "archiveSuccess": "Project archived",
+      "restoreSuccess": "Project restored",
+      "extendSuccess": "Retention period extended",
+      "scheduledDeletion": "Deletes {date}",
+      "retentionDays": "{days} day retention",
+      "archiveDialog": {
+        "title": "Archive project",
+        "description": "The project will be hidden from the active list. Based on your retention setting, all data will be permanently deleted {date}.",
+        "confirmLabel": "Archive",
+        "retentionNote": "Retention period: {days} days from last activity"
+      },
+      "deleteDialog": {
+        "title": "Delete project",
+        "description": "Choose what happens to the sessions in this project.",
+        "keepSessions": "Remove project, keep sessions",
+        "keepSessionsHint": "Sessions stay intact and become unassigned.",
+        "deleteAll": "Delete project and all sessions",
+        "deleteAllHint": "All sessions, transcripts, audio files, and outputs are permanently erased.",
+        "confirmLabel": "Type the project name to confirm:",
+        "confirmPlaceholder": "Project name",
+        "confirm": "Permanently delete",
+        "deleting": "Deleting…"
+      }
     }
   },
   "sessionDetail": {
@@ -715,6 +742,19 @@
     "deleteAccountFailed": "Could not delete account. Please try again.",
     "saveSuccess": "Settings saved",
     "saveFailed": "Failed to save settings",
+    "dataRetention": "Data Retention",
+    "dataRetentionDescription": "Default number of days before archived projects are permanently deleted. Applied at archive time — you can override per project.",
+    "retentionDaysLabel": "Default retention period (days)",
+    "retentionPresets": {
+      "90": "90 days (recommended)",
+      "180": "180 days",
+      "365": "1 year",
+      "1095": "3 years",
+      "1825": "5 years",
+      "3650": "10 years",
+      "custom": "Custom"
+    },
+    "retentionGdprNote": "Under GDPR, data should not be kept longer than necessary for its original purpose. Consult your legal or compliance team for the retention period appropriate for your profession.",
     "infrastructure": "Infrastructure & Security",
     "infrastructureDescription": "Connected services and their security measures",
     "euHosting": "EU Hosting",

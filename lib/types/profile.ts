@@ -22,6 +22,9 @@ export interface UserProfile {
   auth_method?: string
   preferences?: Record<string, any>
 
+  // Data retention
+  default_retention_days: number
+
   // Trial / onboarding
   onboarding_expires_at?: string | null
 }
