@@ -20,6 +20,7 @@ type UseCaseResponse = {
     securityAffirmation: string
   }>
   valueProp: string
+  correctionPlaceholder?: string
 }
 
 function parseJson(raw: string): UseCaseResponse | null {
@@ -63,6 +64,7 @@ function parseJson(raw: string): UseCaseResponse | null {
         .slice(0, 8)
       : []
     const valueProp = String(parsed.valueProp || '').trim()
+    const correctionPlaceholder = String(parsed.correctionPlaceholder || '').trim() || undefined
     const useCaseIds = new Set(useCases.map((u) => u.id))
     const linkedAffirmations = affirmationsByUseCase.filter((a) => useCaseIds.has(a.useCaseId))
     if (
@@ -83,6 +85,7 @@ function parseJson(raw: string): UseCaseResponse | null {
       documents,
       affirmationsByUseCase: linkedAffirmations,
       valueProp,
+      correctionPlaceholder,
     }
   } catch {
     return null
@@ -208,17 +211,19 @@ Return strict JSON:
       "securityAffirmation": "string"
     }
   ],
-  "valueProp": "2-3 sentences"
+  "valueProp": "2-3 sentences",
+  "correctionPlaceholder": "string"
 }
 
 Constraints:
 - useCases: 4-6
 - documents: 5-10
 - affirmationsByUseCase: exactly one item per use case id
-- each complianceAffirmation must be concrete and use-case specific
-- each securityAffirmation must be concrete and use-case specific
+- complianceAffirmation: concrete, use-case specific compliance or regulatory relevance for this role
+- securityAffirmation: MUST describe a specific Notissima security feature that makes it safe to use in this professional context. Notissima's security features include: end-to-end encryption of all recordings and transcripts, automatic PII detection and redaction before storage, data is never used to train AI models, per-user and per-team access controls with no cross-account sharing, GDPR-compliant processing with EU data residency options, and audit-ready access logs. Pick the feature(s) most relevant to this use case and explain why they matter for this specific role — do not write abstract "can be" statements.
 - sourceConversation must be concrete (e.g. "customer implementation calls", "editorial planning meetings")
 - documentType should sound like something professionals actually use
+- correctionPlaceholder: a short, realistic example correction a person in THIS specific role might give — e.g. for a lawyer it might be "Not litigation — mostly M&A and corporate advisory", for a doctor "Not hospital setting — private outpatient clinic". It should help them understand what kind of refinement is useful.
 - No markdown, no explanation, JSON only.`,
         },
       ],

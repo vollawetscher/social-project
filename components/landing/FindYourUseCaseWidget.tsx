@@ -24,6 +24,7 @@ type UseCaseResult = {
     securityAffirmation: string
   }>
   valueProp: string
+  correctionPlaceholder?: string
 }
 
 interface FindYourUseCaseWidgetProps {
@@ -222,7 +223,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
                 <Input
                   value={correction}
                   onChange={(e) => setCorrection(e.target.value)}
-                  placeholder='e.g. "Not clinic context — mostly owner support and renewals"'
+                  placeholder={result.correctionPlaceholder ? `e.g. "${result.correctionPlaceholder}"` : 'e.g. "Focus more on client-facing work, less on internal reporting"'}
                   className="bg-slate-900 border-slate-700 text-slate-100 placeholder:text-slate-500"
                 />
                 <Button
