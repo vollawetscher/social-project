@@ -44,7 +44,7 @@ export function PastePreviewSheet({
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const parseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt']
+  const parseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt', 'raw_text']
 
   useEffect(() => {
     if (open) {
@@ -84,6 +84,7 @@ export function PastePreviewSheet({
     sprecher_zeit: t('parseModes.sprecherZeit'),
     timestamped_speaker_lines: t('parseModes.timestampedSpeakerLines'),
     plain_txt: t('parseModes.plainText'),
+    raw_text: t('parseModes.rawText'),
   }
 
   const toPreviewText = (result: ParseResult) => {
@@ -102,6 +103,11 @@ export function PastePreviewSheet({
   const handleTryNextParse = () => {
     const next = (modeIndex + 1) % parseModes.length
     const nextMode = parseModes[next]
+    if (nextMode === 'raw_text') {
+      setText(initialText)
+      setModeIndex(next)
+      return
+    }
     const parsed = parseTranscriptFile(initialText, fileName || 'pasted.txt', { strategy: nextMode })
     setText(toPreviewText(parsed) || initialText)
     setModeIndex(next)

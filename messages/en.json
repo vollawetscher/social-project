@@ -1083,7 +1083,8 @@
       "auto": "Auto",
       "sprecherZeit": "SPRECHER/ZEIT",
       "timestampedSpeakerLines": "Timestamped lines",
-      "plainText": "Plain text"
+      "plainText": "Plain text",
+      "rawText": "Raw text (no parsing)"
     },
     "detection": {
       "kindTranscript": "Likely transcript",

@@ -1082,7 +1082,8 @@
       "auto": "Auto",
       "sprecherZeit": "SPRECHER/ZEIT",
       "timestampedSpeakerLines": "Lineas con marcas de tiempo",
-      "plainText": "Texto plano"
+      "plainText": "Texto plano",
+      "rawText": "Texto en bruto (sin parseo)"
     },
     "detection": {
       "kindTranscript": "Probable transcripcion",

@@ -48,6 +48,7 @@ export type TranscriptParseStrategy =
   | 'sprecher_zeit'
   | 'timestamped_speaker_lines'
   | 'plain_txt'
+  | 'raw_text'
 
 // Strict speaker label shape to avoid sentence fragments being captured as speaker names.
 // Supports:
@@ -498,6 +499,40 @@ function parseTXT(content: string, speakerHints?: string[]): ParseResult {
   return { segments, rawText }
 }
 
+function parseRawText(content: string): ParseResult {
+  const trimmed = content.trim()
+  if (!trimmed) return { segments: [], rawText: '' }
+
+  const paragraphs = trimmed
+    .split(/\r?\n\s*\r?\n+/)
+    .map((p) => p.replace(/\s*\r?\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim())
+    .filter(Boolean)
+
+  if (paragraphs.length === 0) {
+    return { segments: [], rawText: '' }
+  }
+
+  const segments: ParsedSegment[] = []
+  let currentMs = 0
+  const msPerWord = 400
+  for (const para of paragraphs) {
+    const words = para.split(/\s+/).filter(Boolean)
+    const durationMs = Math.max(1200, words.length * msPerWord)
+    segments.push({
+      start_ms: currentMs,
+      end_ms: currentMs + durationMs,
+      speaker: 'TEXT',
+      text: para,
+    })
+    currentMs += durationMs
+  }
+
+  return {
+    segments,
+    rawText: paragraphs.join('\n\n'),
+  }
+}
+
 /**
  * Parse transcript file content by extension.
  * For TXT/pasted content, tries chat format first (You said/ChatGPT said, User/Assistant).
@@ -519,6 +554,9 @@ export function parseTranscriptFile(
   }
   if (strategy === 'plain_txt') {
     return parseTXT(content, speakerHints)
+  }
+  if (strategy === 'raw_text') {
+    return parseRawText(content)
   }
 
   if (ext === 'srt') return parseSRT(content)

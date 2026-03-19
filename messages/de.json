@@ -1082,7 +1082,8 @@
       "auto": "Auto",
       "sprecherZeit": "SPRECHER/ZEIT",
       "timestampedSpeakerLines": "Zeitstempel-Zeilen",
-      "plainText": "Klartext"
+      "plainText": "Klartext",
+      "rawText": "Rohtext (kein Parsing)"
     },
     "detection": {
       "kindTranscript": "Wahrscheinlich Transkript",
