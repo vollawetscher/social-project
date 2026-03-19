@@ -190,7 +190,7 @@ export default function LandingPage() {
           {/* Inline use-case widget */}
           <div id="find-use-case">
             <p className="text-center text-sm text-white/60 mb-3 tracking-wide uppercase font-medium">
-              Find out what it can do for you
+              Find out what Notissima can do for you
             </p>
             <FindYourUseCaseWidget compact />
           </div>
