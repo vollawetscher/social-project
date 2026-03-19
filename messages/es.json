@@ -967,6 +967,8 @@
     "awaitingParticipant": "Esperando participante",
     "consentGranted": "Consentimiento otorgado",
     "remoteMuted": "Silenciado",
+    "remoteOnHold": "En espera",
+    "remoteOnHoldBanner": "Te han puesto en espera",
     "callerOnly": "Solo llamante",
     "consentPending": "Consentimiento pendiente",
     "awaitingPhoneConsent": "Esperando consentimiento por telefono...",

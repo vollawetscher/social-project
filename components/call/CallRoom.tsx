@@ -13,7 +13,7 @@ import {
   useTracks,
   VideoTrack,
 } from "@livekit/components-react"
-import { ConnectionState, Track } from "livekit-client"
+import { ConnectionState, Track, RoomEvent } from "livekit-client"
 import { isTrackReference } from "@livekit/components-core"
 import {
   BackgroundProcessor,
@@ -37,6 +37,7 @@ import {
   Unlock,
   UserX,
   MicOff,
+  PauseCircle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -223,6 +224,7 @@ function CallRoomInner({
   const [remoteEndReason, setRemoteEndReason] = useState<"declined" | "missed" | "ended" | "error" | null>(null)
   const [isSpeaker, setIsSpeaker] = useState(true)
   const [isOnHold, setIsOnHold] = useState(false)
+  const [remoteOnHold, setRemoteOnHold] = useState(false)
   const [cameraDeviceIds, setCameraDeviceIds] = useState<string[]>([])
   const [currentCameraDeviceId, setCurrentCameraDeviceId] = useState<string | null>(null)
   const [reconnectDeadline, setReconnectDeadline] = useState<number | null>(null)
@@ -921,18 +923,37 @@ function CallRoomInner({
       await localParticipant.setMicrophoneEnabled(false)
       setRemoteVolume(0)
       setIsOnHold(true)
+      localParticipant.setMetadata(JSON.stringify({ onHold: true })).catch(() => {})
       toast.info(t("callOnHold"))
       return
     }
     await localParticipant.setMicrophoneEnabled(micBeforeHoldRef.current)
     setRemoteVolume(isSpeaker ? 1 : 0)
     setIsOnHold(false)
+    localParticipant.setMetadata(JSON.stringify({ onHold: false })).catch(() => {})
     toast.info(t("callResumed"))
   }, [isOnHold, localParticipant, setRemoteVolume, isSpeaker])
 
   useEffect(() => {
     setRemoteVolume(isSpeaker && !isOnHold ? 1 : 0)
   }, [remoteParticipants.length, isSpeaker, isOnHold, setRemoteVolume])
+
+  // Sync remote hold state from LiveKit participant metadata.
+  useEffect(() => {
+    const parseHold = (metadata?: string | null) => {
+      try { return !!JSON.parse(metadata || '{}')?.onHold } catch { return false }
+    }
+    // Seed from current metadata
+    const rp = remoteParticipants[0]
+    setRemoteOnHold(rp ? parseHold(rp.metadata) : false)
+
+    const handler = () => {
+      const rp = remoteParticipants[0]
+      setRemoteOnHold(rp ? parseHold(rp.metadata) : false)
+    }
+    room.on(RoomEvent.ParticipantMetadataChanged, handler)
+    return () => { room.off(RoomEvent.ParticipantMetadataChanged, handler) }
+  }, [room, remoteParticipants])
 
   const [linkCopied, setLinkCopied] = useState(false)
 
@@ -1162,9 +1183,15 @@ function CallRoomInner({
           )}
           {viewMode === "simple" && (
             <div className="flex-1 flex flex-col items-center justify-center w-full">
-              <div className={cn("rounded-full p-1", callStatus === "connected" && "ring-4 ring-primary/20")}>
+              {callStatus === "connected" && remoteOnHold && (
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-center gap-2 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2">
+                  <PauseCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span className="text-sm text-amber-700 font-medium">{t("remoteOnHoldBanner")}</span>
+                </div>
+              )}
+              <div className={cn("rounded-full p-1", callStatus === "connected" && !remoteOnHold && "ring-4 ring-primary/20", callStatus === "connected" && remoteOnHold && "ring-4 ring-amber-400/30")}>
                 <Avatar className="h-28 w-28">
-                  <AvatarFallback className="bg-secondary text-foreground text-4xl">
+                  <AvatarFallback className={cn("text-foreground text-4xl", remoteOnHold ? "bg-amber-100/60" : "bg-secondary")}>
                     {hasRemote ? remoteInitials : contactInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -1172,7 +1199,13 @@ function CallRoomInner({
               <div className="text-center mt-4">
                 <h2 className="text-xl font-semibold text-foreground">{remoteDisplayName}</h2>
                 {contactPhone && <p className="text-sm text-muted-foreground mt-1">{contactPhone}</p>}
-                {callStatus === "connected" && remoteParticipants[0] && !remoteParticipants[0].isMicrophoneEnabled && (
+                {callStatus === "connected" && remoteOnHold && (
+                  <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-xs font-medium">
+                    <PauseCircle className="h-3 w-3" />
+                    {t("remoteOnHold")}
+                  </div>
+                )}
+                {callStatus === "connected" && !remoteOnHold && remoteParticipants[0] && !remoteParticipants[0].isMicrophoneEnabled && (
                   <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium">
                     <MicOff className="h-3 w-3" />
                     {t("remoteMuted")}

@@ -970,6 +970,8 @@
     "callerOnly": "Caller only",
     "consentPending": "Consent pending",
     "remoteMuted": "Muted",
+    "remoteOnHold": "On hold",
+    "remoteOnHoldBanner": "You have been placed on hold",
     "awaitingPhoneConsent": "Waiting for consent on phone...",
     "noAlternativeCamera": "No alternative camera found",
     "failedSwitchCamera": "Failed to switch camera",

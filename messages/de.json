@@ -967,6 +967,8 @@
     "awaitingParticipant": "Warten auf Teilnehmer",
     "consentGranted": "Einwilligung erteilt",
     "remoteMuted": "Stumm",
+    "remoteOnHold": "Gehalten",
+    "remoteOnHoldBanner": "Sie wurden in die Warteschleife gelegt",
     "callerOnly": "Nur Anrufer",
     "consentPending": "Einwilligung ausstehend",
     "awaitingPhoneConsent": "Warten auf Einwilligung per Telefon...",
