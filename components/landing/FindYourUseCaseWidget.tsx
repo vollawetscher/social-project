@@ -26,7 +26,12 @@ type UseCaseResult = {
   valueProp: string
 }
 
-export default function FindYourUseCaseWidget() {
+interface FindYourUseCaseWidgetProps {
+  /** When true, hides the step-1 title/description (used when embedded inside the hero) */
+  compact?: boolean
+}
+
+export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCaseWidgetProps) {
   const [step, setStep] = useState<Step>(1)
   const [transitioning, setTransitioning] = useState(false)
   const [selfDescription, setSelfDescription] = useState('')
@@ -72,26 +77,33 @@ export default function FindYourUseCaseWidget() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto rounded-2xl border border-slate-800 bg-slate-950/95 p-4 sm:p-6 text-slate-100 shadow-2xl">
+    <div className="w-full max-w-4xl mx-auto rounded-2xl border border-white/15 bg-black/45 backdrop-blur-sm p-4 sm:p-6 text-slate-100 shadow-2xl">
       <div className={`transition-opacity duration-300 ${transitioning ? 'opacity-0' : 'opacity-100'}`}>
         {step === 1 && (
           <div className="space-y-4">
-            <div>
-              <h3 className="text-xl sm:text-2xl font-semibold">Find out what it can do for you</h3>
-              <p className="text-sm text-slate-300 mt-1">Describe your role in one sentence.</p>
-            </div>
+            {!compact && (
+              <div>
+                <h3 className="text-xl sm:text-2xl font-semibold">Find out what it can do for you</h3>
+                <p className="text-sm text-slate-300 mt-1">Describe your role in one sentence.</p>
+              </div>
+            )}
 
             <div className="space-y-2">
-              <label className="text-sm text-slate-300">Role self-description</label>
+              {!compact && <label className="text-sm text-slate-300">Role self-description</label>}
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   value={selfDescription}
                   onChange={(e) => setSelfDescription(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !loading && selfDescription.trim() && runUseCase()}
                   placeholder='e.g. "I am the CEO of an innovative SaaS Healthcare Solution"'
-                  className="bg-slate-900 border-slate-700 text-slate-100 placeholder:text-slate-500"
+                  className="bg-white/10 border-white/20 text-slate-100 placeholder:text-slate-400 focus:border-white/40 h-11"
                 />
-                <Button onClick={() => runUseCase()} disabled={!selfDescription.trim() || loading} className="sm:w-auto w-full">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Generate'}
+                <Button
+                  onClick={() => runUseCase()}
+                  disabled={!selfDescription.trim() || loading}
+                  className="sm:w-auto w-full h-11 bg-white text-slate-900 hover:bg-slate-100 font-semibold shrink-0"
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Explain'}
                 </Button>
               </div>
             </div>
@@ -102,7 +114,7 @@ export default function FindYourUseCaseWidget() {
         {step === 2 && result && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-xl sm:text-2xl font-semibold">Sofort: personalisierter Output</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold">Your personalised output</h3>
               <p className="text-sm text-slate-300 mt-1">Based on your role description</p>
             </div>
 
@@ -196,7 +208,7 @@ export default function FindYourUseCaseWidget() {
               </Button>
               <Button asChild className="bg-white text-slate-900 hover:bg-slate-100 font-semibold">
                 <Link href="/signup" className="inline-flex items-center gap-2">
-                  Jetzt kostenlos testen
+                  Start free — no credit card needed
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>

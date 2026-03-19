@@ -166,51 +166,33 @@ export default function LandingPage() {
         )}
       </nav>
 
-      {/* ── Hero — full-screen video ── */}
-      <section className="relative min-h-screen flex items-center justify-center">
+      {/* ── Hero — full-screen video + inline use-case widget ── */}
+      <section className="relative min-h-screen flex items-start justify-center">
         <div className="absolute inset-0 overflow-hidden">
           <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-90">
             <source src="/notissima-hero.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/60 to-black/75" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/65 to-black/80" />
         </div>
 
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center pt-20">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6 text-teal-200 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
+        <div className="relative z-10 w-full max-w-4xl mx-auto px-6 pt-28 pb-20">
+          {/* Headline */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-5 text-teal-200 text-center [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">
             Get more out of your most valuable asset. Communication.
           </h1>
-          <div className="max-w-3xl mx-auto rounded-2xl bg-black/40 border border-white/25 px-5 py-4 sm:px-7 sm:py-5 backdrop-blur-sm shadow-2xl">
-            <p className="text-lg sm:text-xl text-white leading-relaxed">
-              Every call, meeting, and email your team makes holds decisions, risks, and commitments.
-              Right now, most of it disappears — trapped in someone&apos;s memory, buried in a thread, or reduced to a few lines nobody will read.
-            </p>
-            <p className="text-lg sm:text-xl text-white leading-relaxed mt-4">
-              Notissima captures it all. Not as transcripts. As intelligence.
-            </p>
-          </div>
 
-          <div className="mt-10">
-            <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100 font-semibold px-8">
-              <a href="#find-use-case" className="inline-flex items-center gap-2">
-                Find out what it can do for you
-                <ArrowRight className="h-4 w-4" />
-              </a>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Find Your Use Case ── */}
-      <section id="find-use-case" className="py-20 px-6 bg-slate-950">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-            Find out what Notissima can do for you
-          </h2>
-          <p className="mt-3 text-sm sm:text-base text-slate-300">
-            Describe your role and get a personalised picture of exactly which outputs matter for your work.
+          {/* Tagline */}
+          <p className="text-center text-lg sm:text-xl text-white/80 leading-relaxed mb-10 max-w-2xl mx-auto">
+            Notissima turns every call, meeting, and email into structured intelligence —
+            decisions, risks, and actions your team can actually use.
           </p>
-          <div className="mt-8 text-left">
-            <FindYourUseCaseWidget />
+
+          {/* Inline use-case widget */}
+          <div id="find-use-case">
+            <p className="text-center text-sm text-white/60 mb-3 tracking-wide uppercase font-medium">
+              Find out what it can do for you
+            </p>
+            <FindYourUseCaseWidget compact />
           </div>
         </div>
       </section>
