@@ -57,13 +57,91 @@ export default function LandingPage() {
     })),
   }
 
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Notissima',
+    url: 'https://notissima.com',
+    logo: 'https://notissima.com/icon-192.png',
+    sameAs: [],
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer support',
+      url: 'https://notissima.com/en/contact',
+    },
+  }
+
+  const websiteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Notissima',
+    url: 'https://notissima.com',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: 'https://notissima.com/en/marketplace?q={search_term_string}',
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  }
+
+  const softwareSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Notissima',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: 'https://notissima.com',
+    description:
+      'Communication intelligence platform that automatically converts calls, meetings, and recordings into decision logs, action plans, risk summaries, and professional documentation.',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'EUR',
+      description: 'Free trial available — no credit card required',
+    },
+    featureList: [
+      'Automatic meeting transcription in 50+ languages',
+      'AI-generated decision logs and action plans',
+      'Risk register and compliance documentation',
+      'Built-in video and voice calling',
+      'GDPR-compliant with EU data residency options',
+      'PII detection and redaction',
+      'Export to Markdown, PDF, DOCX, JSON',
+      'Template library and custom templates',
+    ],
+    screenshot: 'https://notissima.com/og-image.png',
+  }
+
+  const videoSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: 'Notissima — Communication Intelligence Platform',
+    description:
+      'See how Notissima turns every call, meeting, and email into structured intelligence — decisions, risks, and actions your team can actually use.',
+    thumbnailUrl: 'https://notissima.com/og-image.png',
+    uploadDate: '2026-01-01',
+    contentUrl: 'https://notissima.com/notissima-hero.mp4',
+    embedUrl: 'https://notissima.com',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Notissima',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://notissima.com/icon-192.png',
+      },
+    },
+  }
+
   return (
     <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden">
-      {/* FAQ JSON-LD schema for Google/AI search */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
+      {/* Structured data for Google/AI search */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(videoSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       {/* ── Nav ── */}
       <nav

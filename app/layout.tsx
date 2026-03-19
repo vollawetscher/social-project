@@ -1,12 +1,15 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://notissima.com'
+const appUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://notissima.com'
 
 export const metadata: Metadata = {
-  title: 'Notissima - Professional Meeting Documentation',
+  title: {
+    default: 'Notissima — Turn Every Call and Meeting into Structured Intelligence',
+    template: '%s — Notissima',
+  },
   description:
-    'AI-powered transcription and documentation for meetings, consultations, and conversations',
+    'Notissima automatically converts your calls, meetings, and recordings into decision logs, action plans, and risk summaries. Built for professionals who depend on accurate communication records.',
   metadataBase: new URL(appUrl),
   manifest: '/manifest.json',
   icons: {
@@ -24,17 +27,17 @@ export const metadata: Metadata = {
     title: 'Notissima',
   },
   openGraph: {
-    title: 'Notissima - Professional Meeting Documentation',
+    title: 'Notissima — Turn Every Call and Meeting into Structured Intelligence',
     description:
-      'AI-powered transcription and documentation for meetings, consultations, and conversations',
-    url: 'https://notissima.com',
+      'Notissima automatically converts your calls, meetings, and recordings into decision logs, action plans, and risk summaries. Built for professionals who depend on accurate communication records.',
+    url: appUrl,
     siteName: 'Notissima',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Notissima',
+        alt: 'Notissima — Communication intelligence for professionals',
       },
     ],
     locale: 'en_US',
@@ -42,9 +45,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Notissima - Professional Meeting Documentation',
+    title: 'Notissima — Turn Every Call and Meeting into Structured Intelligence',
     description:
-      'AI-powered transcription and documentation for meetings, consultations, and conversations',
+      'Notissima automatically converts your calls, meetings, and recordings into decision logs, action plans, and risk summaries.',
     images: ['/og-image.png'],
   },
 }
@@ -52,8 +55,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // userScalable intentionally omitted — pinch-to-zoom must remain enabled
+  // for accessibility and to avoid Google mobile usability penalties
   themeColor: '#7C3AED',
 }
 
