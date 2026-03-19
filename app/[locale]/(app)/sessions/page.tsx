@@ -32,6 +32,7 @@ import {
   Video,
   FolderOpen,
   FolderPlus,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -336,6 +337,8 @@ export default function SessionsPage() {
   const [newProjectClientId, setNewProjectClientId] = useState('')
   const [newProjectDescription, setNewProjectDescription] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
+  // When set, the newly created project will be auto-assigned to this session id
+  const [createAndAssignSessionId, setCreateAndAssignSessionId] = useState<string | null>(null)
   const selectedSessionId = useMemo(() => {
     const match = pathname.match(/\/sessions\/([^/]+)/)
     return match?.[1] ?? null
@@ -1182,11 +1185,35 @@ export default function SessionsPage() {
       if (!res.ok) throw new Error()
       const created = await res.json()
       setProjects((prev) => [created, ...prev])
-      toast.success(t('projects.createDialog.success'))
       setShowCreateProjectDialog(false)
       setNewProjectTitle('')
       setNewProjectClientId('')
       setNewProjectDescription('')
+
+      // Auto-assign the session that triggered "New project" from its action menu
+      const targetSessionId = createAndAssignSessionId
+      setCreateAndAssignSessionId(null)
+      if (targetSessionId) {
+        const patchRes = await fetch(`/api/sessions/${targetSessionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ case_id: created.id }),
+        })
+        if (patchRes.ok) {
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === targetSessionId
+                ? { ...s, caseId: created.id, caseTitle: created.title }
+                : s
+            )
+          )
+          toast.success(`${created.title}: ${t('projects.assignDialog.success')}`)
+        } else {
+          toast.success(t('projects.createDialog.success'))
+        }
+      } else {
+        toast.success(t('projects.createDialog.success'))
+      }
     } catch {
       toast.error(t('projects.createDialog.error'))
     } finally {
@@ -1985,6 +2012,15 @@ export default function SessionsPage() {
                           <FolderOpen className="mr-2 h-4 w-4" />
                           {t('projects.assignToProject')}
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setCreateAndAssignSessionId(session.id)
+                            setShowCreateProjectDialog(true)
+                          }}
+                        >
+                          <FolderPlus className="mr-2 h-4 w-4" />
+                          {t('projects.createProject')}
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           className="text-destructive"
@@ -2182,6 +2218,15 @@ export default function SessionsPage() {
                               <FolderOpen className="mr-2 h-4 w-4" />
                               {t('projects.assignToProject')}
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setCreateAndAssignSessionId(session.id)
+                                setShowCreateProjectDialog(true)
+                              }}
+                            >
+                              <FolderPlus className="mr-2 h-4 w-4" />
+                              {t('projects.createProject')}
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               className="text-destructive"
@@ -2236,8 +2281,27 @@ export default function SessionsPage() {
             <DialogDescription>{t('projects.assignDialog.description')}</DialogDescription>
           </DialogHeader>
           <div className="py-2">
-            {projects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('projects.assignDialog.noProjects')}</p>
+            {loadingProjects ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {tc('loading')}
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="text-center py-3">
+                <p className="text-sm text-muted-foreground mb-3">{t('projects.assignDialog.noProjects')}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowAssignDialog(false)
+                    setCreateAndAssignSessionId(assignSessionId)
+                    setShowCreateProjectDialog(true)
+                  }}
+                >
+                  <FolderPlus className="mr-2 h-4 w-4" />
+                  {t('projects.createProject')}
+                </Button>
+              </div>
             ) : (
               <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
                 <SelectTrigger>
@@ -2256,9 +2320,11 @@ export default function SessionsPage() {
             <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
               {tc('cancel')}
             </Button>
-            <Button onClick={handleAssignToProject} disabled={assigningSaving || projects.length === 0}>
-              {assigningSaving ? t('projects.assignDialog.assigning') : t('projects.assignDialog.confirm')}
-            </Button>
+            {projects.length > 0 && (
+              <Button onClick={handleAssignToProject} disabled={assigningSaving}>
+                {assigningSaving ? t('projects.assignDialog.assigning') : t('projects.assignDialog.confirm')}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
