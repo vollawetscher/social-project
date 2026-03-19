@@ -77,7 +77,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto rounded-2xl border border-white/15 bg-black/45 backdrop-blur-sm p-4 sm:p-6 text-slate-100 shadow-2xl">
+    <div className="w-full max-w-4xl mx-auto rounded-2xl border border-white/20 bg-black/75 backdrop-blur-md p-4 sm:p-6 text-slate-100 shadow-2xl">
       <div className={`transition-opacity duration-300 ${transitioning ? 'opacity-0' : 'opacity-100'}`}>
         {step === 1 && (
           <div className="space-y-4">
@@ -96,7 +96,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
                   onChange={(e) => setSelfDescription(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !loading && selfDescription.trim() && runUseCase()}
                   placeholder='e.g. "I am the CEO of an innovative SaaS Healthcare Solution"'
-                  className="bg-white/10 border-white/20 text-slate-100 placeholder:text-slate-400 focus:border-white/40 h-11"
+                  className="bg-white/15 border-white/30 text-white placeholder:text-slate-400 focus:border-teal-400/60 focus:bg-white/20 h-11"
                 />
                 <Button
                   onClick={() => runUseCase()}

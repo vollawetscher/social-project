@@ -172,7 +172,7 @@ export default function LandingPage() {
           <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-90">
             <source src="/notissima-hero.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/65 to-black/80" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-black/90" />
         </div>
 
         <div className="relative z-10 w-full max-w-4xl mx-auto px-6 pt-28 pb-20">
@@ -189,7 +189,7 @@ export default function LandingPage() {
 
           {/* Inline use-case widget */}
           <div id="find-use-case">
-            <p className="text-center text-sm text-white/60 mb-3 tracking-wide uppercase font-medium">
+            <p className="text-center text-sm text-teal-300 mb-3 tracking-widest uppercase font-semibold [text-shadow:0_1px_8px_rgba(0,0,0,0.8)]">
               Find out what Notissima can do for you
             </p>
             <FindYourUseCaseWidget compact />
