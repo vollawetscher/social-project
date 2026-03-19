@@ -1617,7 +1617,7 @@
     },
     "widget": {
       "guidance": "Für das beste Ergebnis geben Sie Ihre <role>Rolle</role>, den <c>Unternehmens- oder Organisationstyp</c>, die <d>Branche</d> und Ihren <l>Standort</l> an.",
-      "placeholder": "z. B. „Leitender Projektmanager in einem mittelständischen Ingenieurbüro in Deutschland"",
+      "placeholder": "z. B. \"Leitender Projektmanager in einem mittelständischen Ingenieurbüro in Deutschland\"",
       "explainButton": "Erklären",
       "workingButton": "Wird bearbeitet…",
       "examplesLabel": "Beispiele — zum Ausprobieren klicken:",
@@ -1697,7 +1697,7 @@
         },
         {
           "q": "Wie starte ich mit Notissima?",
-          "a": "Sie können direkt auf dieser Seite eine kostenlose Testversion starten — keine Kreditkarte erforderlich. Nutzen Sie den Bereich „Herausfinden, was Notissima für Sie tun kann" unten, um die relevantesten Ausgaben für Ihre Rolle zu entdecken, oder melden Sie sich an und starten Sie sofort mit Ihrem ersten Anruf oder Upload."
+          "a": "Sie können direkt auf dieser Seite eine kostenlose Testversion starten — keine Kreditkarte erforderlich. Nutzen Sie den Bereich \u201eHerausfinden, was Notissima für Sie tun kann\u201c unten, um die relevantesten Ausgaben für Ihre Rolle zu entdecken, oder melden Sie sich an und starten Sie sofort mit Ihrem ersten Anruf oder Upload."
         }
       ]
     },
