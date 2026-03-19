@@ -124,6 +124,8 @@ export interface Session {
   inputHint?: string // Creation-time hint: phone_call | video_call | quick_record | voice_note | meeting | presentation | trade_show
   hasAudioFile?: boolean // True when at least one audio/video file is attached
   wordCount?: number | null // Word count for text-only imports; null for audio sessions
+  caseId?: string | null // Project/case this session belongs to
+  caseTitle?: string | null // Project/case display title (denormalized for list rendering)
 }
 
 export interface ParticipantInfo {

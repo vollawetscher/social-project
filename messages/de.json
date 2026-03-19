@@ -1,12 +1,17 @@
 {
   "common": {
     "save": "Speichern",
+    "saving": "Wird gespeichert...",
+    "saved": "Gespeichert",
     "cancel": "Abbrechen",
     "delete": "Löschen",
+    "deleted": "Gelöscht",
+    "deleteConfirm": "Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden.",
     "edit": "Bearbeiten",
     "close": "Schließen",
     "back": "Zurück",
     "next": "Weiter",
+    "new": "Neu",
     "loading": "Wird geladen...",
     "error": "Ein Fehler ist aufgetreten",
     "retry": "Erneut versuchen",
@@ -187,6 +192,54 @@
       "success": "Sitzungen kombiniert",
       "error": "Sitzungen konnten nicht kombiniert werden",
       "defaultCombinedSuffix": "kombiniert"
+    },
+    "viewToggle": {
+      "sessions": "Sitzungen",
+      "projects": "Projekte"
+    },
+    "projects": {
+      "createProject": "Neues Projekt",
+      "loading": "Projekte werden geladen...",
+      "empty": "Noch keine Projekte",
+      "emptyHint": "Erstellen Sie ein Projekt, um zusammengehörige Sitzungen zu bündeln.",
+      "sessions": "{count, plural, one {# Sitzung} other {# Sitzungen}}",
+      "lastUpdated": "Aktualisiert",
+      "status": {
+        "active": "Aktiv",
+        "closed": "Abgeschlossen",
+        "archived": "Archiviert"
+      },
+      "createDialog": {
+        "title": "Neues Projekt",
+        "description": "Erstellen Sie ein Projekt, um zusammengehörige Sitzungen zu gruppieren.",
+        "namePlaceholder": "Projektname",
+        "clientIdLabel": "Klient / Referenz-ID (optional)",
+        "clientIdPlaceholder": "z. B. K-2024-001",
+        "descriptionLabel": "Beschreibung (optional)",
+        "descriptionPlaceholder": "Weitere Informationen...",
+        "cancel": "Abbrechen",
+        "create": "Projekt erstellen",
+        "creating": "Wird erstellt...",
+        "success": "Projekt erstellt",
+        "error": "Projekt konnte nicht erstellt werden"
+      },
+      "assignDialog": {
+        "title": "Projekt zuweisen",
+        "description": "Wählen Sie, zu welchem Projekt diese Sitzung gehört.",
+        "selectPlaceholder": "Projekt auswählen...",
+        "noProjects": "Noch keine Projekte. Erstellen Sie zuerst eines.",
+        "none": "Kein Projekt",
+        "remove": "Aus Projekt entfernen",
+        "confirm": "Zuweisen",
+        "assigning": "Wird zugewiesen...",
+        "success": "Sitzung dem Projekt zugewiesen",
+        "removeSuccess": "Sitzung aus Projekt entfernt",
+        "error": "Zuweisung fehlgeschlagen"
+      },
+      "assignToProject": "Projekt zuweisen",
+      "removeFromProject": "Aus Projekt entfernen",
+      "openProject": "Projekt öffnen",
+      "projectBadgePrefix": ""
     }
   },
   "sessionDetail": {

@@ -33,7 +33,8 @@ export async function GET(request: Request) {
         .select(`
           *,
           outputs:outputs(count),
-          files:files(size_bytes,mime_type,original_filename,file_purpose)
+          files:files(size_bytes,mime_type,original_filename,file_purpose),
+          case:cases(id,title)
         `)
         .order('created_at', { ascending: false })
 
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
       const runUserSessionsQuery = async (excludeMerged: boolean) => {
         let query = supabase
           .from('sessions')
-          .select('*, outputs:outputs(count), files:files(size_bytes,mime_type,original_filename,file_purpose)')
+          .select('*, outputs:outputs(count), files:files(size_bytes,mime_type,original_filename,file_purpose), case:cases(id,title)')
           .order('created_at', { ascending: false })
 
         if (excludeMerged) {

@@ -30,6 +30,8 @@ import {
   FileText,
   FileAudio,
   Video,
+  FolderOpen,
+  FolderPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -47,8 +49,25 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Collapsible,
   CollapsibleContent,
@@ -303,6 +322,20 @@ export default function SessionsPage() {
   const knownSessionIdsRef = useRef<Set<string>>(new Set())
   const initializedKnownSessionsRef = useRef(false)
   const supabase = createClient()
+
+  // Project management state
+  const [view, setView] = useState<'sessions' | 'projects'>('sessions')
+  const [projects, setProjects] = useState<any[]>([])
+  const [loadingProjects, setLoadingProjects] = useState(false)
+  const [assignSessionId, setAssignSessionId] = useState<string | null>(null)
+  const [showAssignDialog, setShowAssignDialog] = useState(false)
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('__none__')
+  const [assigningSaving, setAssigningSaving] = useState(false)
+  const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false)
+  const [newProjectTitle, setNewProjectTitle] = useState('')
+  const [newProjectClientId, setNewProjectClientId] = useState('')
+  const [newProjectDescription, setNewProjectDescription] = useState('')
+  const [creatingProject, setCreatingProject] = useState(false)
   const selectedSessionId = useMemo(() => {
     const match = pathname.match(/\/sessions\/([^/]+)/)
     return match?.[1] ?? null
@@ -1077,6 +1110,105 @@ export default function SessionsPage() {
     }
   }
 
+  // Project management functions
+  const fetchProjects = useCallback(async () => {
+    setLoadingProjects(true)
+    try {
+      const res = await fetch('/api/cases')
+      if (res.ok) {
+        const data = await res.json()
+        setProjects(data)
+      }
+    } catch (e) {
+      console.error('Error fetching projects:', e)
+    } finally {
+      setLoadingProjects(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (view === 'projects') fetchProjects()
+  }, [view, fetchProjects])
+
+  const openAssignDialog = (session: Session) => {
+    setAssignSessionId(session.id)
+    setSelectedProjectId(session.caseId ?? '__none__')
+    setShowAssignDialog(true)
+  }
+
+  const handleAssignToProject = async () => {
+    if (!assignSessionId) return
+    setAssigningSaving(true)
+    try {
+      const projectId = selectedProjectId === '__none__' ? null : selectedProjectId
+      const res = await fetch(`/api/sessions/${assignSessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_id: projectId }),
+      })
+      if (!res.ok) throw new Error()
+      const projectTitle = projectId
+        ? projects.find((p) => p.id === projectId)?.title ?? null
+        : null
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === assignSessionId
+            ? { ...s, caseId: projectId, caseTitle: projectTitle }
+            : s
+        )
+      )
+      toast.success(projectId ? t('projects.assignDialog.success') : t('projects.assignDialog.removeSuccess'))
+      setShowAssignDialog(false)
+    } catch {
+      toast.error(t('projects.assignDialog.error'))
+    } finally {
+      setAssigningSaving(false)
+    }
+  }
+
+  const handleCreateProject = async () => {
+    if (!newProjectTitle.trim()) return
+    setCreatingProject(true)
+    try {
+      const res = await fetch('/api/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newProjectTitle.trim(),
+          client_identifier: newProjectClientId.trim(),
+          description: newProjectDescription.trim(),
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const created = await res.json()
+      setProjects((prev) => [created, ...prev])
+      toast.success(t('projects.createDialog.success'))
+      setShowCreateProjectDialog(false)
+      setNewProjectTitle('')
+      setNewProjectClientId('')
+      setNewProjectDescription('')
+    } catch {
+      toast.error(t('projects.createDialog.error'))
+    } finally {
+      setCreatingProject(false)
+    }
+  }
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (!confirm(tc('deleteConfirm'))) return
+    try {
+      const res = await fetch(`/api/cases/${projectId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      setProjects((prev) => prev.filter((p) => p.id !== projectId))
+      setSessions((prev) =>
+        prev.map((s) => (s.caseId === projectId ? { ...s, caseId: null, caseTitle: null } : s))
+      )
+      toast.success(tc('deleted'))
+    } catch {
+      toast.error(tc('error'))
+    }
+  }
+
   // Helper function for transcript formatting
   function formatTimestamp(seconds: number): string {
     const hrs = Math.floor(seconds / 3600)
@@ -1266,6 +1398,38 @@ export default function SessionsPage() {
           <p className="text-sm text-muted-foreground">
             {t('subtitle')}
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+            <button
+              onClick={() => setView('sessions')}
+              className={cn(
+                "px-3 py-1 text-sm rounded-md transition-all",
+                view === 'sessions'
+                  ? "bg-background shadow-sm font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t('viewToggle.sessions')}
+            </button>
+            <button
+              onClick={() => setView('projects')}
+              className={cn(
+                "px-3 py-1 text-sm rounded-md transition-all",
+                view === 'projects'
+                  ? "bg-background shadow-sm font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t('viewToggle.projects')}
+            </button>
+          </div>
+          {view === 'projects' && (
+            <Button size="sm" onClick={() => setShowCreateProjectDialog(true)}>
+              <FolderPlus className="h-4 w-4 mr-2" />
+              {t('projects.createProject')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1566,7 +1730,87 @@ export default function SessionsPage() {
           </div>
         )}
 
-        {/* Compact Header with Search + Admin Toggle */}
+        {/* Projects View */}
+        {view === 'projects' && (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {loadingProjects ? (
+              <div className="p-8 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
+                <p className="mt-2 text-sm text-muted-foreground">{t('projects.loading')}</p>
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="p-12 text-center text-muted-foreground">
+                <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p className="font-medium">{t('projects.empty')}</p>
+                <p className="text-sm mt-1">{t('projects.emptyHint')}</p>
+                <Button
+                  className="mt-4"
+                  onClick={() => setShowCreateProjectDialog(true)}
+                >
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  {t('projects.createProject')}
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="bg-card border border-border rounded-lg p-4 hover:border-primary/40 hover:shadow-sm transition-all cursor-pointer group"
+                    onClick={() => router.push(`/projects/${project.id}`)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-foreground truncate">{project.title}</h3>
+                        {project.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{project.description}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                            {t(`projects.status.${project.status ?? 'active'}`)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <FolderOpen className="h-3 w-3" />
+                            {t('projects.sessions', { count: project.session_count ?? 0 })}
+                          </span>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/projects/${project.id}`) }}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            {t('projects.openProject')}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id) }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {tc('delete')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sessions content: search header + card list + table */}
+        {view === 'sessions' && (<>
         <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-sm font-medium text-foreground whitespace-nowrap">
@@ -1646,10 +1890,17 @@ export default function SessionsPage() {
                       <p className="mt-1 text-xs text-foreground/80 truncate">
                         {originSummary}
                       </p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                         <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", getOriginBadgeClass(origin))}>
                           {getOriginBadgeLabel(origin, t)}
                         </Badge>
+                        {session.caseTitle && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-violet-500/10 text-violet-700 border-violet-300/50 dark:text-violet-400 dark:border-violet-700/50 cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); router.push(`/projects/${session.caseId}`) }}>
+                            <FolderOpen className="h-3 w-3 mr-1" />
+                            {session.caseTitle}
+                          </Badge>
+                        )}
                         <span className="flex items-center gap-1">
                           {showWordCount ? (
                             <>
@@ -1727,6 +1978,14 @@ export default function SessionsPage() {
                           <Download className="mr-2 h-4 w-4" />
                           {t('downloadTranscript')}
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => { fetchProjects(); openAssignDialog(session) }}
+                        >
+                          <FolderOpen className="mr-2 h-4 w-4" />
+                          {t('projects.assignToProject')}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           className="text-destructive"
                           onClick={() => handleDeleteSession(session.id)}
@@ -1840,6 +2099,13 @@ export default function SessionsPage() {
                                 {t('outputCount', { count: session.outputCount ?? 0 })}
                               </Badge>
                             )}
+                            {session.caseTitle && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-violet-500/10 text-violet-700 border-violet-300/50 dark:text-violet-400 dark:border-violet-700/50 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/projects/${session.caseId}`) }}>
+                                <FolderOpen className="h-3 w-3 mr-1" />
+                                {session.caseTitle}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -1909,6 +2175,14 @@ export default function SessionsPage() {
                               <Download className="mr-2 h-4 w-4" />
                               {t('downloadTranscript')}
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => { fetchProjects(); openAssignDialog(session) }}
+                            >
+                              <FolderOpen className="mr-2 h-4 w-4" />
+                              {t('projects.assignToProject')}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               className="text-destructive"
                               onClick={() => handleDeleteSession(session.id)}
@@ -1926,6 +2200,7 @@ export default function SessionsPage() {
             </TableBody>
           </Table>
         </div>
+        </>)}
       </Card>
 
       <UploadPreviewSheet
@@ -1952,6 +2227,81 @@ export default function SessionsPage() {
         onConfirm={handlePastePreviewConfirm}
         loading={uploadingTranscript}
       />
+
+      {/* Assign to Project Dialog */}
+      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('projects.assignDialog.title')}</DialogTitle>
+            <DialogDescription>{t('projects.assignDialog.description')}</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            {projects.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('projects.assignDialog.noProjects')}</p>
+            ) : (
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('projects.assignDialog.selectPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{t('projects.assignDialog.none')}</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
+              {tc('cancel')}
+            </Button>
+            <Button onClick={handleAssignToProject} disabled={assigningSaving || projects.length === 0}>
+              {assigningSaving ? t('projects.assignDialog.assigning') : t('projects.assignDialog.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Project Dialog */}
+      <Dialog open={showCreateProjectDialog} onOpenChange={(open) => {
+        setShowCreateProjectDialog(open)
+        if (!open) { setNewProjectTitle(''); setNewProjectClientId(''); setNewProjectDescription('') }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('projects.createDialog.title')}</DialogTitle>
+            <DialogDescription>{t('projects.createDialog.description')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Input
+              placeholder={t('projects.createDialog.namePlaceholder')}
+              value={newProjectTitle}
+              onChange={(e) => setNewProjectTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+            />
+            <Input
+              placeholder={t('projects.createDialog.clientIdPlaceholder')}
+              value={newProjectClientId}
+              onChange={(e) => setNewProjectClientId(e.target.value)}
+            />
+            <Textarea
+              placeholder={t('projects.createDialog.descriptionPlaceholder')}
+              value={newProjectDescription}
+              onChange={(e) => setNewProjectDescription(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateProjectDialog(false)}>
+              {t('projects.createDialog.cancel')}
+            </Button>
+            <Button onClick={handleCreateProject} disabled={creatingProject || !newProjectTitle.trim()}>
+              {creatingProject ? t('projects.createDialog.creating') : t('projects.createDialog.create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

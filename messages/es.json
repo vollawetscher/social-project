@@ -1,12 +1,17 @@
 {
   "common": {
     "save": "Guardar",
+    "saving": "Guardando...",
+    "saved": "Guardado",
     "cancel": "Cancelar",
     "delete": "Eliminar",
+    "deleted": "Eliminado",
+    "deleteConfirm": "¿Está seguro? Esta acción no se puede deshacer.",
     "edit": "Editar",
     "close": "Cerrar",
     "back": "Atrás",
     "next": "Siguiente",
+    "new": "Nuevo",
     "loading": "Cargando...",
     "error": "Algo salió mal",
     "retry": "Reintentar",
@@ -187,6 +192,54 @@
       "success": "Sesiones combinadas",
       "error": "No se pudieron combinar las sesiones",
       "defaultCombinedSuffix": "combinada"
+    },
+    "viewToggle": {
+      "sessions": "Sesiones",
+      "projects": "Proyectos"
+    },
+    "projects": {
+      "createProject": "Nuevo Proyecto",
+      "loading": "Cargando proyectos...",
+      "empty": "Aún no hay proyectos",
+      "emptyHint": "Crea un proyecto para organizar sesiones relacionadas.",
+      "sessions": "{count, plural, one {# sesión} other {# sesiones}}",
+      "lastUpdated": "Actualizado",
+      "status": {
+        "active": "Activo",
+        "closed": "Cerrado",
+        "archived": "Archivado"
+      },
+      "createDialog": {
+        "title": "Nuevo Proyecto",
+        "description": "Crea un proyecto para agrupar sesiones relacionadas.",
+        "namePlaceholder": "Nombre del proyecto",
+        "clientIdLabel": "Cliente / ID de referencia (opcional)",
+        "clientIdPlaceholder": "p. ej. C-2024-001",
+        "descriptionLabel": "Descripción (opcional)",
+        "descriptionPlaceholder": "Información adicional...",
+        "cancel": "Cancelar",
+        "create": "Crear proyecto",
+        "creating": "Creando...",
+        "success": "Proyecto creado",
+        "error": "No se pudo crear el proyecto"
+      },
+      "assignDialog": {
+        "title": "Asignar a proyecto",
+        "description": "Elige a qué proyecto pertenece esta sesión.",
+        "selectPlaceholder": "Seleccionar proyecto...",
+        "noProjects": "Aún no hay proyectos. Crea uno primero.",
+        "none": "Sin proyecto",
+        "remove": "Eliminar del proyecto",
+        "confirm": "Asignar",
+        "assigning": "Asignando...",
+        "success": "Sesión asignada al proyecto",
+        "removeSuccess": "Sesión eliminada del proyecto",
+        "error": "Error al asignar la sesión"
+      },
+      "assignToProject": "Asignar a proyecto",
+      "removeFromProject": "Eliminar del proyecto",
+      "openProject": "Abrir proyecto",
+      "projectBadgePrefix": ""
     }
   },
   "sessionDetail": {

@@ -174,6 +174,8 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     inputHint: (dbSession as any).input_hint ?? undefined,
     hasAudioFile: Boolean((dbSession as any).has_audio_file),
     wordCount: (dbSession as any).word_count ?? null,
+    caseId: (dbSession as any).case_id ?? null,
+    caseTitle: (dbSession as any).case?.title ?? null,
   }
 }
 
