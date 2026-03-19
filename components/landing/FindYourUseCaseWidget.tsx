@@ -75,6 +75,20 @@ interface FindYourUseCaseWidgetProps {
   compact?: boolean
 }
 
+function getOrCreateSessionId(): string {
+  try {
+    const key = 'nts_wl_sid'
+    let sid = sessionStorage.getItem(key)
+    if (!sid) {
+      sid = crypto.randomUUID()
+      sessionStorage.setItem(key, sid)
+    }
+    return sid
+  } catch {
+    return crypto.randomUUID()
+  }
+}
+
 export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCaseWidgetProps) {
   const t = useTranslations('landing')
   const [step, setStep] = useState<Step>(1)
@@ -85,6 +99,8 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<UseCaseResult | null>(null)
   const [notRelevantMessage, setNotRelevantMessage] = useState<string | null>(null)
+  // Persists the DB lead id so corrections and CTA clicks can update the same row
+  const leadIdRef = useRef<string | null>(null)
 
   const examples = t.raw('widget.examples') as string[]
   const thinkingSteps = (t.raw('widget.thinking') as string[]).map((label, i) => ({
@@ -98,6 +114,15 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
       setStep(next)
       setTransitioning(false)
     }, 180)
+  }
+
+  // Fire-and-forget helper — lead tracking must never break the UI
+  const saveLead = (payload: Record<string, unknown>) => {
+    fetch('/api/landing/widget-lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: getOrCreateSessionId(), ...payload }),
+    }).catch(() => {})
   }
 
   const runUseCase = async (nextCorrection?: string) => {
@@ -127,11 +152,48 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
           data.notRelevantMessage ||
             'Notissima is designed for professionals who manage calls, meetings, and client communication.',
         )
+        // Record the not-relevant gate firing
+        saveLead({
+          action: 'create',
+          selfDescription: text,
+          browserLocale,
+          notRelevant: true,
+          classification: null,
+        })
         switchStep('not-relevant')
         return
       }
 
-      setResult(data.result as UseCaseResult)
+      const useCaseResult = data.result as UseCaseResult
+
+      if (nextCorrection?.trim() && leadIdRef.current) {
+        // Correction applied — update the existing lead row
+        saveLead({
+          action: 'update',
+          id: leadIdRef.current,
+          correction: nextCorrection.trim(),
+          classification: useCaseResult.classification ?? null,
+        })
+      } else {
+        // First result — create a new lead row and store its id
+        fetch('/api/landing/widget-lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create',
+            sessionId: getOrCreateSessionId(),
+            selfDescription: text,
+            browserLocale,
+            classification: useCaseResult.classification ?? null,
+            notRelevant: false,
+          }),
+        })
+          .then((r) => r.ok ? r.json() : null)
+          .then((d) => { if (d?.id) leadIdRef.current = d.id })
+          .catch(() => {})
+      }
+
+      setResult(useCaseResult)
       switchStep(2)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (e) {
@@ -139,6 +201,12 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
       setError('Could not generate your use-case output right now. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleStartFree = () => {
+    if (leadIdRef.current) {
+      saveLead({ action: 'update', id: leadIdRef.current, clickedStartFree: true })
     }
   }
 
@@ -326,7 +394,7 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
               >
                 {t('widget.backButton')}
               </Button>
-              <Button asChild className="bg-white text-slate-900 hover:bg-slate-100 font-semibold">
+              <Button asChild className="bg-white text-slate-900 hover:bg-slate-100 font-semibold" onClick={handleStartFree}>
                 <Link href="/signup" className="inline-flex items-center gap-2">
                   {t('widget.startFreeButton')}
                   <ArrowRight className="h-4 w-4" />

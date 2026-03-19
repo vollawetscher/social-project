@@ -62,6 +62,20 @@ export default function SignupPage() {
         return
       }
 
+      if (data?.user) {
+        // Back-fill any widget leads from this browser session with the new user id
+        try {
+          const sid = sessionStorage.getItem('nts_wl_sid')
+          if (sid) {
+            fetch('/api/landing/widget-lead', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'link', sessionId: sid }),
+            }).catch(() => {})
+          }
+        } catch { /* sessionStorage unavailable */ }
+      }
+
       if (data?.session) {
         setEmailSuccess(t('accountCreatedRedirect'))
         setTimeout(() => router.push('/sessions'), 2000)
