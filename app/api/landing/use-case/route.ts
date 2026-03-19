@@ -188,6 +188,7 @@ STEP 2 — Output (only if relevant):
 1) Classify into domain, industry, role, and context.
 2) Propose the most-used documentation outputs from verbal communication for this profile.
 3) Return practical, high-value suggestions (not generic fluff).
+4) IMPORTANT — jurisdiction and location awareness: if the input mentions a country, region, or legal system, ALL terminology, document types, use cases, and examples MUST reflect that jurisdiction. For example: a lawyer in Germany operates under German/civil law — use terms like Mandantengespräch, Aktennotiz, Beratungsprotokoll, Schriftsatzvorbereitung, not common-law concepts like Discovery, Deposition, or Pleadings. A doctor in France follows French healthcare regulations, not US HIPAA. Always adapt to the stated or implied local professional context — never default to Anglo-American terminology when a different jurisdiction is indicated.
 
 Return strict JSON:
 {
