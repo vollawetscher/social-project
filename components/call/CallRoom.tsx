@@ -1347,6 +1347,7 @@ function CallRoomInner({
                 isCameraOn={isCameraOn}
                 isSpeaker={isSpeaker}
                 isOnHold={isOnHold}
+                isInitiator={isInitiator}
                 isScreenSharing={isScreenSharing}
                 canScreenShare={canScreenShare}
                 showNotes={showNotes}
@@ -1696,6 +1697,7 @@ function CallRoomInner({
         isCameraOn={isCameraOn}
         isSpeaker={isSpeaker}
         isOnHold={isOnHold}
+        isInitiator={isInitiator}
         isScreenSharing={isScreenSharing}
         canScreenShare={canScreenShare}
         showNotes={showNotes}

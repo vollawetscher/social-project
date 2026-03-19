@@ -35,6 +35,7 @@ interface CallControlsProps {
   onToggleCamera: () => void
   onToggleSpeaker: () => void
   onToggleHold: () => void
+  isInitiator?: boolean
   onToggleScreenShare: () => void
   onToggleNotes: () => void
   onToggleTranscript: () => void
@@ -60,6 +61,7 @@ export function CallControls({
   onToggleCamera,
   onToggleSpeaker,
   onToggleHold,
+  isInitiator = false,
   onToggleScreenShare,
   onToggleNotes,
   onToggleTranscript,
@@ -142,7 +144,7 @@ export function CallControls({
         {mode === "video" && canScreenShare && (
           <ControlButton icon={MonitorUp} label={t('shareScreen')} active={isScreenSharing} onClick={onToggleScreenShare} dark={dark} accent />
         )}
-        <ControlButton icon={isOnHold ? Play : Pause} label={isOnHold ? t('resume') : t('hold')} active={isOnHold} onClick={onToggleHold} dark={dark} />
+        {isInitiator && <ControlButton icon={isOnHold ? Play : Pause} label={isOnHold ? t('resume') : t('hold')} active={isOnHold} onClick={onToggleHold} dark={dark} />}
         <ControlButton icon={StickyNote} label={t('notes')} active={showNotes} onClick={onToggleNotes} dark={dark} />
         {onDialPad && (
           <ControlButton icon={Phone} label={t('dialpad')} active={false} onClick={onDialPad} dark={dark} />
