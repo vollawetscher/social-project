@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         ? 'Call'
         : mode === 'video'
           ? 'Video Call'
-          : 'Audio Call'
+          : 'Voice Call'
 
     const session = !isScheduled
       ? await (async () => {
