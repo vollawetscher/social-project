@@ -87,33 +87,63 @@ export default function FindYourUseCaseWidget({ compact = false }: FindYourUseCa
     <div className="w-full max-w-4xl mx-auto rounded-2xl border border-white/20 bg-black/75 backdrop-blur-md p-4 sm:p-6 text-slate-100 shadow-2xl">
       <div className={`transition-opacity duration-300 ${transitioning ? 'opacity-0' : 'opacity-100'}`}>
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {!compact && (
               <div>
                 <h3 className="text-xl sm:text-2xl font-semibold">Find out what it can do for you</h3>
-                <p className="text-sm text-slate-300 mt-1">Describe your role in one sentence.</p>
               </div>
             )}
 
-            <div className="space-y-2">
-              {!compact && <label className="text-sm text-slate-300">Role self-description</label>}
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  value={selfDescription}
-                  onChange={(e) => setSelfDescription(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !loading && selfDescription.trim() && runUseCase()}
-                  placeholder='e.g. "I am the CEO of an innovative SaaS Healthcare Solution"'
-                  className="bg-white/15 border-white/30 text-white placeholder:text-slate-400 focus:border-teal-400/60 focus:bg-white/20 h-11"
-                />
-                <Button
-                  onClick={() => runUseCase()}
-                  disabled={!selfDescription.trim() || loading}
-                  className="sm:w-auto w-full h-11 bg-white text-slate-900 hover:bg-slate-100 font-semibold shrink-0"
-                >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Explain'}
-                </Button>
+            {/* What to include hint */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+              <span className="text-slate-500">Include:</span>
+              {['Role', 'Company / Organisation', 'Domain or industry', 'Location'].map((tag) => (
+                <span key={tag} className="px-2 py-0.5 rounded-full border border-white/15 bg-white/8 text-slate-300">
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            {/* Input + button */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                value={selfDescription}
+                onChange={(e) => setSelfDescription(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !loading && selfDescription.trim() && runUseCase()}
+                placeholder='e.g. "Senior project manager at a mid-sized engineering firm in Germany"'
+                className="bg-white/15 border-white/30 text-white placeholder:text-slate-400 focus:border-teal-400/60 focus:bg-white/20 h-11"
+              />
+              <Button
+                onClick={() => runUseCase()}
+                disabled={!selfDescription.trim() || loading}
+                className="sm:w-auto w-full h-11 bg-white text-slate-900 hover:bg-slate-100 font-semibold shrink-0"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Explain'}
+              </Button>
+            </div>
+
+            {/* Example chips */}
+            <div className="space-y-1.5">
+              <p className="text-xs text-slate-500">Examples — click to try:</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'Managing partner at a boutique law firm in London',
+                  'Sales director at a B2B SaaS company in the US',
+                  'Head of HR at a 500-person manufacturing company in Germany',
+                  'Independent management consultant working with mid-market clients across Europe',
+                ].map((example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    onClick={() => setSelfDescription(example)}
+                    className="text-xs px-3 py-1.5 rounded-full border border-white/15 bg-white/8 text-slate-300 hover:bg-white/15 hover:text-white hover:border-white/30 transition-colors text-left"
+                  >
+                    {example}
+                  </button>
+                ))}
               </div>
             </div>
+
             {error && <p className="text-xs text-rose-300">{error}</p>}
           </div>
         )}
