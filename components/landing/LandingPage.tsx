@@ -4,9 +4,77 @@ import { useEffect, useState } from 'react'
 import { Link } from '@/i18n/navigation'
 import { Logo } from '@/components/ui/logo'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Menu, X } from 'lucide-react'
+import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import FindYourUseCaseWidget from '@/components/landing/FindYourUseCaseWidget'
+
+const FAQ_ITEMS = [
+  {
+    q: 'What is Notissima?',
+    a: 'Notissima is a communication intelligence platform that turns your calls, meetings, recordings, and text imports into structured professional documentation — automatically. Instead of raw transcripts, you get decision logs, action plans, strategic memos, and risk summaries tailored to your role and workflow.',
+  },
+  {
+    q: 'Who is Notissima for?',
+    a: 'Notissima is built for professionals who run meetings, client calls, project reviews, consultations, or any high-stakes conversation. That includes project managers, consultants, healthcare practitioners, lawyers, salespeople, executives, and anyone else whose work depends on accurate communication records.',
+  },
+  {
+    q: 'How does Notissima create outputs from a conversation?',
+    a: 'You bring the communication — paste text, upload a file, record audio, or start a call directly in Notissima. The platform automatically detects the type of conversation, selects the right output templates for your domain, and generates structured documentation. No manual configuration needed.',
+  },
+  {
+    q: 'What kind of outputs does Notissima produce?',
+    a: 'Outputs include meeting summaries, decision logs, action plans, risk registers, project briefs, client memos, follow-up checklists, and more. Every output is generated using domain-tested templates — structured the way professionals actually work, not generic AI summaries. Formats include Markdown, PDF, DOCX, and JSON.',
+  },
+  {
+    q: 'What languages does Notissima support?',
+    a: 'Notissima supports transcription and output generation in 50+ languages with automatic language detection. You can record or upload in one language and generate outputs in another — useful for multilingual teams and international client work.',
+  },
+  {
+    q: 'Does Notissima integrate with tools like Notion, Slack, or HubSpot?',
+    a: 'Yes. All outputs are Markdown-native, which means they paste cleanly into Notion, Slack, HubSpot, Confluence, and any other tool your team uses. For automated workflows, Notissima outputs are compatible with Zapier and similar integration platforms — no custom integration required.',
+  },
+  {
+    q: 'How is my data and call content handled?',
+    a: 'Your data is processed securely and never used to train AI models. Calls and recordings are stored with encryption, and all personally identifiable information (PII) in transcripts is automatically flagged and redacted. Notissima is designed to meet the compliance requirements of regulated industries.',
+  },
+  {
+    q: 'Can I use Notissima for video and phone calls, not just recordings?',
+    a: 'Yes. Notissima includes a built-in calling feature supporting browser-based video and voice calls, as well as outbound phone network (PSTN) calls. All calls are automatically recorded and processed into structured outputs — no need to use a separate meeting tool.',
+  },
+  {
+    q: 'How does Notissima differ from a standard AI transcription service?',
+    a: 'Transcription services give you a text version of what was said. Notissima goes further: it comprehends the purpose of the conversation, extracts decisions, risks, and commitments, and produces documentation that is immediately usable in a professional context. It also tracks these elements across multiple sessions over time.',
+  },
+  {
+    q: 'How do I get started with Notissima?',
+    a: 'You can start a free trial directly on this page — no credit card required. Use the "Find out what it can do for you" section below to discover the most relevant outputs for your role, or sign up and start with your first call or upload immediately.',
+  },
+]
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-b border-slate-200 last:border-0">
+      <button
+        className="w-full flex items-center justify-between gap-4 py-5 text-left group"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <span className="text-base sm:text-lg font-medium text-slate-900 group-hover:text-slate-700 transition-colors">
+          {q}
+        </span>
+        <ChevronDown
+          className={`h-5 w-5 text-slate-400 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <p className="pb-5 text-slate-600 leading-relaxed text-sm sm:text-base">
+          {a}
+        </p>
+      )}
+    </div>
+  )
+}
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -18,8 +86,25 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ_ITEMS.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  }
+
   return (
     <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden">
+      {/* FAQ JSON-LD schema for Google/AI search */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+
+      {/* ── Nav ── */}
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
@@ -31,26 +116,26 @@ export default function LandingPage() {
           <Logo variant="full" className="h-7" />
 
           <div className="hidden md:flex items-center gap-8">
-            <a href="#how-it-works" className="text-sm text-slate-900 hover:text-slate-600 transition-colors">
-              How it works
+            <a href="#find-use-case" className={`text-sm transition-colors ${scrolled ? 'text-slate-900 hover:text-slate-600' : 'text-white/90 hover:text-white'}`}>
+              Discover
             </a>
-            <a href="#your-world" className="text-sm text-slate-900 hover:text-slate-600 transition-colors">
-              Your world
+            <a href="#faq" className={`text-sm transition-colors ${scrolled ? 'text-slate-900 hover:text-slate-600' : 'text-white/90 hover:text-white'}`}>
+              Q&amp;A
             </a>
-            <Link href="/marketplace" className="text-sm text-slate-900 hover:text-slate-600 transition-colors">
+            <Link href="/marketplace" className={`text-sm transition-colors ${scrolled ? 'text-slate-900 hover:text-slate-600' : 'text-white/90 hover:text-white'}`}>
               Community
             </Link>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <LocaleSwitcher compact className="text-slate-600 hover:text-slate-900" />
-            <Button asChild className="bg-slate-900 hover:bg-slate-800 text-white">
+            <LocaleSwitcher compact className={scrolled ? 'text-slate-600 hover:text-slate-900' : 'text-white/70 hover:text-white'} />
+            <Button asChild className="bg-white text-slate-900 hover:bg-slate-100 font-semibold">
               <Link href="/login">Log in</Link>
             </Button>
           </div>
 
           <button
-            className="md:hidden text-slate-500 hover:text-slate-900"
+            className={`md:hidden ${scrolled ? 'text-slate-500 hover:text-slate-900' : 'text-white/80 hover:text-white'}`}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle mobile menu"
           >
@@ -61,11 +146,11 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-slate-100">
             <div className="px-6 py-4 flex flex-col gap-4">
-              <a href="#how-it-works" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
-                How it works
+              <a href="#find-use-case" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
+                Discover
               </a>
-              <a href="#your-world" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
-                Your world
+              <a href="#faq" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
+                Q&amp;A
               </a>
               <Link href="/marketplace" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Community
@@ -73,9 +158,6 @@ export default function LandingPage() {
               <Link href="/login" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
                 Log in
               </Link>
-              <a href="#find-use-case" className="text-sm text-slate-900 hover:text-slate-600" onClick={() => setMobileMenuOpen(false)}>
-                Find out what it can do for you
-              </a>
               <div className="pt-2 border-t border-slate-100">
                 <LocaleSwitcher />
               </div>
@@ -84,12 +166,13 @@ export default function LandingPage() {
         )}
       </nav>
 
+      {/* ── Hero — full-screen video ── */}
       <section className="relative min-h-screen flex items-center justify-center">
         <div className="absolute inset-0 overflow-hidden">
           <video autoPlay muted loop playsInline className="w-full h-full object-cover opacity-90">
             <source src="/notissima-hero.mp4" type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/60 to-black/70" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/60 to-black/75" />
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center pt-20">
@@ -117,101 +200,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="how-it-works" className="py-24 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-center text-slate-900 max-w-4xl mx-auto">
-            Bring your communication. Get exactly the documentation your project needed.
-          </h2>
-
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 text-center">
-              <div className="text-7xl sm:text-8xl font-bold leading-none text-slate-200">01</div>
-              <h3 className="text-2xl font-semibold text-slate-900 mt-3 mb-4">Ingest</h3>
-              <p className="text-slate-700 leading-relaxed text-left">
-                Paste text. Upload a file. Record audio. Or start a call right inside Notissima — video, audio, or phone.
-                However your communication exists, Notissima takes it. In 50+ languages, auto-detected and translated.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 text-center">
-              <div className="text-7xl sm:text-8xl font-bold leading-none text-slate-200">02</div>
-              <h3 className="text-2xl font-semibold text-slate-900 mt-3 mb-4">Comprehend</h3>
-              <p className="text-slate-700 leading-relaxed text-left">
-                Notissima doesn&apos;t ask what you need. It comprehends the type of communication — a client call,
-                a project standup, a patient session, a legal review — and knows what outputs your project requires.
-                Before you do.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 text-center">
-              <div className="text-7xl sm:text-8xl font-bold leading-none text-slate-200">03</div>
-              <h3 className="text-2xl font-semibold text-slate-900 mt-3 mb-4">Create</h3>
-              <p className="text-slate-700 leading-relaxed text-left">
-                A project meeting becomes a decision log, a risk summary, and an action plan. A client call becomes a strategic memo,
-                a follow-up checklist, and a project brief. Auto-suggested in the format that fits: md, pdf, docx, or JSON.
-              </p>
-              <p className="text-slate-700 leading-relaxed mt-3 text-left">
-                Every output is built on domain-tested templates — structured for how professionals actually work.
-                Not generic AI summaries. Professional documentation, ready to use.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="your-world" className="relative py-24 px-6 bg-slate-50">
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-wrap justify-center gap-2 opacity-70">
-            {['Notion', 'Slack', 'HubSpot', 'Zapier', 'Markdown', 'JSON', 'DOCX', 'PDF'].map((item) => (
-              <span key={item} className="text-[11px] px-2 py-1 rounded-full border border-slate-300 bg-white/80 text-slate-500">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative max-w-5xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-center text-slate-900 max-w-4xl mx-auto">
-            Communication Intelligence leads to world-class decision making.
-          </h2>
-
-          <div className="mt-14 space-y-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Your project finally has a memory.</h3>
-              <p className="text-slate-700 leading-relaxed">
-                Notissima tracks decisions, risks, and commitments across every conversation over time.
-                It flags contradictions, surfaces what was promised but never confirmed, and catches what your team missed.
-                One meeting is useful. An entire project&apos;s communication — that&apos;s transformational.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Drops into your workflow.</h3>
-              <p className="text-slate-700 leading-relaxed">
-                Markdown-native output works with Notion, Slack, HubSpot, Zapier — no integration headaches, no setup.
-                Structured knowledge, right where your team already works.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Gets smarter over time.</h3>
-              <p className="text-slate-700 leading-relaxed">
-                The Voice2Value community connects professionals who share templates, workflow recipes, and integration tips.
-                The more the community grows, the better everyone&apos;s outputs get.
-                Browse what works in your field. Share what works for you.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
+      {/* ── Find Your Use Case ── */}
       <section id="find-use-case" className="py-20 px-6 bg-slate-950">
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-            Find out what it can do for you
+            Find out what Notissima can do for you
           </h2>
           <p className="mt-3 text-sm sm:text-base text-slate-300">
-            A quick 3-step flow to discover the best Notissima outputs for your role.
+            Describe your role and get a personalised picture of exactly which outputs matter for your work.
           </p>
           <div className="mt-8 text-left">
             <FindYourUseCaseWidget />
@@ -219,6 +215,34 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Q&A ── */}
+      <section id="faq" className="py-24 px-6 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
+              Questions &amp; Answers
+            </h2>
+            <p className="mt-3 text-slate-500 text-base sm:text-lg">
+              Everything you need to know about Notissima.
+            </p>
+          </div>
+          <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-slate-50/50 px-6">
+            {FAQ_ITEMS.map((item) => (
+              <FaqItem key={item.q} q={item.q} a={item.a} />
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <Button asChild size="lg" className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-8">
+              <Link href="/signup" className="inline-flex items-center gap-2">
+                Start free — no credit card needed
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
       <footer className="border-t border-slate-100 py-12 px-6 bg-slate-50">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
@@ -228,18 +252,10 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-5 text-sm text-slate-500">
-            <Link href="/imprint" className="hover:text-slate-700 transition-colors">
-              Imprint
-            </Link>
-            <Link href="/privacy" className="hover:text-slate-700 transition-colors">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-slate-700 transition-colors">
-              Terms
-            </Link>
-            <Link href="/contact" className="hover:text-slate-700 transition-colors">
-              Contact
-            </Link>
+            <Link href="/imprint" className="hover:text-slate-700 transition-colors">Imprint</Link>
+            <Link href="/privacy" className="hover:text-slate-700 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-slate-700 transition-colors">Terms</Link>
+            <Link href="/contact" className="hover:text-slate-700 transition-colors">Contact</Link>
           </div>
         </div>
       </footer>
