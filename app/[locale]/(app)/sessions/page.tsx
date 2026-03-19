@@ -1418,46 +1418,36 @@ export default function SessionsPage() {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-y-auto gap-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">{t('title')}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t('subtitle')}
-          </p>
+      {/* Header — title doubles as view toggle */}
+      <div className="flex items-center justify-between gap-3 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            onClick={() => setView('sessions')}
+            className={cn(
+              "text-xl font-semibold transition-colors whitespace-nowrap",
+              view === 'sessions' ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t('viewToggle.sessions')}
+          </button>
+          <span className="text-muted-foreground/40 text-xl select-none">·</span>
+          <button
+            onClick={() => setView('projects')}
+            className={cn(
+              "text-xl font-semibold transition-colors whitespace-nowrap",
+              view === 'projects' ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t('viewToggle.projects')}
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
-            <button
-              onClick={() => setView('sessions')}
-              className={cn(
-                "px-3 py-1 text-sm rounded-md transition-all",
-                view === 'sessions'
-                  ? "bg-background shadow-sm font-medium text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t('viewToggle.sessions')}
-            </button>
-            <button
-              onClick={() => setView('projects')}
-              className={cn(
-                "px-3 py-1 text-sm rounded-md transition-all",
-                view === 'projects'
-                  ? "bg-background shadow-sm font-medium text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t('viewToggle.projects')}
-            </button>
-          </div>
-          {view === 'projects' && (
-            <Button size="sm" onClick={() => setShowCreateProjectDialog(true)}>
-              <FolderPlus className="h-4 w-4 mr-2" />
-              {t('projects.createProject')}
-            </Button>
-          )}
-        </div>
+        {view === 'projects' && (
+          <Button size="sm" onClick={() => setShowCreateProjectDialog(true)} className="shrink-0">
+            <FolderPlus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">{t('projects.createProject')}</span>
+            <span className="sm:hidden">{tc('new')}</span>
+          </Button>
+        )}
       </div>
 
       {/* Record Bar + Upload Section - Same Height */}
