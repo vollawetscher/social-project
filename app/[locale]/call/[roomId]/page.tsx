@@ -197,8 +197,11 @@ export default function CallRoomPage() {
 
   if (phase === "consent") {
     const handleConsent = async (granted: boolean) => {
+      // Await the consent POST so the DB row exists before we join LiveKit.
+      // This prevents a race where the initiator sees hasRemote=true but
+      // remoteConsents is still empty, causing a "Consent Pending" flash.
       if (callId) {
-        fetch(`/api/calls/${callId}/consent`, {
+        await fetch(`/api/calls/${callId}/consent`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -966,6 +966,7 @@
     "participantSharing": "{name} teilt den Bildschirm",
     "awaitingParticipant": "Warten auf Teilnehmer",
     "consentGranted": "Einwilligung erteilt",
+    "remoteMuted": "Stumm",
     "callerOnly": "Nur Anrufer",
     "consentPending": "Einwilligung ausstehend",
     "awaitingPhoneConsent": "Warten auf Einwilligung per Telefon...",

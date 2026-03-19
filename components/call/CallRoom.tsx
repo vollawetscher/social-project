@@ -36,6 +36,7 @@ import {
   Lock,
   Unlock,
   UserX,
+  MicOff,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -455,6 +456,26 @@ function CallRoomInner({
       supabase.removeChannel(channel)
     }
   }, [callId, isInitiator, localParticipant.identity, callType])
+
+  // Re-sync consent logs when the first remote participant joins, in case the
+  // realtime INSERT arrived before our subscription was active (edge case).
+  const prevHasRemoteRef = useRef(false)
+  useEffect(() => {
+    if (!isInitiator || !callId) return
+    const justJoined = hasRemote && !prevHasRemoteRef.current
+    prevHasRemoteRef.current = hasRemote
+    if (!justJoined) return
+    fetch(`/api/calls/${callId}/consent`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return
+        const others = (data.consents || [])
+          .filter((c: any) => c.participant_identity !== localParticipant.identity)
+          .map((c: any) => ({ identity: c.participant_identity, name: c.participant_name, granted: c.granted }))
+        if (others.length > 0) setRemoteConsents(others)
+      })
+      .catch(() => {})
+  }, [hasRemote, isInitiator, callId, localParticipant.identity])
 
   useEffect(() => {
     notesRef.current = notes
@@ -1151,6 +1172,12 @@ function CallRoomInner({
               <div className="text-center mt-4">
                 <h2 className="text-xl font-semibold text-foreground">{remoteDisplayName}</h2>
                 {contactPhone && <p className="text-sm text-muted-foreground mt-1">{contactPhone}</p>}
+                {callStatus === "connected" && remoteParticipants[0] && !remoteParticipants[0].isMicrophoneEnabled && (
+                  <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium">
+                    <MicOff className="h-3 w-3" />
+                    {t("remoteMuted")}
+                  </div>
+                )}
               </div>
               <p className={cn(
                 "text-lg mt-3",

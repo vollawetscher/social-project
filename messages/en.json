@@ -969,6 +969,7 @@
     "consentGranted": "Consent granted",
     "callerOnly": "Caller only",
     "consentPending": "Consent pending",
+    "remoteMuted": "Muted",
     "awaitingPhoneConsent": "Waiting for consent on phone...",
     "noAlternativeCamera": "No alternative camera found",
     "failedSwitchCamera": "Failed to switch camera",

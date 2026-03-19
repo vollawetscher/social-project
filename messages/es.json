@@ -966,6 +966,7 @@
     "participantSharing": "{name} está compartiendo",
     "awaitingParticipant": "Esperando participante",
     "consentGranted": "Consentimiento otorgado",
+    "remoteMuted": "Silenciado",
     "callerOnly": "Solo llamante",
     "consentPending": "Consentimiento pendiente",
     "awaitingPhoneConsent": "Esperando consentimiento por telefono...",
