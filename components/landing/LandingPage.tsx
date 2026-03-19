@@ -183,7 +183,7 @@ export default function LandingPage() {
           </h1>
           <p className="text-center text-lg sm:text-xl text-white leading-relaxed max-w-2xl mx-auto [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
             Notissima turns every call, meeting, and email into structured intelligence —
-            decisions, risks, and actions your team can actually use.
+            decisions, risks, and actions you, your team and your clients can actually use.
           </p>
         </div>
 
