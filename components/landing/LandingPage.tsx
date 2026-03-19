@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import FindYourUseCaseWidget from '@/components/landing/FindYourUseCaseWidget'
+import { FEATURE_STRINGS } from '@/lib/constants/features'
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false)
@@ -101,16 +102,7 @@ export default function LandingPage() {
       priceCurrency: 'EUR',
       description: 'Free trial available — no credit card required',
     },
-    featureList: [
-      'Automatic meeting transcription in 50+ languages',
-      'AI-generated decision logs and action plans',
-      'Risk register and compliance documentation',
-      'Built-in video and voice calling',
-      'GDPR-compliant with EU data residency options',
-      'PII detection and redaction',
-      'Export to Markdown, PDF, DOCX, JSON',
-      'Template library and custom templates',
-    ],
+    featureList: FEATURE_STRINGS,
     screenshot: 'https://notissima.com/og-image.png',
   }
 

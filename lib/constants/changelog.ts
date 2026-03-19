@@ -14,6 +14,108 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.22.2',
+    date: 'March 19, 2026',
+    entries: [
+      {
+        version: '1.22.2',
+        date: 'March 19, 2026',
+        category: 'improvement',
+        title: 'Sitemap and Robots.txt',
+        description: 'Notissima now publishes a full sitemap covering all language variants of every public page, and a robots.txt that guides search engines away from private app routes.',
+      },
+      {
+        version: '1.22.2',
+        date: 'March 19, 2026',
+        category: 'improvement',
+        title: 'Hreflang and Locale-Specific Metadata',
+        description: 'Each language version of the site now has its own title, description, and Open Graph locale. Search engines correctly identify language variants and serve the right version by country.',
+      },
+      {
+        version: '1.22.2',
+        date: 'March 19, 2026',
+        category: 'improvement',
+        title: 'Structured Data Schemas',
+        description: 'The landing page now includes SoftwareApplication, Organization, WebSite, VideoObject, and FAQPage JSON-LD schemas, improving how Notissima appears in rich search results and AI-powered search engines.',
+      },
+    ],
+  },
+  {
+    version: '1.22.1',
+    date: 'March 19, 2026',
+    entries: [
+      {
+        version: '1.22.1',
+        date: 'March 19, 2026',
+        category: 'feature',
+        title: 'Landing Page in German and Spanish',
+        description: 'The full landing page — navigation, hero copy, use-case widget, example chips, thinking steps, FAQ, and footer — is now available in German and Spanish. Language is detected automatically from your browser setting.',
+      },
+      {
+        version: '1.22.1',
+        date: 'March 19, 2026',
+        category: 'improvement',
+        title: 'Jurisdiction-Aware Terminology from Browser Locale',
+        description: 'When no location is mentioned in your role description, the use-case widget now infers your jurisdiction from your browser language (e.g. de-DE → German civil law). Explicit mentions in the input always take precedence.',
+      },
+      {
+        version: '1.22.1',
+        date: 'March 19, 2026',
+        category: 'feature',
+        title: 'Widget Lead Capture and Conversion Tracking',
+        description: 'Role descriptions, AI classifications, corrections, and use-case widget CTA clicks are now tracked anonymously. When a visitor signs up, their widget session is linked to their account — enabling role-description to actual-usage correlation for future output improvements.',
+      },
+      {
+        version: '1.22.1',
+        date: 'March 19, 2026',
+        category: 'improvement',
+        title: 'Locale-Specific Example Chips',
+        description: 'Example role chips on the landing page now reflect the visitor\'s locale — German visitors see DACH-relevant examples, Spanish visitors see Iberian and LatAm examples, and English visitors see UK/US/EU examples.',
+      },
+    ],
+  },
+  {
+    version: '1.22.0',
+    date: 'March 19, 2026',
+    entries: [
+      {
+        version: '1.22.0',
+        date: 'March 19, 2026',
+        category: 'feature',
+        title: 'Voice Call: WebCall or Phone Network',
+        description: 'Audio Call is now Voice Call. When starting a voice call you can choose between a browser-based WebCall or a Phone Network (PSTN) call. For phone calls, you can enter a number and create a contact in a single workflow.',
+      },
+      {
+        version: '1.22.0',
+        date: 'March 19, 2026',
+        category: 'improvement',
+        title: 'Hold and Mute Visibility',
+        description: 'Both call participants can now see when the other side is on hold or muted. Hold state is shown as a badge, banner, and avatar tint — only the call initiator can place a call on hold.',
+      },
+      {
+        version: '1.22.0',
+        date: 'March 19, 2026',
+        category: 'feature',
+        title: 'Raw Text Import Mode',
+        description: 'The upload preview parser now supports a Raw Text mode that preserves text as-is without forcing a transcript format. Content is split into readable paragraphs — useful for importing knowledge dumps, email threads, or any unstructured text for AI analysis.',
+      },
+      {
+        version: '1.22.0',
+        date: 'March 19, 2026',
+        category: 'improvement',
+        title: 'Google Docs Download Format',
+        description: 'Outputs can now be downloaded in Google Docs format from both the session view and shared output pages.',
+      },
+      {
+        version: '1.22.0',
+        date: 'March 19, 2026',
+        category: 'improvement',
+        title: 'Consent Pending Race Condition Fixed',
+        description: 'Fixed a race condition in web voice calls where the initiator would briefly see "Consent Pending" even after the guest had already granted consent through the consent gate.',
+      },
+    ],
+  },
+  {
     version: '1.21.5',
     date: 'March 17, 2026',
     entries: [
@@ -261,6 +363,13 @@ export const changelog: ChangelogVersion[] = [
         category: 'improvement',
         title: 'Use-Case Finder Adds Compliance and Security Affirmations',
         description: 'Use-case results now include dedicated compliance and security affirmations per recommendation so trust and governance expectations are clear from the first output.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Use-Case Finder Uses Clearer Explain Action',
+        description: 'The role input action now uses “Explain” instead of “Generate” to better reflect that Notissima interprets your self-description and returns tailored recommendations.',
       },
     ],
   },
