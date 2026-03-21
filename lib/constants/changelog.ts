@@ -371,6 +371,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Use-Case Finder Uses Clearer Explain Action',
         description: 'The role input action now uses “Explain” instead of “Generate” to better reflect that Notissima interprets your self-description and returns tailored recommendations.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'One-Click Suggestions Now Respect Session Language',
+        description: 'Generating output from suggested formats now follows your session/transcript language logic instead of falling back to profile defaults, preventing cross-language mismatches.',
+      },
     ],
   },
   {

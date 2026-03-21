@@ -162,7 +162,6 @@ export default function SessionDetailPage() {
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
   const [deletingOutputId, setDeletingOutputId] = useState<string | null>(null)
   const [retryingTranscribe, setRetryingTranscribe] = useState(false)
-  const [profileLanguage, setProfileLanguage] = useState<string | null>(null)
   const [languageMismatch, setLanguageMismatch] = useState<{ sessionLang: string; transcriptLang: string } | null>(null)
   const [updatingLanguage, setUpdatingLanguage] = useState(false)
   const [handOffOpen, setHandOffOpen] = useState(false)
@@ -191,17 +190,6 @@ export default function SessionDetailPage() {
     const prefix = session?.filename?.trim()
     return prefix ? `${prefix} - ${templateName}` : templateName
   }, [session?.filename])
-
-  // Fetch user profile for preferred_report_language (used by AI-suggested outputs)
-  useEffect(() => {
-    fetch('/api/profile')
-      .then((r) => r.ok ? r.json() : null)
-      .then((profile) => {
-        const lang = profile?.preferred_report_language
-        if (lang && typeof lang === 'string') setProfileLanguage(lang.slice(0, 2).toLowerCase())
-      })
-      .catch(() => {})
-  }, [])
 
   const normalizePersonName = useCallback((value: string | null | undefined) => {
     return String(value || '')
@@ -372,7 +360,7 @@ export default function SessionDetailPage() {
             templateName: suggestion.title,
             perspective: 'observer',
             audience: suggestionAudience,
-            language: profileLanguage || session.languageCode || 'de',
+            language: 'session',
             tone: 'neutral',
             format: 'markdown',
             doInstructions: suggestion.generationInstructions,

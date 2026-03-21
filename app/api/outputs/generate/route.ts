@@ -275,23 +275,39 @@ export async function POST(request: Request) {
     const resolveOutputLanguageCode = (
       requested: string | undefined,
       sessionLang: string | undefined,
-      preferredReportLanguage: string | undefined
+      preferredReportLanguage: string | undefined,
+      detectedTranscriptLanguage?: string | undefined
     ): string => {
       const requestedRaw = String(requested || '').trim().toLowerCase()
       if (requestedRaw && requestedRaw !== 'session' && requestedRaw !== 'auto') {
         return normalizeLanguageCode(requested) || 'de'
       }
+
+      const preferredRaw = String(preferredReportLanguage || '').trim().toLowerCase()
+      if (preferredRaw && preferredRaw !== 'session' && preferredRaw !== 'auto') {
+        return normalizeLanguageCode(preferredReportLanguage) || 'de'
+      }
+
       return (
-        normalizeLanguageCode(preferredReportLanguage) ||
+        normalizeLanguageCode(detectedTranscriptLanguage) ||
         normalizeLanguageCode(sessionLang) ||
         'de'
       )
     }
 
+    const detectedTranscriptLanguage = Array.from(
+      new Set(
+        (transcriptRows || [])
+          .map((row: any) => normalizeLanguageCode(row?.language))
+          .filter((value): value is string => Boolean(value))
+      )
+    )[0] || normalizeLanguageCode((transcript as any)?.language || undefined) || undefined
+
     const resolvedLanguageCode = resolveOutputLanguageCode(
       config.language,
       (session as any).language,
-      (session as any).preferred_report_language
+      (session as any).preferred_report_language,
+      detectedTranscriptLanguage
     )
 
     const dateLocaleCodeMap: Record<string, string> = {
