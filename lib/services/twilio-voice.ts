@@ -3,8 +3,48 @@
  * Used for short notification calls (ring + TTS message), not for LiveKit SIP calls.
  */
 
+import { createHmac, timingSafeEqual } from 'crypto'
+
 type SupportedLocale = 'en' | 'de' | 'es'
 import { resolveCallerIdForDestination } from '@/lib/services/pstn-routing'
+
+/**
+ * Verifies the X-Twilio-Signature header on an incoming webhook request.
+ *
+ * Twilio signs every webhook with HMAC-SHA1:
+ *   signature = Base64( HMAC-SHA1( authToken, url + sorted(postParams) ) )
+ *
+ * For POST requests the sorted form fields are appended to the URL (key+value,
+ * alphabetically by key, no separator between pairs). For GET requests only the
+ * URL is signed. Query-string parameters are considered part of the URL for
+ * both methods.
+ *
+ * @param authToken  TWILIO_AUTH_TOKEN env var value
+ * @param signature  Value of the X-Twilio-Signature header
+ * @param url        Canonical full URL Twilio is posting to (must match exactly)
+ * @param params     Key/value pairs from the parsed form body (POST only)
+ */
+export function verifyTwilioSignature(
+  authToken: string,
+  signature: string,
+  url: string,
+  params: Record<string, string> = {}
+): boolean {
+  if (!authToken || !signature) return false
+
+  // Twilio appends sorted POST params directly to the URL string (no separator).
+  const sortedKeys = Object.keys(params).sort()
+  const stringToSign = sortedKeys.reduce((acc, key) => acc + key + (params[key] ?? ''), url)
+
+  const expected = createHmac('sha1', authToken).update(stringToSign, 'utf8').digest('base64')
+
+  try {
+    return timingSafeEqual(Buffer.from(expected), Buffer.from(signature))
+  } catch {
+    // Buffers of different length throw — treat as invalid
+    return false
+  }
+}
 
 interface TwilioCallResult {
   success: boolean

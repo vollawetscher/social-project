@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createSipParticipant, startTrackEgressForParticipant } from '@/lib/services/livekit'
+import { verifyTwilioSignature } from '@/lib/services/twilio-voice'
+import { getAppBaseUrl } from '@/lib/utils/app-url'
 
 type Locale = 'en' | 'de' | 'es'
 type ConsentState = 'granted' | 'declined' | 'timeout'
@@ -83,14 +84,54 @@ async function handleConsentWebhook(
   { params }: { params: { id: string } }
 ) {
   const callId = params.id
-  const stage = new URL(request.url).searchParams.get('stage')
-  const locale = normalizeLocale(new URL(request.url).searchParams.get('locale'))
+  const parsedUrl = new URL(request.url)
+  const stage = parsedUrl.searchParams.get('stage')
+  const locale = normalizeLocale(parsedUrl.searchParams.get('locale'))
   const cfg = LOCALE_PROMPTS[locale]
   console.log('[PSTN Consent] Webhook hit', { method: request.method, stage, locale, url: request.url })
 
+  // --- Twilio signature verification ---
+  const authToken = process.env.TWILIO_AUTH_TOKEN ?? ''
+  const twilioSignature = request.headers.get('X-Twilio-Signature') ?? ''
+
+  // Reconstruct the canonical URL Twilio signed. Twilio uses the URL you put
+  // in your TwiML/dashboard, which is always the production HTTPS base URL.
+  const canonicalUrl =
+    `${getAppBaseUrl()}/api/calls/${callId}/pstn-consent` +
+    (parsedUrl.search ? parsedUrl.search : '')
+
+  // For POST requests, signature covers sorted form params appended to the URL.
+  // We need to read the body here to extract params; we clone so the original
+  // body stream can still be consumed later.
+  let formParams: Record<string, string> = {}
+  let formDataForLater: FormData | null = null
+
+  if (request.method === 'POST') {
+    const cloned = request.clone()
+    formDataForLater = await cloned.formData()
+    formDataForLater.forEach((value, key) => {
+      formParams[key] = String(value)
+    })
+  }
+
+  const signatureValid = verifyTwilioSignature(authToken, twilioSignature, canonicalUrl, formParams)
+
+  if (!signatureValid) {
+    // Allow unsigned requests only in local development (no auth token configured).
+    if (authToken) {
+      console.warn('[PSTN Consent] Invalid Twilio signature — rejecting request', {
+        canonicalUrl,
+        hasSignature: Boolean(twilioSignature),
+      })
+      return new Response('Forbidden', { status: 403 })
+    }
+    console.warn('[PSTN Consent] TWILIO_AUTH_TOKEN not set — skipping signature check (dev mode)')
+  }
+  // --- end verification ---
+
   // Initial IVR prompt.
   if (stage !== 'result') {
-    const actionUrl = `${new URL(request.url).origin}/api/calls/${callId}/pstn-consent?stage=result&locale=${locale}`
+    const actionUrl = `${getAppBaseUrl()}/api/calls/${callId}/pstn-consent?stage=result&locale=${locale}`
     const twiml = [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<Response>',
@@ -107,7 +148,8 @@ async function handleConsentWebhook(
 
   try {
     const db = createServiceRoleClient()
-    const form = await request.formData()
+    // Use the already-parsed form data (consumed above for signature verification).
+    const form = formDataForLater ?? await request.formData()
     const digits = String(form.get('Digits') || '').trim()
     const speech = String(form.get('SpeechResult') || '').trim()
     const decision = parseConsentDecision(locale, digits, speech)
