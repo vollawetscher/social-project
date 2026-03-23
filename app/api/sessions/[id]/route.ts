@@ -1,6 +1,7 @@
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
+import { enqueuePulseUpdate, shouldEnqueuePulseForCaseChange } from '@/lib/services/pulse/enqueue-pulse-update'
 
 export async function GET(
   request: Request,
@@ -106,6 +107,17 @@ export async function PATCH(
     await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
     const body = await request.json()
+    const hasCaseIdPatch = Object.prototype.hasOwnProperty.call(body || {}, 'case_id')
+
+    let previousSession: { case_id: string | null; user_id: string } | null = null
+    if (hasCaseIdPatch) {
+      const { data } = await createServiceRoleClient()
+        .from('sessions')
+        .select('case_id, user_id')
+        .eq('id', params.id)
+        .maybeSingle()
+      previousSession = (data as any) || null
+    }
 
     const { data: session, error } = await supabase
       .from('sessions')
@@ -116,6 +128,22 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (hasCaseIdPatch && previousSession) {
+      const prevCaseId = previousSession.case_id
+      const nextCaseId = session?.case_id || null
+      const shouldEnqueuePulse = shouldEnqueuePulseForCaseChange(prevCaseId, nextCaseId)
+
+      if (shouldEnqueuePulse) {
+        enqueuePulseUpdate({
+          caseId: String(nextCaseId),
+          sessionId: String(session.id),
+          userId: String(previousSession.user_id || user.id),
+        }).catch((queueError) => {
+          console.warn('[Session PATCH] Failed to enqueue pulse_update:', queueError)
+        })
+      }
     }
 
     return NextResponse.json(session)

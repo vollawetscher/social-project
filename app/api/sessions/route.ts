@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { toV0Sessions } from '@/lib/adapters/session-adapter'
 import { logError } from '@/lib/services/error-logger'
+import { enqueuePulseUpdate } from '@/lib/services/pulse/enqueue-pulse-update'
 
 export async function GET(request: Request) {
   try {
@@ -232,6 +233,16 @@ export async function POST(request: Request) {
         metadata: { dbError: error },
       }).catch(() => {})
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (session?.id && session?.case_id) {
+      enqueuePulseUpdate({
+        caseId: String(session.case_id),
+        sessionId: String(session.id),
+        userId: user.id,
+      }).catch((queueError) => {
+        console.warn('[Sessions] Failed to enqueue pulse_update on create:', queueError)
+      })
     }
 
     return NextResponse.json(session, { status: 201 })

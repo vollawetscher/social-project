@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.23.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.23.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Project Pulse for Ongoing Project Trajectory',
+        description: 'Projects now include a live Pulse panel that updates automatically as new sessions are added, so you can track direction, open loops, decisions, momentum, participants, and stakeholder-ready narrative in one place.',
+      },
+    ],
+  },
+  {
     version: '1.22.2',
     date: 'March 19, 2026',
     entries: [

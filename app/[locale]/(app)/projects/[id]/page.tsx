@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useRouter, Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
@@ -36,8 +36,14 @@ import {
   Pencil,
   Check,
   X,
+  RefreshCw,
+  Users,
+  ListChecks,
+  Sparkles,
+  MessageSquareDot,
 } from 'lucide-react'
 import { formatDuration } from '@/lib/utils/date-formatters'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface CaseData {
   id: string
@@ -54,12 +60,50 @@ interface SessionRow {
   id: string
   internal_case_id?: string
   context_note?: string
+  private_comments?: string
   status: string
   created_at: string
   duration_sec: number
 }
 
 type CaseStatus = 'active' | 'closed' | 'archived'
+type DriftScore = 'green' | 'yellow' | 'red'
+type Momentum = 'accelerating' | 'stable' | 'stalling'
+
+interface PulseDecision {
+  decision: string
+  session_index: number
+  session_date: string
+}
+
+interface PulseParticipant {
+  name: string
+  sessions: number[]
+  last_seen: string
+}
+
+interface ProjectPulse {
+  original_intent: string
+  current_direction: string
+  drift_score: DriftScore
+  drift_rationale: string
+  open_loops: string[]
+  decision_log: PulseDecision[]
+  momentum: Momentum
+  momentum_rationale: string
+  participant_map: PulseParticipant[]
+  session_count: number
+  narrative: string
+  updated_at: string
+  pulse_version: number
+}
+
+interface PulseResponse {
+  caseId: string
+  pulse: ProjectPulse | null
+  pulseUpdatedAt: string | null
+  pulseVersion: number
+}
 
 function getSessionStatusConfig(status: string) {
   const configs: Record<string, { label: string; className: string }> = {
@@ -108,9 +152,15 @@ export default function ProjectDetailPage() {
   const [saving, setSaving] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState('')
+  const [pulseData, setPulseData] = useState<PulseResponse | null>(null)
+  const [loadingPulse, setLoadingPulse] = useState(true)
+  const [refreshingPulse, setRefreshingPulse] = useState(false)
+  const [decisionExpanded, setDecisionExpanded] = useState(false)
+  const [resolvingLoop, setResolvingLoop] = useState<string | null>(null)
 
   useEffect(() => {
     loadProject()
+    loadPulse()
   }, [projectId])
 
   const loadProject = async () => {
@@ -128,6 +178,60 @@ export default function ProjectDetailPage() {
       toast.error(tc('error'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadPulse = async () => {
+    setLoadingPulse(true)
+    try {
+      const res = await fetch(`/api/cases/${projectId}/pulse`, { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setPulseData(data as PulseResponse)
+      }
+    } catch {
+      // Best-effort UI load.
+    } finally {
+      setLoadingPulse(false)
+    }
+  }
+
+  const handleRefreshPulse = async () => {
+    setRefreshingPulse(true)
+    try {
+      const res = await fetch(`/api/cases/${projectId}/pulse/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to refresh pulse')
+      toast.success(t('projects.pulse.refreshQueued'))
+      window.setTimeout(() => {
+        loadPulse()
+      }, 1800)
+    } catch (error: any) {
+      toast.error(error?.message || tc('error'))
+    } finally {
+      setRefreshingPulse(false)
+    }
+  }
+
+  const handleMarkLoopResolved = async (loop: string) => {
+    setResolvingLoop(loop)
+    try {
+      const res = await fetch(`/api/cases/${projectId}/pulse/resolve-loop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loop }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to mark loop resolved')
+      toast.success(t('projects.pulse.resolvedSuccess'))
+      await handleRefreshPulse()
+    } catch (error: any) {
+      toast.error(error?.message || tc('error'))
+    } finally {
+      setResolvingLoop(null)
     }
   }
 
@@ -197,6 +301,54 @@ export default function ProjectDetailPage() {
     return t('projects.status.archived')
   }
 
+  const pulse = pulseData?.pulse || null
+  const firstSessionPulse = (pulse?.session_count || 0) === 1
+  const loopCounts = useMemo(() => {
+    const entries = pulse?.open_loops || []
+    const map = new Map<string, number>()
+    entries.forEach((loop) => map.set(loop, (map.get(loop) || 0) + 1))
+    return Array.from(map.entries()).map(([loop, count]) => ({ loop, count }))
+  }, [pulse?.open_loops])
+
+  const visibleDecisionLog = useMemo(() => {
+    const decisions = pulse?.decision_log || []
+    if (decisionExpanded || decisions.length <= 5) return decisions
+    return decisions.slice(0, 5)
+  }, [pulse?.decision_log, decisionExpanded])
+
+  const participantRows = useMemo(() => {
+    const count = Math.max(1, pulse?.session_count || 1)
+    return (pulse?.participant_map || []).map((participant) => {
+      const lastSeen = Math.max(...participant.sessions, 0)
+      const stale = lastSeen > 0 && lastSeen <= count - 2
+      return { ...participant, stale, sessionCount: count }
+    })
+  }, [pulse?.participant_map, pulse?.session_count])
+
+  const driftBadgeText = (score: DriftScore | null) => {
+    if (!score) return '--'
+    if (score === 'green') return '🟢 Green'
+    if (score === 'yellow') return '🟡 Yellow'
+    return '🔴 Red'
+  }
+
+  const momentumBadgeText = (momentum: Momentum | null) => {
+    if (!momentum) return '--'
+    if (momentum === 'accelerating') return '⚡ Accelerating'
+    if (momentum === 'stable') return '➡️ Stable'
+    return '🐢 Stalling'
+  }
+
+  const relativeMinutes = (iso?: string | null) => {
+    if (!iso) return t('projects.pulse.neverUpdated')
+    const diffMs = Date.now() - new Date(iso).getTime()
+    const mins = Math.max(0, Math.round(diffMs / 60000))
+    if (mins < 1) return t('projects.pulse.justNow')
+    if (mins < 60) return t('projects.pulse.minutesAgo', { count: mins })
+    const hours = Math.round(mins / 60)
+    return t('projects.pulse.hoursAgo', { count: hours })
+  }
+
   if (loading || !caseData) {
     return (
       <div className="flex justify-center py-12">
@@ -260,68 +412,263 @@ export default function ProjectDetailPage() {
         </Button>
       </div>
 
-      {/* Sessions */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FolderOpen className="h-4 w-4" />
-            Sessions ({caseData.sessions.length})
-          </CardTitle>
-          <CardDescription>
-            {caseData.sessions.length === 0
-              ? 'No sessions yet'
-              : `All sessions in this project`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {caseData.sessions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No sessions in this project yet.</p>
-              <p className="text-xs mt-1">Assign sessions from the Sessions view.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {caseData.sessions.map((session) => {
-                const statusCfg = getSessionStatusConfig(session.status)
-                return (
-                  <Link
-                    key={session.id}
-                    href={`/sessions/${session.id}`}
-                    className="flex items-start justify-between gap-4 p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors group"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-sm text-foreground truncate">
-                          {session.internal_case_id || `Session ${session.id.slice(0, 8)}`}
-                        </h3>
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 ${statusCfg.className}`}>
-                          {statusCfg.label}
-                        </Badge>
-                      </div>
-                      {session.context_note && (
-                        <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{session.context_note}</p>
-                      )}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(session.created_at, locale)} · {formatTime(session.created_at, locale)}
-                        </span>
-                        {session.duration_sec > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDuration(session.duration_sec)}
-                          </span>
-                        )}
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FolderOpen className="h-4 w-4" />
+                Sessions ({caseData.sessions.length})
+              </CardTitle>
+              <CardDescription>
+                {caseData.sessions.length === 0
+                  ? 'No sessions yet'
+                  : 'All sessions in this project'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {caseData.sessions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No sessions in this project yet.</p>
+                  <p className="text-xs mt-1">Assign sessions from the Sessions view.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {caseData.sessions.map((session) => {
+                    const statusCfg = getSessionStatusConfig(session.status)
+                    return (
+                      <Link
+                        key={session.id}
+                        href={`/sessions/${session.id}`}
+                        className="flex items-start justify-between gap-4 p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-sm text-foreground truncate">
+                              {session.internal_case_id || `Session ${session.id.slice(0, 8)}`}
+                            </h3>
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 ${statusCfg.className}`}>
+                              {statusCfg.label}
+                            </Badge>
+                          </div>
+                          {session.context_note && (
+                            <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{session.context_note}</p>
+                          )}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(session.created_at, locale)} · {formatTime(session.created_at, locale)}
+                            </span>
+                            {session.duration_sec > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(session.duration_sec)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-3">
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Sparkles className="h-4 w-4" />
+                    {t('projects.pulse.title')}
+                  </CardTitle>
+                  <CardDescription>{t('projects.pulse.subtitle')}</CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshPulse}
+                  disabled={refreshingPulse}
+                >
+                  {refreshingPulse ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  <span className="ml-1">{t('projects.pulse.refresh')}</span>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingPulse ? (
+                <div className="py-8 flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : !pulse ? (
+                <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  {t('projects.pulse.empty')}
+                </div>
+              ) : (
+                <TooltipProvider>
+                  <div className="space-y-4">
+                    <div className="sticky top-0 z-10 -mx-6 px-6 py-3 border-b border-border bg-card">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline">
+                              {firstSessionPulse ? '--' : driftBadgeText(pulse.drift_score)}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs text-xs">
+                              {firstSessionPulse
+                                ? t('projects.pulse.activatesFromSecondSession')
+                                : pulse.drift_rationale}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline">
+                              {firstSessionPulse ? '--' : momentumBadgeText(pulse.momentum)}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs text-xs">
+                              {firstSessionPulse
+                                ? t('projects.pulse.activatesFromSecondSession')
+                                : pulse.momentum_rationale}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Badge variant="secondary">{t('projects.pulse.version', { version: pulse.pulse_version })}</Badge>
                       </div>
                     </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <p className="text-xs text-muted-foreground italic">{pulse.original_intent || t('projects.pulse.notAvailable')}</p>
+                      <p className="text-sm font-semibold text-foreground">{pulse.current_direction || t('projects.pulse.notAvailable')}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <ListChecks className="h-4 w-4" />
+                        {t('projects.pulse.openLoops')}
+                      </p>
+                      {loopCounts.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">{t('projects.pulse.noOpenLoops')}</p>
+                      ) : (
+                        <ol className="space-y-2 list-decimal pl-5">
+                          {loopCounts.map(({ loop, count }) => (
+                            <li key={loop} className="text-sm">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span>{loop}</span>
+                                  <Badge variant="outline" className="text-[10px]">{count}x</Badge>
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={resolvingLoop === loop}
+                                  onClick={() => handleMarkLoopResolved(loop)}
+                                >
+                                  {resolvingLoop === loop ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t('projects.pulse.markResolved')}
+                                </Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <p className="text-sm font-medium">{t('projects.pulse.decisionLog')}</p>
+                      {(pulse.decision_log || []).length === 0 ? (
+                        <p className="text-xs text-muted-foreground">{t('projects.pulse.noDecisions')}</p>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            {visibleDecisionLog.map((entry, idx) => (
+                              <div key={`${entry.session_index}-${idx}`} className="text-sm">
+                                <p className="text-foreground">{entry.decision}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  S{entry.session_index} · {formatDate(entry.session_date, locale)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          {(pulse.decision_log || []).length > 5 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDecisionExpanded((prev) => !prev)}
+                            >
+                              {decisionExpanded ? t('projects.pulse.showLess') : t('projects.pulse.showMore')}
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        {t('projects.pulse.participantMap')}
+                      </p>
+                      {participantRows.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">{t('projects.pulse.noParticipants')}</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {participantRows.map((participant) => (
+                            <div key={participant.name} className={`rounded-md border p-2 ${participant.stale ? 'border-amber-500/40 bg-amber-500/10' : 'border-border'}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm font-medium">{participant.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {t('projects.pulse.lastSeen')} {formatDate(participant.last_seen, locale)}
+                                </p>
+                              </div>
+                              <div className="mt-2 flex items-center gap-1 flex-wrap">
+                                {Array.from({ length: participant.sessionCount }).map((_, index) => {
+                                  const sessionNo = index + 1
+                                  const present = participant.sessions.includes(sessionNo)
+                                  return (
+                                    <span
+                                      key={`${participant.name}-${sessionNo}`}
+                                      className={`h-2.5 w-2.5 rounded-full ${present ? 'bg-primary' : 'bg-muted'}`}
+                                      title={`S${sessionNo}`}
+                                    />
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-border p-3">
+                      <p className="text-sm font-medium flex items-center gap-2 mb-2">
+                        <MessageSquareDot className="h-4 w-4" />
+                        {t('projects.pulse.narrative')}
+                      </p>
+                      <p className="text-sm leading-relaxed text-foreground">{pulse.narrative || t('projects.pulse.notAvailable')}</p>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+                      <span>{t('projects.pulse.lastUpdated')} {relativeMinutes(pulse.updated_at || pulseData?.pulseUpdatedAt)}</span>
+                      <span>·</span>
+                      <span>{t('projects.pulse.basedOnSessions', { count: pulse.session_count || 0 })}</span>
+                    </div>
+                  </div>
+                </TooltipProvider>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Edit Details Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

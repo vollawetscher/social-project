@@ -8,6 +8,7 @@ import {
   failAsyncJob,
   type AsyncJobRow,
 } from '@/lib/services/queue'
+import { runPulseUpdateJob } from '@/lib/services/pulse/pulse-service'
 
 function getBaseUrl(request: Request): string {
   return process.env.NEXT_PUBLIC_APP_URL
@@ -158,6 +159,30 @@ async function processImportTranscriptProcessJob(request: Request, job: AsyncJob
   }
 }
 
+async function processPulseUpdateJob(job: AsyncJobRow): Promise<Record<string, unknown>> {
+  const payload = (job.payload || {}) as Record<string, unknown>
+  const projectId = String(payload.projectId || payload.caseId || '')
+  const sessionId = String(payload.sessionId || '')
+  if (!projectId || !sessionId) {
+    throw new Error('Invalid pulse_update payload')
+  }
+
+  const supabase = createServiceRoleClient()
+  const result = await runPulseUpdateJob({
+    supabase,
+    caseId: projectId,
+    sessionId,
+  })
+
+  return {
+    projectId,
+    sessionId,
+    pulseVersion: result?.pulse?.pulse_version || null,
+    sessionCount: result?.sessionCount || null,
+    skipped: result?.skipped || null,
+  }
+}
+
 async function processJob(request: Request, job: AsyncJobRow): Promise<Record<string, unknown>> {
   switch (job.job_type) {
     case 'output_generate':
@@ -168,6 +193,8 @@ async function processJob(request: Request, job: AsyncJobRow): Promise<Record<st
       return processSessionTranscribeJob(request, job)
     case 'import_transcript_process':
       return processImportTranscriptProcessJob(request, job)
+    case 'pulse_update':
+      return processPulseUpdateJob(job)
     default:
       throw new Error(`Unsupported job type: ${job.job_type}`)
   }
@@ -215,6 +242,7 @@ export async function POST(request: Request) {
             attemptCount: job.attempt_count,
             maxAttempts: job.max_attempts,
             payload: job.payload || {},
+            projectId: typeof (job.payload as any)?.projectId === 'string' ? (job.payload as any).projectId : null,
           },
         }).catch(() => {})
 
