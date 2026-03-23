@@ -525,6 +525,26 @@ export default function SessionsPage() {
     transcriptInputRef.current?.click()
   }, [uploadingTranscript])
 
+  const waitForJobCompletion = useCallback(async (jobId: string) => {
+    const startedAt = Date.now()
+    const timeoutMs = 3 * 60 * 1000
+    while (Date.now() - startedAt < timeoutMs) {
+      const res = await fetch(`/api/jobs/${jobId}`, { cache: 'no-store' })
+      const job = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(job?.error || t('uploadMessages.generateFailed'))
+      }
+      if (job.status === 'completed') {
+        return job.result || {}
+      }
+      if (job.status === 'failed') {
+        throw new Error(job.lastError || t('uploadMessages.generateFailed'))
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    }
+    throw new Error(t('uploadMessages.generateFailed'))
+  }, [t])
+
   const importTranscriptContent = useCallback(async (
     rawFileContent: string,
     fileName: string,
@@ -565,6 +585,10 @@ export default function SessionsPage() {
         throw new Error(err.error || t('uploadMessages.importFailed'))
       }
       const payload = await res.json().catch(() => ({}))
+      if (payload?.queued && payload?.jobId) {
+        const result = await waitForJobCompletion(String(payload.jobId))
+        return result?.sessionId || result?.session?.id || null
+      }
       return payload?.session?.id || null
     } catch (err: any) {
       clearTimeout(timeoutId)
@@ -573,7 +597,7 @@ export default function SessionsPage() {
       }
       throw err
     }
-  }, [language, t])
+  }, [language, t, waitForJobCompletion])
 
   const processTranscriptFile = useCallback(async (
     file: File,
@@ -660,26 +684,6 @@ export default function SessionsPage() {
     setPastePreviewText(cleaned)
     setPastePreviewOpen(true)
   }, [])
-
-  const waitForJobCompletion = useCallback(async (jobId: string) => {
-    const startedAt = Date.now()
-    const timeoutMs = 3 * 60 * 1000
-    while (Date.now() - startedAt < timeoutMs) {
-      const res = await fetch(`/api/jobs/${jobId}`, { cache: 'no-store' })
-      const job = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(job?.error || t('uploadMessages.generateFailed'))
-      }
-      if (job.status === 'completed') {
-        return job.result || {}
-      }
-      if (job.status === 'failed') {
-        throw new Error(job.lastError || t('uploadMessages.generateFailed'))
-      }
-      await new Promise((resolve) => setTimeout(resolve, 1200))
-    }
-    throw new Error(t('uploadMessages.generateFailed'))
-  }, [t])
 
   const generateOutputForTemplate = useCallback(async (sessionId: string, templateId: string) => {
     const templateName = pastePreviewTemplates.find((template) => template.id === templateId)?.name

@@ -125,6 +125,39 @@ async function processSessionTranscribeJob(request: Request, job: AsyncJobRow): 
   }
 }
 
+async function processImportTranscriptProcessJob(request: Request, job: AsyncJobRow): Promise<Record<string, unknown>> {
+  const payload = (job.payload || {}) as Record<string, unknown>
+  const baseUrl = getBaseUrl(request)
+  const secret = process.env.INTERNAL_API_SECRET
+  if (!secret) {
+    throw new Error('INTERNAL_API_SECRET is not configured')
+  }
+
+  const response = await fetch(`${baseUrl}/api/sessions/import-transcript`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-secret': secret,
+      'x-internal-user-id': job.user_id,
+      'x-queue-worker': '1',
+    },
+    body: JSON.stringify({
+      ...payload,
+      queueMode: 'sync',
+    }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(String(data?.error || `Import transcript processing failed (${response.status})`))
+  }
+
+  return {
+    ...(typeof data === 'object' && data ? data : {}),
+    sessionId: data?.session?.id || null,
+  }
+}
+
 async function processJob(request: Request, job: AsyncJobRow): Promise<Record<string, unknown>> {
   switch (job.job_type) {
     case 'output_generate':
@@ -133,6 +166,8 @@ async function processJob(request: Request, job: AsyncJobRow): Promise<Record<st
       return processSessionAnalyzeJob(request, job)
     case 'session_transcribe':
       return processSessionTranscribeJob(request, job)
+    case 'import_transcript_process':
+      return processImportTranscriptProcessJob(request, job)
     default:
       throw new Error(`Unsupported job type: ${job.job_type}`)
   }

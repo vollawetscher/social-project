@@ -4,7 +4,7 @@
  * Create a session from uploaded transcript text (TXT, SRT, VTT).
  * Peek heuristics detect messy content (chat, summaries); AI structuring runs only when needed.
  */
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
@@ -15,6 +15,7 @@ import { detectTranscriptType, type TranscriptIngestionSource } from '@/lib/util
 import type { TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
 import { logError } from '@/lib/services/error-logger'
 import Anthropic from '@anthropic-ai/sdk'
+import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 
 interface ParsedSegment {
   start_ms: number
@@ -81,8 +82,13 @@ ${truncatedText}`
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuth()
-    const supabase = await createClient()
+    const expectedSecret = process.env.INTERNAL_API_SECRET
+    const providedSecret = request.headers.get('x-internal-secret')
+    const internalUserId = request.headers.get('x-internal-user-id')
+    const isInternalCall = !!expectedSecret && providedSecret === expectedSecret && !!internalUserId
+
+    const user = isInternalCall ? { id: internalUserId as string } : await requireAuth()
+    const supabase = isInternalCall ? createServiceRoleClient() : await createClient()
     const body = await request.json()
 
     const {
@@ -94,6 +100,7 @@ export async function POST(request: Request) {
       filename,
       ingestionSource = 'unknown',
       parseStrategy = 'auto',
+      queueMode = '',
     }: {
       language?: string
       sessionName?: string
@@ -103,6 +110,7 @@ export async function POST(request: Request) {
       filename?: string
       ingestionSource?: TranscriptIngestionSource
       parseStrategy?: TranscriptParseStrategy
+      queueMode?: string
     } = body
 
     const { data: profile } = await supabase
@@ -125,6 +133,34 @@ export async function POST(request: Request) {
       typeof rawFileContent === 'string' &&
       rawFileContent.length > 0 &&
       needsStructureHeuristic(rawFileContent, filename || sessionName || 'file.txt')
+
+    const forceSync = String(queueMode || '').toLowerCase() === 'sync' || request.headers.get('x-queue-worker') === '1'
+    if (needsStructure && !forceSync) {
+      const job = await enqueueAsyncJob({
+        userId: user.id,
+        jobType: 'import_transcript_process',
+        payload: {
+          language,
+          sessionName,
+          segments: incomingSegments,
+          rawText: incomingRawText,
+          rawFileContent,
+          filename,
+          ingestionSource,
+          parseStrategy,
+        },
+        maxAttempts: 5,
+      })
+      triggerAsyncWorker()
+      return NextResponse.json(
+        {
+          queued: true,
+          jobId: job.id,
+          status: job.status,
+        },
+        { status: 202 }
+      )
+    }
 
     if (needsStructure) {
       try {

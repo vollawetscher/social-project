@@ -420,6 +420,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Settings Adds Live Queue Health for Admins',
         description: 'Infrastructure settings now include a live queue health panel for admins with backlog, retries, and failure-rate indicators to speed up operational checks.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Heavy Text-Import Structuring Now Runs in Queue',
+        description: 'Large or messy transcript imports now queue AI structuring in the background and return quickly, improving reliability under concurrent imports.',
+      },
     ],
   },
   {

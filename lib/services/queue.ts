@@ -1,6 +1,6 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
-export type AsyncJobType = 'output_generate' | 'session_analyze' | 'session_transcribe'
+export type AsyncJobType = 'output_generate' | 'session_analyze' | 'session_transcribe' | 'import_transcript_process'
 export type AsyncJobStatus = 'queued' | 'running' | 'retryable' | 'completed' | 'failed'
 
 export interface AsyncJobRow {
