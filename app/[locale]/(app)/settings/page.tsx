@@ -83,6 +83,16 @@ export default function SettingsPage() {
   const [showMissingOnly, setShowMissingOnly] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState("")
   const [deletingAccount, setDeletingAccount] = useState(false)
+  const [queueHealth, setQueueHealth] = useState<{
+    status: 'healthy' | 'warning' | 'critical'
+    queuedCount: number
+    retryableCount: number
+    runningCount: number
+    failedLastHour: number
+    failedLast24h: number
+    oldestQueuedAgeMinutes: number | null
+  } | null>(null)
+  const [queueHealthLoading, setQueueHealthLoading] = useState(false)
 
   const localizedSupportedLanguages = useMemo(
     () => SUPPORTED_LANGUAGES.map((lang) => ({ value: lang.value, label: tl(lang.value) })),
@@ -289,6 +299,28 @@ export default function SettingsPage() {
       fetchProfile()
     }
   }, [user, authLoading])
+
+  const fetchQueueHealth = async () => {
+    if (profile?.role !== 'admin') return
+    setQueueHealthLoading(true)
+    try {
+      const res = await fetch('/api/jobs/health', { cache: 'no-store' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to load queue health')
+      setQueueHealth(data)
+    } catch (error) {
+      console.error('Error fetching queue health:', error)
+    } finally {
+      setQueueHealthLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (profile?.role !== 'admin') return
+    fetchQueueHealth()
+    const interval = setInterval(fetchQueueHealth, 15000)
+    return () => clearInterval(interval)
+  }, [profile?.role])
 
   // Save profile changes
   const handleSave = async () => {
@@ -836,6 +868,57 @@ export default function SettingsPage() {
                 </Sheet>
               </div>
             </div>
+
+            {profile?.role === 'admin' && (
+              <div className="rounded-lg border border-border bg-secondary/20 p-3 sm:p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{t('queueHealthTitle')}</p>
+                    <p className="text-xs text-muted-foreground">{t('queueHealthDescription')}</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={fetchQueueHealth} disabled={queueHealthLoading}>
+                    {queueHealthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('queueHealthRefresh')}
+                  </Button>
+                </div>
+                {queueHealth && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        className={
+                          queueHealth.status === 'healthy'
+                            ? 'bg-success/20 text-success border-success/30'
+                            : queueHealth.status === 'warning'
+                              ? 'bg-warning/20 text-warning border-warning/30'
+                              : 'bg-destructive/20 text-destructive border-destructive/30'
+                        }
+                      >
+                        {t(`queueHealthStatus.${queueHealth.status}`)}
+                      </Badge>
+                      <Badge variant="outline" className="text-[11px]">
+                        {t('queueHealthQueued', { count: queueHealth.queuedCount })}
+                      </Badge>
+                      <Badge variant="outline" className="text-[11px]">
+                        {t('queueHealthRunning', { count: queueHealth.runningCount })}
+                      </Badge>
+                      <Badge variant="outline" className="text-[11px]">
+                        {t('queueHealthRetryable', { count: queueHealth.retryableCount })}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t('queueHealthFailures', {
+                        hour: queueHealth.failedLastHour,
+                        day: queueHealth.failedLast24h,
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('queueHealthOldestQueued', {
+                        minutes: queueHealth.oldestQueuedAgeMinutes ?? 0,
+                      })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Service Cards */}
             <div className="grid gap-4 md:grid-cols-3">

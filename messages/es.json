@@ -862,7 +862,20 @@
     "complianceTwilioPurpose": "Llamadas PSTN y envio de SMS",
     "complianceSevenPurpose": "Enrutamiento y entrega de SMS con fallback",
     "complianceLivekitPurpose": "Media en tiempo real para llamadas web",
-    "complianceRailwayPurpose": "Hosting de aplicacion y operaciones de runtime"
+    "complianceRailwayPurpose": "Hosting de aplicacion y operaciones de runtime",
+    "queueHealthTitle": "Salud de la cola",
+    "queueHealthDescription": "Estado en vivo de trabajos en segundo plano para procesamiento asincrono",
+    "queueHealthRefresh": "Actualizar",
+    "queueHealthStatus": {
+      "healthy": "Saludable",
+      "warning": "Advertencia",
+      "critical": "Critico"
+    },
+    "queueHealthQueued": "En cola: {count}",
+    "queueHealthRunning": "En ejecucion: {count}",
+    "queueHealthRetryable": "Reintentables: {count}",
+    "queueHealthFailures": "Trabajos fallidos: {hour} en la ultima hora, {day} en las ultimas 24 horas",
+    "queueHealthOldestQueued": "Antiguedad del trabajo en cola mas antiguo: {minutes} min"
   },
   "profile": {
     "title": "Perfil",

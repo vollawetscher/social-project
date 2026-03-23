@@ -406,6 +406,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Transcription Follow-Up Uses Durable Job Queue',
         description: 'Post-transcription analyze and generation follow-up now runs through queued background jobs, reducing dropped processing during long-running AI workflows.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Queue Failures Now Appear in Bug Reporting',
+        description: 'Async job worker failures are now logged with job context into the central error log, making queue issues visible in Bug Reporting and easier to debug.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Settings Adds Live Queue Health for Admins',
+        description: 'Infrastructure settings now include a live queue health panel for admins with backlog, retries, and failure-rate indicators to speed up operational checks.',
+      },
     ],
   },
   {

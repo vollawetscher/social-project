@@ -863,7 +863,20 @@
     "complianceTwilioPurpose": "PSTN calling and SMS delivery",
     "complianceSevenPurpose": "SMS delivery routing and fallback handling",
     "complianceLivekitPurpose": "Realtime media for web calls",
-    "complianceRailwayPurpose": "Application hosting and runtime operations"
+    "complianceRailwayPurpose": "Application hosting and runtime operations",
+    "queueHealthTitle": "Queue Health",
+    "queueHealthDescription": "Live background job status for async processing",
+    "queueHealthRefresh": "Refresh",
+    "queueHealthStatus": {
+      "healthy": "Healthy",
+      "warning": "Warning",
+      "critical": "Critical"
+    },
+    "queueHealthQueued": "Queued: {count}",
+    "queueHealthRunning": "Running: {count}",
+    "queueHealthRetryable": "Retryable: {count}",
+    "queueHealthFailures": "Failed jobs: {hour} in the last hour, {day} in the last 24 hours",
+    "queueHealthOldestQueued": "Oldest queued job age: {minutes} min"
   },
   "profile": {
     "title": "Profile",

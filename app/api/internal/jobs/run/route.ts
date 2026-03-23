@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { createErrorLogger } from '@/lib/services/error-logger'
 import {
   claimAsyncJobs,
   completeAsyncJob,
@@ -145,6 +147,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
   const limit = Number(body?.limit || 10)
   const workerId = `worker-${Math.random().toString(36).slice(2, 10)}`
+  const supabase = createServiceRoleClient()
+  const errorLogger = await createErrorLogger(supabase)
 
   try {
     const jobs = await claimAsyncJobs({
@@ -160,6 +164,25 @@ export async function POST(request: Request) {
         processed.push({ id: job.id, status: 'completed' })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown worker error'
+        await errorLogger.log({
+          errorType: 'server_error',
+          severity: job.attempt_count >= job.max_attempts ? 'error' : 'warning',
+          message: `[Async Queue] Job ${job.id} (${job.job_type}) failed: ${message}`,
+          error,
+          sessionId: typeof (job.payload as any)?.sessionId === 'string' ? (job.payload as any).sessionId : null,
+          userId: job.user_id,
+          endpoint: '/api/internal/jobs/run',
+          method: 'POST',
+          metadata: {
+            workerId,
+            jobId: job.id,
+            jobType: job.job_type,
+            attemptCount: job.attempt_count,
+            maxAttempts: job.max_attempts,
+            payload: job.payload || {},
+          },
+        }).catch(() => {})
+
         if (job.attempt_count >= job.max_attempts) {
           await failAsyncJob(job.id, message)
           processed.push({ id: job.id, status: 'failed' })
@@ -177,6 +200,18 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('[Internal Jobs Run] Error:', error)
+    await errorLogger.log({
+      errorType: 'server_error',
+      severity: 'error',
+      message: `[Async Queue] Worker execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      error,
+      endpoint: '/api/internal/jobs/run',
+      method: 'POST',
+      metadata: {
+        workerId,
+        requestedLimit: limit,
+      },
+    }).catch(() => {})
     return NextResponse.json({ error: 'Failed to run async jobs' }, { status: 500 })
   }
 }
