@@ -272,6 +272,8 @@
         "subtitle": "Lebende Projektentwicklung aus vorherigem Pulse plus neuer Sitzung",
         "refresh": "Pulse aktualisieren",
         "refreshQueued": "Pulse-Aktualisierung wurde in die Warteschlange gestellt",
+        "refreshCompleted": "Pulse aktualisiert",
+        "refreshFailed": "Pulse-Aktualisierung fehlgeschlagen",
         "empty": "Pulse erscheint, sobald Sitzungen analysiert und dem Projekt zugewiesen wurden.",
         "version": "v{version}",
         "openLoops": "Offene Schleifen",

@@ -272,6 +272,8 @@
         "subtitle": "Living trajectory from previous pulse plus newest session",
         "refresh": "Refresh Pulse",
         "refreshQueued": "Pulse refresh queued",
+        "refreshCompleted": "Pulse refreshed",
+        "refreshFailed": "Pulse refresh failed",
         "empty": "Pulse appears after sessions are analyzed and assigned to this project.",
         "version": "v{version}",
         "openLoops": "Open loops",

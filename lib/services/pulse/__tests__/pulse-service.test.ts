@@ -57,6 +57,25 @@ describe('Project Pulse worker invariants', () => {
     expect(next.session_count).toBe(4)
   })
 
+  it('removes resolved loops from open_loops deterministically', () => {
+    const next = sanitizePulseJson(
+      {
+        current_direction: 'Direction',
+        drift_score: 'green',
+        drift_rationale: 'Aligned',
+        open_loops: ['Finalize DPA wording', 'Schedule pilot review'],
+        momentum: 'stable',
+        momentum_rationale: 'Steady',
+      },
+      null,
+      2,
+      'Fallback intent',
+      ['Finalize DPA wording']
+    )
+
+    expect(next.open_loops).toEqual(['Schedule pilot review'])
+  })
+
   it('normalizes session analysis mapping from session row', () => {
     const mapped = mapSessionToPulseInput({
       ai_extracted_context: {

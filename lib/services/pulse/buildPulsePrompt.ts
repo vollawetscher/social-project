@@ -5,8 +5,9 @@ export function buildPulsePrompt(input: {
   session: PulseSessionInput
   sessionIndex: number
   userLanguage: string
+  resolvedMarkers?: string[]
 }) {
-  const { currentPulse, session, sessionIndex, userLanguage } = input
+  const { currentPulse, session, sessionIndex, userLanguage, resolvedMarkers = [] } = input
 
   const system = `You are the Project Pulse engine for Notissima - a communication intelligence platform.
 Your task is to maintain a living analysis of a project's trajectory based on its session history.
@@ -66,6 +67,8 @@ Purpose: ${session.purpose}
 Domains: ${session.domains.join(', ')}
 Speakers: ${session.speakers.join(', ')}
 Meeting type: ${session.recording_type}
+Resolved loop markers from latest notes:
+${resolvedMarkers.length ? resolvedMarkers.map((m) => `- ${m}`).join('\n') : '- none'}
 Agenda:
 ${session.agenda.map((a) => `- ${a}`).join('\n')}
 Summary:

@@ -272,6 +272,8 @@
         "subtitle": "Trayectoria viva basada en el pulse anterior y la sesión más nueva",
         "refresh": "Actualizar Pulse",
         "refreshQueued": "Actualización de Pulse en cola",
+        "refreshCompleted": "Pulse actualizado",
+        "refreshFailed": "La actualización de Pulse falló",
         "empty": "Pulse aparecerá cuando las sesiones estén analizadas y asignadas a este proyecto.",
         "version": "v{version}",
         "openLoops": "Bucles abiertos",

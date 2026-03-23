@@ -205,10 +205,28 @@ export default function ProjectDetailPage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || 'Failed to refresh pulse')
-      toast.success(t('projects.pulse.refreshQueued'))
-      window.setTimeout(() => {
-        loadPulse()
-      }, 1800)
+      if (data?.queued && data?.jobId) {
+        const startedAt = Date.now()
+        const timeoutMs = 120000
+        while (Date.now() - startedAt < timeoutMs) {
+          const jobRes = await fetch(`/api/jobs/${data.jobId}`, { cache: 'no-store' })
+          const job = await jobRes.json().catch(() => ({}))
+          if (!jobRes.ok) break
+          if (job.status === 'completed') {
+            await loadPulse()
+            toast.success(t('projects.pulse.refreshCompleted'))
+            return
+          }
+          if (job.status === 'failed') {
+            throw new Error(job.lastError || t('projects.pulse.refreshFailed'))
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1200))
+        }
+        toast.success(t('projects.pulse.refreshQueued'))
+      } else {
+        toast.success(t('projects.pulse.refreshQueued'))
+      }
+      await loadPulse()
     } catch (error: any) {
       toast.error(error?.message || tc('error'))
     } finally {

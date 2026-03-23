@@ -40,7 +40,7 @@ export async function POST(
       caseId: params.id,
       sessionId: latestSession.id,
       userId: user.id,
-      maxAttempts: 3,
+      maxAttempts: 8,
     })
 
     return NextResponse.json({

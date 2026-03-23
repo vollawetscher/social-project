@@ -18,7 +18,7 @@ export async function enqueuePulseUpdate(input: {
   userId: string
   maxAttempts?: number
 }) {
-  const { caseId, sessionId, userId, maxAttempts = 5 } = input
+  const { caseId, sessionId, userId, maxAttempts = 8 } = input
   if (!caseId || !sessionId || !userId) return { queued: false, reason: 'missing_input' as const }
 
   const supabase = createServiceRoleClient()

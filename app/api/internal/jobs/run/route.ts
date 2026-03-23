@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createErrorLogger } from '@/lib/services/error-logger'
 import {
+  enqueueAsyncJob,
   claimAsyncJobs,
   completeAsyncJob,
   retryAsyncJob,
   failAsyncJob,
+  triggerAsyncWorker,
   type AsyncJobRow,
 } from '@/lib/services/queue'
 import { runPulseUpdateJob } from '@/lib/services/pulse/pulse-service'
@@ -168,6 +170,38 @@ async function processPulseUpdateJob(job: AsyncJobRow): Promise<Record<string, u
   }
 
   const supabase = createServiceRoleClient()
+  const { data: sessionRow } = await supabase
+    .from('sessions')
+    .select('id, status, recording_type, suggested_domains, ai_extracted_context')
+    .eq('id', sessionId)
+    .maybeSingle()
+
+  const hasArtifacts =
+    !!sessionRow &&
+    typeof sessionRow.recording_type === 'string' &&
+    sessionRow.recording_type.trim().length > 0 &&
+    Array.isArray((sessionRow as any).suggested_domains) &&
+    ((sessionRow as any).suggested_domains as any[]).length > 0 &&
+    !!(sessionRow as any).ai_extracted_context &&
+    typeof (sessionRow as any).ai_extracted_context === 'object'
+
+  if (!hasArtifacts) {
+    const status = String((sessionRow as any)?.status || '')
+    // If analysis is not ready yet, ensure an analyze job exists.
+    // Idempotency keeps this safe across retries.
+    if (['done', 'ready', 'error'].includes(status)) {
+      await enqueueAsyncJob({
+        userId: job.user_id,
+        jobType: 'session_analyze',
+        payload: { sessionId },
+        idempotencyKey: `session_analyze:${sessionId}`,
+        maxAttempts: 5,
+      })
+      triggerAsyncWorker()
+    }
+    throw new Error(`Pulse waiting for analysis artifacts (session=${sessionId}, status=${status || 'unknown'})`)
+  }
+
   const result = await runPulseUpdateJob({
     supabase,
     caseId: projectId,

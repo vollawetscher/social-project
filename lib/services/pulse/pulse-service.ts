@@ -25,6 +25,31 @@ function readSummaryBullets(input: string | null | undefined): string[] {
     .slice(0, 8)
 }
 
+function extractResolvedLoopMarkers(text: string | null | undefined): string[] {
+  const source = String(text || '')
+  if (!source) return []
+  return source
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^\[RESOLVED\]\s+/i.test(line))
+    .map((line) => line.replace(/^\[RESOLVED\]\s+/i, '').trim())
+    .filter(Boolean)
+    .slice(0, 30)
+}
+
+function hasReadyAnalysisArtifacts(sessionRow: any): boolean {
+  const hasRecordingType = typeof sessionRow?.recording_type === 'string' && sessionRow.recording_type.trim().length > 0
+  const hasDomains = Array.isArray(sessionRow?.suggested_domains) && sessionRow.suggested_domains.length > 0
+  const extracted = sessionRow?.ai_extracted_context
+  const hasExtractedContext =
+    extracted &&
+    typeof extracted === 'object' &&
+    !Array.isArray(extracted) &&
+    Object.keys(extracted).length > 0
+
+  return hasRecordingType && hasDomains && hasExtractedContext
+}
+
 export function mapSessionToPulseInput(sessionRow: any): PulseSessionInput {
   const extracted = (sessionRow?.ai_extracted_context || {}) as Record<string, any>
   const participants = Array.isArray(extracted.participants) ? extracted.participants : []
@@ -37,7 +62,7 @@ export function mapSessionToPulseInput(sessionRow: any): PulseSessionInput {
     .filter(Boolean)
     .slice(0, 12)
 
-  const purpose = String(extracted.purpose || sessionRow?.context_note || '').trim()
+  const purpose = String(extracted.purpose || '').trim()
   const agenda = Array.isArray(extracted.agenda)
     ? extracted.agenda.map((x: any) => String(x || '').trim()).filter(Boolean).slice(0, 12)
     : []
@@ -57,7 +82,7 @@ export function mapSessionToPulseInput(sessionRow: any): PulseSessionInput {
   const summary = readSummaryBullets(sessionRow?.speechmatics_summary)
   return {
     summary,
-    purpose: purpose || 'No explicit purpose captured',
+    purpose,
     agenda,
     domains,
     speakers,
@@ -85,7 +110,35 @@ export function parseClaudeJson(raw: string): any {
   }
 }
 
-export function sanitizePulseJson(parsed: any, currentPulse: ProjectPulse | null, sessionIndex: number, fallbackIntent: string): ProjectPulse {
+function normalizeLoopText(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isResolvedLoop(loop: string, resolvedMarkers: string[]): boolean {
+  const normalizedLoop = normalizeLoopText(loop)
+  if (!normalizedLoop) return false
+  return resolvedMarkers.some((marker) => {
+    const normalizedMarker = normalizeLoopText(marker)
+    if (!normalizedMarker) return false
+    return (
+      normalizedLoop === normalizedMarker ||
+      normalizedLoop.includes(normalizedMarker) ||
+      normalizedMarker.includes(normalizedLoop)
+    )
+  })
+}
+
+export function sanitizePulseJson(
+  parsed: any,
+  currentPulse: ProjectPulse | null,
+  sessionIndex: number,
+  fallbackIntent: string,
+  resolvedMarkers: string[] = []
+): ProjectPulse {
   const safeDecisionLog: DecisionEntry[] = Array.isArray(parsed?.decision_log)
     ? parsed.decision_log
       .map((d: any) => ({
@@ -113,6 +166,7 @@ export function sanitizePulseJson(parsed: any, currentPulse: ProjectPulse | null
   const safeLoops = Array.isArray(parsed?.open_loops)
     ? parsed.open_loops.map((x: any) => String(x || '').trim()).filter(Boolean).slice(0, 30)
     : []
+  const filteredLoops = safeLoops.filter((loop: string) => !isResolvedLoop(loop, resolvedMarkers))
 
   const baseVersion = currentPulse?.pulse_version || 0
   return {
@@ -122,7 +176,7 @@ export function sanitizePulseJson(parsed: any, currentPulse: ProjectPulse | null
       ? parsed.drift_score
       : 'yellow',
     drift_rationale: String(parsed?.drift_rationale || '').trim() || 'No rationale provided',
-    open_loops: safeLoops,
+    open_loops: filteredLoops,
     decision_log: safeDecisionLog,
     momentum: ['accelerating', 'stable', 'stalling'].includes(String(parsed?.momentum))
       ? parsed.momentum
@@ -151,7 +205,7 @@ export async function runPulseUpdateJob(input: {
       .single(),
     supabase
       .from('sessions')
-      .select('id, case_id, ai_extracted_context, speechmatics_summary, suggested_domains, recording_type, context_note, recorded_at, created_at')
+      .select('id, case_id, status, ai_extracted_context, speechmatics_summary, suggested_domains, recording_type, context_note, private_comments, recorded_at, created_at')
       .eq('id', sessionId)
       .single(),
   ])
@@ -169,10 +223,13 @@ export async function runPulseUpdateJob(input: {
     throw new Error(`Session ${sessionId} does not belong to case ${caseId}`)
   }
 
-  const sessionInput = mapSessionToPulseInput(sessionRow)
-  if (sessionInput.summary.length === 0 && !sessionInput.purpose.trim()) {
-    throw new Error(`No analysis for session ${sessionId} — retry later`)
+  if (!hasReadyAnalysisArtifacts(sessionRow)) {
+    const status = String(sessionRow?.status || '')
+    throw new Error(
+      `Pulse dependency not ready: analysis missing for session ${sessionId} (status=${status || 'unknown'})`
+    )
   }
+  const sessionInput = mapSessionToPulseInput(sessionRow)
 
   const { count: sessionCount } = await supabase
     .from('sessions')
@@ -191,11 +248,15 @@ export async function runPulseUpdateJob(input: {
     (ownerProfile as any)?.preferred_report_language || (ownerProfile as any)?.preferred_locale || 'de'
   )
   const currentPulse = (caseRow.pulse || null) as ProjectPulse | null
+  const resolvedMarkers = extractResolvedLoopMarkers(
+    `${String(sessionRow?.private_comments || '')}\n${String(sessionRow?.context_note || '')}`
+  )
   const { system, user } = buildPulsePrompt({
     currentPulse,
     session: sessionInput,
     sessionIndex: countValue,
     userLanguage,
+    resolvedMarkers,
   })
 
   if (!anthropic) {
@@ -212,7 +273,7 @@ export async function runPulseUpdateJob(input: {
     .map((block) => ('text' in block ? block.text : ''))
     .join('\n')
   const parsed = parseClaudeJson(text)
-  const pulse = sanitizePulseJson(parsed, currentPulse, countValue, sessionInput.purpose)
+  const pulse = sanitizePulseJson(parsed, currentPulse, countValue, sessionInput.purpose, resolvedMarkers)
 
   const nowIso = new Date().toISOString()
   pulse.updated_at = nowIso
