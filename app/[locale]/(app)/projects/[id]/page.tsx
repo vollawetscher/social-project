@@ -29,14 +29,10 @@ import { toast } from 'sonner'
 import {
   Loader2,
   ArrowLeft,
-  Plus,
   FolderOpen,
   Calendar,
   Clock,
   Settings,
-  FileText,
-  Mic,
-  Sparkles,
   Pencil,
   Check,
   X,
@@ -195,24 +191,6 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const handleCreateSession = async () => {
-    try {
-      const res = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: projectId }),
-      })
-      if (res.ok) {
-        const session = await res.json()
-        router.push(`/sessions/${session.id}`)
-      } else {
-        toast.error(tc('error'))
-      }
-    } catch {
-      toast.error(tc('error'))
-    }
-  }
-
   const statusLabel = (s: CaseStatus) => {
     if (s === 'active') return t('projects.status.active')
     if (s === 'closed') return t('projects.status.closed')
@@ -228,7 +206,7 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="w-full max-w-4xl lg:max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button
@@ -282,16 +260,6 @@ export default function ProjectDetailPage() {
         </Button>
       </div>
 
-      {/* Create Session */}
-      <Card>
-        <CardContent className="pt-4">
-          <Button onClick={handleCreateSession} className="w-full" size="lg">
-            <Plus className="mr-2 h-4 w-4" />
-            {tc('new')} Session
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Sessions */}
       <Card>
         <CardHeader className="pb-3">
@@ -310,7 +278,7 @@ export default function ProjectDetailPage() {
             <div className="text-center py-8 text-muted-foreground">
               <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
               <p className="text-sm">No sessions in this project yet.</p>
-              <p className="text-xs mt-1">Assign sessions from the Sessions view, or create a new one above.</p>
+              <p className="text-xs mt-1">Assign sessions from the Sessions view.</p>
             </div>
           ) : (
             <div className="space-y-2">

@@ -378,6 +378,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'One-Click Suggestions Now Respect Session Language',
         description: 'Generating output from suggested formats now follows your session/transcript language logic instead of falling back to profile defaults, preventing cross-language mismatches.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Auto-Language Outputs Detect Pasted Transcript Language',
+        description: 'When pasted-content sessions use Auto language and transcript metadata is missing, output generation now infers language from transcript text so Japanese (and other languages) no longer fall back to German.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Project Detail View Is Cleaner on Desktop',
+        description: 'The project detail page now uses a wider desktop layout and removes the New Session shortcut, keeping project management focused on existing sessions.',
+      },
     ],
   },
   {

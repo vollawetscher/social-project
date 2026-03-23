@@ -272,6 +272,57 @@ export async function POST(request: Request) {
       return null
     }
 
+    const detectLanguageFromTranscriptText = (text: string): string | null => {
+      const sample = String(text || '').slice(0, 6000)
+      if (!sample.trim()) return null
+
+      // Script-based detection first (high confidence for non-Latin scripts)
+      if (/[\u3040-\u30ff]/.test(sample)) return 'ja' // Hiragana + Katakana
+      if (/[\uac00-\ud7af]/.test(sample)) return 'ko' // Hangul
+      if (/[\u0e00-\u0e7f]/.test(sample)) return 'th' // Thai
+      if (/[\u0600-\u06ff]/.test(sample)) return 'ar' // Arabic
+      if (/[\u0900-\u097f]/.test(sample)) return 'hi' // Devanagari
+      if (/[\u0400-\u04ff]/.test(sample)) return 'ru' // Cyrillic (default to Russian)
+
+      // Han-only text without Kana can be Chinese.
+      if (/[\u4e00-\u9fff]/.test(sample)) return 'zh'
+
+      // Lightweight Latin-language heuristic fallback
+      const lower = sample.toLowerCase()
+      const tokens = lower.match(/[a-z\u00c0-\u017f]+/g) || []
+      if (tokens.length < 8) return null
+
+      const scoreByLang: Record<string, number> = {
+        en: 0, de: 0, es: 0, fr: 0, it: 0, pt: 0, nl: 0, pl: 0, tr: 0, vi: 0,
+      }
+      const addScore = (lang: string, points: number) => {
+        scoreByLang[lang] = (scoreByLang[lang] || 0) + points
+      }
+
+      const markers: Record<string, string[]> = {
+        en: ['the', 'and', 'with', 'from', 'that', 'this'],
+        de: ['und', 'der', 'die', 'das', 'nicht', 'mit', 'ist'],
+        es: ['el', 'la', 'de', 'que', 'con', 'para', 'los'],
+        fr: ['le', 'la', 'les', 'des', 'avec', 'pour', 'dans'],
+        it: ['il', 'la', 'di', 'che', 'con', 'per', 'nel'],
+        pt: ['de', 'que', 'com', 'para', 'uma', 'não'],
+        nl: ['de', 'het', 'een', 'met', 'van', 'voor'],
+        pl: ['i', 'że', 'nie', 'się', 'jest', 'dla'],
+        tr: ['ve', 'bir', 'ile', 'için', 'gibi', 'ama'],
+        vi: ['và', 'là', 'cho', 'trong', 'không', 'của'],
+      }
+
+      for (const token of tokens) {
+        for (const [lang, words] of Object.entries(markers)) {
+          if (words.includes(token)) addScore(lang, 1)
+        }
+      }
+
+      const ranked = Object.entries(scoreByLang).sort((a, b) => b[1] - a[1])
+      if (!ranked[0] || ranked[0][1] < 2) return null
+      return ranked[0][0]
+    }
+
     const resolveOutputLanguageCode = (
       requested: string | undefined,
       sessionLang: string | undefined,
@@ -303,11 +354,14 @@ export async function POST(request: Request) {
       )
     )[0] || normalizeLanguageCode((transcript as any)?.language || undefined) || undefined
 
+    const heuristicTranscriptLanguage =
+      detectLanguageFromTranscriptText(transcriptText) || undefined
+
     const resolvedLanguageCode = resolveOutputLanguageCode(
       config.language,
       (session as any).language,
       (session as any).preferred_report_language,
-      detectedTranscriptLanguage
+      detectedTranscriptLanguage || heuristicTranscriptLanguage
     )
 
     const dateLocaleCodeMap: Record<string, string> = {
