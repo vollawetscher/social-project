@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildPulsePrompt } from '@/lib/services/pulse/buildPulsePrompt'
 import type { ProjectPulse, PulseSessionInput, ParticipantEntry, DecisionEntry } from '@/lib/types/pulse'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -268,6 +269,13 @@ export async function runPulseUpdateJob(input: {
     messages: [{ role: 'user', content: user }],
     system,
   })
+  const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+  if (usage?.input_tokens != null || usage?.output_tokens != null) {
+    recordAiTokens(supabase, caseRow.user_id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+      sessionId,
+      endpoint: 'pulse_update',
+    })
+  }
   const text = message.content
     .filter((block) => block.type === 'text')
     .map((block) => ('text' in block ? block.text : ''))

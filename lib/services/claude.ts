@@ -7,6 +7,8 @@ import {
   Transcript,
   ReportDomain 
 } from '@/lib/types/database'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 export interface ClaudeConfig {
   apiKey: string
@@ -42,6 +44,17 @@ export class ClaudeService {
     this.client = new Anthropic({
       apiKey: config.apiKey,
     })
+  }
+
+  private trackUsage(message: Anthropic.Message, endpoint: string): void {
+    const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (!usage || (usage.input_tokens ?? 0) + (usage.output_tokens ?? 0) <= 0) return
+    try {
+      const supabase = createServiceRoleClient()
+      recordAiTokens(supabase, null, usage.input_tokens ?? 0, usage.output_tokens ?? 0, { endpoint })
+    } catch {
+      // Non-blocking billing telemetry.
+    }
   }
 
   /**
@@ -125,6 +138,7 @@ If information is not available, omit the field.`
         temperature: 0.1,
         messages: [{ role: 'user', content: prompt }],
       })
+      this.trackUsage(message, 'claude/analyze-context')
 
       const responseText = message.content
         .filter((block) => block.type === 'text')
@@ -321,6 +335,7 @@ Reply ONLY with the clear instructions (no "Here is..." or meta comments, no mar
         temperature: 0.3,
         messages: [{ role: 'user', content: prompt }],
       })
+      this.trackUsage(message, `claude/improve-field/${fieldName}`)
 
       const responseText = message.content
         .filter((block) => block.type === 'text')
@@ -398,6 +413,7 @@ Respond ONLY with a JSON object in this format:
         temperature: 0.2,
         messages: [{ role: 'user', content: prompt }],
       })
+      this.trackUsage(message, 'claude/detect-domain')
 
       const responseText = message.content
         .filter((block) => block.type === 'text')
@@ -448,6 +464,7 @@ Respond ONLY with a JSON object in this format:
       temperature: 0.3,
       messages: [{ role: 'user', content: prompt }],
     })
+    this.trackUsage(message, 'claude/generate-report')
 
     if (message.stop_reason === 'max_tokens') {
       console.warn('[generateReport] Response was truncated (hit max_tokens). Report may be incomplete.')
@@ -496,6 +513,7 @@ Respond ONLY with a JSON object in this format:
           },
         ],
       })
+      this.trackUsage(message, 'claude/generate-gespraechsbericht')
 
       if (message.stop_reason === 'max_tokens') {
         console.warn('[generateGespraechsbericht] Response was truncated (hit max_tokens). Report may be incomplete.')

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createErrorLogger } from './error-logger'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { recordAiTokens } from './usage-tracker'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -20,9 +21,11 @@ export interface ErrorAnalysis {
 
 export class AISupportService {
   private supabase: SupabaseClient
+  private actorUserId: string | null
 
-  constructor(supabase: SupabaseClient) {
+  constructor(supabase: SupabaseClient, actorUserId?: string | null) {
     this.supabase = supabase
+    this.actorUserId = actorUserId || null
   }
 
   /**
@@ -88,6 +91,12 @@ Focus on:
         },
       ],
     })
+    const caseUsage = (aiResponse as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (caseUsage?.input_tokens != null || caseUsage?.output_tokens != null) {
+      recordAiTokens(this.supabase, this.actorUserId, caseUsage.input_tokens ?? 0, caseUsage.output_tokens ?? 0, {
+        endpoint: 'support/analyze-case',
+      })
+    }
 
     // Parse AI response
     const aiAnalysis = this.parseAIResponse(aiResponse)
@@ -161,6 +170,13 @@ Provide concise analysis in JSON format:
         },
       ],
     })
+    const sessionUsage = (aiResponse as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (sessionUsage?.input_tokens != null || sessionUsage?.output_tokens != null) {
+      recordAiTokens(this.supabase, this.actorUserId, sessionUsage.input_tokens ?? 0, sessionUsage.output_tokens ?? 0, {
+        sessionId,
+        endpoint: 'support/analyze-session',
+      })
+    }
 
     const aiAnalysis = this.parseAIResponse(aiResponse)
 
@@ -251,6 +267,12 @@ Provide 2-3 paragraphs analyzing:
         },
       ],
     })
+    const systemUsage = (aiResponse as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (systemUsage?.input_tokens != null || systemUsage?.output_tokens != null) {
+      recordAiTokens(this.supabase, this.actorUserId, systemUsage.input_tokens ?? 0, systemUsage.output_tokens ?? 0, {
+        endpoint: 'support/system-analysis',
+      })
+    }
 
     const trends =
       aiResponse.content[0].type === 'text' ? aiResponse.content[0].text : ''
@@ -373,6 +395,12 @@ Keep it concise (3-4 paragraphs) and avoid technical jargon.`
       max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
     })
+    const supportUsage = (response as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (supportUsage?.input_tokens != null || supportUsage?.output_tokens != null) {
+      recordAiTokens(this.supabase, this.actorUserId, supportUsage.input_tokens ?? 0, supportUsage.output_tokens ?? 0, {
+        endpoint: 'support/generate-message',
+      })
+    }
 
     return response.content[0].type === 'text' ? response.content[0].text : ''
   }
@@ -381,6 +409,6 @@ Keep it concise (3-4 paragraphs) and avoid technical jargon.`
 /**
  * Helper function to create AISupportService instance
  */
-export function createAISupportService(supabase: SupabaseClient): AISupportService {
-  return new AISupportService(supabase)
+export function createAISupportService(supabase: SupabaseClient, actorUserId?: string | null): AISupportService {
+  return new AISupportService(supabase, actorUserId)
 }

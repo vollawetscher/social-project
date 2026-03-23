@@ -16,6 +16,7 @@ import type { TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
 import { logError } from '@/lib/services/error-logger'
 import Anthropic from '@anthropic-ai/sdk'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 interface ParsedSegment {
   start_ms: number
@@ -31,6 +32,7 @@ const anthropic = process.env.ANTHROPIC_API_KEY
 async function generateImportedContentSummary(input: {
   text: string
   languageCode: string
+  userId?: string
 }): Promise<string | null> {
   if (!anthropic) return null
 
@@ -60,6 +62,13 @@ ${truncatedText}`
     max_tokens: 700,
     messages: [{ role: 'user', content: prompt }],
   })
+  const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+  if (usage?.input_tokens != null || usage?.output_tokens != null) {
+    const trackingClient = createServiceRoleClient()
+    recordAiTokens(trackingClient, input.userId || null, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+      endpoint: 'sessions/import-transcript-summary',
+    })
+  }
 
   const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
   const cleaned = String(text || '')
@@ -168,6 +177,11 @@ export async function POST(request: Request) {
         segments = structured.segments
         rawText = structured.rawText
         aiTranscriptSignals = structured.transcriptSignals
+        if (structured.usage) {
+          recordAiTokens(supabase, user.id, structured.usage.inputTokens, structured.usage.outputTokens, {
+            endpoint: 'sessions/import-transcript-structure',
+          })
+        }
       } catch (err: any) {
         console.error('[Import Transcript] AI structuring failed:', err?.message)
         await logError({
@@ -344,6 +358,7 @@ export async function POST(request: Request) {
       const summaryText = await generateImportedContentSummary({
         text: rawText || segments.map((s: ParsedSegment) => s.text).join(' '),
         languageCode: langCode,
+        userId: user.id,
       })
       if (summaryText) {
         await supabase

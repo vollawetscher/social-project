@@ -3,6 +3,7 @@ import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
 import { createSipParticipant } from '@/lib/services/livekit'
 import type { DialRequest } from '@/lib/types/call'
+import { recordVoiceCallUsage } from '@/lib/services/usage-tracker'
 
 /**
  * POST /api/calls/[id]/dial - Dial out to a phone number from within a call room.
@@ -60,6 +61,13 @@ export async function POST(
       participantName: phoneNumber_e164,
       playDialtone: true,
       ringingTimeout: 90,
+    })
+    recordVoiceCallUsage(supabase, user.id, {
+      success: true,
+      callSid: sipParticipant.participantId,
+      callId,
+      endpoint: '/api/calls/[id]/dial',
+      kind: 'pstn',
     })
     
     // Update call record with PSTN info.

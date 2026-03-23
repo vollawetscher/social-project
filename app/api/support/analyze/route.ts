@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     // Perform AI analysis
-    const aiSupport = createAISupportService(supabase)
+    const aiSupport = createAISupportService(supabase, user.id)
 
     let analysis
     if (type === 'session' && sessionId) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse-fork'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -142,6 +143,12 @@ Respond ONLY with valid JSON in this exact format:
         },
       ],
     })
+    const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (usage?.input_tokens != null || usage?.output_tokens != null) {
+      recordAiTokens(supabase, user.id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+        endpoint: 'templates/analyze-samples',
+      })
+    }
 
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
     console.log('[Template Analysis] Claude response:', responseText.substring(0, 500))

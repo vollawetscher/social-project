@@ -5,6 +5,7 @@ import { sendVideoCallInviteSMS } from '@/lib/services/sms'
 import { placeNotificationCall, waitForCallAnswered } from '@/lib/services/twilio-voice'
 import { inferLocaleFromPhone } from '@/lib/services/locale-from-phone'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
+import { recordSmsUsage, recordVoiceCallUsage } from '@/lib/services/usage-tracker'
 
 /**
  * POST /api/calls/[id]/ring-sms
@@ -49,6 +50,14 @@ export async function POST(
     // Place voice call first. SMS will be sent only after answer.
     const voiceResult = await placeNotificationCall(phoneNumber, callerName, locale)
     console.log('[RingSMS] Voice:', voiceResult.success ? voiceResult.callSid : voiceResult.error)
+    recordVoiceCallUsage(supabase, user.id, {
+      success: !!voiceResult.success,
+      callSid: voiceResult.callSid,
+      callId,
+      endpoint: '/api/calls/[id]/ring-sms',
+      reason: voiceResult.error,
+      kind: 'notification',
+    })
 
     if (!voiceResult.success || !voiceResult.callSid) {
       return NextResponse.json(
@@ -77,6 +86,14 @@ export async function POST(
     await new Promise((resolve) => setTimeout(resolve, 3000))
     const smsResult = await sendVideoCallInviteSMS(phoneNumber, callerName, joinUrl, locale)
     console.log('[RingSMS] SMS:', smsResult.success ? 'sent' : smsResult.error)
+    recordSmsUsage(supabase, user.id, {
+      provider: smsResult.provider || 'seven',
+      success: !!smsResult.success,
+      callId,
+      sessionId: call.session_id || undefined,
+      phoneNumber,
+      reason: smsResult.error,
+    })
 
     if (call.session_id) {
       const label = contactName || phoneNumber

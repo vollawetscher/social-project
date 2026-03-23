@@ -14,6 +14,7 @@ interface SendSMSResponse {
   success: boolean;
   messageId?: string;
   error?: string;
+  provider?: 'twilio' | 'seven';
 }
 
 interface SendSMSParams {
@@ -32,6 +33,7 @@ async function sendViaSeven({ to, text }: SendSMSParams): Promise<SendSMSRespons
     return {
       success: false,
       error: 'seven.io SMS service not configured',
+      provider: 'seven',
     };
   }
 
@@ -58,6 +60,7 @@ async function sendViaSeven({ to, text }: SendSMSParams): Promise<SendSMSRespons
       return {
         success: true,
         messageId: responseText,
+        provider: 'seven',
       };
     }
 
@@ -72,12 +75,14 @@ async function sendViaSeven({ to, text }: SendSMSParams): Promise<SendSMSRespons
     return {
       success: false,
       error: errorMessage,
+      provider: 'seven',
     };
   } catch (error) {
     console.error('seven.io SMS service error:', error);
     return {
       success: false,
       error: 'Network error sending SMS',
+      provider: 'seven',
     };
   }
 }
@@ -91,6 +96,7 @@ async function sendViaTwilio({ to, text }: SendSMSParams): Promise<SendSMSRespon
     return {
       success: false,
       error: 'Twilio SMS service not configured',
+      provider: 'twilio',
     };
   }
 
@@ -117,6 +123,7 @@ async function sendViaTwilio({ to, text }: SendSMSParams): Promise<SendSMSRespon
       return {
         success: false,
         error: errorData.message || `HTTP ${response.status}`,
+        provider: 'twilio',
       }
     }
 
@@ -124,12 +131,14 @@ async function sendViaTwilio({ to, text }: SendSMSParams): Promise<SendSMSRespon
     return {
       success: true,
       messageId: data.sid,
+      provider: 'twilio',
     }
   } catch (error) {
     console.error('Twilio SMS service error:', error)
     return {
       success: false,
       error: 'Network error sending SMS',
+      provider: 'twilio',
     };
   }
 }

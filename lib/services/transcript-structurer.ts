@@ -16,6 +16,10 @@ export interface StructuredSegment {
 export interface StructureResult {
   segments: StructuredSegment[]
   rawText: string
+  usage?: {
+    inputTokens: number
+    outputTokens: number
+  }
   transcriptSignals: {
     contentKind: TranscriptContentKind
     detectedType: TranscriptDetectedType
@@ -192,5 +196,16 @@ export async function structureTranscript(
     confidence: clamp(Number(parsedObject?.confidence || 0.6), 0.35, 0.99),
     reasons: Array.isArray(parsedObject?.reasons) ? parsedObject.reasons.slice(0, 8).map((r: any) => String(r)) : ['ai_structurer_detected_type'],
   }
-  return { segments, rawText, transcriptSignals }
+  const usage = (response as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+  return {
+    segments,
+    rawText,
+    transcriptSignals,
+    usage: usage
+      ? {
+          inputTokens: usage.input_tokens ?? 0,
+          outputTokens: usage.output_tokens ?? 0,
+        }
+      : undefined,
+  }
 }

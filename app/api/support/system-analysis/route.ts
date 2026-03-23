@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     const days = parseInt(searchParams.get('days') || '7')
 
     // Get system-wide analysis
-    const aiSupport = createAISupportService(supabase)
+    const aiSupport = createAISupportService(supabase, user.id)
     const analysis = await aiSupport.analyzeSystemErrors(days)
 
     return NextResponse.json({

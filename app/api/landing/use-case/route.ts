@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -281,6 +283,13 @@ Constraints:
         },
       ],
     })
+    const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (usage?.input_tokens != null || usage?.output_tokens != null) {
+      const trackingClient = createServiceRoleClient()
+      recordAiTokens(trackingClient, null, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+        endpoint: 'landing/use-case',
+      })
+    }
 
     const raw = message.content[0]?.type === 'text' ? message.content[0].text : ''
 

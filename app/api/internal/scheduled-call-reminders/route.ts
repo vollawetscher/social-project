@@ -5,6 +5,7 @@ import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-emai
 import { sendInitiatorReminderSMS } from '@/lib/services/sms'
 import { logError } from '@/lib/services/error-logger'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
+import { recordSmsUsage } from '@/lib/services/usage-tracker'
 
 function toDisplayTime(iso: string, locale: 'en' | 'de' | 'es', timezone?: string | null) {
   const localeMap = { en: 'en-US', de: 'de-DE', es: 'es-ES' } as const
@@ -134,6 +135,13 @@ export async function POST(request: Request) {
         const startsAt = toDisplayTime(String(call.scheduled_for), initiatorLocale, initiatorTimezone)
 
         const sms = await sendInitiatorReminderSMS(initiatorPhone, joinUrl, startsAt, initiatorLocale)
+        recordSmsUsage(supabase, call.user_id || null, {
+          provider: sms.provider || 'seven',
+          success: !!sms.success,
+          callId: call.id,
+          phoneNumber: initiatorPhone,
+          reason: sms.error,
+        })
         if (sms.success) {
           await supabase
             .from('calls')

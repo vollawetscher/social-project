@@ -14,6 +14,10 @@ export type UsageEventType =
   | 'email_invites_attempted'
   | 'email_invites_sent'
   | 'email_cost_usd'
+  | 'sms_messages_attempted'
+  | 'sms_messages_sent'
+  | 'voice_calls_attempted'
+  | 'voice_calls_connected'
 
 export interface UsageEvent {
   userId: string | null
@@ -166,6 +170,88 @@ export function recordEmailInviteUsage(
       amount: estimatedCostUsd,
       unit: 'usd',
       metadata: { ...metadata, estimatedCostUsd },
+    })
+  }
+}
+
+/** Record SMS attempt/result (provider-level billing surface). */
+export function recordSmsUsage(
+  supabase: SupabaseClient,
+  userId: string | null,
+  details: {
+    provider: 'twilio' | 'seven'
+    success: boolean
+    callId?: string
+    sessionId?: string
+    phoneNumber?: string
+    reason?: string
+  }
+): void {
+  const metadata = {
+    provider: details.provider,
+    success: details.success,
+    callId: details.callId,
+    sessionId: details.sessionId,
+    phoneNumber: details.phoneNumber,
+    reason: details.reason,
+  }
+
+  void recordUsageEvent(supabase, {
+    userId,
+    eventType: 'sms_messages_attempted',
+    amount: 1,
+    unit: 'count',
+    metadata,
+  })
+
+  if (details.success) {
+    void recordUsageEvent(supabase, {
+      userId,
+      eventType: 'sms_messages_sent',
+      amount: 1,
+      unit: 'count',
+      metadata,
+    })
+  }
+}
+
+/** Record Twilio voice call billing surface (attempt + connected). */
+export function recordVoiceCallUsage(
+  supabase: SupabaseClient,
+  userId: string | null,
+  details: {
+    success: boolean
+    callSid?: string
+    callId?: string
+    endpoint?: string
+    reason?: string
+    kind?: 'notification' | 'consent' | 'pstn'
+  }
+): void {
+  const metadata = {
+    success: details.success,
+    callSid: details.callSid,
+    callId: details.callId,
+    endpoint: details.endpoint,
+    reason: details.reason,
+    kind: details.kind || 'pstn',
+  }
+
+  void recordUsageEvent(supabase, {
+    userId,
+    eventType: 'voice_calls_attempted',
+    amount: 1,
+    unit: 'count',
+    metadata,
+  })
+
+  if (details.success) {
+    void recordUsageEvent(supabase, {
+      userId,
+      eventType: 'voice_calls_connected',
+      amount: 1,
+      unit: 'count',
+      metadata,
     })
   }
 }

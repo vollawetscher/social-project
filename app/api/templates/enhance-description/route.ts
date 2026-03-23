@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth } from '@/lib/auth/helpers'
+import { createClient } from '@/lib/supabase/server'
+import { recordAiTokens } from '@/lib/services/usage-tracker'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -8,7 +10,8 @@ const anthropic = new Anthropic({
 
 export async function POST(request: Request) {
   try {
-    await requireAuth()
+    const user = await requireAuth()
+    const supabase = await createClient()
 
     const { name, description } = await request.json()
 
@@ -52,6 +55,12 @@ Return ONLY a valid JSON object with exactly these two keys, nothing else:
         },
       ],
     })
+    const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
+    if (usage?.input_tokens != null || usage?.output_tokens != null) {
+      recordAiTokens(supabase, user.id, usage.input_tokens ?? 0, usage.output_tokens ?? 0, {
+        endpoint: 'templates/enhance-description',
+      })
+    }
 
     const rawText =
       message.content[0].type === 'text' ? message.content[0].text.trim() : ''
