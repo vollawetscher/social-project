@@ -6,6 +6,7 @@ import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { generateReport } from '@/lib/services/report-generator'
 import { createErrorLogger } from '@/lib/services/error-logger'
+import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 
 function normalizeVocabCandidate(raw: string): string | null {
   const value = String(raw || '')
@@ -596,6 +597,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const body = await request.json().catch(() => ({}))
+    const queueMode = String((body as any)?.queueMode || '').toLowerCase()
+
     // Allow internal calls (e.g. from LiveKit webhook) via x-internal-secret header.
     // If INTERNAL_API_SECRET is not set, also allow through (dev / Railway without secret).
     const expectedSecret = process.env.INTERNAL_API_SECRET
@@ -611,7 +615,7 @@ export async function POST(
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id, duration_sec, case_id')
+      .select('id, user_id, duration_sec, case_id')
       .eq('id', params.id)
       .maybeSingle()
 
@@ -625,20 +629,55 @@ export async function POST(
       .update({ status: 'transcribing' })
       .eq('id', params.id)
 
-    // Start background job (fire and forget)
-    console.log('[Transcribe] Starting background job for session:', params.id)
-    processTranscriptionJob(params.id).catch(err => {
-      console.error('[Transcribe] Background job failed:', err)
-    })
+    const forceSync = queueMode === 'sync' || request.headers.get('x-queue-worker') === '1'
+    if (!forceSync) {
+      if (!(session as any).user_id) {
+        return NextResponse.json({ error: 'Session user missing' }, { status: 400 })
+      }
+      const job = await enqueueAsyncJob({
+        userId: (session as any).user_id,
+        jobType: 'session_transcribe',
+        payload: { sessionId: params.id },
+        idempotencyKey: `session_transcribe:${params.id}`,
+        maxAttempts: 5,
+      })
+      triggerAsyncWorker()
+      return NextResponse.json(
+        {
+          success: true,
+          queued: true,
+          message: 'Transcription job queued',
+          status: 'transcribing',
+          jobId: job.id,
+        },
+        { status: 202 }
+      )
+    }
 
-    // Return immediately with 202 Accepted
+    console.log('[Transcribe] Running sync worker job for session:', params.id)
+    await processTranscriptionJob(params.id)
+    const { data: updatedSession } = await supabase
+      .from('sessions')
+      .select('status, last_error')
+      .eq('id', params.id)
+      .maybeSingle()
+    if (updatedSession?.status === 'error') {
+      return NextResponse.json(
+        {
+          error: updatedSession.last_error || 'Transcription failed',
+          status: 'error',
+        },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json(
       { 
         success: true, 
-        message: 'Transcription job started',
-        status: 'transcribing'
+        message: 'Transcription completed',
+        status: updatedSession?.status || 'done'
       },
-      { status: 202 }
+      { status: 200 }
     )
   } catch (error: any) {
     console.error('[Transcribe] Failed to start job:', error)

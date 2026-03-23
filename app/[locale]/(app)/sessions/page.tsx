@@ -661,6 +661,26 @@ export default function SessionsPage() {
     setPastePreviewOpen(true)
   }, [])
 
+  const waitForJobCompletion = useCallback(async (jobId: string) => {
+    const startedAt = Date.now()
+    const timeoutMs = 3 * 60 * 1000
+    while (Date.now() - startedAt < timeoutMs) {
+      const res = await fetch(`/api/jobs/${jobId}`, { cache: 'no-store' })
+      const job = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(job?.error || t('uploadMessages.generateFailed'))
+      }
+      if (job.status === 'completed') {
+        return job.result || {}
+      }
+      if (job.status === 'failed') {
+        throw new Error(job.lastError || t('uploadMessages.generateFailed'))
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    }
+    throw new Error(t('uploadMessages.generateFailed'))
+  }, [t])
+
   const generateOutputForTemplate = useCallback(async (sessionId: string, templateId: string) => {
     const templateName = pastePreviewTemplates.find((template) => template.id === templateId)?.name
     const response = await fetch('/api/outputs/generate', {
@@ -689,8 +709,12 @@ export default function SessionsPage() {
     if (!response.ok) {
       throw new Error(data.error || t('uploadMessages.generateFailed'))
     }
+    if (data?.queued && data?.jobId) {
+      const result = await waitForJobCompletion(String(data.jobId))
+      return result?.outputId as string | undefined
+    }
     return data?.id as string | undefined
-  }, [pastePreviewTemplates, language, t])
+  }, [pastePreviewTemplates, language, t, waitForJobCompletion])
 
   const handlePastePreviewConfirm = useCallback(async (
     text: string,

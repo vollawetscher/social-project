@@ -342,6 +342,20 @@ export default function SessionDetailPage() {
     setActiveTab('outputs')
   }, [fetchOutputs])
 
+  const waitForJobCompletion = useCallback(async (jobId: string) => {
+    const startedAt = Date.now()
+    const timeoutMs = 3 * 60 * 1000
+    while (Date.now() - startedAt < timeoutMs) {
+      const res = await fetch(`/api/jobs/${jobId}`, { cache: 'no-store' })
+      const job = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(job?.error || 'Failed to read async job status')
+      if (job.status === 'completed') return job.result || {}
+      if (job.status === 'failed') throw new Error(job.lastError || 'Async job failed')
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    }
+    throw new Error('Async output generation timed out')
+  }, [])
+
   // Generate output from AI suggestion (quick one-click)
   const handleGenerateFromSuggestion = async (suggestion: SuggestedOutputFormat, index: number) => {
     if (!session) return
@@ -372,6 +386,9 @@ export default function SessionDetailPage() {
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Generation failed')
+      if (data?.queued && data?.jobId) {
+        await waitForJobCompletion(data.jobId)
+      }
       toast.success(`Generated: ${suggestion.title}`)
       fetchOutputs()
       setActiveTab('outputs')

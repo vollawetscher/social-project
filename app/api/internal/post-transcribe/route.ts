@@ -6,6 +6,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { logError } from '@/lib/services/error-logger'
+import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 
 export async function POST(request: Request) {
   try {
@@ -55,46 +56,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, skipped: 'no_template' })
     }
 
-    // Trigger analyze (which will update session and trigger auto-generate)
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-      || 'http://localhost:3000'
-    const analyzeUrl = `${baseUrl}/api/sessions/${sessionId}/analyze`
-
-    const analyzeRes = await fetch(analyzeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-secret': process.env.INTERNAL_API_SECRET!,
-        'x-internal-user-id': userId,
-      },
+    const job = await enqueueAsyncJob({
+      userId,
+      jobType: 'session_analyze',
+      payload: { sessionId },
+      idempotencyKey: `session_analyze:${sessionId}`,
+      maxAttempts: 5,
     })
+    triggerAsyncWorker()
 
-    if (!analyzeRes.ok) {
-      const err = await analyzeRes.text()
-      console.error('[Post-Transcribe] Analyze failed:', analyzeRes.status, err)
-      await logError({
-        errorType: 'api_error',
-        severity: 'error',
-        message: `Post-transcribe analyze failed (HTTP ${analyzeRes.status}): ${err.substring(0, 500)}`,
-        sessionId,
-        userId,
-        endpoint: '/api/internal/post-transcribe',
-        method: 'POST',
-        metadata: {
-          step: 'analyze_trigger',
-          analyzeStatus: analyzeRes.status,
-          analyzeResponse: err.substring(0, 1000),
-        },
-      }).catch(() => {})
-      return NextResponse.json(
-        { error: 'Analyze failed', details: err },
-        { status: 500 }
-      )
-    }
-
-    console.log('[Post-Transcribe] Analyze triggered successfully for session:', sessionId)
-    return NextResponse.json({ ok: true })
+    console.log('[Post-Transcribe] Analyze queued for session:', sessionId, 'job:', job.id)
+    return NextResponse.json({ ok: true, queued: true, jobId: job.id }, { status: 202 })
   } catch (error: any) {
     console.error('[Post-Transcribe] Error:', error)
     await logError({

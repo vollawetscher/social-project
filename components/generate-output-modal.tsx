@@ -281,6 +281,26 @@ export function GenerateOutputModal({
     return 'de'
   }
 
+  const waitForJobCompletion = async (jobId: string): Promise<any> => {
+    const startedAt = Date.now()
+    const timeoutMs = 3 * 60 * 1000
+    while (Date.now() - startedAt < timeoutMs) {
+      const res = await fetch(`/api/jobs/${jobId}`, { cache: 'no-store' })
+      const job = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(job?.error || 'Failed to read async job status')
+      }
+      if (job.status === 'completed') {
+        return job.result || {}
+      }
+      if (job.status === 'failed') {
+        throw new Error(job.lastError || 'Async job failed')
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+    }
+    throw new Error('Async output generation timed out')
+  }
+
   const handleGenerate = async () => {
     if (!canGenerate || generating) return
     
@@ -320,6 +340,9 @@ export function GenerateOutputModal({
       }
       
       const data = await response.json()
+      const finalData = data?.queued && data?.jobId
+        ? await waitForJobCompletion(data.jobId)
+        : data
       
       // Success! Refresh outputs list and close modal
       if (typeof window !== 'undefined') {
@@ -329,7 +352,7 @@ export function GenerateOutputModal({
       onOpenChange(false)
       
       toast.success(
-        data.createdTemplateId
+        finalData.createdTemplateId
           ? t('generateSuccessTemplate')
           : t('generateSuccessOutput')
       )

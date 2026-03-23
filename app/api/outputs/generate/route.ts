@@ -7,6 +7,8 @@ import { applyTranscriptCorrections } from '@/lib/utils/transcript-corrections'
 import { mergeTranscripts } from '@/lib/utils/merge-transcripts'
 import { logError } from '@/lib/services/error-logger'
 import { sanitizeOutputText } from '@/lib/utils/output-text-sanitizer'
+import { createHash } from 'crypto'
+import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
       sessionId: string
       config: GenerateOutputConfig 
     } = body
+    const queueMode = String((body as any)?.queueMode || '').toLowerCase()
 
     if (!sessionId || !config) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -86,6 +89,31 @@ export async function POST(request: Request) {
         .single()
       if (profile?.role !== 'admin') {
         return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+      }
+    }
+
+    const isWorkerSync = request.headers.get('x-queue-worker') === '1'
+    const forceSync = queueMode === 'sync' || isWorkerSync
+    if (!forceSync) {
+      try {
+        const idempotencySource = `${userId}:${sessionId}:${JSON.stringify(config || {})}`
+        const idempotencyKey = createHash('sha256').update(idempotencySource).digest('hex')
+        const job = await enqueueAsyncJob({
+          userId,
+          jobType: 'output_generate',
+          payload: { sessionId, config },
+          idempotencyKey,
+          maxAttempts: 5,
+        })
+        triggerAsyncWorker()
+        return NextResponse.json({
+          queued: true,
+          jobId: job.id,
+          status: job.status,
+        }, { status: 202 })
+      } catch (queueError) {
+        // Safe fallback while migration/worker rollout is in progress.
+        console.warn('[Generate Output] Async enqueue failed, falling back to sync mode:', queueError)
       }
     }
 

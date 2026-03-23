@@ -110,6 +110,7 @@ export async function POST(
       headers: genHeaders,
       body: JSON.stringify({
         sessionId: params.id,
+        queueMode: 'sync',
         config: {
           templateId: template.id,
           templateName: template.name,

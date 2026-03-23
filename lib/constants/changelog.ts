@@ -392,6 +392,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Project Detail View Is Cleaner on Desktop',
         description: 'The project detail page now uses a wider desktop layout and removes the New Session shortcut, keeping project management focused on existing sessions.',
       },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Output Generation Now Runs Through Async Jobs',
+        description: 'Output creation requests now run through a background job pipeline with progress polling, improving reliability for long-running AI generations.',
+      },
+      {
+        version: '1.21.5',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Transcription Follow-Up Uses Durable Job Queue',
+        description: 'Post-transcription analyze and generation follow-up now runs through queued background jobs, reducing dropped processing during long-running AI workflows.',
+      },
     ],
   },
   {
