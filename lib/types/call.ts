@@ -133,6 +133,12 @@ export interface CreateCallResponse {
   token?: string              // LiveKit access token for instant calls
   scheduled?: boolean
   scheduledFor?: string
+  calleeReachability?: {
+    state: 'reachable_now' | 'probably_offline' | 'unknown'
+    reason: string
+    lastHeartbeatAt: string | null
+    appState: 'foreground' | 'background' | null
+  } | null
 }
 
 export interface CallTokenRequest {

@@ -282,6 +282,36 @@ export default function CallsPage() {
     if (activeTab === "contacts") fetchContacts()
   }, [activeTab])
 
+  useEffect(() => {
+    if (!user?.id) return
+
+    const sendPresenceHeartbeat = async () => {
+      try {
+        await fetch("/api/calls/presence/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            appState: document.visibilityState === "visible" ? "foreground" : "background",
+            route: "/calls",
+          }),
+          keepalive: true,
+        })
+      } catch {
+        // Best-effort only.
+      }
+    }
+
+    sendPresenceHeartbeat()
+    const interval = setInterval(sendPresenceHeartbeat, 20_000)
+    const onVisibilityChange = () => { void sendPresenceHeartbeat() }
+    document.addEventListener("visibilitychange", onVisibilityChange)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  }, [user?.id])
+
   async function getAuthHeaders(): Promise<Record<string, string>> {
     try {
       const client = createSupabaseClient()
@@ -631,6 +661,12 @@ export default function CallsPage() {
         const inviteData = await inviteRes.json().catch(() => ({}))
         if (!inviteRes.ok) {
           throw new Error(inviteData.error || "Failed to start in-app call")
+        }
+        const reachability = inviteData?.calleeReachability
+        if (reachability?.state === "probably_offline") {
+          toast.warning("Callee looks offline. App invite sent; consider fallback (Ring+SMS or PSTN).")
+        } else if (reachability?.state === "unknown") {
+          toast.info("Callee availability is unknown. Invite sent.")
         }
         router.push(`/call/${inviteData.roomName}?callId=${inviteData.callId}&token=${encodeURIComponent(inviteData.token)}&mode=${inAppMode}`)
         return
@@ -1121,12 +1157,19 @@ export default function CallsPage() {
                         )
                       }}
                       className={cn(
-                        "w-full flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent",
-                        selected && "bg-primary/10"
+                        "w-full flex items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent transition-colors",
+                        selected && "bg-primary text-primary-foreground hover:bg-primary/90"
                       )}
                     >
                       <span className="truncate">{contact.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2 truncate">{contact.email}</span>
+                      <span
+                        className={cn(
+                          "text-xs ml-2 truncate",
+                          selected ? "text-primary-foreground/90" : "text-muted-foreground"
+                        )}
+                      >
+                        {contact.email}
+                      </span>
                     </button>
                   )
                 })

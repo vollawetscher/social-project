@@ -105,6 +105,21 @@ function compactSpeechmaticsSummary(raw: string): string {
   return compact
 }
 
+function isExpectedNoSpeechError(error: unknown): boolean {
+  const message = String((error as any)?.message || '').toLowerCase()
+  if (!message) return false
+  return (
+    message.includes('no usable speech') ||
+    message.includes('contains no usable speech') ||
+    message.includes('contains no speech') ||
+    message.includes('audio file is too short') ||
+    message.includes('audio is too short') ||
+    message.includes('could not detect the language') ||
+    (message.includes('too short') && message.includes('transcription')) ||
+    (message.includes('too short') && message.includes('speech'))
+  )
+}
+
 /**
  * After the caller's session is transcribed, copy the transcript to any pending
  * callee session that was claimed before transcription completed.
@@ -331,11 +346,44 @@ async function processTranscriptionJob(sessionId: string) {
       const contentType = (inputHint === 'presentation' || inputHint === 'voice_note') ? 'informative' : 'conversational'
       console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage, additionalVocabCount: additionalVocab.length })
       const speechmatics = createSpeechmaticsService()
-      const transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, {
-        contentType,
-        language: sessionLanguage || undefined,
-        additionalVocab,
-      })
+
+      let transcript
+      try {
+        transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, {
+          contentType,
+          language: sessionLanguage || undefined,
+          additionalVocab,
+        })
+      } catch (transcribeError: any) {
+        if (!isExpectedNoSpeechError(transcribeError)) {
+          throw transcribeError
+        }
+
+        // Treat low/no-speech audio as a successful no-content transcription result.
+        console.warn('[Transcribe] Expected no-speech outcome for file:', file.storage_path, transcribeError?.message)
+        const { data: existingNoSpeechTranscript } = await supabase
+          .from('transcripts')
+          .select('id')
+          .eq('file_id', file.id)
+          .maybeSingle()
+
+        if (!existingNoSpeechTranscript) {
+          await supabase
+            .from('transcripts')
+            .insert({
+              session_id: sessionId,
+              file_id: file.id,
+              raw_json: [],
+              redacted_json: [],
+              raw_text: '',
+              redacted_text: '',
+              language: sessionLanguage || 'en',
+              summary: null,
+            })
+        }
+        continue
+      }
+
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 
       if (transcript.segments.length === 0) {

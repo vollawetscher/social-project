@@ -38,6 +38,27 @@ export const changelog: ChangelogVersion[] = [
         title: 'Smoother Session Expand Animations in Projects',
         description: 'Expanding a session in Projects now feels more fluid, with a smoother chevron turn and a subtle visual twinkle when details open.',
       },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Low-Speech Audio No Longer Flags Queue Health as Critical',
+        description: 'Audio files with too little usable speech are now handled as expected no-content transcriptions instead of hard queue failures, so queue health alerts better reflect real system issues.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Smarter Reachability Checks for App-to-App Calls',
+        description: 'Before placing an in-app invite call, Notissima now checks recent app heartbeat signals to estimate whether the callee is likely reachable, offline, or unknown so fallback actions can be chosen faster.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Planned Video Call Invite Selection Is More Visible',
+        description: 'Selected email contacts in the Plan Video Call dialog now use a stronger highlight color and clearer text contrast so selected recipients are easier to confirm at a glance.',
+      },
     ],
   },
   {

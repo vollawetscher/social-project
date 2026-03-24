@@ -743,9 +743,18 @@ function CallRoomInner({
         method: "POST",
         keepalive: true,
       }).catch(() => {})
+      fetch(`/api/calls/presence/heartbeat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appState: document.visibilityState === "visible" ? "foreground" : "background",
+          route: `/call/${roomName}`,
+        }),
+        keepalive: true,
+      }).catch(() => {})
     }, 15_000)
     return () => clearInterval(interval)
-  }, [callId, isConnected])
+  }, [callId, isConnected, roomName])
 
   useEffect(() => {
     if (isConnected) {

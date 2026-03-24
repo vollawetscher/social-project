@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { createRoom, createRoomToken, generateRoomName } from '@/lib/services/livekit'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import { logError } from '@/lib/services/error-logger'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
 import { buildInviteIcs } from '@/lib/utils/invite-ics'
 import type { CreateCallRequest } from '@/lib/types/call'
+import { getCalleeReachability } from '@/lib/services/call-reachability'
 
 /**
  * POST /api/calls - Create a new call room
@@ -127,6 +128,9 @@ export async function POST(request: Request) {
 
     // Create the call record
     const isInvite = !isScheduled && callType === 'web' && Boolean(calleeUserId)
+    const calleeReachability = isInvite && calleeUserId
+      ? await getCalleeReachability(createServiceRoleClient(), calleeUserId)
+      : null
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
@@ -285,6 +289,7 @@ export async function POST(request: Request) {
       sessionId: session?.id ?? null,
       displayName,
       invited: isInvite,
+      calleeReachability,
     })
   } catch (error: any) {
     console.error('[Calls] Error creating call:', error)
