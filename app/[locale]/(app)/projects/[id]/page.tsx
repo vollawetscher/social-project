@@ -182,6 +182,11 @@ export default function ProjectDetailPage() {
   const [pulseData, setPulseData] = useState<PulseResponse | null>(null)
   const [loadingPulse, setLoadingPulse] = useState(true)
   const [refreshingPulse, setRefreshingPulse] = useState(false)
+  const [showPulseEditDialog, setShowPulseEditDialog] = useState(false)
+  const [pulseOverrideIntent, setPulseOverrideIntent] = useState('')
+  const [pulseOverrideDirection, setPulseOverrideDirection] = useState('')
+  const [pulseOverrideNarrative, setPulseOverrideNarrative] = useState('')
+  const [savingPulseOverride, setSavingPulseOverride] = useState(false)
   const [decisionExpanded, setDecisionExpanded] = useState(false)
   const [resolvingLoop, setResolvingLoop] = useState<string | null>(null)
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
@@ -280,6 +285,47 @@ export default function ProjectDetailPage() {
       toast.error(error?.message || tc('error'))
     } finally {
       setResolvingLoop(null)
+    }
+  }
+
+  const openPulseCorrectionDialog = () => {
+    const pulse = pulseData?.pulse
+    if (!pulse) {
+      toast.error(t('projects.pulse.empty'))
+      return
+    }
+    setPulseOverrideIntent(String(pulse.original_intent || ''))
+    setPulseOverrideDirection(String(pulse.current_direction || ''))
+    setPulseOverrideNarrative(String(pulse.narrative || ''))
+    setShowPulseEditDialog(true)
+  }
+
+  const handleSavePulseCorrections = async () => {
+    if (!pulseOverrideIntent.trim() || !pulseOverrideDirection.trim() || !pulseOverrideNarrative.trim()) {
+      toast.error(t('projects.pulse.correctionRequired'))
+      return
+    }
+
+    setSavingPulseOverride(true)
+    try {
+      const res = await fetch(`/api/cases/${projectId}/pulse`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalIntent: pulseOverrideIntent.trim(),
+          currentDirection: pulseOverrideDirection.trim(),
+          narrative: pulseOverrideNarrative.trim(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || t('projects.pulse.correctionFailed'))
+      setShowPulseEditDialog(false)
+      await loadPulse()
+      toast.success(t('projects.pulse.correctionSaved'))
+    } catch (error: any) {
+      toast.error(error?.message || t('projects.pulse.correctionFailed'))
+    } finally {
+      setSavingPulseOverride(false)
     }
   }
 
@@ -664,6 +710,16 @@ export default function ProjectDetailPage() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  onClick={openPulseCorrectionDialog}
+                  disabled={!pulse}
+                >
+                  <Pencil className="h-4 w-4" />
+                  <span className="ml-1">{t('projects.pulse.correct')}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={handleRefreshPulse}
                   disabled={refreshingPulse}
                 >
@@ -876,6 +932,53 @@ export default function ProjectDetailPage() {
                   {tc('saving')}
                 </>
               ) : tc('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPulseEditDialog} onOpenChange={setShowPulseEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('projects.pulse.correctTitle')}</DialogTitle>
+            <DialogDescription>{t('projects.pulse.correctDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>{t('projects.pulse.intentLabel')}</Label>
+              <Textarea
+                rows={2}
+                value={pulseOverrideIntent}
+                onChange={(e) => setPulseOverrideIntent(e.target.value)}
+                placeholder={t('projects.pulse.intentPlaceholder')}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('projects.pulse.directionLabel')}</Label>
+              <Textarea
+                rows={2}
+                value={pulseOverrideDirection}
+                onChange={(e) => setPulseOverrideDirection(e.target.value)}
+                placeholder={t('projects.pulse.directionPlaceholder')}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('projects.pulse.narrativeLabel')}</Label>
+              <Textarea
+                rows={4}
+                value={pulseOverrideNarrative}
+                onChange={(e) => setPulseOverrideNarrative(e.target.value)}
+                placeholder={t('projects.pulse.narrativePlaceholder')}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPulseEditDialog(false)}>
+              {tc('cancel')}
+            </Button>
+            <Button onClick={handleSavePulseCorrections} disabled={savingPulseOverride}>
+              {savingPulseOverride ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {t('projects.pulse.saveCorrections')}
             </Button>
           </DialogFooter>
         </DialogContent>

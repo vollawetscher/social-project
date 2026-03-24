@@ -73,6 +73,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Admin Dashboard Shows Per-User Cost Estimates',
         description: 'Admins can now see estimated usage costs per user (transcription, AI token usage, and email spend) with period filters to better monitor billable activity.',
       },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Project Pulse Corrections and Overrides',
+        description: 'Project owners can now directly correct Pulse intent, direction, and narrative when AI interpretation is off, so project trajectory stays trustworthy.',
+      },
     ],
   },
   {
