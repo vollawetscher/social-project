@@ -94,6 +94,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Project Cards Show Pulse Wave Activity',
         description: 'Projects now include a tiny pulse-wave sparkline to visualize hotness at a glance, with quieter flatline behavior for inactive workstreams.',
       },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Project Pulse Wave Uses Real ECG-Style Beats',
+        description: 'The mini pulse graph now uses a heartbeat-style spike pattern instead of a smooth wave, making project activity feel more intuitive at a glance.',
+      },
     ],
   },
   {

@@ -220,18 +220,51 @@ function getProjectPulseSparkline(project: any): { path: string; isFlatline: boo
   const width = 52
   const height = 14
   const centerY = Math.round(height / 2)
-  const points = 12
-  const amplitude = isFlatline ? 0.6 : (1 + hotness * 5)
-  const frequency = isFlatline ? 0.25 : (0.8 + hotness * 1.8)
-  const phaseSeed = (hashString(String(project?.id || project?.title || 'pulse')) % 314) / 100
+  const seed = hashString(String(project?.id || project?.title || 'pulse'))
+  const baselineJitter = ((seed % 5) - 2) * 0.15
+  const baseline = centerY + baselineJitter
 
-  const coords: string[] = []
-  for (let i = 0; i < points; i += 1) {
-    const x = Math.round((i / (points - 1)) * width)
-    const wave = Math.sin((i / (points - 1)) * Math.PI * 2 * frequency + phaseSeed)
-    const y = Math.round(centerY - (wave * amplitude))
-    coords.push(`${x},${y}`)
+  if (isFlatline) {
+    return { path: `0,${baseline} ${width},${baseline}`, isFlatline: true }
   }
+
+  // ECG-like beat motif (x in 0..1, y around baseline with sharp R peak).
+  const motif = [
+    [0.00, 0.00],  // baseline
+    [0.10, 0.00],  // baseline
+    [0.18, 0.08],  // slight P rise
+    [0.24, 0.00],  // back to baseline
+    [0.30, -0.10], // tiny Q dip
+    [0.36, 1.00],  // sharp R spike
+    [0.44, -0.35], // S dip
+    [0.55, 0.15],  // T recovery
+    [0.72, 0.04],  // settle
+    [1.00, 0.00],  // baseline
+  ] as const
+
+  const amplitude = 1.8 + (hotness * 4.2)
+  const cycleWidth = Math.max(8, Math.round(16 - hotness * 7)) // hot projects -> denser beats
+  const xShift = seed % 7
+  const coords: string[] = []
+
+  const pushPoint = (x: number, y: number) => {
+    const clampedY = Math.max(1, Math.min(height - 1, y))
+    coords.push(`${Math.round(x)},${Math.round(clampedY)}`)
+  }
+
+  // Start with baseline lead-in so first spike isn't clipped visually.
+  pushPoint(0, baseline)
+
+  for (let start = -xShift; start <= width + cycleWidth; start += cycleWidth) {
+    for (const [mx, my] of motif) {
+      const x = start + (mx * cycleWidth)
+      if (x < 0 || x > width) continue
+      pushPoint(x, baseline - (my * amplitude))
+    }
+  }
+
+  // Ensure line ends on baseline for cleaner miniature visual.
+  pushPoint(width, baseline)
 
   return { path: coords.join(' '), isFlatline }
 }
