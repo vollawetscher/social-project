@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   RotateCcw,
+  DollarSign,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -44,6 +45,18 @@ interface AdminSession {
   profiles: { display_name: string | null; email: string | null } | null
 }
 
+interface AdminCostRow {
+  userId: string
+  displayName: string | null
+  email: string | null
+  transcriptionMinutes: number
+  aiInputTokens: number
+  aiOutputTokens: number
+  aiGenerations: number
+  emailCostUsd: number
+  estimatedCostUsd: number
+}
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   created:      { label: "Created",      className: "bg-secondary text-muted-foreground border-border" },
   uploading:    { label: "Uploading",    className: "bg-info/20 text-info border-info/30" },
@@ -70,6 +83,17 @@ export default function AdminSessionsPage() {
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
   const [retrying, setRetrying] = useState<string | null>(null)
+  const [costPeriod, setCostPeriod] = useState<"week" | "month" | "all">("month")
+  const [costRows, setCostRows] = useState<AdminCostRow[]>([])
+  const [loadingCosts, setLoadingCosts] = useState(true)
+  const [costTotals, setCostTotals] = useState<{
+    transcriptionMinutes: number
+    aiInputTokens: number
+    aiOutputTokens: number
+    aiGenerations: number
+    emailCostUsd: number
+    estimatedCostUsd: number
+  } | null>(null)
 
   const isAdmin = (profile as any)?.role === 'admin'
 
@@ -90,9 +114,28 @@ export default function AdminSessionsPage() {
     }
   }, [search, status])
 
+  const fetchCosts = useCallback(async () => {
+    setLoadingCosts(true)
+    try {
+      const res = await fetch(`/api/admin/usage-costs?period=${costPeriod}`)
+      if (!res.ok) throw new Error("Failed to fetch cost estimates")
+      const data = await res.json()
+      setCostRows(Array.isArray(data?.users) ? data.users : [])
+      setCostTotals(data?.totals || null)
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load cost estimates")
+    } finally {
+      setLoadingCosts(false)
+    }
+  }, [costPeriod])
+
   useEffect(() => {
     if (!authLoading && isAdmin) fetchSessions()
   }, [authLoading, isAdmin, fetchSessions])
+
+  useEffect(() => {
+    if (!authLoading && isAdmin) fetchCosts()
+  }, [authLoading, isAdmin, fetchCosts])
 
   const handleRetranscribe = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -147,6 +190,97 @@ export default function AdminSessionsPage() {
           Refresh
         </Button>
       </div>
+
+      {/* Cost Estimates */}
+      <Card className="border-border">
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                User Cost Estimates
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Estimated from usage events (transcription, AI tokens, email spend).
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={costPeriod} onValueChange={(v) => setCostPeriod(v as "week" | "month" | "all")}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">Last 7 days</SelectItem>
+                  <SelectItem value="month">Last 30 days</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={fetchCosts} disabled={loadingCosts}>
+                <RefreshCw className={cn("h-4 w-4", loadingCosts && "animate-spin")} />
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-md border border-border p-2.5">
+              <p className="text-[11px] text-muted-foreground">Estimated total</p>
+              <p className="text-base font-semibold">${(costTotals?.estimatedCostUsd || 0).toFixed(2)}</p>
+            </div>
+            <div className="rounded-md border border-border p-2.5">
+              <p className="text-[11px] text-muted-foreground">Transcription min</p>
+              <p className="text-base font-semibold">{Math.round(costTotals?.transcriptionMinutes || 0)}</p>
+            </div>
+            <div className="rounded-md border border-border p-2.5">
+              <p className="text-[11px] text-muted-foreground">AI input tokens</p>
+              <p className="text-base font-semibold">{Math.round(costTotals?.aiInputTokens || 0).toLocaleString()}</p>
+            </div>
+            <div className="rounded-md border border-border p-2.5">
+              <p className="text-[11px] text-muted-foreground">AI output tokens</p>
+              <p className="text-base font-semibold">{Math.round(costTotals?.aiOutputTokens || 0).toLocaleString()}</p>
+            </div>
+          </div>
+
+          {loadingCosts ? (
+            <div className="py-6 text-center">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto border border-border rounded-md">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-card border-b border-border">
+                  <tr className="text-left">
+                    <th className="px-3 py-2 font-medium text-muted-foreground">User</th>
+                    <th className="px-3 py-2 font-medium text-muted-foreground text-right">Minutes</th>
+                    <th className="px-3 py-2 font-medium text-muted-foreground text-right">AI Tokens</th>
+                    <th className="px-3 py-2 font-medium text-muted-foreground text-right">Est. Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {costRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground text-xs">
+                        No usage data in selected period.
+                      </td>
+                    </tr>
+                  ) : (
+                    costRows.map((row) => (
+                      <tr key={row.userId} className="border-b border-border/60 last:border-b-0">
+                        <td className="px-3 py-2">
+                          <p className="font-medium truncate max-w-[240px]">{row.displayName || row.email || row.userId.slice(0, 8)}</p>
+                          {row.email && <p className="text-xs text-muted-foreground truncate max-w-[240px]">{row.email}</p>}
+                        </td>
+                        <td className="px-3 py-2 text-right">{Math.round(row.transcriptionMinutes)}</td>
+                        <td className="px-3 py-2 text-right">{Math.round(row.aiInputTokens + row.aiOutputTokens).toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right font-medium">${row.estimatedCostUsd.toFixed(2)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">

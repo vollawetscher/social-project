@@ -59,6 +59,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Planned Video Call Invite Selection Is More Visible',
         description: 'Selected email contacts in the Plan Video Call dialog now use a stronger highlight color and clearer text contrast so selected recipients are easier to confirm at a glance.',
       },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'security',
+        title: 'Database Views Now Enforce Caller Permissions',
+        description: 'Security-sensitive reporting views now run with caller-level permissions and tighter access grants, reducing the risk of unintended cross-user data exposure.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Admin Dashboard Shows Per-User Cost Estimates',
+        description: 'Admins can now see estimated usage costs per user (transcription, AI token usage, and email spend) with period filters to better monitor billable activity.',
+      },
     ],
   },
   {
