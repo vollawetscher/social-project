@@ -24,6 +24,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Projects View Is Cleaner and Easier to Return To',
         description: 'Projects mode now has a cleaner focus without Record and Upload blocks, and returning from a project detail page keeps you in the Projects list context.',
       },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Project Sessions Open as Expandable Detail Items',
+        description: 'Project session lists now start compact and can be expanded inline to reveal communication details like participants, purpose, highlights, and notes before opening the full session.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Smoother Session Expand Animations in Projects',
+        description: 'Expanding a session in Projects now feels more fluid, with a smoother chevron turn and a subtle visual twinkle when details open.',
+      },
     ],
   },
   {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useRouter, Link } from '@/i18n/navigation'
 import { useTranslations } from 'next-intl'
@@ -30,8 +30,8 @@ import {
   Loader2,
   ArrowLeft,
   FolderOpen,
-  Calendar,
   Clock,
+  ChevronRight,
   Settings,
   Pencil,
   Check,
@@ -63,6 +63,15 @@ interface SessionRow {
   status: string
   created_at: string
   duration_sec: number
+  input_hint?: string | null
+  recording_type?: string | null
+  language_code?: string | null
+  ai_extracted_context?: {
+    purpose?: string
+    agenda?: string[]
+    participants?: Array<string | { name?: string; role?: string }>
+    summary?: string[]
+  } | null
 }
 
 type CaseStatus = 'active' | 'closed' | 'archived'
@@ -133,6 +142,25 @@ function formatTime(dateString: string, locale: string): string {
   })
 }
 
+function formatSessionKindLabel(session: SessionRow): string {
+  const raw = (session.input_hint || session.recording_type || '').trim()
+  if (!raw) return 'Session'
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase())
+}
+
+function getSessionParticipants(session: SessionRow): string[] {
+  const items = session.ai_extracted_context?.participants || []
+  const names = items
+    .map((participant) => {
+      if (typeof participant === 'string') return participant.trim()
+      return String(participant?.name || '').trim()
+    })
+    .filter(Boolean)
+  return Array.from(new Set(names))
+}
+
 export default function ProjectDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -156,6 +184,9 @@ export default function ProjectDetailPage() {
   const [refreshingPulse, setRefreshingPulse] = useState(false)
   const [decisionExpanded, setDecisionExpanded] = useState(false)
   const [resolvingLoop, setResolvingLoop] = useState<string | null>(null)
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
+  const [sparkleSessionId, setSparkleSessionId] = useState<string | null>(null)
+  const sparkleTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     loadProject()
@@ -366,6 +397,21 @@ export default function ProjectDetailPage() {
     return t('projects.pulse.hoursAgo', { count: hours })
   }
 
+  const toggleSessionExpanded = (sessionId: string) => {
+    if (sparkleTimeoutRef.current) window.clearTimeout(sparkleTimeoutRef.current)
+    setSparkleSessionId(sessionId)
+    sparkleTimeoutRef.current = window.setTimeout(() => {
+      setSparkleSessionId((prev) => (prev === sessionId ? null : prev))
+    }, 520)
+    setExpandedSessionId((prev) => (prev === sessionId ? null : sessionId))
+  }
+
+  useEffect(() => {
+    return () => {
+      if (sparkleTimeoutRef.current) window.clearTimeout(sparkleTimeoutRef.current)
+    }
+  }, [])
+
   if (loading || !caseData) {
     return (
       <div className="flex justify-center py-12">
@@ -454,38 +500,147 @@ export default function ProjectDetailPage() {
                 <div className="space-y-2">
                   {caseData.sessions.map((session) => {
                     const statusCfg = getSessionStatusConfig(session.status)
+                    const isExpanded = expandedSessionId === session.id
+                    const extracted = session.ai_extracted_context ?? null
+                    const participants = getSessionParticipants(session)
+                    const purpose = String(extracted?.purpose || '').trim()
+                    const agendaSource: unknown[] = Array.isArray(extracted?.agenda)
+                      ? (extracted!.agenda as unknown[])
+                      : []
+                    const summarySource: unknown[] = Array.isArray(extracted?.summary)
+                      ? (extracted!.summary as unknown[])
+                      : []
+                    const agendaItems: string[] = agendaSource
+                      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+                      .slice(0, 3)
+                    const summaryItems: string[] = summarySource
+                      .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+                      .slice(0, 2)
                     return (
-                      <Link
+                      <div
                         key={session.id}
-                        href={`/sessions/${session.id}?fromProject=${projectId}`}
-                        className="flex items-start justify-between gap-4 p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors group"
+                        className="border border-border rounded-lg transition-colors"
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-sm text-foreground truncate">
-                              {session.internal_case_id || `Session ${session.id.slice(0, 8)}`}
-                            </h3>
-                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 ${statusCfg.className}`}>
-                              {statusCfg.label}
-                            </Badge>
-                          </div>
-                          {session.context_note && (
-                            <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{session.context_note}</p>
-                          )}
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {formatDate(session.created_at, locale)} · {formatTime(session.created_at, locale)}
-                            </span>
-                            {session.duration_sec > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDuration(session.duration_sec)}
+                        <button
+                          type="button"
+                          onClick={() => toggleSessionExpanded(session.id)}
+                          className="w-full flex items-start justify-between gap-3 p-3 text-left hover:bg-muted/40 rounded-lg"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className="text-sm font-medium text-foreground">
+                                {formatDate(session.created_at, locale)} · {formatTime(session.created_at, locale)}
                               </span>
-                            )}
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                {formatSessionKindLabel(session)}
+                              </Badge>
+                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 ${statusCfg.className}`}>
+                                {statusCfg.label}
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              {participants.length > 0 ? (
+                                <span className="truncate">{participants.join(', ')}</span>
+                              ) : (
+                                <span>{session.internal_case_id || `Session ${session.id.slice(0, 8)}`}</span>
+                              )}
+                              {session.duration_sec > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDuration(session.duration_sec)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="relative mt-0.5 shrink-0 inline-flex items-center justify-center">
+                            <ChevronRight
+                              className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ease-out ${
+                                isExpanded ? 'rotate-90' : 'rotate-0'
+                              }`}
+                            />
+                            <Sparkles
+                              className={`absolute -right-1 -top-1 h-3 w-3 text-yellow-400 pointer-events-none transition-all duration-300 ${
+                                sparkleSessionId === session.id ? 'opacity-100 scale-100 animate-pulse' : 'opacity-0 scale-75'
+                              }`}
+                            />
+                          </span>
+                        </button>
+
+                        <div
+                          className={isExpanded
+                            ? 'grid transition-[grid-template-rows,opacity] duration-200 ease-out grid-rows-[1fr] opacity-100'
+                            : 'grid transition-[grid-template-rows,opacity] duration-200 ease-out grid-rows-[0fr] opacity-0'}
+                          aria-hidden={!isExpanded}
+                        >
+                          <div className="overflow-hidden">
+                            <div className="px-3 pb-3 space-y-3 border-t border-border/60">
+                              <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div className="rounded-md bg-muted/40 px-2.5 py-2">
+                                  <span className="text-muted-foreground">Language</span>
+                                  <p className="text-foreground mt-0.5">{session.language_code || 'n/a'}</p>
+                                </div>
+                                <div className="rounded-md bg-muted/40 px-2.5 py-2">
+                                  <span className="text-muted-foreground">Participants</span>
+                                  <p className="text-foreground mt-0.5">
+                                    {participants.length > 0 ? participants.join(', ') : 'n/a'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {purpose && (
+                                <div className="text-xs">
+                                  <p className="text-muted-foreground mb-1">Purpose</p>
+                                  <p className="text-foreground">{purpose}</p>
+                                </div>
+                              )}
+
+                              {agendaItems.length > 0 && (
+                                <div className="text-xs">
+                                  <p className="text-muted-foreground mb-1">Agenda</p>
+                                  <ul className="space-y-1 list-disc pl-4 text-foreground">
+                                    {agendaItems.map((item, index) => (
+                                      <li key={`${session.id}-agenda-${index}`}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {summaryItems.length > 0 && (
+                                <div className="text-xs">
+                                  <p className="text-muted-foreground mb-1">Highlights</p>
+                                  <ul className="space-y-1 list-disc pl-4 text-foreground">
+                                    {summaryItems.map((item, index) => (
+                                      <li key={`${session.id}-summary-${index}`}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {session.context_note && (
+                                <div className="text-xs">
+                                  <p className="text-muted-foreground mb-1">Context note</p>
+                                  <p className="text-foreground whitespace-pre-wrap">{session.context_note}</p>
+                                </div>
+                              )}
+
+                              {session.private_comments && (
+                                <div className="text-xs">
+                                  <p className="text-muted-foreground mb-1">Private comments</p>
+                                  <p className="text-foreground whitespace-pre-wrap">{session.private_comments}</p>
+                                </div>
+                              )}
+
+                              <div className="pt-1">
+                                <Link href={`/sessions/${session.id}?fromProject=${projectId}`}>
+                                  <Button size="sm" variant="outline">
+                                    Open session
+                                  </Button>
+                                </Link>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </Link>
+                      </div>
                     )
                   })}
                 </div>
