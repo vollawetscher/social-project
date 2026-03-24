@@ -43,7 +43,6 @@ import {
   MessageSquareDot,
 } from 'lucide-react'
 import { formatDuration } from '@/lib/utils/date-formatters'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface CaseData {
   id: string
@@ -172,7 +171,7 @@ export default function ProjectDetailPage() {
         setTitleValue(data.title)
       } else {
         toast.error(tc('error'))
-        router.push('/sessions')
+        router.push('/sessions?view=projects')
       }
     } catch {
       toast.error(tc('error'))
@@ -382,7 +381,7 @@ export default function ProjectDetailPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => router.push('/sessions')}
+          onClick={() => router.push('/sessions?view=projects')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -528,44 +527,23 @@ export default function ProjectDetailPage() {
                   {t('projects.pulse.empty')}
                 </div>
               ) : (
-                <TooltipProvider>
                   <div className="space-y-4">
                     <div className="sticky top-0 z-10 -mx-6 px-6 py-3 border-b border-border bg-card">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge
-                              variant="outline"
-                              title={firstSessionPulse ? t('projects.pulse.activatesFromSecondSession') : (pulse.drift_rationale || '')}
-                            >
-                              {firstSessionPulse ? '--' : driftBadgeText(pulse.drift_score)}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs text-xs">
-                              {firstSessionPulse
-                                ? t('projects.pulse.activatesFromSecondSession')
-                                : pulse.drift_rationale}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge
-                              variant="outline"
-                              title={firstSessionPulse ? t('projects.pulse.activatesFromSecondSession') : (pulse.momentum_rationale || '')}
-                            >
-                              {firstSessionPulse ? '--' : momentumBadgeText(pulse.momentum)}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs text-xs">
-                              {firstSessionPulse
-                                ? t('projects.pulse.activatesFromSecondSession')
-                                : pulse.momentum_rationale}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
+                        <Badge
+                          variant="outline"
+                          title={firstSessionPulse ? t('projects.pulse.activatesFromSecondSession') : (pulse.drift_rationale || '')}
+                          className="cursor-help"
+                        >
+                          {firstSessionPulse ? '--' : driftBadgeText(pulse.drift_score)}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          title={firstSessionPulse ? t('projects.pulse.activatesFromSecondSession') : (pulse.momentum_rationale || '')}
+                          className="cursor-help"
+                        >
+                          {firstSessionPulse ? '--' : momentumBadgeText(pulse.momentum)}
+                        </Badge>
                         <Badge variant="secondary">{t('projects.pulse.version', { version: pulse.pulse_version })}</Badge>
                       </div>
                     </div>
@@ -687,7 +665,6 @@ export default function ProjectDetailPage() {
                       <span>{t('projects.pulse.basedOnSessions', { count: pulse.session_count || 0 })}</span>
                     </div>
                   </div>
-                </TooltipProvider>
               )}
             </CardContent>
           </Card>

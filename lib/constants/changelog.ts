@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.23.2',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Projects View Is Cleaner and Easier to Return To',
+        description: 'Projects mode now has a cleaner focus without Record and Upload blocks, and returning from a project detail page keeps you in the Projects list context.',
+      },
+    ],
+  },
+  {
     version: '1.23.1',
     date: 'March 17, 2026',
     entries: [

@@ -325,7 +325,9 @@ export default function SessionsPage() {
   const supabase = createClient()
 
   // Project management state
-  const [view, setView] = useState<'sessions' | 'projects'>('sessions')
+  const [view, setView] = useState<'sessions' | 'projects'>(
+    searchParams.get('view') === 'projects' ? 'projects' : 'sessions'
+  )
   const [projects, setProjects] = useState<any[]>([])
   const [loadingProjects, setLoadingProjects] = useState(false)
   const [assignSessionId, setAssignSessionId] = useState<string | null>(null)
@@ -440,14 +442,30 @@ export default function SessionsPage() {
     }
   }, [isAdmin, adminView, adminViewInitialized])
 
-  const handleAdminViewChange = useCallback((checked: boolean) => {
-    setAdminView(checked)
+  useEffect(() => {
+    const nextView = searchParams.get('view') === 'projects' ? 'projects' : 'sessions'
+    setView((prev) => (prev === nextView ? prev : nextView))
+  }, [searchParams])
+
+  const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString())
-    if (checked) params.set('allUsers', '1')
-    else params.delete('allUsers')
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value) params.delete(key)
+      else params.set(key, value)
+    })
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname)
   }, [searchParams, router, pathname])
+
+  const handleViewChange = useCallback((nextView: 'sessions' | 'projects') => {
+    setView(nextView)
+    updateUrlParams({ view: nextView === 'projects' ? 'projects' : null })
+  }, [updateUrlParams])
+
+  const handleAdminViewChange = useCallback((checked: boolean) => {
+    setAdminView(checked)
+    updateUrlParams({ allUsers: checked ? '1' : null })
+  }, [updateUrlParams])
 
   useEffect(() => {
     if (!pastePreviewOpen || pastePreviewTemplates.length > 0) return
@@ -1567,20 +1585,24 @@ export default function SessionsPage() {
       <div className="flex items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <button
-            onClick={() => setView('sessions')}
+            onClick={() => handleViewChange('sessions')}
             className={cn(
-              "text-xl font-semibold transition-colors whitespace-nowrap",
-              view === 'sessions' ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              "text-xl transition-colors whitespace-nowrap",
+              view === 'sessions'
+                ? "text-foreground font-semibold"
+                : "text-muted-foreground/60 font-medium hover:text-muted-foreground"
             )}
           >
             {t('viewToggle.sessions')}
           </button>
           <span className="text-muted-foreground/40 text-xl select-none">·</span>
           <button
-            onClick={() => setView('projects')}
+            onClick={() => handleViewChange('projects')}
             className={cn(
-              "text-xl font-semibold transition-colors whitespace-nowrap",
-              view === 'projects' ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              "text-xl transition-colors whitespace-nowrap",
+              view === 'projects'
+                ? "text-foreground font-semibold"
+                : "text-muted-foreground/60 font-medium hover:text-muted-foreground"
             )}
           >
             {t('viewToggle.projects')}
@@ -1595,7 +1617,8 @@ export default function SessionsPage() {
         )}
       </div>
 
-      {/* Record Bar + Upload Section - Same Height */}
+      {/* Record Bar + Upload Section (sessions-only) */}
+      {view === 'sessions' && (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
         {/* Record Bar */}
         <div
@@ -1845,6 +1868,7 @@ export default function SessionsPage() {
           </CollapsibleContent>
         </Collapsible>
       </div>
+      )}
 
       {/* Sessions List */}
       <Card className="border-border flex-1 min-h-0 flex flex-col overflow-hidden">
