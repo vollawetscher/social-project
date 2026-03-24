@@ -202,12 +202,21 @@
       "loading": "Loading projects...",
       "empty": "No projects yet",
       "emptyHint": "Create a project to organise related sessions.",
+      "searchPlaceholder": "Search projects...",
+      "noSearchResults": "No projects match your search.",
+      "started": "Started {date}",
       "sessions": "{count, plural, one {# session} other {# sessions}}",
       "lastUpdated": "Updated",
       "status": {
         "active": "Active",
         "closed": "Closed",
         "archived": "Archived"
+      },
+      "health": {
+        "onTrack": "On track",
+        "watch": "Watch",
+        "atRisk": "At risk",
+        "unknown": "No signal"
       },
       "createDialog": {
         "title": "New Project",

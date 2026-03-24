@@ -202,12 +202,21 @@
       "loading": "Projekte werden geladen...",
       "empty": "Noch keine Projekte",
       "emptyHint": "Erstellen Sie ein Projekt, um zusammengehörige Sitzungen zu bündeln.",
+      "searchPlaceholder": "Projekte suchen...",
+      "noSearchResults": "Keine Projekte entsprechen der Suche.",
+      "started": "Gestartet {date}",
       "sessions": "{count, plural, one {# Sitzung} other {# Sitzungen}}",
       "lastUpdated": "Aktualisiert",
       "status": {
         "active": "Aktiv",
         "closed": "Abgeschlossen",
         "archived": "Archiviert"
+      },
+      "health": {
+        "onTrack": "Auf Kurs",
+        "watch": "Beobachten",
+        "atRisk": "Risiko",
+        "unknown": "Kein Signal"
       },
       "createDialog": {
         "title": "Neues Projekt",

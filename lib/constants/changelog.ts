@@ -80,6 +80,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Project Pulse Corrections and Overrides',
         description: 'Project owners can now directly correct Pulse intent, direction, and narrative when AI interpretation is off, so project trajectory stays trustworthy.',
       },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Projects View Cards Show Track Health and Context',
+        description: 'Project cards now include compact started-date and health indicators plus richer context snippets, and the search input now filters projects directly in Projects view.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Project Cards Show Pulse Wave Activity',
+        description: 'Projects now include a tiny pulse-wave sparkline to visualize hotness at a glance, with quieter flatline behavior for inactive workstreams.',
+      },
     ],
   },
   {

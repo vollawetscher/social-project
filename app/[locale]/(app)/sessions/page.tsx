@@ -96,6 +96,7 @@ type CombineSuggestion = {
 }
 
 const ADMIN_VIEW_STORAGE_KEY = 'sessions_admin_view'
+const PROJECT_PULSE_SPARKLINE_ENABLED = process.env.NEXT_PUBLIC_FEATURE_PROJECT_PULSE_SPARKLINE !== '0'
 
 const statusConfig: Record<SessionStatus, StatusDisplay> = {
   recording: { labelKey: "recording", variant: "secondary", className: "bg-primary/20 text-primary border-primary/30 animate-pulse", animated: true },
@@ -183,6 +184,56 @@ function getOriginBadgeClass(origin: SessionOriginKind): string {
   if (origin === "quick_record") return "bg-success/10 text-success border-success/30"
   if (origin === "audio_upload") return "bg-warning/10 text-warning border-warning/30"
   return "bg-muted text-muted-foreground border-border"
+}
+
+function hashString(input: string): number {
+  let hash = 0
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash)
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function getProjectPulseSparkline(project: any): { path: string; isFlatline: boolean } {
+  const pulse = project?.pulse && typeof project.pulse === 'object' ? project.pulse : null
+  const drift = String((pulse as any)?.drift_score || '')
+  const momentum = String((pulse as any)?.momentum || '')
+  const openLoops = Array.isArray((pulse as any)?.open_loops) ? (pulse as any)?.open_loops.length : 0
+  const sessionCount = Number(project?.session_count || 0)
+  const updatedAtMs = project?.updated_at ? new Date(project.updated_at).getTime() : Date.now()
+  const inactiveDays = Math.max(0, (Date.now() - updatedAtMs) / (1000 * 60 * 60 * 24))
+  const stalePenalty = clamp01(inactiveDays / 21)
+
+  const driftScore = drift === 'green' ? 1 : drift === 'yellow' ? 0.6 : drift === 'red' ? 0.2 : 0.5
+  const momentumScore = momentum === 'accelerating' ? 1 : momentum === 'stable' ? 0.65 : momentum === 'stalling' ? 0.25 : 0.5
+  const loopScore = clamp01(1 - openLoops / 6)
+  const sessionScore = clamp01(sessionCount / 8)
+
+  const hotness = clamp01((driftScore * 0.35) + (momentumScore * 0.25) + (loopScore * 0.2) + (sessionScore * 0.2) - (stalePenalty * 0.45))
+  const isFlatline = inactiveDays > 28 || (sessionCount <= 1 && inactiveDays > 10)
+
+  const width = 52
+  const height = 14
+  const centerY = Math.round(height / 2)
+  const points = 12
+  const amplitude = isFlatline ? 0.6 : (1 + hotness * 5)
+  const frequency = isFlatline ? 0.25 : (0.8 + hotness * 1.8)
+  const phaseSeed = (hashString(String(project?.id || project?.title || 'pulse')) % 314) / 100
+
+  const coords: string[] = []
+  for (let i = 0; i < points; i += 1) {
+    const x = Math.round((i / (points - 1)) * width)
+    const wave = Math.sin((i / (points - 1)) * Math.PI * 2 * frequency + phaseSeed)
+    const y = Math.round(centerY - (wave * amplitude))
+    coords.push(`${x},${y}`)
+  }
+
+  return { path: coords.join(' '), isFlatline }
 }
 
 // Inline editable session name component
@@ -1478,6 +1529,26 @@ export default function SessionsPage() {
     )
   })
 
+  const filteredProjects = useMemo(() => {
+    if (searchQuery.trim() === "") return projects
+    const q = searchQuery.toLowerCase()
+    return projects.filter((project) => {
+      const pulse = project?.pulse && typeof project.pulse === 'object' ? project.pulse : null
+      const pulseDirection = String((pulse as any)?.current_direction || '').toLowerCase()
+      const pulseIntent = String((pulse as any)?.original_intent || '').toLowerCase()
+      const pulseNarrative = String((pulse as any)?.narrative || '').toLowerCase()
+      return (
+        String(project?.title || '').toLowerCase().includes(q) ||
+        String(project?.description || '').toLowerCase().includes(q) ||
+        String(project?.client_identifier || '').toLowerCase().includes(q) ||
+        String(project?.status || '').toLowerCase().includes(q) ||
+        pulseDirection.includes(q) ||
+        pulseIntent.includes(q) ||
+        pulseNarrative.includes(q)
+      )
+    })
+  }, [projects, searchQuery])
+
   const combineSuggestion = useMemo<CombineSuggestion | null>(() => {
     if (adminView) return null
 
@@ -1938,12 +2009,46 @@ export default function SessionsPage() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
-                {projects.map((project) => {
+              <div className="space-y-3 p-4">
+                <div className="relative max-w-sm">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder={t('projects.searchPlaceholder')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 pl-8 text-sm bg-secondary border-0"
+                  />
+                </div>
+
+                {filteredProjects.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
+                    {t('projects.noSearchResults')}
+                  </div>
+                ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredProjects.map((project) => {
                   const isArchived = project.status === 'archived'
+                  const pulse = project?.pulse && typeof project.pulse === 'object' ? project.pulse : null
+                  const drift = String((pulse as any)?.drift_score || '')
+                  const momentum = String((pulse as any)?.momentum || '')
+                  const openLoops = Array.isArray((pulse as any)?.open_loops) ? (pulse as any)?.open_loops.length : 0
+                  const sparkline = getProjectPulseSparkline(project)
+                  const startedDate = project?.created_at
+                    ? new Date(project.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                    : null
+                  const pulseContext = String(
+                    (pulse as any)?.current_direction ||
+                    (pulse as any)?.original_intent ||
+                    (pulse as any)?.narrative ||
+                    project?.description ||
+                    ''
+                  ).trim()
                   const deletionDate = project.scheduled_deletion_at
                     ? new Date(project.scheduled_deletion_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
                     : null
+                  const isOnTrack =
+                    drift === 'green' || (momentum === 'accelerating' && openLoops === 0)
                   return (
                   <div
                     key={project.id}
@@ -1960,9 +2065,11 @@ export default function SessionsPage() {
                         <h3 className={cn("font-medium truncate", isArchived ? "text-muted-foreground" : "text-foreground")}>
                           {project.title}
                         </h3>
-                        {project.description && (
+                        {pulseContext ? (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{pulseContext}</p>
+                        ) : project.description ? (
                           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{project.description}</p>
-                        )}
+                        ) : null}
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <Badge
                             variant="outline"
@@ -1977,6 +2084,37 @@ export default function SessionsPage() {
                             <FolderOpen className="h-3 w-3" />
                             {t('projects.sessions', { count: project.session_count ?? 0 })}
                           </span>
+                          {!isArchived && (
+                            <span
+                              className={cn(
+                                "inline-flex h-2.5 w-2.5 rounded-full",
+                                isOnTrack ? "bg-emerald-500" : "bg-red-500"
+                              )}
+                              title={isOnTrack ? t('projects.health.onTrack') : t('projects.health.atRisk')}
+                              aria-label={isOnTrack ? t('projects.health.onTrack') : t('projects.health.atRisk')}
+                            />
+                          )}
+                          {PROJECT_PULSE_SPARKLINE_ENABLED && !isArchived && (
+                            <span className="inline-flex items-center" title={sparkline.isFlatline ? t('projects.health.unknown') : t('projects.lastUpdated')}>
+                              <svg viewBox="0 0 52 14" className="h-3.5 w-[52px]">
+                                <polyline
+                                  points={sparkline.path}
+                                  fill="none"
+                                  stroke={sparkline.isFlatline ? "currentColor" : (isOnTrack ? "rgb(16 185 129)" : "rgb(239 68 68)")}
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className={sparkline.isFlatline ? "text-muted-foreground/60" : ""}
+                                />
+                              </svg>
+                            </span>
+                          )}
+                          {startedDate && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {t('projects.started', { date: startedDate })}
+                            </span>
+                          )}
                           {isArchived && deletionDate && (
                             <span className="text-[10px] text-destructive/70 flex items-center gap-1">
                               <Clock className="h-3 w-3" />
@@ -2043,6 +2181,8 @@ export default function SessionsPage() {
                   </div>
                   )
                 })}
+              </div>
+              )}
               </div>
             )}
           </div>

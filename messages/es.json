@@ -202,12 +202,21 @@
       "loading": "Cargando proyectos...",
       "empty": "Aún no hay proyectos",
       "emptyHint": "Crea un proyecto para organizar sesiones relacionadas.",
+      "searchPlaceholder": "Buscar proyectos...",
+      "noSearchResults": "No hay proyectos que coincidan con tu búsqueda.",
+      "started": "Iniciado {date}",
       "sessions": "{count, plural, one {# sesión} other {# sesiones}}",
       "lastUpdated": "Actualizado",
       "status": {
         "active": "Activo",
         "closed": "Cerrado",
         "archived": "Archivado"
+      },
+      "health": {
+        "onTrack": "En curso",
+        "watch": "Vigilar",
+        "atRisk": "En riesgo",
+        "unknown": "Sin señal"
       },
       "createDialog": {
         "title": "Nuevo Proyecto",
