@@ -458,7 +458,7 @@ export default function ProjectDetailPage() {
                     return (
                       <Link
                         key={session.id}
-                        href={`/sessions/${session.id}`}
+                        href={`/sessions/${session.id}?fromProject=${projectId}`}
                         className="flex items-start justify-between gap-4 p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors group"
                       >
                         <div className="flex-1 min-w-0">

@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useTranslations, useLocale } from "next-intl"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { Link, useRouter } from "@/i18n/navigation"
 import {
   ArrowLeft,
@@ -123,8 +123,11 @@ function FormattedSummary({ text }: { text: string }) {
 
 export default function SessionDetailPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const sessionId = params.id as string
+  const fromProjectId = searchParams.get('fromProject')
+  const backHref = fromProjectId ? `/projects/${fromProjectId}` : '/sessions'
   const t = useTranslations('sessionDetail')
   const tCommon = useTranslations('common')
   const tOutputs = useTranslations('outputs')
@@ -605,7 +608,7 @@ export default function SessionDetailPage() {
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <p className="text-muted-foreground">{tErrors('sessionNotFound')}</p>
-          <Link href="/sessions">
+          <Link href={backHref}>
             <Button variant="outline" className="mt-4">
               <ArrowLeft className="mr-2 h-4 w-4" />
               {tCommon('back')}
@@ -789,7 +792,7 @@ export default function SessionDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-border shrink-0">
         <div className="flex items-center gap-3">
-          <Link href="/sessions">
+          <Link href={backHref}>
             <Button variant="ghost" size="sm" className="gap-1.5">
               <ArrowLeft className="h-4 w-4" />
               <span className="hidden sm:inline">{tCommon('back')}</span>
