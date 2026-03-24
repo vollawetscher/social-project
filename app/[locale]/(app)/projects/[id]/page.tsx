@@ -534,7 +534,10 @@ export default function ProjectDetailPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="outline">
+                            <Badge
+                              variant="outline"
+                              title={firstSessionPulse ? t('projects.pulse.activatesFromSecondSession') : (pulse.drift_rationale || '')}
+                            >
                               {firstSessionPulse ? '--' : driftBadgeText(pulse.drift_score)}
                             </Badge>
                           </TooltipTrigger>
@@ -548,7 +551,10 @@ export default function ProjectDetailPage() {
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="outline">
+                            <Badge
+                              variant="outline"
+                              title={firstSessionPulse ? t('projects.pulse.activatesFromSecondSession') : (pulse.momentum_rationale || '')}
+                            >
                               {firstSessionPulse ? '--' : momentumBadgeText(pulse.momentum)}
                             </Badge>
                           </TooltipTrigger>

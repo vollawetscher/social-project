@@ -6,8 +6,13 @@ export function buildPulsePrompt(input: {
   sessionIndex: number
   userLanguage: string
   resolvedMarkers?: string[]
+  projectContext?: {
+    title?: string | null
+    description?: string | null
+    clientIdentifier?: string | null
+  }
 }) {
-  const { currentPulse, session, sessionIndex, userLanguage, resolvedMarkers = [] } = input
+  const { currentPulse, session, sessionIndex, userLanguage, resolvedMarkers = [], projectContext } = input
 
   const system = `You are the Project Pulse engine for Notissima - a communication intelligence platform.
 Your task is to maintain a living analysis of a project's trajectory based on its session history.
@@ -61,6 +66,9 @@ JSON schema:
 ${currentPulse ? JSON.stringify(currentPulse, null, 2) : 'null'}
 
 NEW SESSION ANALYSIS:
+Project title: ${String(projectContext?.title || '').trim() || 'n/a'}
+Project description: ${String(projectContext?.description || '').trim() || 'n/a'}
+Project reference: ${String(projectContext?.clientIdentifier || '').trim() || 'n/a'}
 Session index: ${sessionIndex}
 Recorded at: ${session.recorded_at}
 Purpose: ${session.purpose}

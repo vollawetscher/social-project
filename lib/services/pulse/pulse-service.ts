@@ -26,6 +26,21 @@ function readSummaryBullets(input: string | null | undefined): string[] {
     .slice(0, 8)
 }
 
+function buildFallbackIntent(input: {
+  sessionPurpose?: string
+  caseTitle?: string
+  caseDescription?: string
+}): string {
+  const sessionPurpose = String(input.sessionPurpose || '').trim()
+  if (sessionPurpose) return sessionPurpose
+  const caseTitle = String(input.caseTitle || '').trim()
+  const caseDescription = String(input.caseDescription || '').trim()
+  if (caseTitle && caseDescription) return `${caseTitle}: ${caseDescription}`
+  if (caseTitle) return caseTitle
+  if (caseDescription) return caseDescription
+  return 'Project direction not yet specified'
+}
+
 function extractResolvedLoopMarkers(text: string | null | undefined): string[] {
   const source = String(text || '')
   if (!source) return []
@@ -201,7 +216,7 @@ export async function runPulseUpdateJob(input: {
   const [{ data: caseRow, error: caseError }, { data: sessionRow, error: sessionError }] = await Promise.all([
     supabase
       .from('cases')
-      .select('id, user_id, status, pulse, pulse_version')
+      .select('id, user_id, title, description, client_identifier, status, pulse, pulse_version')
       .eq('id', caseId)
       .single(),
     supabase
@@ -258,6 +273,11 @@ export async function runPulseUpdateJob(input: {
     sessionIndex: countValue,
     userLanguage,
     resolvedMarkers,
+    projectContext: {
+      title: (caseRow as any)?.title || null,
+      description: (caseRow as any)?.description || null,
+      clientIdentifier: (caseRow as any)?.client_identifier || null,
+    },
   })
 
   if (!anthropic) {
@@ -281,7 +301,12 @@ export async function runPulseUpdateJob(input: {
     .map((block) => ('text' in block ? block.text : ''))
     .join('\n')
   const parsed = parseClaudeJson(text)
-  const pulse = sanitizePulseJson(parsed, currentPulse, countValue, sessionInput.purpose, resolvedMarkers)
+  const fallbackIntent = buildFallbackIntent({
+    sessionPurpose: sessionInput.purpose,
+    caseTitle: (caseRow as any)?.title,
+    caseDescription: (caseRow as any)?.description,
+  })
+  const pulse = sanitizePulseJson(parsed, currentPulse, countValue, fallbackIntent, resolvedMarkers)
 
   const nowIso = new Date().toISOString()
   pulse.updated_at = nowIso

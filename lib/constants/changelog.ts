@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.23.1',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.23.1',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Project Pulse Health Tooltips Are Always Visible',
+        description: 'Drift and momentum badges in Project Pulse now include fallback hover text, so rationale remains visible even when rich tooltip behavior is unavailable.',
+      },
+      {
+        version: '1.23.1',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Project Pulse Uses Stronger Project Context Anchors',
+        description: 'Pulse updates now include project title, description, and reference context to improve first-intent grounding and reduce misclassification in early sessions.',
+      },
+    ],
+  },
+  {
     version: '1.23.0',
     date: 'March 17, 2026',
     entries: [
