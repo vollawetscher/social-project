@@ -10,6 +10,7 @@ export interface SpeechmaticsTranscript {
   fullText: string
   summary?: string
   jobId?: string
+  requestedLanguage?: string | null
 }
 
 function sanitizeAdditionalVocabTerm(raw: string): string | null {
@@ -118,6 +119,7 @@ export class SpeechmaticsService {
       return {
         ...transcript,
         jobId,
+        requestedLanguage: config.language || null,
       }
     } catch (error: any) {
       console.error('[Speechmatics] Transcription error:', error.message, error.cause)

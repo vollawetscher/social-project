@@ -213,16 +213,23 @@ async function processTranscriptionJob(sessionId: string) {
       .select('user_id, input_hint, language, internal_case_id, context_note, context_text, ai_extracted_context, transcript_corrections')
       .eq('id', sessionId)
       .single()
+    const inputHint = (sessionRow as any)?.input_hint || ''
+    const rawLang = (sessionRow as any)?.language?.slice(0, 2) || null
+    const sessionLanguage = rawLang === 'au' ? null : rawLang // 'auto' → null → Speechmatics auto-detect
+    const requestedLanguageRaw = (sessionRow as any)?.language || null
+    const requestedLanguageMode = sessionLanguage ? 'fixed' : 'auto'
     await logPipelineEvent({
       sessionId,
       userId: (sessionRow as any)?.user_id || null,
       stage: 'transcribe',
       event: 'job_started',
-      metadata: { inputHint: (sessionRow as any)?.input_hint || null },
+      metadata: {
+        inputHint: (sessionRow as any)?.input_hint || null,
+        requestedLanguage: requestedLanguageRaw,
+        speechmaticsLanguageConfig: sessionLanguage || 'auto',
+        languageMode: requestedLanguageMode,
+      },
     }, supabase)
-    const inputHint = (sessionRow as any)?.input_hint || ''
-    const rawLang = (sessionRow as any)?.language?.slice(0, 2) || null
-    const sessionLanguage = rawLang === 'au' ? null : rawLang // 'auto' → null → Speechmatics auto-detect
     const { data: linkedCall } = await supabase
       .from('calls')
       .select('user_id, callee_user_id, contact_name, session_id, callee_session_id')
@@ -371,6 +378,7 @@ async function processTranscriptionJob(sessionId: string) {
             fileId: file.id,
             speechmaticsJobId: transcript.jobId || null,
             language: transcript.language || null,
+            speechmaticsRequestedLanguage: transcript.requestedLanguage || sessionLanguage || 'auto',
             segmentCount: transcript.segments?.length || 0,
           },
         }, supabase)
@@ -384,6 +392,7 @@ async function processTranscriptionJob(sessionId: string) {
             severity: 'error',
             metadata: {
               fileId: file.id,
+              speechmaticsRequestedLanguage: sessionLanguage || 'auto',
               message: String(transcribeError?.message || 'unknown'),
             },
           }, supabase)
@@ -412,6 +421,17 @@ async function processTranscriptionJob(sessionId: string) {
               summary: null,
             })
         }
+        await logPipelineEvent({
+          sessionId,
+          userId: (sessionRow as any)?.user_id || null,
+          stage: 'transcribe',
+          event: 'speechmatics_no_speech_handled',
+          severity: 'warning',
+          metadata: {
+            fileId: file.id,
+            speechmaticsRequestedLanguage: sessionLanguage || 'auto',
+          },
+        }, supabase)
         continue
       }
 
@@ -639,6 +659,9 @@ async function processTranscriptionJob(sessionId: string) {
       metadata: {
         durationSec: sessionDuration || 0,
         fileCount: files.length,
+        requestedLanguage: requestedLanguageRaw,
+        speechmaticsLanguageConfig: sessionLanguage || 'auto',
+        languageMode: requestedLanguageMode,
       },
     }, supabase)
   } catch (error: any) {
@@ -715,7 +738,7 @@ export async function POST(
 
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
-      .select('id, user_id, duration_sec, case_id')
+      .select('id, user_id, duration_sec, case_id, language')
       .eq('id', params.id)
       .maybeSingle()
 
@@ -750,6 +773,8 @@ export async function POST(
         event: 'job_enqueued',
         metadata: {
           asyncJobId: job.id,
+          requestedLanguage: (session as any).language || null,
+          languageMode: (session as any).language && (session as any).language !== 'auto' ? 'fixed' : 'auto',
         },
       }, supabase)
       return NextResponse.json(
