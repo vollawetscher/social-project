@@ -42,6 +42,77 @@ function isAllowedSuggestionAudience(value: unknown): value is (typeof ALLOWED_S
   return typeof value === 'string' && ALLOWED_SUGGESTION_AUDIENCES.includes(value as (typeof ALLOWED_SUGGESTION_AUDIENCES)[number])
 }
 
+function extractBalancedJsonObject(input: string): string | null {
+  const text = String(input || '')
+  const start = text.indexOf('{')
+  if (start < 0) return null
+
+  let depth = 0
+  let inString = false
+  let escaped = false
+
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i]
+    if (escaped) {
+      escaped = false
+      continue
+    }
+    if (ch === '\\') {
+      escaped = true
+      continue
+    }
+    if (ch === '"') {
+      inString = !inString
+      continue
+    }
+    if (inString) continue
+    if (ch === '{') depth += 1
+    else if (ch === '}') {
+      depth -= 1
+      if (depth === 0) {
+        return text.slice(start, i + 1)
+      }
+    }
+  }
+  return null
+}
+
+function parseAnalysisResponseText(responseText: string): Record<string, any> {
+  const raw = String(responseText || '').trim()
+  if (!raw) throw new Error('Empty analysis response')
+
+  const candidates: string[] = [raw]
+
+  // Try fenced blocks first.
+  const fencedMatches = raw.match(/```(?:json)?\s*([\s\S]*?)```/gi) || []
+  for (const block of fencedMatches) {
+    const inner = block.replace(/```(?:json)?/i, '').replace(/```/g, '').trim()
+    if (inner) candidates.push(inner)
+  }
+
+  // Try balanced object extraction for each candidate.
+  for (const c of [...candidates]) {
+    const extracted = extractBalancedJsonObject(c)
+    if (extracted) candidates.push(extracted)
+  }
+
+  // Last-resort cleanup.
+  candidates.push(raw.replace(/^`+|`+$/g, '').trim())
+
+  const seen = new Set<string>()
+  for (const candidate of candidates) {
+    if (!candidate || seen.has(candidate)) continue
+    seen.add(candidate)
+    try {
+      return JSON.parse(candidate) as Record<string, any>
+    } catch {
+      // continue
+    }
+  }
+
+  throw new Error('Failed to parse analysis JSON response')
+}
+
 function compactSessionSummaryText(raw: string, maxChars = 1200): string {
   const normalized = String(raw || '')
     .replace(/\r/g, '\n')
@@ -636,20 +707,7 @@ Respond in this exact JSON format:
     // Parse Claude's response
     const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
     console.log('[Analyze API] Claude response:', responseText.substring(0, 200))
-    
-    // Extract JSON from markdown code blocks if present
-    let jsonText = responseText.trim()
-    
-    // Remove markdown code blocks (```json ... ``` or ``` ... ```)
-    if (jsonText.startsWith('```')) {
-      const jsonMatch = jsonText.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
-      if (jsonMatch) {
-        jsonText = jsonMatch[1].trim()
-      }
-    }
-    
-    console.log('[Analyze API] Extracted JSON:', jsonText.substring(0, 200))
-    const analysis = JSON.parse(jsonText) as Record<string, any>
+    const analysis = parseAnalysisResponseText(responseText)
     console.log('[Analyze API] Parsed analysis:', JSON.stringify(analysis).substring(0, 300))
     console.log('[Analyze API] AI identified participants:', JSON.stringify(analysis.extractedContext?.participants, null, 2))
 

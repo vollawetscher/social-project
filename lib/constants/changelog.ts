@@ -20,6 +20,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.23.2',
         date: 'March 17, 2026',
+        category: 'fix',
+        title: 'AI Analysis Handles JSON-Wrapped Responses More Reliably',
+        description: 'Session analysis now robustly parses AI responses even when wrapped in markdown code fences or extra text, reducing intermittent analysis failures.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
         category: 'improvement',
         title: 'AI Requests Now Use Adaptive Token Budgets',
         description: 'Session analysis and output generation now use dynamic token budgets based on prompt size and task type, improving cost efficiency while keeping output quality stable.',

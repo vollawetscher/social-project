@@ -121,6 +121,26 @@ function isExpectedNoSpeechError(error: unknown): boolean {
   )
 }
 
+function formatStorageError(error: unknown): string {
+  if (!error) return 'unknown'
+  if (error instanceof Error) return error.message || 'unknown'
+  if (typeof error === 'string') return error
+  if (typeof error === 'object') {
+    const obj = error as Record<string, unknown>
+    if (typeof obj.message === 'string' && obj.message) return obj.message
+    const code = typeof obj.code === 'string' ? obj.code : null
+    const statusCode = typeof obj.statusCode === 'number' ? String(obj.statusCode) : null
+    const pieces = [code, statusCode].filter(Boolean)
+    if (pieces.length > 0) return pieces.join(' ')
+    try {
+      return JSON.stringify(obj)
+    } catch {
+      return 'unknown'
+    }
+  }
+  return String(error)
+}
+
 /**
  * After the caller's session is transcribed, copy the transcript to any pending
  * callee session that was claimed before transcription completed.
@@ -313,17 +333,50 @@ async function processTranscriptionJob(sessionId: string) {
       }
 
       console.log('[Transcribe] Downloading audio file from storage:', file.storage_path)
-      const { data: audioData, error: downloadError } = await supabase.storage
+      let audioData: Blob | null = null
+      const { data: downloadedAudio, error: downloadError } = await supabase.storage
         .from('rohbericht-audio')
         .download(file.storage_path)
+      audioData = downloadedAudio || null
 
       if (downloadError || !audioData) {
-        console.error('[Transcribe] Download error:', downloadError)
+        // Fallback: signed URL fetch can recover from intermittent SDK download failures.
+        console.warn('[Transcribe] Primary storage download failed, trying signed URL fallback:', {
+          storagePath: file.storage_path,
+          error: formatStorageError(downloadError),
+        })
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+          .from('rohbericht-audio')
+          .createSignedUrl(file.storage_path, 120)
+        if (!signedUrlError && signedUrlData?.signedUrl) {
+          try {
+            const signedRes = await fetch(signedUrlData.signedUrl, { method: 'GET' })
+            if (signedRes.ok) {
+              audioData = await signedRes.blob()
+              console.log('[Transcribe] Signed URL fallback download succeeded:', file.storage_path)
+            } else {
+              console.warn('[Transcribe] Signed URL fallback failed with non-OK status:', signedRes.status)
+            }
+          } catch (fallbackFetchError) {
+            console.warn('[Transcribe] Signed URL fallback fetch failed:', formatStorageError(fallbackFetchError))
+          }
+        } else {
+          console.warn('[Transcribe] Failed to create signed URL fallback:', formatStorageError(signedUrlError))
+        }
+      }
+
+      if (!audioData) {
+        const reason = formatStorageError(downloadError)
+        console.error('[Transcribe] Download error:', {
+          storagePath: file.storage_path,
+          reason,
+          raw: downloadError,
+        })
         await supabase
           .from('sessions')
           .update({
             status: 'error',
-            last_error: 'Failed to download audio file: ' + (downloadError?.message || 'Unknown error')
+            last_error: `Failed to download audio file (${file.storage_path}): ${reason}`
           })
           .eq('id', sessionId)
         return
