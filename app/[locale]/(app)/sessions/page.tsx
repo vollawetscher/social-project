@@ -987,13 +987,13 @@ export default function SessionsPage() {
     }
   }
 
-  const handleUploadConfirm = async (groups: File[][]) => {
+  const handleUploadConfirm = async (groups: File[][], uploadLanguage: string) => {
     setUploadingFiles(true)
     let successCount = 0
     let errorCount = 0
     for (const group of groups) {
       try {
-        await uploadGroup(group)
+        await uploadGroup(group, uploadLanguage)
         successCount++
       } catch (error: any) {
         console.error('Upload failed for group:', error)
@@ -1020,7 +1020,7 @@ export default function SessionsPage() {
     f.type?.startsWith('audio/webm') ||
     /\.(webm|weba)$/i.test(f.name)
 
-  const uploadGroup = async (files: File[]) => {
+  const uploadGroup = async (files: File[], uploadLanguage: string) => {
     if (!user?.id) throw new Error(t('uploadMessages.loginRequired'))
     if (files.length === 0) return
 
@@ -1046,7 +1046,7 @@ export default function SessionsPage() {
         internal_case_id: sessionName,
         user_id: user.id,
         status: 'uploading',
-        language: language,
+        language: uploadLanguage || 'auto',
         ...(inputHint && { input_hint: inputHint }),
       })
       .select()
@@ -1126,7 +1126,7 @@ export default function SessionsPage() {
       const transcribeRes = await fetch(`/api/sessions/${session.id}/transcribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: language }),
+        body: JSON.stringify({ language: uploadLanguage || 'auto' }),
       })
       if (!transcribeRes.ok) {
         console.error('Transcription trigger failed:', await transcribeRes.text())
@@ -2620,6 +2620,8 @@ export default function SessionsPage() {
         onOpenChange={setPreviewOpen}
         files={previewFiles}
         onConfirm={handleUploadConfirm}
+        selectedLanguage={language}
+        onSelectedLanguageChange={setLanguage}
         loading={uploadingFiles}
       />
 

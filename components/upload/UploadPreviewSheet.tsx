@@ -49,7 +49,9 @@ interface UploadPreviewSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   files: File[]
-  onConfirm: (groups: File[][]) => void
+  onConfirm: (groups: File[][], selectedLanguage: string) => void
+  selectedLanguage: string
+  onSelectedLanguageChange: (value: string) => void
   onCancel?: () => void
   loading?: boolean
 }
@@ -59,10 +61,13 @@ export function UploadPreviewSheet({
   onOpenChange,
   files,
   onConfirm,
+  selectedLanguage,
+  onSelectedLanguageChange,
   onCancel,
   loading = false,
 }: UploadPreviewSheetProps) {
   const t = useTranslations('uploadPreview')
+  const tl = useTranslations('languages')
   const [items, setItems] = useState<FileWithMeta[]>([])
   const [loadingMeta, setLoadingMeta] = useState(true)
 
@@ -134,7 +139,7 @@ export function UploadPreviewSheet({
 
   const handleConfirm = () => {
     const result: File[][] = groups.map((g) => g.map((i) => i.file))
-    onConfirm(result)
+    onConfirm(result, selectedLanguage || 'auto')
     onOpenChange(false)
   }
 
@@ -154,6 +159,30 @@ export function UploadPreviewSheet({
           </SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto py-4">
+          <div className="mb-4 rounded-lg border border-border p-3 space-y-1.5">
+            <label htmlFor="upload-preview-language" className="text-xs font-medium text-muted-foreground block">
+              {t('languageLabel')}
+            </label>
+            <select
+              id="upload-preview-language"
+              value={selectedLanguage}
+              onChange={(e) => onSelectedLanguageChange(e.target.value)}
+              disabled={loading}
+              className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="auto">{tl('auto')}</option>
+              <option value="en">{tl('en')}</option>
+              <option value="de">{tl('de')}</option>
+              <option value="es">{tl('es')}</option>
+              <option value="fr">{tl('fr')}</option>
+              <option value="it">{tl('it')}</option>
+              <option value="pt">{tl('pt')}</option>
+              <option value="nl">{tl('nl')}</option>
+              <option value="pl">{tl('pl')}</option>
+              <option value="ja">{tl('ja')}</option>
+            </select>
+            <p className="text-[11px] text-muted-foreground">{t('languageHint')}</p>
+          </div>
           {loadingMeta ? (
             <div className="flex items-center justify-center py-12 gap-2">
               <Loader2 className="h-5 w-5 animate-spin" />

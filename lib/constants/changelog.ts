@@ -21,6 +21,13 @@ export const changelog: ChangelogVersion[] = [
         version: '1.23.2',
         date: 'March 17, 2026',
         category: 'improvement',
+        title: 'Upload Preview Lets You Force Transcription Language',
+        description: 'When uploading audio, you can now choose Auto detection or a fixed transcription language directly in the upload preview, making side-by-side diarization testing more reliable.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
         title: 'Transcript Cleanup Panel Is Collapsible and Localized',
         description: 'The transcript cleanup workspace can now be collapsed for a cleaner session view, and its labels and actions now follow your app language for a more consistent editing flow.',
       },

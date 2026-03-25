@@ -1260,6 +1260,8 @@
   "uploadPreview": {
     "title": "Audio hochladen",
     "description": "Pruefen Sie Groesse und Dauer und waehlen Sie dann aus, was hochgeladen werden soll. Gruppieren Sie Dateien, um sie zu einer Sitzung zu kombinieren (z.B. bei Aufnahmeunterbrechungen).",
+    "languageLabel": "Transkriptionssprache",
+    "languageHint": "Waehlen Sie Auto fuer die Spracherkennung durch Speechmatics oder erzwingen Sie eine bestimmte Sprache zum Testen des Diarisierungsverhaltens.",
     "loadingFileInfo": "Dateiinformationen werden geladen...",
     "durationUnavailable": "Dauer nicht verfuegbar",
     "ungroup": "Gruppierung aufheben",

@@ -1261,6 +1261,8 @@
   "uploadPreview": {
     "title": "Upload audio",
     "description": "Check size and duration, then choose what to upload. Group files to combine into one session (e.g. recording interruptions).",
+    "languageLabel": "Transcription language",
+    "languageHint": "Choose Auto to let Speechmatics detect language, or force a specific language for testing diarization behavior.",
     "loadingFileInfo": "Loading file info...",
     "durationUnavailable": "Duration unavailable",
     "ungroup": "Ungroup",

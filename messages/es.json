@@ -1260,6 +1260,8 @@
   "uploadPreview": {
     "title": "Subir audio",
     "description": "Revisa el tamaño y la duración, y luego elige qué subir. Agrupa archivos para combinarlos en una sola sesión (por ejemplo, interrupciones de grabación).",
+    "languageLabel": "Idioma de transcripcion",
+    "languageHint": "Elige Auto para que Speechmatics detecte el idioma, o fuerza un idioma concreto para probar el comportamiento de diarizacion.",
     "loadingFileInfo": "Cargando información del archivo...",
     "durationUnavailable": "Duración no disponible",
     "ungroup": "Desagrupar",
