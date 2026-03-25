@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export type TokenBudgetTask = 'session_analyze' | 'output_generate'
+export type OutputLengthPreference = 'short' | 'medium' | 'long'
 
 type BudgetDefaults = {
   minTokens: number
@@ -26,6 +27,7 @@ export type ResolveTokenBudgetInput = {
   model: string
   promptChars?: number
   templateId?: string | null
+  lengthPreference?: OutputLengthPreference
 }
 
 export type ResolvedTokenBudget = {
@@ -36,6 +38,13 @@ export type ResolvedTokenBudget = {
   estimatedInputTokens: number
   source: 'default' | 'db'
   budgetId?: string
+  lengthPreference?: OutputLengthPreference
+}
+
+const LENGTH_MULTIPLIER: Record<OutputLengthPreference, number> = {
+  short: 0.7,
+  medium: 1.0,
+  long: 1.35,
 }
 
 const DEFAULT_BUDGETS: Record<TokenBudgetTask, BudgetDefaults> = {
@@ -94,6 +103,7 @@ export async function resolveTokenBudget(
   const defaults = DEFAULT_BUDGETS[input.task]
   const promptChars = Math.max(0, input.promptChars || 0)
   const estimatedInputTokens = estimateTokensFromChars(promptChars)
+  const lengthMultiplier = input.lengthPreference ? LENGTH_MULTIPLIER[input.lengthPreference] : 1
 
   try {
     const db = supabase || createServiceRoleClient()
@@ -107,7 +117,7 @@ export async function resolveTokenBudget(
 
     if (error || !Array.isArray(data)) {
       const fallbackMax = clamp(
-        Math.round(estimatedInputTokens * defaults.scalingFactor),
+        Math.round(estimatedInputTokens * defaults.scalingFactor * lengthMultiplier),
         defaults.minTokens,
         defaults.maxTokens
       )
@@ -118,13 +128,14 @@ export async function resolveTokenBudget(
         scalingFactor: defaults.scalingFactor,
         estimatedInputTokens,
         source: 'default',
+        lengthPreference: input.lengthPreference,
       }
     }
 
     const best = pickBestBudgetRow(data as TokenBudgetRow[], input)
     if (!best) {
       const fallbackMax = clamp(
-        Math.round(estimatedInputTokens * defaults.scalingFactor),
+        Math.round(estimatedInputTokens * defaults.scalingFactor * lengthMultiplier),
         defaults.minTokens,
         defaults.maxTokens
       )
@@ -135,11 +146,16 @@ export async function resolveTokenBudget(
         scalingFactor: defaults.scalingFactor,
         estimatedInputTokens,
         source: 'default',
+        lengthPreference: input.lengthPreference,
       }
     }
 
     const dynamicMax = clamp(
-      Math.round(estimatedInputTokens * Number(best.scaling_factor || defaults.scalingFactor)),
+      Math.round(
+        estimatedInputTokens *
+          Number(best.scaling_factor || defaults.scalingFactor) *
+          (input.lengthPreference ? LENGTH_MULTIPLIER[input.lengthPreference] : 1)
+      ),
       Number(best.min_tokens || defaults.minTokens),
       Number(best.max_tokens || defaults.maxTokens)
     )
@@ -152,10 +168,11 @@ export async function resolveTokenBudget(
       estimatedInputTokens,
       source: 'db',
       budgetId: best.id,
+      lengthPreference: input.lengthPreference,
     }
   } catch {
     const fallbackMax = clamp(
-      Math.round(estimatedInputTokens * defaults.scalingFactor),
+      Math.round(estimatedInputTokens * defaults.scalingFactor * lengthMultiplier),
       defaults.minTokens,
       defaults.maxTokens
     )
@@ -166,6 +183,7 @@ export async function resolveTokenBudget(
       scalingFactor: defaults.scalingFactor,
       estimatedInputTokens,
       source: 'default',
+      lengthPreference: input.lengthPreference,
     }
   }
 }

@@ -53,6 +53,7 @@ export type SemanticRole =
 export type Audience = 'internal' | 'external' | 'client' | 'legal' | 'executive'
 
 export type OutputTone = 'direct' | 'neutral' | 'formal' | 'casual' | 'funny' | 'technical'
+export type OutputLengthPreference = 'short' | 'medium' | 'long'
 
 export type OutputFormat = 'markdown' | 'json' | 'email'
 export type TemplateOutputFormat = 'markdown' | 'json' | 'email_text'
@@ -238,4 +239,5 @@ export interface GenerateOutputConfig {
   createTemplateFromConfig: boolean
   citeTimestamps: boolean
   includeDate?: boolean
+  lengthPreference?: OutputLengthPreference
 }

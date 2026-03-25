@@ -565,6 +565,7 @@ Please generate the requested output following all requirements and guidelines.`
       model: 'claude-sonnet-4-5-20250929',
       promptChars: userPrompt.length + systemPrompt.length,
       templateId: config.templateId || null,
+      lengthPreference: config.lengthPreference || 'medium',
     }, supabase)
     await logPipelineEvent({
       sessionId,
@@ -581,6 +582,7 @@ Please generate the requested output following all requirements and guidelines.`
         scalingFactor: outputBudget.scalingFactor,
         estimatedInputTokens: outputBudget.estimatedInputTokens,
         templateId: config.templateId || null,
+        lengthPreference: config.lengthPreference || 'medium',
       },
     }, supabase)
 

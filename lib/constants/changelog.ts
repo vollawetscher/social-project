@@ -20,6 +20,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.23.2',
         date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Output Generator Adds Short, Medium, and Long Length Control',
+        description: 'When generating outputs, you can now choose Short, Medium, or Long length so results better match your preferred detail level and writing time.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
         category: 'fix',
         title: 'AI Analysis Handles JSON-Wrapped Responses More Reliably',
         description: 'Session analysis now robustly parses AI responses even when wrapped in markdown code fences or extra text, reducing intermittent analysis failures.',

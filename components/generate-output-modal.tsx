@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import type { Template, Session, ParticipantRole, Audience, OutputTone, OutputFormat } from "@/lib/types-v0"
+import type { Template, Session, ParticipantRole, Audience, OutputTone, OutputFormat, OutputLengthPreference } from "@/lib/types-v0"
 import { mockTemplates } from "@/lib/mock/data"
 
 interface GenerateOutputModalProps {
@@ -126,6 +126,7 @@ export function GenerateOutputModal({
   }, [session?.id, session?.languageCode, profileLanguage])
   const [tone, setTone] = useState<OutputTone>("neutral")
   const [format, setFormat] = useState<OutputFormat>("markdown")
+  const [lengthPreference, setLengthPreference] = useState<OutputLengthPreference>("medium")
   const [doInstructions, setDoInstructions] = useState("")
   const [dontInstructions, setDontInstructions] = useState("")
   const [createTemplate, setCreateTemplate] = useState(false)
@@ -333,6 +334,7 @@ export function GenerateOutputModal({
             audience: selectedAudience,
             language: resolveLanguageCodeForRequest(),
             tone,
+            lengthPreference,
             format: isEmailTemplate ? 'email' : format,
             doInstructions,
             dontInstructions,
@@ -689,6 +691,21 @@ export function GenerateOutputModal({
                       </SelectContent>
                     </Select>
                   )}
+                </div>
+
+                {/* Length */}
+                <div className="space-y-2">
+                  <Label>{t('outputLength')}</Label>
+                  <Select value={lengthPreference} onValueChange={(v) => setLengthPreference(v as OutputLengthPreference)}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="short">{t('lengthShort')}</SelectItem>
+                      <SelectItem value="medium">{t('lengthMedium')}</SelectItem>
+                      <SelectItem value="long">{t('lengthLong')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Do Instructions */}
