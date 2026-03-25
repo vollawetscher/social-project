@@ -9,6 +9,7 @@ import { logError } from '@/lib/services/error-logger'
 import { sanitizeOutputText } from '@/lib/utils/output-text-sanitizer'
 import { createHash } from 'crypto'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
+import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -118,6 +119,17 @@ export async function POST(request: Request) {
           maxAttempts: 5,
         })
         triggerAsyncWorker()
+        await logPipelineEvent({
+          sessionId,
+          caseId: (session as any)?.case_id || null,
+          userId,
+          stage: 'output_generate',
+          event: 'job_enqueued',
+          metadata: {
+            asyncJobId: job.id,
+            templateId: config.templateId || null,
+          },
+        }, supabase)
         return NextResponse.json({
           queued: true,
           jobId: job.id,
@@ -645,6 +657,18 @@ Please generate the requested output following all requirements and guidelines.`
 
     if (insertError || !output) {
       console.error('[Generate Output] Database insert error:', insertError)
+      await logPipelineEvent({
+        sessionId,
+        caseId: (session as any)?.case_id || null,
+        userId,
+        stage: 'output_generate',
+        event: 'job_failed',
+        severity: 'error',
+        metadata: {
+          message: insertError?.message || 'Failed to save output',
+          code: insertError?.code || null,
+        },
+      }, supabase)
       await logError({
         errorType: 'api_error',
         severity: 'error',
@@ -670,6 +694,18 @@ Please generate the requested output following all requirements and guidelines.`
     }
     
     console.log('[Generate Output] Output saved successfully:', output.id)
+    await logPipelineEvent({
+      sessionId,
+      caseId: (session as any)?.case_id || null,
+      userId,
+      stage: 'output_generate',
+      event: 'job_completed',
+      metadata: {
+        outputId: output.id,
+        templateId: config.templateId || null,
+        language: resolvedLanguageCode,
+      },
+    }, supabase)
 
     // Record AI token usage for beta cost tracking
     if (usage?.input_tokens != null || usage?.output_tokens != null) {
@@ -770,6 +806,14 @@ Please generate the requested output following all requirements and guidelines.`
 
   } catch (error) {
     console.error('Error generating output:', error)
+    await logPipelineEvent({
+      stage: 'output_generate',
+      event: 'job_failed',
+      severity: 'critical',
+      metadata: {
+        message: (error as Error)?.message || 'unknown',
+      },
+    })
     await logError({
       errorType: 'server_error',
       severity: 'error',

@@ -345,7 +345,31 @@
     "noSpeechError": "No se grabó habla — la llamada fue muy corta o silenciosa.",
     "languageDetectError": "No se pudo detectar el idioma. El audio puede ser muy corto, ruidoso o no contener habla.",
     "audioTooShort": "El archivo de audio es muy corto o no contiene habla utilizable para la transcripción.",
-    "formatNotSupported": "El formato de audio no es compatible. Convierte a MP3, M4A o WAV."
+    "formatNotSupported": "El formato de audio no es compatible. Convierte a MP3, M4A o WAV.",
+    "cleanup": {
+      "title": "Limpieza de transcripcion",
+      "description": "Asigna hablantes, fusiona hablantes falsos y aplica sugerencias de correccion antes de generar informes.",
+      "refresh": "Actualizar",
+      "speakers": "Hablantes",
+      "displayNamePlaceholder": "Nombre visible para {speakerId}",
+      "doNotMerge": "No fusionar",
+      "mergeInto": "Fusionar en {speakerId}",
+      "wordCorrections": "Correcciones de palabras",
+      "from": "De",
+      "to": "A",
+      "add": "Agregar",
+      "suggestions": "Sugerencias",
+      "noSuggestions": "No hay sugerencias por ahora.",
+      "mergeSuggestionLabel": "Fusionar {from} -> {to}",
+      "wordSuggestionLabel": "{from} -> {to}",
+      "apply": "Aplicar",
+      "confidence": "{percent}% de confianza",
+      "applyCleanup": "Aplicar limpieza",
+      "saved": "Limpieza de transcripcion guardada",
+      "saveFailed": "No se pudo guardar la limpieza",
+      "suggestionApplied": "Sugerencia aplicada: {from} -> {to}",
+      "correctionAdded": "Correccion agregada: {from} -> {to}"
+    }
   },
   "outputs": {
     "title": "Informes",

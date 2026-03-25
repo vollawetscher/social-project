@@ -7,6 +7,7 @@ import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/h
 import { generateReport } from '@/lib/services/report-generator'
 import { createErrorLogger } from '@/lib/services/error-logger'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
+import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 
 function normalizeVocabCandidate(raw: string): string | null {
   const value = String(raw || '')
@@ -212,6 +213,13 @@ async function processTranscriptionJob(sessionId: string) {
       .select('user_id, input_hint, language, internal_case_id, context_note, context_text, ai_extracted_context, transcript_corrections')
       .eq('id', sessionId)
       .single()
+    await logPipelineEvent({
+      sessionId,
+      userId: (sessionRow as any)?.user_id || null,
+      stage: 'transcribe',
+      event: 'job_started',
+      metadata: { inputHint: (sessionRow as any)?.input_hint || null },
+    }, supabase)
     const inputHint = (sessionRow as any)?.input_hint || ''
     const rawLang = (sessionRow as any)?.language?.slice(0, 2) || null
     const sessionLanguage = rawLang === 'au' ? null : rawLang // 'auto' → null → Speechmatics auto-detect
@@ -354,8 +362,31 @@ async function processTranscriptionJob(sessionId: string) {
           language: sessionLanguage || undefined,
           additionalVocab,
         })
+        await logPipelineEvent({
+          sessionId,
+          userId: (sessionRow as any)?.user_id || null,
+          stage: 'transcribe',
+          event: 'speechmatics_job_completed',
+          metadata: {
+            fileId: file.id,
+            speechmaticsJobId: transcript.jobId || null,
+            language: transcript.language || null,
+            segmentCount: transcript.segments?.length || 0,
+          },
+        }, supabase)
       } catch (transcribeError: any) {
         if (!isExpectedNoSpeechError(transcribeError)) {
+          await logPipelineEvent({
+            sessionId,
+            userId: (sessionRow as any)?.user_id || null,
+            stage: 'transcribe',
+            event: 'speechmatics_job_failed',
+            severity: 'error',
+            metadata: {
+              fileId: file.id,
+              message: String(transcribeError?.message || 'unknown'),
+            },
+          }, supabase)
           throw transcribeError
         }
 
@@ -600,6 +631,16 @@ async function processTranscriptionJob(sessionId: string) {
     await copyTranscriptToCalleeSession(supabase, sessionId)
 
     console.log('[Transcribe] All steps completed successfully!')
+    await logPipelineEvent({
+      sessionId,
+      userId: sessionData?.user_id || null,
+      stage: 'transcribe',
+      event: 'job_completed',
+      metadata: {
+        durationSec: sessionDuration || 0,
+        fileCount: files.length,
+      },
+    }, supabase)
   } catch (error: any) {
     console.error('[Transcribe] CRITICAL ERROR - Exception caught:', error)
     console.error('[Transcribe] Error message:', error.message)
@@ -637,6 +678,17 @@ async function processTranscriptionJob(sessionId: string) {
         last_error: error.message || 'Transcription failed'
       })
       .eq('id', sessionId)
+    await logPipelineEvent({
+      sessionId,
+      userId: session?.user_id || null,
+      caseId: session?.case_id || null,
+      stage: 'transcribe',
+      event: 'job_failed',
+      severity: 'critical',
+      metadata: {
+        message: String(error?.message || 'unknown'),
+      },
+    }, supabase)
   }
 }
 
@@ -690,6 +742,16 @@ export async function POST(
         maxAttempts: 5,
       })
       triggerAsyncWorker()
+      await logPipelineEvent({
+        sessionId: params.id,
+        userId: (session as any).user_id || null,
+        caseId: (session as any).case_id || null,
+        stage: 'transcribe',
+        event: 'job_enqueued',
+        metadata: {
+          asyncJobId: job.id,
+        },
+      }, supabase)
       return NextResponse.json(
         {
           success: true,

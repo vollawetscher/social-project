@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   RotateCcw,
   DollarSign,
+  Activity,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -57,6 +58,16 @@ interface AdminCostRow {
   estimatedCostUsd: number
 }
 
+interface PipelineEvent {
+  id: string
+  session_id: string | null
+  stage: string
+  event: string
+  severity: string
+  metadata: Record<string, unknown> | null
+  created_at: string
+}
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   created:      { label: "Created",      className: "bg-secondary text-muted-foreground border-border" },
   uploading:    { label: "Uploading",    className: "bg-info/20 text-info border-info/30" },
@@ -86,6 +97,9 @@ export default function AdminSessionsPage() {
   const [costPeriod, setCostPeriod] = useState<"week" | "month" | "all">("month")
   const [costRows, setCostRows] = useState<AdminCostRow[]>([])
   const [loadingCosts, setLoadingCosts] = useState(true)
+  const [pipelineSessionId, setPipelineSessionId] = useState("")
+  const [pipelineEvents, setPipelineEvents] = useState<PipelineEvent[]>([])
+  const [loadingPipeline, setLoadingPipeline] = useState(false)
   const [costTotals, setCostTotals] = useState<{
     transcriptionMinutes: number
     aiInputTokens: number
@@ -128,6 +142,29 @@ export default function AdminSessionsPage() {
       setLoadingCosts(false)
     }
   }, [costPeriod])
+
+  const fetchPipelineEvents = useCallback(async (sessionIdOverride?: string) => {
+    const targetSessionId = (sessionIdOverride || pipelineSessionId).trim()
+    if (!targetSessionId) {
+      toast.error("Enter a session ID to load pipeline timeline")
+      return
+    }
+    setLoadingPipeline(true)
+    try {
+      const params = new URLSearchParams({
+        sessionId: targetSessionId,
+        limit: "200",
+      })
+      const res = await fetch(`/api/admin/pipeline-events?${params.toString()}`)
+      if (!res.ok) throw new Error("Failed to fetch pipeline events")
+      const data = await res.json()
+      setPipelineEvents(Array.isArray(data?.events) ? data.events : [])
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load pipeline events")
+    } finally {
+      setLoadingPipeline(false)
+    }
+  }, [pipelineSessionId])
 
   useEffect(() => {
     if (!authLoading && isAdmin) fetchSessions()
@@ -282,6 +319,62 @@ export default function AdminSessionsPage() {
         </CardContent>
       </Card>
 
+      <Card className="border-border">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Pipeline Timeline
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Debug session pipeline stage transitions and provider metadata.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Input
+                placeholder="Session ID"
+                value={pipelineSessionId}
+                onChange={(e) => setPipelineSessionId(e.target.value)}
+                className="w-full sm:w-[360px]"
+              />
+              <Button variant="outline" size="sm" onClick={() => void fetchPipelineEvents()} disabled={loadingPipeline}>
+                <RefreshCw className={cn("h-4 w-4", loadingPipeline && "animate-spin")} />
+              </Button>
+            </div>
+          </div>
+
+          {loadingPipeline ? (
+            <div className="py-6 text-center">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto border border-border rounded-md divide-y divide-border/60">
+              {pipelineEvents.length === 0 ? (
+                <div className="px-3 py-6 text-xs text-center text-muted-foreground">
+                  No pipeline events loaded.
+                </div>
+              ) : (
+                pipelineEvents.map((evt) => (
+                  <div key={evt.id} className="px-3 py-2 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-[10px]">{evt.stage}</Badge>
+                      <span className="font-medium">{evt.event}</span>
+                      <span className="text-muted-foreground">{formatDate(evt.created_at)}</span>
+                    </div>
+                    {evt.metadata && Object.keys(evt.metadata).length > 0 && (
+                      <pre className="mt-1 text-[10px] text-muted-foreground overflow-x-auto whitespace-pre-wrap">
+                        {JSON.stringify(evt.metadata)}
+                      </pre>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -386,6 +479,18 @@ export default function AdminSessionsPage() {
                           <span className="ml-1 hidden sm:inline">Retry</span>
                         </Button>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPipelineSessionId(session.id)
+                          void fetchPipelineEvents(session.id)
+                        }}
+                        className="h-7 text-xs"
+                      >
+                        Trace
+                      </Button>
                       <ExternalLink className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>

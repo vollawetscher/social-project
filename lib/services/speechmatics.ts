@@ -9,6 +9,7 @@ export interface SpeechmaticsTranscript {
   language: string
   fullText: string
   summary?: string
+  jobId?: string
 }
 
 function sanitizeAdditionalVocabTerm(raw: string): string | null {
@@ -114,7 +115,10 @@ export class SpeechmaticsService {
       console.log('[Speechmatics] Job created with ID:', jobId)
 
       const transcript = await this.pollJobStatus(jobId, audioBuffer.length)
-      return transcript
+      return {
+        ...transcript,
+        jobId,
+      }
     } catch (error: any) {
       console.error('[Speechmatics] Transcription error:', error.message, error.cause)
 

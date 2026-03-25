@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { requireSessionAccess } from '@/lib/auth/helpers'
+import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -306,6 +307,14 @@ export async function POST(
       console.error('[Analyze API] Session not found')
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
+    await logPipelineEvent({
+      sessionId: params.id,
+      caseId: (session as any)?.case_id || null,
+      userId,
+      stage: 'analyze',
+      event: 'job_started',
+      metadata: { internalCall: isInternalCall },
+    }, supabase)
     console.log('[Analyze API] Session found, transcripts count:', session.transcripts?.length || 0)
 
     const sourceSignals = ((session as any)?.ai_extracted_context?.sourceSignals || null) as
@@ -398,6 +407,17 @@ export async function POST(
     
     if (session.context_locked || alreadyAnalyzed) {
       console.log('[Analyze API] Using cached analysis (locked or already analyzed)')
+      await logPipelineEvent({
+        sessionId: params.id,
+        caseId: (session as any)?.case_id || null,
+        userId,
+        stage: 'analyze',
+        event: 'job_skipped_cached',
+        metadata: {
+          contextLocked: Boolean(session.context_locked),
+          alreadyAnalyzed: Boolean(alreadyAnalyzed),
+        },
+      }, supabase)
       const existingCorrections = ((session as any)?.transcript_corrections || {}) as Record<string, any>
       const existingNameCorrections = (existingCorrections.name_corrections || {}) as Record<string, string>
       const normalizedContext = ((session as any)?.ai_extracted_context || {}) as Record<string, any>
@@ -684,9 +704,29 @@ Respond in this exact JSON format:
 
     if (updateError) {
       console.error('[Analyze API] Error updating session:', updateError)
+      await logPipelineEvent({
+        sessionId: params.id,
+        caseId: (session as any)?.case_id || null,
+        userId,
+        stage: 'analyze',
+        event: 'job_failed',
+        severity: 'error',
+        metadata: { message: updateError.message },
+      }, supabase)
       // Don't fail the request if update fails, just log it
     } else {
       console.log('[Analyze API] Session updated successfully')
+      await logPipelineEvent({
+        sessionId: params.id,
+        caseId: (session as any)?.case_id || null,
+        userId,
+        stage: 'analyze',
+        event: 'job_completed',
+        metadata: {
+          recordingType: finalRecordingType,
+          suggestedFormats: suggestedFormats.length,
+        },
+      }, supabase)
     }
 
     // Check user's auto-generation preference (profile already fetched above)
@@ -823,6 +863,13 @@ Respond in this exact JSON format:
     console.error('[Analyze API] Error:', error)
     console.error('[Analyze API] Error stack:', error?.stack)
     console.error('[Analyze API] Error message:', error?.message)
+    await logPipelineEvent({
+      sessionId: params.id,
+      stage: 'analyze',
+      event: 'job_failed',
+      severity: 'critical',
+      metadata: { message: String(error?.message || 'unknown') },
+    })
     return NextResponse.json({ 
       error: 'Failed to analyze session', 
       message: error?.message,

@@ -29,6 +29,8 @@ import {
   MessageSquare,
   Trash2,
   Shuffle,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -190,6 +192,7 @@ export default function SessionDetailPage() {
   const [newWordFrom, setNewWordFrom] = useState('')
   const [newWordTo, setNewWordTo] = useState('')
   const [savingCleanup, setSavingCleanup] = useState(false)
+  const [cleanupPanelOpen, setCleanupPanelOpen] = useState(false)
   const tPastePreview = useTranslations('pastePreview')
   const hasAudioInSession =
     Boolean(session?.audioUrl) ||
@@ -373,7 +376,7 @@ export default function SessionDetailPage() {
         ...prev,
         [suggestion.from]: suggestion.to,
       }))
-      toast.success(`Suggestion applied: ${suggestion.from} -> ${suggestion.to}`)
+      toast.success(t('cleanup.suggestionApplied', { from: suggestion.from, to: suggestion.to }))
       return
     }
     if (suggestion.type === 'word') {
@@ -381,9 +384,9 @@ export default function SessionDetailPage() {
         ...prev,
         [suggestion.from]: suggestion.to,
       }))
-      toast.success(`Correction added: ${suggestion.from} -> ${suggestion.to}`)
+      toast.success(t('cleanup.correctionAdded', { from: suggestion.from, to: suggestion.to }))
     }
-  }, [])
+  }, [t])
 
   const handleSaveCleanup = useCallback(async () => {
     if (!session) return
@@ -409,20 +412,20 @@ export default function SessionDetailPage() {
         body: JSON.stringify(payload),
       })
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data?.error || 'Failed to save cleanup')
+      if (!response.ok) throw new Error(data?.error || t('cleanup.saveFailed'))
 
       setSession((prev) => prev ? {
         ...prev,
         transcriptCorrections: data.corrections || prev.transcriptCorrections,
       } : prev)
-      toast.success('Transcript cleanup saved')
+      toast.success(t('cleanup.saved'))
     } catch (error) {
       console.error('[Cleanup] Save failed:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to save cleanup')
+      toast.error(error instanceof Error ? error.message : t('cleanup.saveFailed'))
     } finally {
       setSavingCleanup(false)
     }
-  }, [cleanupSuggestions, session, sessionId, speakerMergeMap, speakerNameMap, wordCorrectionsDraft])
+  }, [cleanupSuggestions, session, sessionId, speakerMergeMap, speakerNameMap, t, wordCorrectionsDraft])
 
   // Fetch outputs - reusable for initial load and after generation
   const fetchOutputs = useCallback(async () => {
@@ -905,20 +908,39 @@ export default function SessionDetailPage() {
   const renderCleanupPanel = () => (
     <div className="mb-3 rounded-lg border border-border bg-card p-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-foreground">Transcript cleanup</p>
-          <p className="text-xs text-muted-foreground">
-            Map speakers, merge false speakers, and apply correction suggestions before output generation.
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => void loadCleanupSuggestions()} disabled={loadingCleanupSuggestions}>
-          {loadingCleanupSuggestions ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Refresh'}
+        <button
+          type="button"
+          className="flex items-start gap-2 text-left"
+          onClick={() => setCleanupPanelOpen((prev) => !prev)}
+          aria-expanded={cleanupPanelOpen}
+        >
+          {cleanupPanelOpen ? (
+            <ChevronDown className="h-4 w-4 mt-0.5 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 mt-0.5 text-muted-foreground" />
+          )}
+          <div>
+            <p className="text-sm font-semibold text-foreground">{t('cleanup.title')}</p>
+            <p className="text-xs text-muted-foreground">
+              {t('cleanup.description')}
+            </p>
+          </div>
+        </button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void loadCleanupSuggestions()}
+          disabled={loadingCleanupSuggestions || !cleanupPanelOpen}
+        >
+          {loadingCleanupSuggestions ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t('cleanup.refresh')}
         </Button>
       </div>
 
+      {!cleanupPanelOpen ? null : (
+        <>
       {speakerIds.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Speakers</p>
+          <p className="text-xs font-medium text-muted-foreground">{t('cleanup.speakers')}</p>
           <div className="space-y-2">
             {speakerIds.map((speakerId) => (
               <div key={speakerId} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
@@ -926,7 +948,7 @@ export default function SessionDetailPage() {
                 <Input
                   value={speakerNameMap[speakerId] || ''}
                   onChange={(e) => setSpeakerNameMap((prev) => ({ ...prev, [speakerId]: e.target.value }))}
-                  placeholder={`Display name for ${speakerId}`}
+                  placeholder={t('cleanup.displayNamePlaceholder', { speakerId })}
                 />
                 <select
                   className="h-9 rounded-md border border-input bg-background px-2 text-sm"
@@ -941,9 +963,9 @@ export default function SessionDetailPage() {
                     })
                   }}
                 >
-                  <option value="">Do not merge</option>
+                  <option value="">{t('cleanup.doNotMerge')}</option>
                   {speakerIds.filter((id) => id !== speakerId).map((id) => (
-                    <option key={id} value={id}>Merge into {id}</option>
+                    <option key={id} value={id}>{t('cleanup.mergeInto', { speakerId: id })}</option>
                   ))}
                 </select>
               </div>
@@ -953,10 +975,10 @@ export default function SessionDetailPage() {
       )}
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">Word corrections</p>
+        <p className="text-xs font-medium text-muted-foreground">{t('cleanup.wordCorrections')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
-          <Input value={newWordFrom} onChange={(e) => setNewWordFrom(e.target.value)} placeholder="From" />
-          <Input value={newWordTo} onChange={(e) => setNewWordTo(e.target.value)} placeholder="To" />
+          <Input value={newWordFrom} onChange={(e) => setNewWordFrom(e.target.value)} placeholder={t('cleanup.from')} />
+          <Input value={newWordTo} onChange={(e) => setNewWordTo(e.target.value)} placeholder={t('cleanup.to')} />
           <Button
             type="button"
             variant="outline"
@@ -969,7 +991,7 @@ export default function SessionDetailPage() {
               setNewWordTo('')
             }}
           >
-            Add
+            {t('cleanup.add')}
           </Button>
         </div>
         {Object.keys(wordCorrectionsDraft).length > 0 && (
@@ -998,21 +1020,25 @@ export default function SessionDetailPage() {
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">Suggestions</p>
+        <p className="text-xs font-medium text-muted-foreground">{t('cleanup.suggestions')}</p>
         {cleanupSuggestions.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No suggestions right now.</p>
+          <p className="text-xs text-muted-foreground">{t('cleanup.noSuggestions')}</p>
         ) : (
           <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
             {cleanupSuggestions.map((s) => (
               <div key={s.id} className="rounded border border-border px-2 py-1.5 text-xs">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">{s.type === 'speaker_merge' ? `Merge ${s.from} -> ${s.to}` : `${s.from} -> ${s.to}`}</span>
+                  <span className="font-medium">
+                    {s.type === 'speaker_merge'
+                      ? t('cleanup.mergeSuggestionLabel', { from: s.from, to: s.to })
+                      : t('cleanup.wordSuggestionLabel', { from: s.from, to: s.to })}
+                  </span>
                   <Button size="sm" variant="outline" className="h-6 px-2" onClick={() => handleApplyCleanupSuggestion(s)}>
-                    Apply
+                    {t('cleanup.apply')}
                   </Button>
                 </div>
                 <p className="text-muted-foreground mt-0.5">
-                  {Math.round(s.confidence * 100)}% confidence{s.evidence ? ` · ${s.evidence}` : ''}
+                  {t('cleanup.confidence', { percent: Math.round(s.confidence * 100) })}{s.evidence ? ` · ${s.evidence}` : ''}
                 </p>
               </div>
             ))}
@@ -1023,9 +1049,11 @@ export default function SessionDetailPage() {
       <div className="flex justify-end">
         <Button size="sm" onClick={() => void handleSaveCleanup()} disabled={savingCleanup}>
           {savingCleanup ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-          Apply cleanup
+          {t('cleanup.applyCleanup')}
         </Button>
       </div>
+      </>
+      )}
     </div>
   )
 

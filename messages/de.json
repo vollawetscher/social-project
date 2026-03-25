@@ -345,7 +345,31 @@
     "noSpeechError": "Keine Sprache aufgenommen — der Anruf war zu kurz oder stumm.",
     "languageDetectError": "Sprache konnte nicht erkannt werden. Das Audio ist möglicherweise zu kurz, zu verrauscht oder enthält keine Sprache.",
     "audioTooShort": "Die Audiodatei ist zu kurz oder enthält keine verwertbare Sprache für die Transkription.",
-    "formatNotSupported": "Das Audioformat wird nicht unterstützt. Bitte konvertieren Sie in MP3, M4A oder WAV."
+    "formatNotSupported": "Das Audioformat wird nicht unterstützt. Bitte konvertieren Sie in MP3, M4A oder WAV.",
+    "cleanup": {
+      "title": "Transkript-Bereinigung",
+      "description": "Sprecher zuordnen, falsche Sprecher zusammenfuehren und Korrekturvorschlaege vor der Ausgabeerstellung anwenden.",
+      "refresh": "Aktualisieren",
+      "speakers": "Sprecher",
+      "displayNamePlaceholder": "Anzeigename fuer {speakerId}",
+      "doNotMerge": "Nicht zusammenfuehren",
+      "mergeInto": "Zusammenfuehren mit {speakerId}",
+      "wordCorrections": "Wortkorrekturen",
+      "from": "Von",
+      "to": "Nach",
+      "add": "Hinzufuegen",
+      "suggestions": "Vorschlaege",
+      "noSuggestions": "Derzeit keine Vorschlaege.",
+      "mergeSuggestionLabel": "{from} -> {to} zusammenfuehren",
+      "wordSuggestionLabel": "{from} -> {to}",
+      "apply": "Anwenden",
+      "confidence": "{percent}% Konfidenz",
+      "applyCleanup": "Bereinigung anwenden",
+      "saved": "Transkript-Bereinigung gespeichert",
+      "saveFailed": "Bereinigung konnte nicht gespeichert werden",
+      "suggestionApplied": "Vorschlag angewendet: {from} -> {to}",
+      "correctionAdded": "Korrektur hinzugefuegt: {from} -> {to}"
+    }
   },
   "outputs": {
     "title": "Ausgaben",
