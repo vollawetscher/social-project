@@ -176,12 +176,18 @@ export async function POST(
       }, { status: 500 })
     }
 
-    // Record word corrections to user_word_corrections for Speechmatics dictionary (top used)
-    // Only increment when correction is new or changed (avoid inflating on every save)
-    if (type === 'word_corrections' && typeof corrections === 'object' && !Array.isArray(corrections)) {
+    // Persist word corrections for later quality analysis / dictionary rollout.
+    // Only increment when correction is new or changed (avoid inflating on every save).
+    const wordCorrectionsToPersist: Record<string, string> | null =
+      type === 'word_corrections' && typeof corrections === 'object' && !Array.isArray(corrections)
+        ? (corrections as Record<string, string>)
+        : type === 'bulk_cleanup' && isObjectRecord((corrections as Record<string, unknown>).word_corrections)
+          ? ((corrections as Record<string, unknown>).word_corrections as Record<string, string>)
+          : null
+
+    if (wordCorrectionsToPersist) {
       const prev = (existingCorrections.word_corrections || {}) as Record<string, string>
-      const wordCorrections = corrections as Record<string, string>
-      for (const [original, corrected] of Object.entries(wordCorrections)) {
+      for (const [original, corrected] of Object.entries(wordCorrectionsToPersist)) {
         const o = String(original ?? '').trim()
         const c = String(corrected ?? '').trim()
         if (!o || !c) continue

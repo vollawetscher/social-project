@@ -26,6 +26,16 @@ export async function GET(
     await requireSessionAccess(params.id, user.id)
 
     const db = createServiceRoleClient()
+    const { data: sessionRow, error: sessionError } = await db
+      .from('sessions')
+      .select('transcript_corrections')
+      .eq('id', params.id)
+      .single()
+
+    if (sessionError) {
+      return NextResponse.json({ error: sessionError.message }, { status: 500 })
+    }
+
     const { data: transcripts, error } = await db
       .from('transcripts')
       .select('id, raw_json, raw_text, created_at')
@@ -42,6 +52,14 @@ export async function GET(
     const allSegments = (transcripts || []).flatMap((t: any) =>
       Array.isArray(t.raw_json) ? t.raw_json : []
     )
+    const corrections = ((sessionRow as any)?.transcript_corrections || {}) as Record<string, any>
+    const acceptedSuggestionIds = new Set(
+      Array.isArray(corrections.accepted_suggestions)
+        ? corrections.accepted_suggestions.map((v: unknown) => String(v))
+        : []
+    )
+    const existingSpeakerMerges = (corrections.speaker_merge_map || {}) as Record<string, string>
+    const existingWordCorrections = (corrections.word_corrections || {}) as Record<string, string>
 
     const speakerStats = new Map<string, { turns: number; words: number }>()
     for (const seg of allSegments) {
@@ -81,6 +99,8 @@ export async function GET(
 
       const id = `speaker_merge:${speaker}->${target}`
       if (suggestions.some((s) => s.id === id)) continue
+      if (acceptedSuggestionIds.has(id)) continue
+      if (existingSpeakerMerges[speaker] === target) continue
       suggestions.push({
         id,
         type: 'speaker_merge',
@@ -97,8 +117,11 @@ export async function GET(
       .join('\n')
     for (const phraseFix of COMMON_PHRASE_FIXES) {
       if (!fullText.includes(phraseFix.from)) continue
+      const id = `word:${phraseFix.from}`
+      if (acceptedSuggestionIds.has(id)) continue
+      if (existingWordCorrections[phraseFix.from] === phraseFix.to) continue
       suggestions.push({
-        id: `word:${phraseFix.from}`,
+        id,
         type: 'word',
         from: phraseFix.from,
         to: phraseFix.to,
