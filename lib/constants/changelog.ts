@@ -20,6 +20,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.23.2',
         date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'AI Requests Now Use Adaptive Token Budgets',
+        description: 'Session analysis and output generation now use dynamic token budgets based on prompt size and task type, improving cost efficiency while keeping output quality stable.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
         category: 'fix',
         title: 'Cleanup Refresh No Longer Repeats Applied Suggestions',
         description: 'Transcript cleanup refresh now suppresses suggestions you already applied, so accepted speaker merges and word fixes don\'t keep reappearing.',

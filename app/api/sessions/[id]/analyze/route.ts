@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { requireSessionAccess } from '@/lib/auth/helpers'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
+import { resolveTokenBudget } from '@/lib/services/token-budget'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -481,9 +482,31 @@ export async function POST(
 
     // Call Claude to analyze with enhanced context extraction
     console.log('[Analyze API] Calling Claude API for enhanced analysis...')
+    const analysisBudget = await resolveTokenBudget({
+      task: 'session_analyze',
+      model: 'claude-sonnet-4-5-20250929',
+      // Approximate full prompt size from transcript sample + fixed instructions.
+      promptChars: sample.length + 4500,
+    }, supabase)
+    await logPipelineEvent({
+      sessionId: params.id,
+      caseId: (session as any)?.case_id || null,
+      userId,
+      stage: 'analyze',
+      event: 'token_budget_resolved',
+      metadata: {
+        source: analysisBudget.source,
+        budgetId: analysisBudget.budgetId || null,
+        minTokens: analysisBudget.minTokens,
+        maxTokens: analysisBudget.maxTokens,
+        ceilingTokens: analysisBudget.ceilingTokens,
+        scalingFactor: analysisBudget.scalingFactor,
+        estimatedInputTokens: analysisBudget.estimatedInputTokens,
+      },
+    }, supabase)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 3072,
+      max_tokens: analysisBudget.maxTokens,
       messages: [
         {
           role: 'user',

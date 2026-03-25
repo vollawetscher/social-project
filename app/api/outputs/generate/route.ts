@@ -10,6 +10,7 @@ import { sanitizeOutputText } from '@/lib/utils/output-text-sanitizer'
 import { createHash } from 'crypto'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
+import { resolveTokenBudget } from '@/lib/services/token-budget'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -559,11 +560,34 @@ ${transcriptText}${speakersText}
 Please generate the requested output following all requirements and guidelines.`
     
     console.log('[Generate Output] Prompt length:', userPrompt.length)
+    const outputBudget = await resolveTokenBudget({
+      task: 'output_generate',
+      model: 'claude-sonnet-4-5-20250929',
+      promptChars: userPrompt.length + systemPrompt.length,
+      templateId: config.templateId || null,
+    }, supabase)
+    await logPipelineEvent({
+      sessionId,
+      caseId: (session as any)?.case_id || null,
+      userId,
+      stage: 'output_generate',
+      event: 'token_budget_resolved',
+      metadata: {
+        source: outputBudget.source,
+        budgetId: outputBudget.budgetId || null,
+        minTokens: outputBudget.minTokens,
+        maxTokens: outputBudget.maxTokens,
+        ceilingTokens: outputBudget.ceilingTokens,
+        scalingFactor: outputBudget.scalingFactor,
+        estimatedInputTokens: outputBudget.estimatedInputTokens,
+        templateId: config.templateId || null,
+      },
+    }, supabase)
 
     // Generate with Claude (use generous token limit to avoid truncated reports)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 16384,
+      max_tokens: outputBudget.maxTokens,
       messages: [
         {
           role: 'user',
