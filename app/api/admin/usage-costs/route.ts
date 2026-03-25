@@ -2,17 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth/helpers'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 
-type UsageEventType =
-  | 'transcription_minutes'
-  | 'ai_tokens_input'
-  | 'ai_tokens_output'
-  | 'ai_generations'
-  | 'email_cost_usd'
-  | 'sms_messages_attempted'
-  | 'sms_messages_sent'
-  | 'voice_calls_attempted'
-  | 'voice_calls_connected'
-
 interface UserCostRow {
   userId: string
   displayName: string | null
@@ -28,21 +17,6 @@ interface UserCostRow {
 const TRANSCRIPTION_COST_PER_MIN = 0.0278
 const AI_INPUT_COST_PER_TOKEN = 0.000003
 const AI_OUTPUT_COST_PER_TOKEN = 0.000015
-
-function resolveFromDate(period: string): string {
-  const now = new Date()
-  if (period === 'week') {
-    const d = new Date(now)
-    d.setDate(d.getDate() - 7)
-    return d.toISOString()
-  }
-  if (period === 'month') {
-    const d = new Date(now)
-    d.setMonth(d.getMonth() - 1)
-    return d.toISOString()
-  }
-  return '1970-01-01'
-}
 
 /**
  * GET /api/admin/usage-costs
@@ -65,44 +39,70 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || 'month'
-    const fromDate = resolveFromDate(period)
 
     const service = createServiceRoleClient()
-    const { data: events, error } = await service
-      .from('usage_events')
-      .select('user_id, event_type, amount')
-      .gte('created_at', fromDate)
+    const { data: aggregatedRows, error } = await service
+      .from('usage_costs')
+      .select(`
+        user_id,
+        transcription_minutes_all, ai_input_tokens_all, ai_output_tokens_all, ai_generations_all, email_cost_usd_all,
+        transcription_minutes_30d, ai_input_tokens_30d, ai_output_tokens_30d, ai_generations_30d, email_cost_usd_30d,
+        transcription_minutes_7d, ai_input_tokens_7d, ai_output_tokens_7d, ai_generations_7d, email_cost_usd_7d
+      `)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    const scope = period === 'week' ? '7d' : period === 'all' ? 'all' : '30d'
     const rows = new Map<string, UserCostRow>()
-    for (const event of events || []) {
-      const userId = String((event as any).user_id || '')
+    for (const source of aggregatedRows || []) {
+      const userId = String((source as any).user_id || '')
       if (!userId) continue
-      if (!rows.has(userId)) {
-        rows.set(userId, {
-          userId,
-          displayName: null,
-          email: null,
-          transcriptionMinutes: 0,
-          aiInputTokens: 0,
-          aiOutputTokens: 0,
-          aiGenerations: 0,
-          emailCostUsd: 0,
-          estimatedCostUsd: 0,
-        })
-      }
-      const row = rows.get(userId)!
-      const eventType = String((event as any).event_type || '') as UsageEventType
-      const amount = Number((event as any).amount || 0)
+      let transcriptionMinutes = Number((source as any)[`transcription_minutes_${scope}`] || 0)
+      let aiInputTokens = Number((source as any)[`ai_input_tokens_${scope}`] || 0)
+      let aiOutputTokens = Number((source as any)[`ai_output_tokens_${scope}`] || 0)
+      let aiGenerations = Number((source as any)[`ai_generations_${scope}`] || 0)
+      let emailCostUsd = Number((source as any)[`email_cost_usd_${scope}`] || 0)
 
-      if (eventType === 'transcription_minutes') row.transcriptionMinutes += amount
-      if (eventType === 'ai_tokens_input') row.aiInputTokens += amount
-      if (eventType === 'ai_tokens_output') row.aiOutputTokens += amount
-      if (eventType === 'ai_generations') row.aiGenerations += amount
-      if (eventType === 'email_cost_usd') row.emailCostUsd += amount
+      // Defensive monotonicity guard:
+      // "All time" should never show lower usage than "last 30 days".
+      // This protects reporting against historical correction rows (e.g. negative adjustments)
+      // and avoids confusing admin UX.
+      if (scope === 'all') {
+        transcriptionMinutes = Math.max(
+          transcriptionMinutes,
+          Number((source as any).transcription_minutes_30d || 0)
+        )
+        aiInputTokens = Math.max(
+          aiInputTokens,
+          Number((source as any).ai_input_tokens_30d || 0)
+        )
+        aiOutputTokens = Math.max(
+          aiOutputTokens,
+          Number((source as any).ai_output_tokens_30d || 0)
+        )
+        aiGenerations = Math.max(
+          aiGenerations,
+          Number((source as any).ai_generations_30d || 0)
+        )
+        emailCostUsd = Math.max(
+          emailCostUsd,
+          Number((source as any).email_cost_usd_30d || 0)
+        )
+      }
+
+      rows.set(userId, {
+        userId,
+        displayName: null,
+        email: null,
+        transcriptionMinutes,
+        aiInputTokens,
+        aiOutputTokens,
+        aiGenerations,
+        emailCostUsd,
+        estimatedCostUsd: 0,
+      })
     }
 
     const userIds = Array.from(rows.keys())
@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       period,
-      fromDate,
+      source: 'usage_costs_view',
       users: costRows,
       totals,
     })

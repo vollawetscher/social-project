@@ -40,6 +40,64 @@ function isAllowedSuggestionAudience(value: unknown): value is (typeof ALLOWED_S
   return typeof value === 'string' && ALLOWED_SUGGESTION_AUDIENCES.includes(value as (typeof ALLOWED_SUGGESTION_AUDIENCES)[number])
 }
 
+function compactSessionSummaryText(raw: string, maxChars = 1200): string {
+  const normalized = String(raw || '')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  if (!normalized) return ''
+  if (normalized.length <= maxChars) return normalized
+  return `${normalized.slice(0, maxChars - 1).trimEnd()}…`
+}
+
+function synthesizeSummaryFromContext(extractedContext: Record<string, any>): string {
+  const lines: string[] = []
+  const purpose = String(extractedContext?.purpose || '').trim()
+  const outcome = String(extractedContext?.outcome || '').trim()
+  const topics = Array.isArray(extractedContext?.topics)
+    ? extractedContext.topics.map((t: unknown) => String(t || '').trim()).filter(Boolean)
+    : []
+  const decisions = Array.isArray(extractedContext?.decisions)
+    ? extractedContext.decisions.map((d: unknown) => String(d || '').trim()).filter(Boolean)
+    : []
+  const actionItems = Array.isArray(extractedContext?.actionItems)
+    ? extractedContext.actionItems
+        .map((a: unknown) => {
+          const item = (typeof a === 'object' && a !== null ? a : {}) as Record<string, unknown>
+          const task = String(item.task || '').trim()
+          const owner = String(item.owner || '').trim()
+          if (!task) return ''
+          return owner ? `${task} (${owner})` : task
+        })
+        .filter(Boolean)
+    : []
+
+  if (purpose) lines.push(`- Purpose: ${purpose}`)
+  if (topics.length > 0) lines.push(`- Topics: ${topics.slice(0, 4).join(', ')}`)
+  if (decisions.length > 0) lines.push(`- Decisions: ${decisions.slice(0, 3).join('; ')}`)
+  if (actionItems.length > 0) lines.push(`- Actions: ${actionItems.slice(0, 3).join('; ')}`)
+  if (outcome) lines.push(`- Outcome: ${outcome}`)
+
+  return lines.join('\n')
+}
+
+function resolveSessionSummary(
+  analysis: Record<string, any>,
+  mergedExtractedContext: Record<string, any>,
+  existingSummary: string | null
+): string | null {
+  const direct =
+    String(analysis.sessionSummary || analysis.summary || analysis.briefSummary || '').trim()
+  if (direct) return compactSessionSummaryText(direct)
+
+  const fromContext = synthesizeSummaryFromContext(mergedExtractedContext)
+  if (fromContext) return compactSessionSummaryText(fromContext)
+
+  const fallback = String(existingSummary || '').trim()
+  return fallback ? compactSessionSummaryText(fallback) : null
+}
+
 const asSegmentArray = (value: unknown): { start_ms?: number; end_ms?: number; [k: string]: any }[] =>
   Array.isArray(value) ? (value as { start_ms?: number; end_ms?: number; [k: string]: any }[]) : []
 
@@ -448,6 +506,7 @@ ${sample}
 
 Respond in this exact JSON format:
 {
+  "sessionSummary": "- concise bullet 1\\n- concise bullet 2\\n- concise bullet 3",
   "recordingType": "consultation",
   "recordingTypeConfidence": 0.92,
   "domains": [
@@ -515,7 +574,8 @@ Respond in this exact JSON format:
 - If information isn't clearly available, use empty arrays [] or "unknown"
 - Be accurate and preserve correct spelling from transcript
 - For consent: focus on the first 1-2 minutes of the conversation. If nothing found, use discussed: false, participantsConsented: [], summary: null
-- For spokenCommands: use fuzzy matching. Accept Notissima + common ASR misspellings (Notisima, Notissma, Natissima, etc.). Accept phonetically similar wake words. Include if it reasonably looks like a command to the assistant. Preserve the exact phrase from transcript. Empty array if none found`
+- For spokenCommands: use fuzzy matching. Accept Notissima + common ASR misspellings (Notisima, Notissma, Natissima, etc.). Accept phonetically similar wake words. Include if it reasonably looks like a command to the assistant. Preserve the exact phrase from transcript. Empty array if none found
+- Add "sessionSummary" as 2-5 concise bullets in the transcript language, focused on what happened, decisions, and next actions.`
         }
       ]
     })
@@ -546,7 +606,7 @@ Respond in this exact JSON format:
     }
     
     console.log('[Analyze API] Extracted JSON:', jsonText.substring(0, 200))
-    const analysis = JSON.parse(jsonText)
+    const analysis = JSON.parse(jsonText) as Record<string, any>
     console.log('[Analyze API] Parsed analysis:', JSON.stringify(analysis).substring(0, 300))
     console.log('[Analyze API] AI identified participants:', JSON.stringify(analysis.extractedContext?.participants, null, 2))
 
@@ -586,6 +646,11 @@ Respond in this exact JSON format:
           },
         }
       : existingCorrections
+    const canonicalSummary = resolveSessionSummary(
+      analysis,
+      mergedExtractedContext,
+      ((session as any)?.speechmatics_summary ?? null) as string | null
+    )
 
     // Update session with AI suggestions and extracted context
     console.log('[Analyze API] Updating session in database...')
@@ -613,6 +678,7 @@ Respond in this exact JSON format:
         ai_extracted_context: mergedExtractedContext,
         suggested_output_formats: suggestedFormats,
         transcript_corrections: mergedTranscriptCorrections,
+        speechmatics_summary: canonicalSummary,
       })
       .eq('id', params.id)
 

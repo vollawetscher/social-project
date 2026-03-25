@@ -101,6 +101,27 @@ export const changelog: ChangelogVersion[] = [
         title: 'Project Pulse Wave Uses Real ECG-Style Beats',
         description: 'The mini pulse graph now uses a heartbeat-style spike pattern instead of a smooth wave, making project activity feel more intuitive at a glance.',
       },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Admin Cost Totals Now Match Selected Time Window',
+        description: 'Cost estimates now come from a reliable aggregated data view, so all-time, 30-day, and 7-day totals are consistent and no longer undercount on larger datasets.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Session Summaries Now Come from First AI Analysis',
+        description: 'Notissima now creates and stores the session summary during the first AI analysis pass, reducing duplicate summarization costs while keeping project-ready context in one step.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'All-Time Usage Totals No Longer Drop Below 30-Day Values',
+        description: 'Admin usage reporting now enforces monotonic totals so all-time minutes, tokens, and cost never appear lower than the last 30 days for the same metrics.',
+      },
     ],
   },
   {

@@ -71,10 +71,6 @@ export class SpeechmaticsService {
           ...dynamicAdditionalVocab,
         ],
       },
-      summarization_config: {
-        content_type: options?.contentType ?? 'conversational',
-        summary_length: 'brief',
-      },
     }
 
     formData.append('config', JSON.stringify(config))

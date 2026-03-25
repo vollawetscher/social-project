@@ -112,7 +112,7 @@ export interface Session {
   outputCount?: number // Number of generated outputs for this session
   transcriptCorrections?: TranscriptCorrections // Alias system for corrections & PII
   suggestedOutputFormats?: SuggestedOutputFormat[] // AI-suggested output formats for this session (domain-aware)
-  speechmaticsSummary?: string // Brief summary from Speechmatics (generated during transcription)
+  speechmaticsSummary?: string // Canonical session summary (generated during AI analysis)
   recordedAt?: string // Date/time from audio file metadata when available (ISO string)
   ownerEmail?: string // Admin view: session owner email
   ownerId?: string // Session owner user_id (for hand-off visibility)
