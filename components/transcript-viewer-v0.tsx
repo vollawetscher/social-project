@@ -34,9 +34,26 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
     )
   }
 
+  const speakerNameMap: Record<string, string> = {
+    ...(corrections?.speaker_name_map || {}),
+    ...(corrections?.name_corrections || {}),
+  }
+  const speakerMergeMap = corrections?.speaker_merge_map || {}
+  const resolveMergedSpeakerId = (speakerId: string): string => {
+    let current = String(speakerId || '').trim()
+    const visited = new Set<string>()
+    while (current && speakerMergeMap[current] && !visited.has(current)) {
+      visited.add(current)
+      const next = String(speakerMergeMap[current] || '').trim()
+      if (!next || next === current) break
+      current = next
+    }
+    return current || String(speakerId || '').trim()
+  }
+
   // Combine all corrections (name corrections + PII redactions + word corrections)
   const allCorrections: Record<string, string> = {
-    ...(corrections?.name_corrections || {}),
+    ...speakerNameMap,
     ...(corrections?.pii_redactions || {}),
     ...(corrections?.word_corrections || {})
   }
@@ -56,7 +73,14 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
   }
 
   // Group speakers for consistent coloring (apply corrections to speaker names)
-  const speakers = Array.from(new Set(segments.map(s => allCorrections[s.speakerName] || s.speakerName)))
+  const speakers = Array.from(
+    new Set(
+      segments.map((s) => {
+        const merged = resolveMergedSpeakerId(s.speakerId || s.speakerName)
+        return speakerNameMap[merged] || allCorrections[s.speakerName] || merged || s.speakerName
+      })
+    )
+  )
   const getSpeakerColor = (speaker: string) => {
     const index = speakers.indexOf(speaker)
     return SPEAKER_COLORS[index % SPEAKER_COLORS.length]
@@ -117,7 +141,8 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                             (index === segments.length - 1 || currentTime < segments[index + 1].startTime)
             
             // Apply corrections to speaker name and text
-            const correctedSpeaker = allCorrections[segment.speakerName] || segment.speakerName
+            const mergedSpeakerId = resolveMergedSpeakerId(segment.speakerId || segment.speakerName)
+            const correctedSpeaker = speakerNameMap[mergedSpeakerId] || allCorrections[segment.speakerName] || mergedSpeakerId || segment.speakerName
             const { text: correctedText, hasCorrections, original } = applyCorrections(segment.text)
             
             return (
@@ -151,7 +176,7 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                 {/* Content */}
                 <div className="flex-1 min-w-0 space-y-1.5">
                   {/* Speaker Badge */}
-                  {allCorrections[segment.speakerName] ? (
+                  {(speakerNameMap[mergedSpeakerId] || allCorrections[segment.speakerName]) ? (
                     <Tooltip>
                       <TooltipTrigger>
                         <Badge 
@@ -162,7 +187,7 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                         </Badge>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="text-xs">Original: {segment.speakerName}</p>
+                          <p className="text-xs">Original: {segment.speakerName}</p>
                       </TooltipContent>
                     </Tooltip>
                   ) : (

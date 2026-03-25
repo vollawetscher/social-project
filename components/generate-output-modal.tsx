@@ -220,8 +220,17 @@ export function GenerateOutputModal({
 
   // Get label for a perspective: prefer real name over S1/S2
   const getDisplayName = (speaker: { id: string; name: string }) => {
-    const corrected = session.transcriptCorrections?.name_corrections?.[speaker.name] 
-      || session.transcriptCorrections?.name_corrections?.[speaker.id]
+    const mergeMap = session.transcriptCorrections?.speaker_merge_map || {}
+    let mergedId = speaker.id
+    const visited = new Set<string>()
+    while (mergeMap[mergedId] && !visited.has(mergedId)) {
+      visited.add(mergedId)
+      const next = mergeMap[mergedId]
+      if (!next || next === mergedId) break
+      mergedId = next
+    }
+    const nameMap = session.transcriptCorrections?.speaker_name_map || session.transcriptCorrections?.name_corrections || {}
+    const corrected = nameMap[speaker.name] || nameMap[speaker.id] || nameMap[mergedId]
     if (corrected) return corrected
     // Fallback: use extractedContext participants by order (S1=first, S2=second)
     if (/^S\d+$/i.test(speaker.name)) {

@@ -34,6 +34,18 @@ function sanitizeGeneratedEmailText(input: string): string {
   return text.trim()
 }
 
+function resolveMergedSpeakerId(speakerId: string, mergeMap: Record<string, string>): string {
+  let current = String(speakerId || '').trim()
+  const visited = new Set<string>()
+  while (current && mergeMap[current] && !visited.has(current)) {
+    visited.add(current)
+    const next = String(mergeMap[current] || '').trim()
+    if (!next || next === current) break
+    current = next
+  }
+  return current || String(speakerId || '').trim()
+}
+
 export async function POST(request: Request) {
   try {
     const internalSecret = request.headers.get('x-internal-secret')
@@ -200,9 +212,17 @@ export async function POST(request: Request) {
     
     // Extract speakers from raw_json segments (apply name corrections)
     const segments = Array.isArray(transcript.raw_json) ? (transcript.raw_json as any[]) : []
-    const nameCorrections = corrections.name_corrections || {}
+    const nameCorrections = corrections.speaker_name_map || corrections.name_corrections || {}
+    const speakerMergeMap = corrections.speaker_merge_map || {}
     const uniqueSpeakers = Array.from(
-      new Set(segments.map((s: any) => nameCorrections[s.speaker] || s.speaker).filter(Boolean))
+      new Set(
+        segments
+          .map((s: any) => {
+            const mergedSpeaker = resolveMergedSpeakerId(s.speaker, speakerMergeMap)
+            return nameCorrections[mergedSpeaker] || nameCorrections[s.speaker] || mergedSpeaker
+          })
+          .filter(Boolean)
+      )
     )
     
     let speakersText = ''

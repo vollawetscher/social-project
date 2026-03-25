@@ -44,6 +44,21 @@ function deriveDomain(dbSession: any): Domain {
   return 'general'
 }
 
+function resolveMergedSpeakerId(
+  speakerId: string,
+  mergeMap: Record<string, string>
+): string {
+  let current = speakerId
+  const visited = new Set<string>()
+  while (mergeMap[current] && !visited.has(current)) {
+    visited.add(current)
+    const next = mergeMap[current]
+    if (!next || next === current) break
+    current = next
+  }
+  return current
+}
+
 /**
  * Map database session status to v0 UI status
  */
@@ -68,13 +83,17 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
   transcript?: any
   files?: any[]
 }): V0Session {
+  const corrections = ((dbSession as any).transcript_corrections || {}) as Record<string, any>
+  const speakerNameMap = (corrections.speaker_name_map || corrections.name_corrections || {}) as Record<string, string>
+  const speakerMergeMap = (corrections.speaker_merge_map || {}) as Record<string, string>
+
   // Extract speakers from transcript if available
   let speakers = additionalData?.transcript?.raw_json 
-    ? extractSpeakers(additionalData.transcript.raw_json)
+    ? extractSpeakers(additionalData.transcript.raw_json, speakerMergeMap, speakerNameMap)
     : []
 
   // Apply name corrections so S1/S2 show as real names (Christian, Azat, etc.)
-  const nameCorrections = (dbSession as any).transcript_corrections?.name_corrections as Record<string, string> | undefined
+  const nameCorrections = speakerNameMap
   if (nameCorrections && Object.keys(nameCorrections).length > 0) {
     speakers = speakers.map(s => ({
       ...s,
@@ -96,7 +115,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
 
   // Transform transcript segments
   const transcriptSegments = additionalData?.transcript?.raw_json
-    ? transformTranscriptSegments(additionalData.transcript.raw_json)
+    ? transformTranscriptSegments(additionalData.transcript.raw_json, speakerMergeMap, speakerNameMap)
     : []
 
   // Map language codes to display names
@@ -160,7 +179,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     recordingTypeConfidence: (dbSession as any).recording_type_confidence,
     outputCount: (dbSession as any).output_count || 0, // Number of generated outputs
     extractedContext, // Normalized AI-extracted rich context
-    transcriptCorrections: (dbSession as any).transcript_corrections || {}, // Alias system
+    transcriptCorrections: corrections, // Alias system
     suggestedOutputFormats: (dbSession as any).suggested_output_formats || [],
     speechmaticsSummary: (dbSession as any).speechmatics_summary || undefined,
     recordedAt: (dbSession as any).recorded_at || undefined,
@@ -183,19 +202,26 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
  * Extract unique speakers from transcript (preserves order from first appearance).
  * Assigns party_a to first speaker, party_b to second, observer to rest.
  */
-function extractSpeakers(transcriptSegments: any[]): any[] {
+function extractSpeakers(
+  transcriptSegments: any[],
+  speakerMergeMap: Record<string, string>,
+  speakerNameMap: Record<string, string>
+): any[] {
   const speakerMap = new Map<string, { id: string; name: string; participantRole: 'party_a' | 'party_b' | 'observer' }>()
   const order: string[] = []
 
   transcriptSegments.forEach((segment: any) => {
-    if (segment.speaker && !speakerMap.has(segment.speaker)) {
-      order.push(segment.speaker)
+    const rawSpeaker = String(segment.speaker || '').trim()
+    if (!rawSpeaker) return
+    const mergedSpeaker = resolveMergedSpeakerId(rawSpeaker, speakerMergeMap)
+    if (!speakerMap.has(mergedSpeaker)) {
+      order.push(mergedSpeaker)
       const idx = order.length - 1
       const role: 'party_a' | 'party_b' | 'observer' =
         idx === 0 ? 'party_a' : idx === 1 ? 'party_b' : 'observer'
-      speakerMap.set(segment.speaker, {
-        id: segment.speaker,
-        name: segment.speaker,
+      speakerMap.set(mergedSpeaker, {
+        id: mergedSpeaker,
+        name: speakerNameMap[mergedSpeaker] || mergedSpeaker,
         participantRole: role,
       })
     }
@@ -207,11 +233,17 @@ function extractSpeakers(transcriptSegments: any[]): any[] {
 /**
  * Transform transcript segments to v0 format
  */
-function transformTranscriptSegments(dbSegments: any[]): any[] {
+function transformTranscriptSegments(
+  dbSegments: any[],
+  speakerMergeMap: Record<string, string>,
+  speakerNameMap: Record<string, string>
+): any[] {
   return dbSegments.map((segment: any, index: number) => ({
+    // Keep stable segment ids but normalize speaker labels for display.
     id: `seg_${index}`,
-    speakerId: segment.speaker || 'unknown',
-    speakerName: segment.speaker || 'Unknown',
+    speakerId: resolveMergedSpeakerId(segment.speaker || 'unknown', speakerMergeMap),
+    speakerName: speakerNameMap[resolveMergedSpeakerId(segment.speaker || 'unknown', speakerMergeMap)]
+      || resolveMergedSpeakerId(segment.speaker || 'unknown', speakerMergeMap),
     startTime: (segment.start_ms || 0) / 1000, // Convert milliseconds to seconds
     endTime: (segment.end_ms || 0) / 1000, // Convert milliseconds to seconds
     text: segment.text || '',

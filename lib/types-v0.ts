@@ -86,8 +86,11 @@ export interface DomainDetection {
 
 export interface TranscriptCorrections {
   name_corrections?: Record<string, string>  // "Hazard" → "Azat"
+  speaker_name_map?: Record<string, string>  // "S1" -> "Christian"
+  speaker_merge_map?: Record<string, string> // "S3" -> "S2"
   pii_redactions?: Record<string, string>     // "John Smith" → "[NAME_1]"
   word_corrections?: Record<string, string>  // "SPQR" → "speaker", "Maître Spet" → "Mattress Bed"
+  accepted_suggestions?: string[]
 }
 
 export interface Session {

@@ -122,6 +122,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'All-Time Usage Totals No Longer Drop Below 30-Day Values',
         description: 'Admin usage reporting now enforces monotonic totals so all-time minutes, tokens, and cost never appear lower than the last 30 days for the same metrics.',
       },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Transcript Cleanup Now Combines Speaker and Word Corrections',
+        description: 'Each session now offers a unified transcript cleanup step where you can map speakers, merge false one-off speakers, and apply correction suggestions before generating outputs.',
+      },
     ],
   },
   {

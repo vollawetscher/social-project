@@ -2,6 +2,37 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireSessionAccess } from '@/lib/auth/helpers'
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function validateSpeakerMergeMap(map: Record<string, string>): { valid: boolean; error?: string } {
+  // Prevent self-mapping and simple/indirect cycles.
+  for (const [from, to] of Object.entries(map)) {
+    if (!from || !to) continue
+    if (from === to) {
+      return { valid: false, error: `Invalid speaker merge "${from} -> ${to}"` }
+    }
+  }
+
+  const visitedGlobal = new Set<string>()
+  for (const start of Object.keys(map)) {
+    if (visitedGlobal.has(start)) continue
+    const visitedPath = new Set<string>()
+    let current: string | undefined = start
+    while (current && map[current]) {
+      if (visitedPath.has(current)) {
+        return { valid: false, error: `Speaker merge cycle detected at "${current}"` }
+      }
+      visitedPath.add(current)
+      visitedGlobal.add(current)
+      current = map[current]
+    }
+  }
+
+  return { valid: true }
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -26,7 +57,7 @@ export async function POST(
     const db = isAdmin ? createServiceRoleClient() : supabase
 
     const body = await request.json()
-    const { corrections, type, replace } = body // type: 'name_corrections' | 'pii_redactions' | 'word_corrections'; replace: full replace for type
+    const { corrections, type, replace } = body // type: 'name_corrections' | 'pii_redactions' | 'word_corrections' | 'bulk_cleanup'
 
     if (!corrections || typeof corrections !== 'object') {
       return NextResponse.json({ error: 'Invalid corrections format' }, { status: 400 })
@@ -42,15 +73,93 @@ export async function POST(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
-    const existingCorrections = session.transcript_corrections || {}
-    const updatedCorrections = {
-      ...existingCorrections,
-      [type]: replace
-        ? corrections
-        : {
-            ...(existingCorrections[type as keyof typeof existingCorrections] || {}),
-            ...corrections
-          }
+    const existingCorrections = (session.transcript_corrections || {}) as Record<string, any>
+    const allowedTypes = new Set([
+      'name_corrections',
+      'pii_redactions',
+      'word_corrections',
+      'speaker_name_map',
+      'speaker_merge_map',
+      'accepted_suggestions',
+      'bulk_cleanup',
+    ])
+    if (!allowedTypes.has(String(type || ''))) {
+      return NextResponse.json({ error: `Unsupported correction type: ${type}` }, { status: 400 })
+    }
+
+    let updatedCorrections: Record<string, any> = existingCorrections
+
+    if (type === 'bulk_cleanup') {
+      if (!isObjectRecord(corrections)) {
+        return NextResponse.json({ error: 'Invalid bulk cleanup payload' }, { status: 400 })
+      }
+
+      const incomingSpeakerNameMap = isObjectRecord(corrections.speaker_name_map)
+        ? (corrections.speaker_name_map as Record<string, string>)
+        : {}
+      const incomingSpeakerMergeMap = isObjectRecord(corrections.speaker_merge_map)
+        ? (corrections.speaker_merge_map as Record<string, string>)
+        : {}
+      const incomingWordCorrections = isObjectRecord(corrections.word_corrections)
+        ? (corrections.word_corrections as Record<string, string>)
+        : {}
+      const incomingAccepted = Array.isArray(corrections.accepted_suggestions)
+        ? corrections.accepted_suggestions.map((v) => String(v))
+        : []
+
+      const mergedSpeakerNameMap = {
+        ...(existingCorrections.speaker_name_map || {}),
+        ...incomingSpeakerNameMap,
+      }
+      const mergedSpeakerMergeMap = {
+        ...(existingCorrections.speaker_merge_map || {}),
+        ...incomingSpeakerMergeMap,
+      }
+      const mergedWordCorrections = {
+        ...(existingCorrections.word_corrections || {}),
+        ...incomingWordCorrections,
+      }
+      const mergedAcceptedSuggestions = Array.from(
+        new Set([...(existingCorrections.accepted_suggestions || []), ...incomingAccepted])
+      )
+
+      const mergeValidation = validateSpeakerMergeMap(mergedSpeakerMergeMap)
+      if (!mergeValidation.valid) {
+        return NextResponse.json({ error: mergeValidation.error || 'Invalid speaker merge map' }, { status: 400 })
+      }
+
+      updatedCorrections = {
+        ...existingCorrections,
+        speaker_name_map: mergedSpeakerNameMap,
+        speaker_merge_map: mergedSpeakerMergeMap,
+        word_corrections: mergedWordCorrections,
+        accepted_suggestions: mergedAcceptedSuggestions,
+        // Keep legacy compatibility for existing UI/output paths.
+        name_corrections: mergedSpeakerNameMap,
+      }
+    } else {
+      updatedCorrections = {
+        ...existingCorrections,
+        [type]: replace
+          ? corrections
+          : {
+              ...(existingCorrections[type as keyof typeof existingCorrections] || {}),
+              ...corrections
+            }
+      }
+
+      // Keep legacy and new speaker name map in sync.
+      if (type === 'name_corrections' || type === 'speaker_name_map') {
+        const mergedNames = updatedCorrections[type] || {}
+        updatedCorrections.name_corrections = mergedNames
+        updatedCorrections.speaker_name_map = mergedNames
+      }
+      if (type === 'speaker_merge_map') {
+        const mergeValidation = validateSpeakerMergeMap(updatedCorrections.speaker_merge_map || {})
+        if (!mergeValidation.valid) {
+          return NextResponse.json({ error: mergeValidation.error || 'Invalid speaker merge map' }, { status: 400 })
+        }
+      }
     }
 
     // Update session with merged corrections

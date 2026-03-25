@@ -121,6 +121,15 @@ function FormattedSummary({ text }: { text: string }) {
   )
 }
 
+type CleanupSuggestion = {
+  id: string
+  type: 'speaker_merge' | 'word'
+  from: string
+  to: string
+  confidence: number
+  evidence?: string
+}
+
 export default function SessionDetailPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -173,6 +182,14 @@ export default function SessionDetailPage() {
   const [sessionFiles, setSessionFiles] = useState<any[]>([])
   const [reparseModeIndex, setReparseModeIndex] = useState(0)
   const [reparsingTranscript, setReparsingTranscript] = useState(false)
+  const [cleanupSuggestions, setCleanupSuggestions] = useState<CleanupSuggestion[]>([])
+  const [loadingCleanupSuggestions, setLoadingCleanupSuggestions] = useState(false)
+  const [speakerNameMap, setSpeakerNameMap] = useState<Record<string, string>>({})
+  const [speakerMergeMap, setSpeakerMergeMap] = useState<Record<string, string>>({})
+  const [wordCorrectionsDraft, setWordCorrectionsDraft] = useState<Record<string, string>>({})
+  const [newWordFrom, setNewWordFrom] = useState('')
+  const [newWordTo, setNewWordTo] = useState('')
+  const [savingCleanup, setSavingCleanup] = useState(false)
   const tPastePreview = useTranslations('pastePreview')
   const hasAudioInSession =
     Boolean(session?.audioUrl) ||
@@ -322,6 +339,90 @@ export default function SessionDetailPage() {
     setEditingParticipants(false)
     setEditedParticipants([])
   }
+
+  const loadCleanupSuggestions = useCallback(async () => {
+    if (!sessionId) return
+    setLoadingCleanupSuggestions(true)
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/cleanup-suggestions`, { cache: 'no-store' })
+      if (!res.ok) throw new Error('Failed to load cleanup suggestions')
+      const data = await res.json()
+      setCleanupSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : [])
+    } catch (error) {
+      console.warn('[Cleanup] Failed to load suggestions:', error)
+      setCleanupSuggestions([])
+    } finally {
+      setLoadingCleanupSuggestions(false)
+    }
+  }, [sessionId])
+
+  const getSpeakerIds = useCallback(() => {
+    if (!session?.transcript?.length) return [] as string[]
+    return Array.from(
+      new Set(
+        session.transcript
+          .map((seg) => (seg.speakerId || seg.speakerName || '').trim())
+          .filter(Boolean)
+      )
+    )
+  }, [session?.transcript])
+
+  const handleApplyCleanupSuggestion = useCallback((suggestion: CleanupSuggestion) => {
+    if (suggestion.type === 'speaker_merge') {
+      setSpeakerMergeMap((prev) => ({
+        ...prev,
+        [suggestion.from]: suggestion.to,
+      }))
+      toast.success(`Suggestion applied: ${suggestion.from} -> ${suggestion.to}`)
+      return
+    }
+    if (suggestion.type === 'word') {
+      setWordCorrectionsDraft((prev) => ({
+        ...prev,
+        [suggestion.from]: suggestion.to,
+      }))
+      toast.success(`Correction added: ${suggestion.from} -> ${suggestion.to}`)
+    }
+  }, [])
+
+  const handleSaveCleanup = useCallback(async () => {
+    if (!session) return
+    setSavingCleanup(true)
+    try {
+      const payload = {
+        corrections: {
+          speaker_name_map: speakerNameMap,
+          speaker_merge_map: speakerMergeMap,
+          word_corrections: wordCorrectionsDraft,
+          accepted_suggestions: cleanupSuggestions
+            .filter((s) =>
+              (s.type === 'speaker_merge' && speakerMergeMap[s.from] === s.to) ||
+              (s.type === 'word' && wordCorrectionsDraft[s.from] === s.to)
+            )
+            .map((s) => s.id),
+        },
+        type: 'bulk_cleanup',
+      }
+      const response = await fetch(`/api/sessions/${sessionId}/corrections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error || 'Failed to save cleanup')
+
+      setSession((prev) => prev ? {
+        ...prev,
+        transcriptCorrections: data.corrections || prev.transcriptCorrections,
+      } : prev)
+      toast.success('Transcript cleanup saved')
+    } catch (error) {
+      console.error('[Cleanup] Save failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to save cleanup')
+    } finally {
+      setSavingCleanup(false)
+    }
+  }, [cleanupSuggestions, session, sessionId, speakerMergeMap, speakerNameMap, wordCorrectionsDraft])
 
   // Fetch outputs - reusable for initial load and after generation
   const fetchOutputs = useCallback(async () => {
@@ -592,6 +693,18 @@ export default function SessionDetailPage() {
     return () => clearInterval(interval)
   }, [sessionId, session?.status, fetchOutputs])
 
+  useEffect(() => {
+    if (!session) return
+    const corrections = session.transcriptCorrections || {}
+    const initialSpeakerNameMap = (corrections.speaker_name_map || corrections.name_corrections || {}) as Record<string, string>
+    const initialSpeakerMergeMap = (corrections.speaker_merge_map || {}) as Record<string, string>
+    const initialWordCorrections = (corrections.word_corrections || {}) as Record<string, string>
+    setSpeakerNameMap(initialSpeakerNameMap)
+    setSpeakerMergeMap(initialSpeakerMergeMap)
+    setWordCorrectionsDraft(initialWordCorrections)
+    void loadCleanupSuggestions()
+  }, [session, loadCleanupSuggestions])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -786,6 +899,135 @@ export default function SessionDetailPage() {
       setReparsingTranscript(false)
     }
   }
+
+  const speakerIds = getSpeakerIds()
+
+  const renderCleanupPanel = () => (
+    <div className="mb-3 rounded-lg border border-border bg-card p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Transcript cleanup</p>
+          <p className="text-xs text-muted-foreground">
+            Map speakers, merge false speakers, and apply correction suggestions before output generation.
+          </p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => void loadCleanupSuggestions()} disabled={loadingCleanupSuggestions}>
+          {loadingCleanupSuggestions ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Refresh'}
+        </Button>
+      </div>
+
+      {speakerIds.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Speakers</p>
+          <div className="space-y-2">
+            {speakerIds.map((speakerId) => (
+              <div key={speakerId} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                <Badge variant="outline" className="w-fit">{speakerId}</Badge>
+                <Input
+                  value={speakerNameMap[speakerId] || ''}
+                  onChange={(e) => setSpeakerNameMap((prev) => ({ ...prev, [speakerId]: e.target.value }))}
+                  placeholder={`Display name for ${speakerId}`}
+                />
+                <select
+                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  value={speakerMergeMap[speakerId] || ''}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setSpeakerMergeMap((prev) => {
+                      const next = { ...prev }
+                      if (!value) delete next[speakerId]
+                      else next[speakerId] = value
+                      return next
+                    })
+                  }}
+                >
+                  <option value="">Do not merge</option>
+                  {speakerIds.filter((id) => id !== speakerId).map((id) => (
+                    <option key={id} value={id}>Merge into {id}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">Word corrections</p>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+          <Input value={newWordFrom} onChange={(e) => setNewWordFrom(e.target.value)} placeholder="From" />
+          <Input value={newWordTo} onChange={(e) => setNewWordTo(e.target.value)} placeholder="To" />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              const from = newWordFrom.trim()
+              const to = newWordTo.trim()
+              if (!from || !to) return
+              setWordCorrectionsDraft((prev) => ({ ...prev, [from]: to }))
+              setNewWordFrom('')
+              setNewWordTo('')
+            }}
+          >
+            Add
+          </Button>
+        </div>
+        {Object.keys(wordCorrectionsDraft).length > 0 && (
+          <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
+            {Object.entries(wordCorrectionsDraft).map(([from, to]) => (
+              <div key={from} className="flex items-center justify-between text-xs rounded border border-border px-2 py-1">
+                <span className="truncate">{from}{' -> '}{to}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2"
+                  onClick={() => {
+                    setWordCorrectionsDraft((prev) => {
+                      const next = { ...prev }
+                      delete next[from]
+                      return next
+                    })
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">Suggestions</p>
+        {cleanupSuggestions.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No suggestions right now.</p>
+        ) : (
+          <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+            {cleanupSuggestions.map((s) => (
+              <div key={s.id} className="rounded border border-border px-2 py-1.5 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{s.type === 'speaker_merge' ? `Merge ${s.from} -> ${s.to}` : `${s.from} -> ${s.to}`}</span>
+                  <Button size="sm" variant="outline" className="h-6 px-2" onClick={() => handleApplyCleanupSuggestion(s)}>
+                    Apply
+                  </Button>
+                </div>
+                <p className="text-muted-foreground mt-0.5">
+                  {Math.round(s.confidence * 100)}% confidence{s.evidence ? ` · ${s.evidence}` : ''}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end">
+        <Button size="sm" onClick={() => void handleSaveCleanup()} disabled={savingCleanup}>
+          {savingCleanup ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+          Apply cleanup
+        </Button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -995,6 +1237,7 @@ export default function SessionDetailPage() {
             <TabsTrigger value="outputs">{t('outputs')}</TabsTrigger>
           </TabsList>
           <TabsContent value="transcript" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
+            {renderCleanupPanel()}
             {canShowTranscriptReparseControls && (
               <div className="mb-2 flex items-center gap-2">
                 <Button
@@ -1438,6 +1681,7 @@ export default function SessionDetailPage() {
           {/* Tab Content */}
           {activeTab === "transcript" && (
             <div className="flex-1 min-h-0 flex flex-col">
+              {renderCleanupPanel()}
               {canShowTranscriptReparseControls && (
                 <div className="mb-2 flex items-center gap-2">
                   <Button
