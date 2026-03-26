@@ -84,8 +84,18 @@ interface ModerationParticipant {
 
 interface LiveTranscriptLine {
   id: string
+  speakerKey: string
+  speakerLabel: string
   text: string
   timestampMs: number
+}
+
+function normalizeRealtimeLanguageCode(input: unknown): string | null {
+  if (typeof input !== "string") return null
+  const normalized = input.trim().toLowerCase()
+  if (!normalized || normalized === "auto" || normalized === "session") return null
+  const base = normalized.split("-")[0]
+  return /^[a-z]{2}$/.test(base) ? base : null
 }
 
 type VideoBackgroundChoice = "none" | "blur" | "home" | "conference" | "office"
@@ -206,6 +216,10 @@ function CallRoomInner({
     [{ source: Track.Source.ScreenShare, withPlaceholder: false }],
     { onlySubscribed: true }
   )
+  const microphoneTracks = useTracks(
+    [{ source: Track.Source.Microphone, withPlaceholder: false }],
+    { onlySubscribed: false }
+  )
   const activeScreenShare = screenShareTracks.find(isTrackReference)
 
   const [duration, setDuration] = useState(0)
@@ -242,9 +256,15 @@ function CallRoomInner({
   const [videoBackground, setVideoBackground] = useState<VideoBackgroundChoice>("none")
   const [showModerationPanel, setShowModerationPanel] = useState(false)
   const [liveTranscriptLines, setLiveTranscriptLines] = useState<LiveTranscriptLine[]>([])
-  const [liveTranscriptPartial, setLiveTranscriptPartial] = useState("")
-  const [liveTranscriptConnected, setLiveTranscriptConnected] = useState(false)
+  const [liveTranscriptPartials, setLiveTranscriptPartials] = useState<Record<string, string>>({})
+  const [liveTranscriptConnections, setLiveTranscriptConnections] = useState<Record<string, boolean>>({})
   const [liveTranscriptError, setLiveTranscriptError] = useState<string | null>(null)
+  const [realtimeLanguageCode, setRealtimeLanguageCode] = useState<string>(() => {
+    if (typeof navigator !== "undefined") {
+      return normalizeRealtimeLanguageCode(navigator.language) || "de"
+    }
+    return "de"
+  })
 
   const [roomLocked, setRoomLocked] = useState(false)
   const [moderationParticipants, setModerationParticipants] = useState<ModerationParticipant[]>([])
@@ -261,7 +281,8 @@ function CallRoomInner({
   const profilePreferencesRef = useRef<Record<string, any>>({})
   const notesSyncSkipRef = useRef(false)
   const notesRef = useRef("")
-  const speechmaticsServiceRef = useRef<SpeechmaticsRealtimeService | null>(null)
+  const speechmaticsServicesRef = useRef<Record<string, SpeechmaticsRealtimeService>>({})
+  const speechmaticsTracksRef = useRef<Record<string, MediaStreamTrack | null>>({})
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
@@ -283,6 +304,7 @@ function CallRoomInner({
   const isScreenSharing = localParticipant.isScreenShareEnabled
   const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
   const liveTranscriptEnabled = callType === "pstn_outbound" && pstnTranscriptionMode === "live"
+  const liveTranscriptConnected = Object.values(liveTranscriptConnections).some(Boolean)
 
   const refreshModeration = useCallback(async () => {
     if (!isInitiator || !callId) return
@@ -561,6 +583,12 @@ function CallRoomInner({
         if (saved && VIDEO_BACKGROUND_CHOICES.some((c) => c.value === saved)) {
           setVideoBackground(saved as VideoBackgroundChoice)
         }
+        const profileLanguage =
+          normalizeRealtimeLanguageCode(profile?.default_recording_language) ||
+          normalizeRealtimeLanguageCode(profile?.preferred_locale)
+        if (profileLanguage) {
+          setRealtimeLanguageCode(profileLanguage)
+        }
       } catch {
         // Best-effort profile preference load.
       }
@@ -824,40 +852,70 @@ function CallRoomInner({
   useEffect(() => {
     let cancelled = false
 
-    const stopRealtime = async () => {
-      const service = speechmaticsServiceRef.current
-      speechmaticsServiceRef.current = null
+    const getParticipantAudioTrack = (participant: any): MediaStreamTrack | null => {
+      if (!participant) return null
+      const direct = (participant.getTrackPublication?.(Track.Source.Microphone)?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined
+      if (direct) return direct
+
+      const collections: any[] = []
+      if (participant.audioTrackPublications?.values) collections.push(Array.from(participant.audioTrackPublications.values()))
+      if (participant.trackPublications?.values) collections.push(Array.from(participant.trackPublications.values()))
+      for (const group of collections) {
+        const match = group.find((pub: any) => {
+          const source = pub?.source
+          const kind = pub?.kind
+          const track = pub?.track
+          return (source === Track.Source.Microphone || kind === "audio" || kind === 1) && track
+        })
+        const media = (match?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined
+        if (media) return media
+      }
+      return null
+    }
+
+    const stopSource = async (sourceKey: string) => {
+      const service = speechmaticsServicesRef.current[sourceKey]
       if (service) {
         try {
           await service.stop()
         } catch {
-          // Best-effort cleanup only.
+          // Best effort
         }
       }
+      const clonedTrack = speechmaticsTracksRef.current[sourceKey]
+      try {
+        clonedTrack?.stop()
+      } catch {
+        // Best effort
+      }
+      delete speechmaticsServicesRef.current[sourceKey]
+      delete speechmaticsTracksRef.current[sourceKey]
       if (!cancelled) {
-        setLiveTranscriptConnected(false)
-        setLiveTranscriptPartial("")
+        setLiveTranscriptConnections((prev) => {
+          if (!(sourceKey in prev)) return prev
+          const next = { ...prev }
+          delete next[sourceKey]
+          return next
+        })
+        setLiveTranscriptPartials((prev) => {
+          if (!(sourceKey in prev)) return prev
+          const next = { ...prev }
+          delete next[sourceKey]
+          return next
+        })
       }
     }
 
-    const startRealtime = async () => {
-      if (!liveTranscriptEnabled || !isConnected || !isLocalMicEnabled) {
-        await stopRealtime()
-        return
-      }
-      if (speechmaticsServiceRef.current) return
-
-      const publication = localParticipant.getTrackPublication(Track.Source.Microphone)
-      const mediaTrack = (publication?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined
-      if (!mediaTrack) return
-
+    const startSource = async (sourceKey: string, speakerLabel: string, mediaTrack: MediaStreamTrack) => {
+      if (speechmaticsServicesRef.current[sourceKey]) return
       try {
         setLiveTranscriptError(null)
         const token = await getSpeechmaticsRealtimeToken()
         if (cancelled) return
-        const stream = new MediaStream([mediaTrack.clone()])
+        const clonedTrack = mediaTrack.clone()
+        const stream = new MediaStream([clonedTrack])
         const service = new SpeechmaticsRealtimeService(token, {
-          language: (navigator.language || "en").split("-")[0] || "en",
+          language: realtimeLanguageCode,
           enablePartials: true,
           onTranscript: (result) => {
             if (cancelled) return
@@ -868,40 +926,84 @@ function CallRoomInner({
                 ...prev,
                 {
                   id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  speakerKey: sourceKey,
+                  speakerLabel,
                   text,
                   timestampMs: Date.now(),
                 },
               ])
-              setLiveTranscriptPartial("")
+              setLiveTranscriptPartials((prev) => ({ ...prev, [sourceKey]: "" }))
             } else {
-              setLiveTranscriptPartial(result.transcript || "")
+              setLiveTranscriptPartials((prev) => ({ ...prev, [sourceKey]: result.transcript || "" }))
             }
           },
           onError: (error) => {
             if (cancelled) return
-            setLiveTranscriptError(error.message || "Realtime transcription failed")
+            setLiveTranscriptError(`${speakerLabel}: ${error.message || "Realtime transcription failed"}`)
           },
           onConnectionChange: (connected) => {
             if (cancelled) return
-            setLiveTranscriptConnected(connected)
+            setLiveTranscriptConnections((prev) => ({ ...prev, [sourceKey]: connected }))
           },
         })
-        speechmaticsServiceRef.current = service
+        speechmaticsServicesRef.current[sourceKey] = service
+        speechmaticsTracksRef.current[sourceKey] = clonedTrack
         await service.start(stream)
       } catch (error: any) {
         if (cancelled) return
-        setLiveTranscriptError(error?.message || "Realtime transcription failed")
-        await stopRealtime()
+        setLiveTranscriptError(`${speakerLabel}: ${error?.message || "Realtime transcription failed"}`)
+        await stopSource(sourceKey)
       }
     }
 
-    void startRealtime()
+    const reconcileSources = async () => {
+      if (!liveTranscriptEnabled || !isConnected) {
+        await Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSource(key)))
+        return
+      }
+
+      const localMicTrackRef = microphoneTracks.find(
+        (trackRef) => isTrackReference(trackRef) && trackRef.participant.sid === localParticipant.sid
+      )
+      const localTrackFromHook =
+        localMicTrackRef && isTrackReference(localMicTrackRef)
+          ? ((localMicTrackRef.publication?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined)
+          : undefined
+      const localTrack = isLocalMicEnabled ? (localTrackFromHook || getParticipantAudioTrack(localParticipant)) : null
+      const remoteParticipant = remoteParticipants[0] as any | undefined
+      const remoteLabel = remoteParticipant?.name || contactName || contactPhone || t("participant")
+      const remoteMicTrackRef = remoteParticipant
+        ? microphoneTracks.find(
+            (trackRef) => isTrackReference(trackRef) && trackRef.participant.sid === remoteParticipant.sid
+          )
+        : null
+      const remoteTrackFromHook =
+        remoteMicTrackRef && isTrackReference(remoteMicTrackRef)
+          ? ((remoteMicTrackRef.publication?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined)
+          : undefined
+      const remoteTrack = remoteParticipant ? (remoteTrackFromHook || getParticipantAudioTrack(remoteParticipant)) : null
+
+      const desired = [
+        { key: "local", label: t("you"), track: localTrack },
+        { key: remoteParticipant?.sid ? `remote-${remoteParticipant.sid}` : "remote", label: remoteLabel, track: remoteTrack },
+      ].filter((entry) => Boolean(entry.track)) as Array<{ key: string; label: string; track: MediaStreamTrack }>
+
+      const desiredKeys = new Set(desired.map((entry) => entry.key))
+      const activeKeys = Object.keys(speechmaticsServicesRef.current)
+
+      await Promise.all(activeKeys.filter((key) => !desiredKeys.has(key)).map((key) => stopSource(key)))
+      for (const source of desired) {
+        await startSource(source.key, source.label, source.track)
+      }
+    }
+
+    void reconcileSources()
 
     return () => {
       cancelled = true
-      void stopRealtime()
+      void Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSource(key)))
     }
-  }, [liveTranscriptEnabled, isConnected, isLocalMicEnabled, localParticipant])
+  }, [liveTranscriptEnabled, isConnected, isLocalMicEnabled, localParticipant, remoteParticipants, contactName, contactPhone, t, microphoneTracks, realtimeLanguageCode])
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -1386,23 +1488,29 @@ function CallRoomInner({
                   {liveTranscriptError && (
                     <p className="text-xs text-destructive">{liveTranscriptError}</p>
                   )}
-                  {liveTranscriptLines.length === 0 && !liveTranscriptPartial ? (
+                  {liveTranscriptLines.length === 0 && Object.values(liveTranscriptPartials).every((text) => !text) ? (
                     <p className="text-sm text-muted-foreground py-8 text-center">{t("liveTranscriptEmpty")}</p>
                   ) : (
                     <div className="space-y-2">
                       {liveTranscriptLines.slice(-120).map((line) => (
                         <div key={line.id} className="rounded-lg bg-secondary px-3 py-2">
                           <p className="text-[11px] text-muted-foreground mb-0.5">
-                            {new Date(line.timestampMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {line.speakerLabel} · {new Date(line.timestampMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
                           <p className="text-sm text-foreground">{line.text}</p>
                         </div>
                       ))}
-                      {liveTranscriptPartial && (
-                        <div className="rounded-lg border border-dashed border-border px-3 py-2">
-                          <p className="text-sm text-muted-foreground italic">{liveTranscriptPartial}</p>
-                        </div>
-                      )}
+                      {Object.entries(liveTranscriptPartials)
+                        .filter(([, text]) => Boolean(text))
+                        .map(([sourceKey, text]) => {
+                          const label = sourceKey === "local" ? t("you") : remoteDisplayName
+                          return (
+                            <div key={`partial-${sourceKey}`} className="rounded-lg border border-dashed border-border px-3 py-2">
+                              <p className="text-[11px] text-muted-foreground mb-0.5">{label}</p>
+                              <p className="text-sm text-muted-foreground italic">{text}</p>
+                            </div>
+                          )
+                        })}
                     </div>
                   )}
                 </div>

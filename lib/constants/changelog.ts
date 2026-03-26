@@ -20,6 +20,20 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.23.2',
         date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Live PSTN Transcription Better Handles German and Both Speakers',
+        description: 'Live transcript preview for PSTN calls now uses profile-aware language selection and improved remote audio track capture, making German recognition and callee-side live text more reliable.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'PSTN Live Transcript Now Captures Both Participants',
+        description: 'Live transcript mode for phone-network calls now captures both sides of the conversation in separate real-time streams, so in-call transcript preview appears reliably with clearer speaker labeling.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
         category: 'improvement',
         title: 'PSTN Calls Add Live or Batch Transcript Mode',
         description: 'When placing a phone-network call, you can now choose Batch transcription for maximum post-call accuracy or Live preview mode to view transcript text during the call.',
