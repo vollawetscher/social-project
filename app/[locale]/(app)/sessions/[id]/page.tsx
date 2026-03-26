@@ -166,6 +166,7 @@ export default function SessionDetailPage() {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const audioPlayerRef = useRef<any>(null)
   const analyzeSessionRef = useRef<((retryCount?: number) => Promise<void>) | null>(null)
+  const analyzeBusyRef = useRef(false)
   
   // Participant editing state
   const [editingParticipants, setEditingParticipants] = useState(false)
@@ -593,59 +594,46 @@ export default function SessionDetailPage() {
     }
 
     async function analyzeSession(retryCount = 0) {
-      // Skip if already analyzing
-      if (analyzing) return
-
+      if (analyzeBusyRef.current) return
+      analyzeBusyRef.current = true
       setAnalyzing(true)
-      let retrying = false
+
       try {
         console.log('[AI Analysis] Starting analysis for session:', sessionId)
         const response = await fetch(`/api/sessions/${sessionId}/analyze`, {
           method: 'POST',
         })
         console.log('[AI Analysis] Response status:', response.status)
-        
+
         if (response.status === 202) {
-          const data = await response.json()
-          console.log('[AI Analysis] Queued for async processing, jobId:', data.jobId)
+          console.log('[AI Analysis] Queued — polling sequentially')
           const pollDelays = [3000, 5000, 8000, 12000, 18000]
-          pollDelays.forEach((delay) => {
-            setTimeout(() => analyzeSession(0), delay)
-          })
+          for (const delay of pollDelays) {
+            await new Promise(r => setTimeout(r, delay))
+            try {
+              const poll = await fetch(`/api/sessions/${sessionId}/analyze`, { method: 'POST' })
+              if (poll.ok) {
+                const data = await poll.json()
+                applyAnalysisResult(data)
+                return
+              }
+              if (poll.status !== 202) {
+                console.warn('[AI Analysis] Poll returned', poll.status, '— stopping')
+                return
+              }
+            } catch { /* network error, try next */ }
+          }
+          console.log('[AI Analysis] Polling exhausted — fetching session for cached data')
+          fetchSession()
         } else if (response.ok) {
           const data = await response.json()
-          console.log('[AI Analysis] Success! Data:', data)
-          console.log('[AI Analysis] Participants received:', data.extractedContext?.participants)
-          setAnalysis(data)
-          
-          // When auto-generation is triggered, poll for new outputs (generation runs async)
-          if (data.autoGeneration?.status === 'triggered') {
-            toast.info('Generating output...', { duration: 3000 })
-            const delays = [5000, 10000, 15000]
-            delays.forEach((delay) => {
-              setTimeout(() => fetchOutputs(), delay)
-            })
-          }
-          
-          // Update session with fresh AI data
-          setSession(prev => {
-            const updated = prev ? {
-              ...prev,
-              recordingType: data.recordingType,
-              recordingTypeConfidence: data.recordingTypeConfidence,
-              domains: data.domains,
-              extractedContext: data.extractedContext || {},
-              suggestedOutputFormats: data.suggestedOutputFormats || []
-            } : null
-            console.log('[AI Analysis] Updated session.extractedContext:', updated?.extractedContext)
-            return updated
-          })
+          applyAnalysisResult(data)
         } else if (response.status === 400 && retryCount < 3) {
-          // Transcript not ready yet - retry (transcription may still be in progress)
-          retrying = true
           const delay = [2000, 4000, 6000][retryCount]
           console.log(`[AI Analysis] Transcript not ready (400), retrying in ${delay}ms (attempt ${retryCount + 2}/4)`)
+          analyzeBusyRef.current = false
           setTimeout(() => analyzeSession(retryCount + 1), delay)
+          return
         } else if (response.status === 400) {
           console.log('[AI Analysis] Transcript not ready after retries')
         } else {
@@ -655,13 +643,29 @@ export default function SessionDetailPage() {
       } catch (error) {
         console.error('[AI Analysis] Error analyzing session:', error)
       } finally {
-        if (!retrying) setAnalyzing(false)
+        analyzeBusyRef.current = false
+        setAnalyzing(false)
       }
+    }
+
+    function applyAnalysisResult(data: any) {
+      console.log('[AI Analysis] Success! Participants:', data.extractedContext?.participants)
+      setAnalysis(data)
+      if (data.autoGeneration?.status === 'triggered') {
+        toast.info('Generating output...', { duration: 3000 })
+        ;[5000, 10000, 15000].forEach(d => setTimeout(() => fetchOutputs(), d))
+      }
+      setSession(prev => prev ? {
+        ...prev,
+        recordingType: data.recordingType,
+        recordingTypeConfidence: data.recordingTypeConfidence,
+        domains: data.domains,
+        extractedContext: data.extractedContext || {},
+        suggestedOutputFormats: data.suggestedOutputFormats || []
+      } : null)
     }
     analyzeSessionRef.current = analyzeSession
     
-    fetchSession()
-    // Only analyze if session has transcript - never analyze without one
     fetchSession().then((v0) => {
       if (v0?.transcript?.length) {
         setTimeout(() => analyzeSession(), 1000)

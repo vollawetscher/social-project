@@ -78,26 +78,58 @@ function extractBalancedJsonObject(input: string): string | null {
   return null
 }
 
+function repairTruncatedJson(text: string): string | null {
+  let s = text.trim()
+  if (!s.startsWith('{')) return null
+
+  let inStr = false
+  let escaped = false
+  let depth = 0
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (escaped) { escaped = false; continue }
+    if (ch === '\\') { escaped = true; continue }
+    if (ch === '"') { inStr = !inStr; continue }
+    if (inStr) continue
+    if (ch === '{' || ch === '[') depth++
+    else if (ch === '}' || ch === ']') depth--
+  }
+  if (depth === 0) return null
+
+  if (inStr) s += '"'
+
+  const tail = s.slice(Math.max(0, s.length - 40))
+  if (/,\s*$/.test(tail)) s = s.replace(/,\s*$/, '')
+
+  for (let d = depth; d > 0; d--) {
+    const lastOpen = Math.max(s.lastIndexOf('{'), s.lastIndexOf('['))
+    const lastClose = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'))
+    if (lastOpen > lastClose) {
+      s += s[lastOpen] === '{' ? '}' : ']'
+    } else {
+      s += '}'
+    }
+  }
+  return s
+}
+
 function parseAnalysisResponseText(responseText: string): Record<string, any> {
   const raw = String(responseText || '').trim()
   if (!raw) throw new Error('Empty analysis response')
 
   const candidates: string[] = [raw]
 
-  // Try fenced blocks first.
-  const fencedMatches = raw.match(/```(?:json)?\s*([\s\S]*?)```/gi) || []
+  const fencedMatches = raw.match(/`{3,}(?:json)?\s*([\s\S]*?)`{3,}/gi) || []
   for (const block of fencedMatches) {
-    const inner = block.replace(/```(?:json)?/i, '').replace(/```/g, '').trim()
+    const inner = block.replace(/`{3,}(?:json)?/i, '').replace(/`{3,}/g, '').trim()
     if (inner) candidates.push(inner)
   }
 
-  // Try balanced object extraction for each candidate.
   for (const c of [...candidates]) {
     const extracted = extractBalancedJsonObject(c)
     if (extracted) candidates.push(extracted)
   }
 
-  // Last-resort cleanup.
   candidates.push(raw.replace(/^`+|`+$/g, '').trim())
 
   const seen = new Set<string>()
@@ -108,6 +140,19 @@ function parseAnalysisResponseText(responseText: string): Record<string, any> {
       return JSON.parse(candidate) as Record<string, any>
     } catch {
       // continue
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    const repaired = repairTruncatedJson(candidate)
+    if (repaired) {
+      try {
+        console.warn('[Analyze API] Recovered truncated JSON response')
+        return JSON.parse(repaired) as Record<string, any>
+      } catch {
+        // continue
+      }
     }
   }
 
@@ -742,7 +787,7 @@ export async function POST(
 Transcript sample:
 ${sample}
 
-Respond in this exact JSON format:
+Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). Use this exact format:
 {
   "sessionSummary": "- concise bullet 1\\n- concise bullet 2\\n- concise bullet 3",
   "recordingType": "consultation",
