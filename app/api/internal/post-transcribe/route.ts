@@ -1,6 +1,5 @@
 /**
- * Internal API: Trigger analyze + auto-generate after transcription completes.
- * Called by the transcribe background job when user has after_transcript_template_id set.
+ * Internal API: Always trigger session_analyze after transcription completes.
  * Requires x-internal-secret header.
  */
 import { createServiceRoleClient } from '@/lib/supabase/server'
@@ -40,20 +39,6 @@ export async function POST(request: Request) {
     const userId = session.user_id
     if (!userId) {
       return NextResponse.json({ error: 'Session has no user' }, { status: 400 })
-    }
-
-    // Check if user wants auto-generation
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('after_transcript_template_id, after_transcript_action')
-      .eq('id', userId)
-      .single()
-
-    const templateId = (profile as any)?.after_transcript_template_id
-    const legacyAction = profile?.after_transcript_action && profile.after_transcript_action !== 'nothing'
-    if (!templateId && !legacyAction) {
-      console.log('[Post-Transcribe] No auto-generation configured for user')
-      return NextResponse.json({ ok: true, skipped: 'no_template' })
     }
 
     const job = await enqueueAsyncJob({

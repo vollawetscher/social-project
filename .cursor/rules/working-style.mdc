@@ -1,0 +1,39 @@
+---
+description: Working style and approach for planning and implementing changes
+alwaysApply: true
+---
+
+# Working Style
+
+## Approach to Changes
+
+Follow this sequence for any non-trivial work:
+
+1. **Thorough assessment** — Map the full scope. Don't narrow prematurely to the symptom that triggered the investigation. If a bug surfaces in PSTN calls, assess whether the same issue exists in WebRTC calls, uploads, and text imports before proposing a fix.
+
+2. **Solid planning** — Cover all session types, all input paths, all edge cases. The plan should demonstrate that every relevant code path was considered, not just the one where the problem was observed.
+
+3. **Final decision** — Present the complete picture and let the user decide what and how to implement. Don't rush to code.
+
+## Anti-Patterns to Avoid
+
+- Tunnel-visioning on the specific case that triggered a bug instead of assessing the full surface area
+- Proposing quick fixes before understanding whether the problem is systemic
+- Rushing from problem identification to implementation without thorough planning
+- Making assumptions about scope — always ask "does this apply to other paths too?"
+
+## Session Types to Always Consider
+
+When any change touches the transcript/analysis/summarization pipeline, assess impact across ALL session types:
+
+- **PSTN calls** — caller/callee known from calls table + contacts
+- **WebRTC calls** — all participants known from LiveKit room + profiles + contacts
+- **Audio uploads** — voice sample priming may identify one speaker; others unknown
+- **Text imports** (paste/upload) — speaker labels from parsed text; no automatic identification
+- **Dictations** — single speaker (the user)
+
+## Quality Bar
+
+- Summaries must correctly attribute who said what — speaker identity is foundational
+- Analysis must work equally well for all session types, not just the most recent one tested
+- Changes should be additive and not break existing working paths

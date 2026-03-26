@@ -174,9 +174,10 @@ function resolveSessionSummary(
 const asSegmentArray = (value: unknown): { start_ms?: number; end_ms?: number; [k: string]: any }[] =>
   Array.isArray(value) ? (value as { start_ms?: number; end_ms?: number; [k: string]: any }[]) : []
 
-type PstnSpeakerNormalization = {
+type SpeakerResolution = {
   participants: Array<{ name: string; role: string | null; isUser: boolean }>
-  nameCorrections: Record<string, string>
+  nameMap: Record<string, string>
+  knownParticipantBlock: string
   reason: string
 }
 
@@ -191,54 +192,55 @@ const firstName = (name: string | null | undefined): string =>
 const normalizeForMatch = (value: string | null | undefined): string =>
   String(value || '')
     .toLowerCase()
-    .replace(/[^a-z0-9\s'-]/g, ' ')
+    .replace(/[^a-z0-9\s\u00e0-\u024f'-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 
-function selfIntroMatchesName(text: string, name: string): boolean {
+function speakerMatchesName(text: string, name: string): boolean {
   const fn = firstName(name)
-  if (!fn) return false
+  if (!fn || fn.length < 2) return false
   const t = normalizeForMatch(text)
-  return (
-    new RegExp(`\\b(this is|it is|it's|i am|my name is)\\s+${fn}\\b`).test(t) ||
-    new RegExp(`\\b${fn}\\b`).test(t.slice(0, 40)) // e.g. "Patrick. It's Christian..."
-  )
+  const escaped = fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const selfIntroEn = new RegExp(`\\b(this is|it is|it's|i am|i'm|my name is)\\s+${escaped}\\b`)
+  const selfIntroDe = new RegExp(`\\b(hier ist|hier spricht|ich bin|mein name ist)\\s+${escaped}\\b`)
+  if (selfIntroEn.test(t) || selfIntroDe.test(t)) return true
+  if (new RegExp(`\\b${escaped}\\b`).test(t.slice(0, 50))) return true
+  return false
 }
 
-function buildPstnSpeakerNormalization(params: {
+function addressMatchesName(text: string, name: string): boolean {
+  const fn = firstName(name)
+  if (!fn || fn.length < 2) return false
+  const t = normalizeForMatch(text)
+  const escaped = fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const addressPatterns = new RegExp(
+    `\\b(hey|hi|hallo|hello|guten tag|moin|servus|gr[uü][sß]|how are you|wie geht)\\b[\\s,]*${escaped}\\b` +
+    `|\\b${escaped}[\\s,]+(are you|bist du|sind sie|h[oö]rst du|kannst du)`
+  )
+  return addressPatterns.test(t)
+}
+
+type SpeakerAgg = {
+  speaker: string
+  turns: number
+  totalMs: number
+  firstStart: number
+  texts: string[]
+}
+
+function aggregateSpeakers(
   segments: Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>
-  callType?: string | null
-  callUserId?: string | null
-  sessionUserId?: string | null
-  callerName?: string | null
-  calleeName?: string | null
-}): PstnSpeakerNormalization | null {
-  const isPstn = (params.callType || '').includes('pstn')
-  if (!isPstn) return null
-
-  type SpeakerAgg = {
-    speaker: string
-    turns: number
-    totalMs: number
-    firstStart: number
-    texts: string[]
-  }
+): Map<string, SpeakerAgg> {
   const bySpeaker = new Map<string, SpeakerAgg>()
-
-  for (const seg of params.segments) {
+  for (const seg of segments) {
     const speaker = String(seg.speaker || '').trim()
     if (!speaker) continue
     const start = Number(seg.start_ms || 0)
     const end = Number(seg.end_ms || start)
     const dur = Math.max(0, end - start)
     const text = String(seg.text || '')
-
     const cur = bySpeaker.get(speaker) || {
-      speaker,
-      turns: 0,
-      totalMs: 0,
-      firstStart: Number.MAX_SAFE_INTEGER,
-      texts: [],
+      speaker, turns: 0, totalMs: 0, firstStart: Number.MAX_SAFE_INTEGER, texts: [],
     }
     cur.turns += 1
     cur.totalMs += dur
@@ -246,61 +248,112 @@ function buildPstnSpeakerNormalization(params: {
     if (text.trim()) cur.texts.push(text.trim())
     bySpeaker.set(speaker, cur)
   }
+  return bySpeaker
+}
 
+function buildSpeakerResolution(params: {
+  segments: Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>
+  callType?: string | null
+  callUserId?: string | null
+  sessionUserId?: string | null
+  initiatorName?: string | null
+  otherParticipantName?: string | null
+}): SpeakerResolution | null {
+  const bySpeaker = aggregateSpeakers(params.segments)
   const ranked = Array.from(bySpeaker.values())
     .sort((a, b) => (b.totalMs - a.totalMs) || (b.turns - a.turns))
     .slice(0, 2)
-  if (ranked.length < 2) return null
+  if (ranked.length < 2) {
+    if (ranked.length === 1 && params.initiatorName) {
+      return {
+        participants: [{ name: params.initiatorName, role: null, isUser: true }],
+        nameMap: { [ranked[0].speaker]: params.initiatorName },
+        knownParticipantBlock: `${params.initiatorName} (You, session owner)`,
+        reason: 'single_speaker',
+      }
+    }
+    return null
+  }
 
   const majorA = ranked[0]
   const majorB = ranked[1]
   const majorByStart = [majorA, majorB].sort((a, b) => a.firstStart - b.firstStart)
 
-  const caller = normalizeHumanName(params.callerName)
-  const callee = normalizeHumanName(params.calleeName)
-  let callerSpeaker: string | null = null
-  let calleeSpeaker: string | null = null
+  const initiator = normalizeHumanName(params.initiatorName)
+  const other = normalizeHumanName(params.otherParticipantName)
+  let initiatorSpeaker: string | null = null
+  let otherSpeaker: string | null = null
 
   for (const sp of [majorA, majorB]) {
-    const introWindow = sp.texts.slice(0, 4).join(' ')
-    if (!callerSpeaker && caller && selfIntroMatchesName(introWindow, caller)) {
-      callerSpeaker = sp.speaker
+    const introWindow = sp.texts.slice(0, 6).join(' ')
+    if (!initiatorSpeaker && initiator && speakerMatchesName(introWindow, initiator)) {
+      initiatorSpeaker = sp.speaker
     }
-    if (!calleeSpeaker && callee && selfIntroMatchesName(introWindow, callee)) {
-      calleeSpeaker = sp.speaker
+    if (!otherSpeaker && other && speakerMatchesName(introWindow, other)) {
+      otherSpeaker = sp.speaker
     }
   }
 
-  if (!callerSpeaker && !calleeSpeaker) {
-    // Outbound PSTN commonly starts with callee greeting.
-    calleeSpeaker = majorByStart[0].speaker
-    callerSpeaker = majorByStart[1].speaker
-  } else if (!callerSpeaker && calleeSpeaker) {
-    callerSpeaker = [majorA.speaker, majorB.speaker].find((s) => s !== calleeSpeaker) || null
-  } else if (!calleeSpeaker && callerSpeaker) {
-    calleeSpeaker = [majorA.speaker, majorB.speaker].find((s) => s !== callerSpeaker) || null
+  if (!initiatorSpeaker && !otherSpeaker) {
+    for (const sp of [majorA, majorB]) {
+      const otherSp = sp === majorA ? majorB : majorA
+      const allText = sp.texts.join(' ')
+      if (initiator && addressMatchesName(allText, initiator)) {
+        initiatorSpeaker = otherSp.speaker
+      }
+      if (other && addressMatchesName(allText, other)) {
+        otherSpeaker = otherSp.speaker
+      }
+    }
   }
 
-  if (!callerSpeaker || !calleeSpeaker) return null
-
-  const isCallerSession = !!params.callUserId && !!params.sessionUserId && params.callUserId === params.sessionUserId
-  const userIsCaller = isCallerSession
-
-  const callerLabel = caller || 'Caller'
-  const calleeLabel = callee || 'Callee'
-
-  const nameCorrections: Record<string, string> = {
-    [callerSpeaker]: callerLabel,
-    [calleeSpeaker]: calleeLabel,
+  let reason = 'transcript_hints'
+  if (!initiatorSpeaker && !otherSpeaker) {
+    const isPstn = (params.callType || '').includes('pstn')
+    if (isPstn) {
+      otherSpeaker = majorByStart[0].speaker
+      initiatorSpeaker = majorByStart[1].speaker
+      reason = 'pstn_turn_order'
+    } else if (params.callType) {
+      initiatorSpeaker = majorByStart[0].speaker
+      otherSpeaker = majorByStart[1].speaker
+      reason = 'webrtc_turn_order'
+    } else {
+      return null
+    }
+  } else if (!initiatorSpeaker && otherSpeaker) {
+    initiatorSpeaker = [majorA.speaker, majorB.speaker].find((s) => s !== otherSpeaker) || null
+    reason = 'partial_hint+complement'
+  } else if (!otherSpeaker && initiatorSpeaker) {
+    otherSpeaker = [majorA.speaker, majorB.speaker].find((s) => s !== initiatorSpeaker) || null
+    reason = 'partial_hint+complement'
   }
+
+  if (!initiatorSpeaker || !otherSpeaker) return null
+
+  const isInitiatorSession = !!params.callUserId && !!params.sessionUserId && params.callUserId === params.sessionUserId
+  const userIsInitiator = isInitiatorSession
+
+  const initiatorLabel = initiator || 'Caller'
+  const otherLabel = other || 'Callee'
+
+  const nameMap: Record<string, string> = {
+    [initiatorSpeaker]: initiatorLabel,
+    [otherSpeaker]: otherLabel,
+  }
+
+  const participantParts: string[] = []
+  participantParts.push(`${initiatorLabel} (${userIsInitiator ? 'You, session owner' : 'other participant'})`)
+  participantParts.push(`${otherLabel} (${!userIsInitiator ? 'You, session owner' : 'other participant'})`)
 
   return {
     participants: [
-      { name: callerLabel, role: null, isUser: userIsCaller },
-      { name: calleeLabel, role: null, isUser: !userIsCaller },
+      { name: initiatorLabel, role: null, isUser: userIsInitiator },
+      { name: otherLabel, role: null, isUser: !userIsInitiator },
     ],
-    nameCorrections,
-    reason: caller && callee ? 'pstn_metadata+self_intro' : 'pstn_metadata+turn_order',
+    nameMap,
+    knownParticipantBlock: participantParts.join(', '),
+    reason,
   }
 }
 
@@ -429,11 +482,13 @@ export async function POST(
     const segments = allSegments
     const { data: linkedCall } = await sessionClient
       .from('calls')
-      .select('id, user_id, call_type, contact_name, session_id, callee_session_id')
+      .select('id, user_id, callee_user_id, call_type, contact_name, session_id, callee_session_id')
       .or(`session_id.eq.${params.id},callee_session_id.eq.${params.id}`)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+
+    // Load profile for the OTHER call participant (caller if we're callee, callee if we're caller)
     const callOwnerName =
       linkedCall?.user_id && linkedCall.user_id !== userId
         ? (
@@ -444,23 +499,45 @@ export async function POST(
               .maybeSingle()
           ).data
         : null
-    const linkedCallerName =
+
+    // Load callee profile for WebRTC calls where callee is a Notissima user
+    const calleeProfile =
+      linkedCall?.callee_user_id && linkedCall.callee_user_id !== userId
+        ? (
+            await sessionClient
+              .from('profiles')
+              .select('display_name, full_name')
+              .eq('id', linkedCall.callee_user_id)
+              .maybeSingle()
+          ).data
+        : null
+
+    const linkedInitiatorName =
       linkedCall?.user_id === userId
         ? userName
         : (callOwnerName?.display_name || callOwnerName?.full_name || callOwnerName?.company_name || null)
-    const linkedCalleeName =
+    const linkedOtherName =
       linkedCall?.user_id === userId
-        ? (linkedCall?.contact_name || null)
+        ? (calleeProfile?.display_name || calleeProfile?.full_name || linkedCall?.contact_name || null)
         : userName
-    const pstnNormalization = buildPstnSpeakerNormalization({
+
+    const speakerResolution = buildSpeakerResolution({
       segments: segments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
       callType: linkedCall?.call_type,
       callUserId: linkedCall?.user_id,
       sessionUserId: userId,
-      callerName: linkedCallerName,
-      calleeName: linkedCalleeName,
+      initiatorName: linkedInitiatorName,
+      otherParticipantName: linkedOtherName,
     })
-    const formatSegment = (seg: any) => `${seg.speaker || 'S1'}: ${seg.text}`
+    if (speakerResolution) {
+      console.log('[Analyze API] Speaker resolution:', speakerResolution.reason, JSON.stringify(speakerResolution.nameMap))
+    }
+
+    const speakerNameMap = speakerResolution?.nameMap ?? {}
+    const formatSegment = (seg: any) => {
+      const raw = seg.speaker || 'S1'
+      return `${speakerNameMap[raw] || raw}: ${seg.text}`
+    }
     const n = segments.length
     const segsPerChunk = Math.max(1, Math.floor(n / 20))
     const positions = n <= 10
@@ -471,7 +548,8 @@ export async function POST(
       const chunk = segments.slice(pos, Math.min(pos + segsPerChunk, n))
       if (chunk.length) sampled.push(chunk.map(formatSegment).join('\n'))
     }
-    const sample = sampled.join('\n\n---\n\n').substring(0, 3500)
+    const sample = sampled.join('\n\n---\n\n').substring(0, 6000)
+    const knownParticipantBlock = speakerResolution?.knownParticipantBlock || 'No participant metadata available.'
     console.log('[Analyze API] Sampled', positions.length, 'sections,', sample.length, 'chars')
 
     // Check if already analyzed (skip re-analysis unless user wants to correct)
@@ -497,10 +575,10 @@ export async function POST(
       let patchedCorrections = existingCorrections
       let shouldPatch = false
 
-      if (pstnNormalization) {
-        const mergedNames = { ...existingNameCorrections, ...pstnNormalization.nameCorrections }
-        const hasNewMapping = Object.keys(pstnNormalization.nameCorrections).some(
-          (k) => existingNameCorrections[k] !== pstnNormalization.nameCorrections[k]
+      if (speakerResolution) {
+        const mergedNames = { ...existingNameCorrections, ...speakerResolution.nameMap }
+        const hasNewMapping = Object.keys(speakerResolution.nameMap).some(
+          (k) => existingNameCorrections[k] !== speakerResolution.nameMap[k]
         )
         const contextParticipants = Array.isArray(normalizedContext.participants) ? normalizedContext.participants : []
         const hasUnresolvedSpeaker = contextParticipants.some((p: any) => typeof p?.name === 'string' && /^S\d+$/i.test(p.name))
@@ -512,10 +590,10 @@ export async function POST(
           }
           patchedContext = {
             ...normalizedContext,
-            participants: pstnNormalization.participants,
+            participants: speakerResolution.participants,
             speakerIdentification: {
               ...(normalizedContext.speakerIdentification || {}),
-              strategy: pstnNormalization.reason,
+              strategy: speakerResolution.reason,
               updatedAt: new Date().toISOString(),
             },
           }
@@ -603,7 +681,8 @@ export async function POST(
 3. **Rich Context** to help understand and document this session
 4. **User-Indicated Content Hint**: The user selected this before upload (use to guide recording type/domain if relevant): ${(session as { input_hint?: string }).input_hint || 'none'}
 4b. **Imported Text Source Signals** (heuristic): ${sourceSignals ? JSON.stringify(sourceSignals) : 'none'}
-5. **User Identification**: The recording was made by "${userName || 'unknown user'}". Try to identify which participant is this user.
+5. **Known Participants** (pre-resolved from metadata — trust this data): ${knownParticipantBlock}
+   The recording/session was made by "${userName || 'unknown user'}". Use speaker names from the transcript as-is; they have already been resolved.
 6. **Transcription Consent**: At the START of the conversation, was consent to record/transcribe mentioned? The initiator (caller/recorder) implicitly consents. Look for: "This call may be recorded", "Do you consent?", "Okay to record?", affirmative replies. Extract: discussed (boolean), participantsConsented (array of speaker IDs who consented, e.g. ["S1","S2"]), summary (one-line description of how consent was obtained, or null if not discussed).
 7. **Spoken Commands**: Detect voice commands directed at "Notissima" (the assistant). Use FUZZY matching—transcription/ASR often misspells proper nouns. Match variations such as: Notissima, Notisima, Notissma, Natissima, Notessima; with or without punctuation (Notissima:, Notissima,); after "Hey", "Ok", "So" etc. If a phrase looks like a command to an assistant (create X, send link, summarize) and the wake word is phonetically similar to Notissima, treat it as a match. Extract the exact phrase as spoken in transcript, speaker, and brief intent summary.
 8. **Suggested Output Formats**: Based on the conversation type and domain, suggest exactly 3 different output formats that would be useful. Examples:
@@ -614,6 +693,7 @@ export async function POST(
   Customize suggestions for the ACTUAL domain and conversation type. Each needs: title (short), description (1 line), generationInstructions (detailed prompt for AI to generate this output), audience.
   Audience must be one of: "internal", "external", "client", "legal", "executive".
    **LANGUAGE for suggestedOutputFormats**: Write the title and description fields in **${outputLangName}**. The generationInstructions should also be in ${outputLangName}.
+9. **Transcript Corrections**: If you notice obvious transcription errors (ASR misspellings of proper nouns, technical terms, place names), suggest corrections. Also, if the transcript has more than 2 speaker labels but the conversation is clearly between only 2 speakers, suggest speaker merges (e.g. "S3" should be merged into "S1").
 
 Transcript sample:
 ${sample}
@@ -662,6 +742,12 @@ Respond in this exact JSON format:
       {"phrase": "Notissima: Create sales opportunity analysis and send me link", "speaker": "S1", "intentSummary": "create_output, send_link"}
     ]
   },
+  "wordCorrections": [
+    {"original": "Feemi Paradox", "corrected": "Fermi Paradox", "confidence": 0.95}
+  ],
+  "speakerMerges": [
+    {"from": "S3", "into": "S1", "confidence": 0.9, "reason": "Only 2 speakers in conversation"}
+  ],
   "suggestedOutputFormats": [
     {"title": "...", "description": "...", "generationInstructions": "...", "audience": "internal"},
     {"title": "...", "description": "...", "generationInstructions": "...", "audience": "external"},
@@ -670,16 +756,14 @@ Respond in this exact JSON format:
 }
 
 **CRITICAL Instructions for Participant Identification:**
+- Speaker names in the transcript may already be resolved to real names (e.g., "Patrick" instead of "S1"). Use them as-is in participants.
 - The recording was made BY: "${userName}"
-- Look for speaker patterns to identify which SPEAKER is "${userName}":
+- If speaker names are still labels like S1/S2, look for speaker patterns to identify which SPEAKER is "${userName}":
   * If Speaker A says "Hey ${userName}" or addresses "${userName}", then the person who RESPONDS is likely "${userName}"
   * Don't assume the speaker who MENTIONS a name IS that person - they might be addressing them
-  * Compare speaker IDs (S1, S2, etc.) with mentioned names in context
-  * Example: If S1 says "Hey Christian" and S2 responds, then S2 is Christian
-- Set "isUser": true ONLY if you have strong evidence that speaker matches "${userName}"
+- Set "isUser": true for the participant matching "${userName}" or the session owner indicated in Known Participants.
 - **IMPORTANT**: If you cannot find "${userName}" mentioned or inferred in the conversation, DO NOT mark anyone as isUser: true
 - Better to mark NO ONE as the user than to guess wrong
-- Only use fallback logic (mark service receiver as user) if the context clearly suggests "${userName}" is present but unidentified
 - Extract exact participant names from transcript (spell them correctly!)
 - Infer specific roles from conversation content
 - Be specific with domains - use actual field names (e.g., "Tax Law" not just "Legal")
@@ -689,7 +773,9 @@ Respond in this exact JSON format:
 - Be accurate and preserve correct spelling from transcript
 - For consent: focus on the first 1-2 minutes of the conversation. If nothing found, use discussed: false, participantsConsented: [], summary: null
 - For spokenCommands: use fuzzy matching. Accept Notissima + common ASR misspellings (Notisima, Notissma, Natissima, etc.). Accept phonetically similar wake words. Include if it reasonably looks like a command to the assistant. Preserve the exact phrase from transcript. Empty array if none found
-- Add "sessionSummary" as 2-5 concise bullets in the transcript language, focused on what happened, decisions, and next actions.`
+- Add "sessionSummary" as 2-5 concise bullets in the transcript language, focused on what happened, decisions, and next actions.
+- For wordCorrections: only flag high-confidence corrections (names, places, technical terms that ASR clearly misspelled). Empty array if none.
+- For speakerMerges: only suggest if clearly fewer actual speakers than labels. Empty array if none.`
         }
       ]
     })
@@ -724,29 +810,37 @@ Respond in this exact JSON format:
     const existingExtractedContext = ((session as any)?.ai_extracted_context || {}) as Record<string, any>
     const existingCorrections = ((session as any)?.transcript_corrections || {}) as Record<string, any>
     const existingNameCorrections = (existingCorrections.name_corrections || {}) as Record<string, string>
+
+    const aiWordCorrections = Array.isArray(analysis.wordCorrections) ? analysis.wordCorrections : []
+    const aiSpeakerMerges = Array.isArray(analysis.speakerMerges) ? analysis.speakerMerges : []
+
     const mergedExtractedContext = {
       ...analysis.extractedContext,
       sourceSignals: existingExtractedContext.sourceSignals || sourceSignals || null,
-      ...(pstnNormalization
+      ...(speakerResolution
         ? {
-            participants: pstnNormalization.participants,
+            participants: speakerResolution.participants,
             speakerIdentification: {
               ...(analysis.extractedContext?.speakerIdentification || {}),
-              strategy: pstnNormalization.reason,
+              strategy: speakerResolution.reason,
               updatedAt: new Date().toISOString(),
             },
           }
         : {}),
     }
-    const mergedTranscriptCorrections = pstnNormalization
-      ? {
-          ...existingCorrections,
-          name_corrections: {
-            ...existingNameCorrections,
-            ...pstnNormalization.nameCorrections,
-          },
-        }
-      : existingCorrections
+    const mergedTranscriptCorrections = {
+      ...existingCorrections,
+      ...(speakerResolution
+        ? {
+            name_corrections: {
+              ...existingNameCorrections,
+              ...speakerResolution.nameMap,
+            },
+          }
+        : {}),
+      ...(aiWordCorrections.length > 0 ? { word_corrections: aiWordCorrections } : {}),
+      ...(aiSpeakerMerges.length > 0 ? { speaker_merges: aiSpeakerMerges } : {}),
+    }
     const canonicalSummary = resolveSessionSummary(
       analysis,
       mergedExtractedContext,

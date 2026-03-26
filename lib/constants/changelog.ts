@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.25.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.25.0',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Smarter Speaker & Context Recognition',
+        description: 'Speaker identification now works across all call types — not just PSTN. Participants are resolved before AI analysis, so summaries correctly attribute who said what. AI also suggests transcript corrections for misspelled names and false speaker splits.',
+      },
+    ],
+  },
+  {
     version: '1.24.1',
     date: 'March 17, 2026',
     entries: [
