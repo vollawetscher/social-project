@@ -21,6 +21,13 @@ export const changelog: ChangelogVersion[] = [
         version: '1.23.2',
         date: 'March 17, 2026',
         category: 'improvement',
+        title: 'Live PSTN Transcript Is Easier to Read in Real Time',
+        description: 'Live call transcript now uses slower high-quality realtime settings and phrase buffering, reducing fragmented word-by-word output so on-screen transcript lines are more readable during calls.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
         title: 'PSTN Live Mode Uses Track-Based Transcript Merging',
         description: 'For PSTN live mode, Notissima now merges participant track transcripts using LiveKit timing metadata, improving chronological accuracy and speaker separation in the final transcript.',
       },

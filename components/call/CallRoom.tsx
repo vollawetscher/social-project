@@ -284,6 +284,8 @@ function CallRoomInner({
   const notesRef = useRef("")
   const speechmaticsServicesRef = useRef<Record<string, SpeechmaticsRealtimeService>>({})
   const speechmaticsTracksRef = useRef<Record<string, MediaStreamTrack | null>>({})
+  const liveFinalBufferRef = useRef<Record<string, string>>({})
+  const liveFlushTimerRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
@@ -906,6 +908,26 @@ function CallRoomInner({
     }
 
     const stopSource = async (sourceKey: string) => {
+      const pendingBuffer = (liveFinalBufferRef.current[sourceKey] || '').trim()
+      if (pendingBuffer) {
+        const label = sourceKey === 'local' ? t('you') : (remoteParticipants[0] as any)?.name || contactName || contactPhone || t('participant')
+        setLiveTranscriptLines((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            speakerKey: sourceKey,
+            speakerLabel: label,
+            text: pendingBuffer,
+            timestampMs: Date.now(),
+          },
+        ])
+      }
+      if (liveFlushTimerRef.current[sourceKey]) {
+        clearTimeout(liveFlushTimerRef.current[sourceKey] as ReturnType<typeof setTimeout>)
+      }
+      delete liveFlushTimerRef.current[sourceKey]
+      delete liveFinalBufferRef.current[sourceKey]
+
       const service = speechmaticsServicesRef.current[sourceKey]
       if (service) {
         try {
@@ -940,6 +962,32 @@ function CallRoomInner({
 
     const startSource = async (sourceKey: string, speakerLabel: string, mediaTrack: MediaStreamTrack) => {
       if (speechmaticsServicesRef.current[sourceKey]) return
+      const flushBufferedLine = () => {
+        const buffered = (liveFinalBufferRef.current[sourceKey] || '').trim()
+        if (!buffered) return
+        liveFinalBufferRef.current[sourceKey] = ''
+        setLiveTranscriptLines((prev) => [
+          ...prev,
+          {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            speakerKey: sourceKey,
+            speakerLabel,
+            text: buffered,
+            timestampMs: Date.now(),
+          },
+        ])
+      }
+
+      const queueFlush = () => {
+        if (liveFlushTimerRef.current[sourceKey]) {
+          clearTimeout(liveFlushTimerRef.current[sourceKey] as ReturnType<typeof setTimeout>)
+        }
+        liveFlushTimerRef.current[sourceKey] = setTimeout(() => {
+          flushBufferedLine()
+          liveFlushTimerRef.current[sourceKey] = null
+        }, 1200)
+      }
+
       try {
         setLiveTranscriptError(null)
         const token = await getSpeechmaticsRealtimeToken()
@@ -949,22 +997,30 @@ function CallRoomInner({
         const service = new SpeechmaticsRealtimeService(token, {
           language: realtimeLanguageCode,
           enablePartials: true,
+          maxDelaySec: 5,
+          enableEntities: false,
           onTranscript: (result) => {
             if (cancelled) return
             if (result.isFinal) {
               const text = result.transcript.trim()
               if (!text) return
-              setLiveTranscriptLines((prev) => [
-                ...prev,
-                {
-                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                  speakerKey: sourceKey,
-                  speakerLabel,
-                  text,
-                  timestampMs: Date.now(),
-                },
-              ])
+              const existing = (liveFinalBufferRef.current[sourceKey] || '').trim()
+              liveFinalBufferRef.current[sourceKey] = existing
+                ? `${existing}${/^[,.;:!?]/.test(text) ? '' : ' '}${text}`
+                : text
+              const buffered = liveFinalBufferRef.current[sourceKey]
               setLiveTranscriptPartials((prev) => ({ ...prev, [sourceKey]: "" }))
+              const endsSentence = /[.!?…]$/.test(buffered)
+              const wordCount = buffered.split(/\s+/).filter(Boolean).length
+              if (endsSentence || wordCount >= 14) {
+                flushBufferedLine()
+                if (liveFlushTimerRef.current[sourceKey]) {
+                  clearTimeout(liveFlushTimerRef.current[sourceKey] as ReturnType<typeof setTimeout>)
+                  liveFlushTimerRef.current[sourceKey] = null
+                }
+              } else {
+                queueFlush()
+              }
             } else {
               setLiveTranscriptPartials((prev) => ({ ...prev, [sourceKey]: result.transcript || "" }))
             }

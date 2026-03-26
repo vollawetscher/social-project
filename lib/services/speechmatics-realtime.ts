@@ -16,6 +16,8 @@ export interface RealtimeTranscriptResult {
 export interface RealtimeConfig {
   language?: string
   enablePartials?: boolean
+  maxDelaySec?: number
+  enableEntities?: boolean
   onTranscript: (result: RealtimeTranscriptResult) => void
   onError: (error: Error, diagnostic?: string) => void
   onConnectionChange?: (connected: boolean) => void
@@ -73,8 +75,8 @@ export class SpeechmaticsRealtimeService {
           transcription_config: {
             language: this.config.language || 'de',
             enable_partials: this.config.enablePartials ?? true,
-            max_delay: 2,
-            enable_entities: true,
+            max_delay: this.config.maxDelaySec ?? 5,
+            enable_entities: this.config.enableEntities ?? false,
           },
         }
 
