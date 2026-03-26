@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { UserProfile } from "@/lib/types/profile"
+import { VoiceSampleCard } from "@/components/profile/VoiceSampleCard"
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -410,6 +411,15 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Voice Sample for Speaker Diarization */}
+      <VoiceSampleCard
+        displayName={profile.display_name || profile.email?.split("@")[0] || ""}
+        voiceSamplePath={profile.voice_sample_path}
+        voiceSampleDurationMs={profile.voice_sample_duration_ms}
+        onSaved={(path, durationMs) => setProfile((prev) => prev ? { ...prev, voice_sample_path: path, voice_sample_duration_ms: durationMs } : prev)}
+        onDeleted={() => setProfile((prev) => prev ? { ...prev, voice_sample_path: null, voice_sample_duration_ms: null } : prev)}
+      />
 
       {/* Install App - mobile only, not already installed */}
       <InstallAppCard />

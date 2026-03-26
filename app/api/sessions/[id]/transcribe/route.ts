@@ -9,6 +9,7 @@ import { createErrorLogger } from '@/lib/services/error-logger'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { alignTranscripts } from '@/lib/services/transcript-aligner'
+import { prependVoiceSample, offsetTranscriptSegments, identifyPrimedSpeaker } from '@/lib/services/voice-sample-prepend'
 
 function normalizeVocabCandidate(raw: string): string | null {
   const value = String(raw || '')
@@ -290,6 +291,31 @@ async function processTranscriptionJob(sessionId: string) {
       participantNames,
     })
 
+    let voiceSampleBuffer: Buffer | null = null
+    let voiceSampleMime = 'audio/ogg'
+    let voiceSampleDurationMs = 0
+    let voiceSampleUserName: string | null = null
+    const sessionUserId = (sessionRow as any)?.user_id
+    if (sessionUserId) {
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('voice_sample_path, voice_sample_duration_ms, display_name, full_name')
+        .eq('id', sessionUserId)
+        .single()
+      if (userProfile?.voice_sample_path && userProfile.voice_sample_duration_ms) {
+        voiceSampleDurationMs = userProfile.voice_sample_duration_ms
+        voiceSampleUserName = userProfile.display_name || userProfile.full_name || null
+        const { data: vsData } = await supabase.storage
+          .from('rohbericht-audio')
+          .download(userProfile.voice_sample_path)
+        if (vsData) {
+          voiceSampleBuffer = Buffer.from(await vsData.arrayBuffer())
+          voiceSampleMime = userProfile.voice_sample_path.endsWith('.webm') ? 'audio/webm' : 'audio/ogg'
+          console.log('[Transcribe] Voice sample loaded:', voiceSampleBuffer.length, 'bytes,', voiceSampleDurationMs, 'ms')
+        }
+      }
+    }
+
     // Get all files for this session
     const { data: files } = await supabase
       .from('files')
@@ -438,16 +464,34 @@ async function processTranscriptionJob(sessionId: string) {
         return
       }
 
-      const audioBuffer = Buffer.from(await audioData.arrayBuffer())
+      let audioBuffer = Buffer.from(await audioData.arrayBuffer())
       console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)
 
+      let voiceSamplePrepended = false
+      let effectiveVoiceSampleDurationMs = 0
+      if (voiceSampleBuffer && voiceSampleDurationMs > 0) {
+        const prepended = await prependVoiceSample(
+          voiceSampleBuffer,
+          voiceSampleMime,
+          audioBuffer,
+          file.mime_type,
+        )
+        if (prepended) {
+          audioBuffer = prepended.buffer
+          voiceSamplePrepended = true
+          effectiveVoiceSampleDurationMs = voiceSampleDurationMs
+          console.log('[Transcribe] Voice sample prepended, new size:', audioBuffer.length, 'offset:', voiceSampleDurationMs, 'ms')
+        }
+      }
+
       const contentType = (inputHint === 'presentation' || inputHint === 'voice_note') ? 'informative' : 'conversational'
-      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage, additionalVocabCount: additionalVocab.length })
+      const effectiveMime = voiceSamplePrepended ? 'audio/ogg' : file.mime_type
+      console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage, additionalVocabCount: additionalVocab.length, voiceSamplePrepended })
       const speechmatics = createSpeechmaticsService()
 
       let transcript
       try {
-        transcript = await speechmatics.transcribeAudio(audioBuffer, file.mime_type, {
+        transcript = await speechmatics.transcribeAudio(audioBuffer, effectiveMime, {
           contentType,
           language: sessionLanguage || undefined,
           additionalVocab,
@@ -519,6 +563,21 @@ async function processTranscriptionJob(sessionId: string) {
       }
 
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
+
+      if (voiceSamplePrepended && effectiveVoiceSampleDurationMs > 0 && transcript.segments.length > 0) {
+        const primedSpeaker = identifyPrimedSpeaker(transcript.segments, effectiveVoiceSampleDurationMs)
+        transcript.segments = offsetTranscriptSegments(transcript.segments, effectiveVoiceSampleDurationMs)
+        transcript.fullText = transcript.segments.map((s) => s.text).join(' ')
+        if (primedSpeaker && voiceSampleUserName) {
+          for (const seg of transcript.segments) {
+            if (seg.speaker === primedSpeaker) {
+              seg.speaker = voiceSampleUserName
+            }
+          }
+        }
+        console.log('[Transcribe] Voice sample offset applied:', effectiveVoiceSampleDurationMs, 'ms, primed speaker:', primedSpeaker, '→', voiceSampleUserName)
+      }
+
       const trackKind = inferTrackKindFromStoragePath(file.storage_path)
 
       if (transcript.segments.length === 0) {

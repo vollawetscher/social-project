@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.24.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.24.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Voice Sample for Speaker Recognition',
+        description: 'Record a short voice sample in your profile so Notissima identifies you in conversations from the very first second — no more misattributed speakers at the start of calls.',
+      },
+    ],
+  },
+  {
     version: '1.23.2',
     date: 'March 17, 2026',
     entries: [
