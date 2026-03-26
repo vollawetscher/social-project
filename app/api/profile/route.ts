@@ -57,6 +57,7 @@ export async function PATCH(request: Request) {
       'auto_generate_reports',
       'phone_number',
       'preferences',
+      'default_retention_days',
     ]
     
     const filteredUpdates = Object.keys(updates)

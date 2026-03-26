@@ -200,14 +200,7 @@ export default function ProfilePage() {
       const tmpl = templates.find((x) => x.id === templateId)
       return tmpl?.name || t('customTemplate')
     }
-    const action = profile?.after_transcript_action
-    const actionKeys: Record<string, string> = {
-      nothing: 'doNothing',
-      short_summary: 'shortSummary',
-      long_summary: 'longSummary',
-      full_report: 'fullReport',
-    }
-    return t(actionKeys[action || 'nothing'] || 'doNothing')
+    return t('doNothing')
   }
 
   const savePhoneNumber = async () => {
