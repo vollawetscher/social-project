@@ -7,6 +7,7 @@
 
 export type CallType = 'web' | 'pstn_outbound'
 export type PstnConsentState = 'not_required' | 'pending' | 'granted' | 'declined' | 'timeout'
+export type PstnTranscriptionMode = 'batch' | 'live'
 export type CallStatus =
   | 'scheduled'
   | 'waiting'
@@ -49,6 +50,7 @@ export interface Call {
   missed_at?: string | null
   callee_declined?: boolean
   pstn_consent_state?: PstnConsentState | null
+  pstn_transcription_mode?: PstnTranscriptionMode | null
   scheduled_for?: string | null
   scheduled_duration_min?: number | null
   scheduled_timezone?: string | null
@@ -116,6 +118,7 @@ export interface LiveTranscriptSegment {
 export interface CreateCallRequest {
   callType: CallType
   mode: CallMode
+  pstnTranscriptionMode?: PstnTranscriptionMode
   phoneNumber?: string        // Required for pstn_outbound
   participantName?: string    // Display name for the initiator
   calleeUserId?: string       // Target user for in-app invite calls

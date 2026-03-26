@@ -3,7 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 
 /**
  * GET /api/calls/[id]/info - Public minimal call info for invite links.
- * Returns only caller name and call mode -- no sensitive data.
+ * Returns only caller/call metadata needed for join UI.
  */
 export async function GET(
   request: Request,
@@ -14,7 +14,7 @@ export async function GET(
 
     const { data: call, error } = await db
       .from('calls')
-      .select('id, call_type, user_id')
+      .select('id, call_type, call_mode, pstn_transcription_mode, user_id')
       .eq('id', params.id)
       .maybeSingle()
 
@@ -37,10 +37,14 @@ export async function GET(
       (profile?.email ? profile.email.split('@')[0] : null) ||
       'Someone'
 
-    // mode is not stored in DB — pass it through from URL (caller sets mode param on invite link)
-    return NextResponse.json({ callerName, callType: call.call_type })
+    return NextResponse.json({
+      callerName,
+      callType: call.call_type,
+      callMode: call.call_mode || 'video',
+      pstnTranscriptionMode: call.pstn_transcription_mode || 'batch',
+    })
   } catch (error: any) {
     console.error('[Call Info] Error:', error)
-    return NextResponse.json({ callerName: 'Someone', mode: 'video' })
+    return NextResponse.json({ callerName: 'Someone', callMode: 'video', callType: 'web', pstnTranscriptionMode: 'batch' })
   }
 }

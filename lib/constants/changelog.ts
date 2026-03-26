@@ -21,6 +21,13 @@ export const changelog: ChangelogVersion[] = [
         version: '1.23.2',
         date: 'March 17, 2026',
         category: 'improvement',
+        title: 'PSTN Calls Add Live or Batch Transcript Mode',
+        description: 'When placing a phone-network call, you can now choose Batch transcription for maximum post-call accuracy or Live preview mode to view transcript text during the call.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
+        category: 'improvement',
         title: 'Output Generator Adds Short, Medium, and Long Length Control',
         description: 'When generating outputs, you can now choose Short, Medium, or Long length so results better match your preferred detail level and writing time.',
       },

@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     const {
       callType = 'web',
       mode = 'audio',
+      pstnTranscriptionMode,
       participantName,
       calleeUserId,
       contactName,
@@ -31,6 +32,10 @@ export async function POST(request: Request) {
       inviteEmail,
       inviteEmails,
     } = body
+    const resolvedPstnTranscriptionMode =
+      callType === 'pstn_outbound' && pstnTranscriptionMode === 'live'
+        ? 'live'
+        : 'batch'
 
     // Get user profile for display name, preferred language, and timezone
     const { data: profile } = await supabase
@@ -140,6 +145,7 @@ export async function POST(request: Request) {
         room_name: roomName,
         call_type: callType,
         call_mode: mode,
+        pstn_transcription_mode: resolvedPstnTranscriptionMode,
         contact_name: contactName || null,
         status: isScheduled ? 'scheduled' : (isInvite ? 'invited' : 'waiting'),
         invited_at: isInvite ? new Date().toISOString() : null,

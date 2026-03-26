@@ -45,8 +45,10 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CallControls } from "@/components/call/CallControls"
 import type { CallMode, LayoutMode } from "@/lib/types/call"
+import type { PstnTranscriptionMode } from "@/lib/types/call"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { formatDuration } from "@/lib/utils/date-formatters"
+import { SpeechmaticsRealtimeService, getSpeechmaticsRealtimeToken } from "@/lib/services/speechmatics-realtime"
 
 const RECONNECT_GRACE_MS = 30_000
 
@@ -63,6 +65,7 @@ interface CallRoomProps {
   serverUrl: string
   mode: CallMode
   callType: "web" | "pstn_outbound"
+  pstnTranscriptionMode?: PstnTranscriptionMode
   contactName?: string
   contactPhone?: string
   displayName?: string
@@ -77,6 +80,12 @@ interface ModerationParticipant {
   role?: string
   roleLabel?: string
   shortIdentity?: string
+}
+
+interface LiveTranscriptLine {
+  id: string
+  text: string
+  timestampMs: number
 }
 
 type VideoBackgroundChoice = "none" | "blur" | "home" | "conference" | "office"
@@ -172,6 +181,7 @@ function CallRoomInner({
   callId,
   mode,
   callType,
+  pstnTranscriptionMode = "batch",
   contactName,
   contactPhone,
   displayName,
@@ -231,6 +241,11 @@ function CallRoomInner({
   const [reconnectSecondsLeft, setReconnectSecondsLeft] = useState(Math.floor(RECONNECT_GRACE_MS / 1000))
   const [videoBackground, setVideoBackground] = useState<VideoBackgroundChoice>("none")
   const [showModerationPanel, setShowModerationPanel] = useState(false)
+  const [liveTranscriptLines, setLiveTranscriptLines] = useState<LiveTranscriptLine[]>([])
+  const [liveTranscriptPartial, setLiveTranscriptPartial] = useState("")
+  const [liveTranscriptConnected, setLiveTranscriptConnected] = useState(false)
+  const [liveTranscriptError, setLiveTranscriptError] = useState<string | null>(null)
+
   const [roomLocked, setRoomLocked] = useState(false)
   const [moderationParticipants, setModerationParticipants] = useState<ModerationParticipant[]>([])
   const [moderationLoading, setModerationLoading] = useState(false)
@@ -246,6 +261,7 @@ function CallRoomInner({
   const profilePreferencesRef = useRef<Record<string, any>>({})
   const notesSyncSkipRef = useRef(false)
   const notesRef = useRef("")
+  const speechmaticsServiceRef = useRef<SpeechmaticsRealtimeService | null>(null)
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
@@ -262,9 +278,11 @@ function CallRoomInner({
         ? "ringing"
         : "connecting"
   const isMuted = !localParticipant.isMicrophoneEnabled
+  const isLocalMicEnabled = localParticipant.isMicrophoneEnabled
   const isCameraOn = localParticipant.isCameraEnabled
   const isScreenSharing = localParticipant.isScreenShareEnabled
   const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
+  const liveTranscriptEnabled = callType === "pstn_outbound" && pstnTranscriptionMode === "live"
 
   const refreshModeration = useCallback(async () => {
     if (!isInitiator || !callId) return
@@ -804,6 +822,88 @@ function CallRoomInner({
   }, [isConnected, requestWakeLock, releaseWakeLock])
 
   useEffect(() => {
+    let cancelled = false
+
+    const stopRealtime = async () => {
+      const service = speechmaticsServiceRef.current
+      speechmaticsServiceRef.current = null
+      if (service) {
+        try {
+          await service.stop()
+        } catch {
+          // Best-effort cleanup only.
+        }
+      }
+      if (!cancelled) {
+        setLiveTranscriptConnected(false)
+        setLiveTranscriptPartial("")
+      }
+    }
+
+    const startRealtime = async () => {
+      if (!liveTranscriptEnabled || !isConnected || !isLocalMicEnabled) {
+        await stopRealtime()
+        return
+      }
+      if (speechmaticsServiceRef.current) return
+
+      const publication = localParticipant.getTrackPublication(Track.Source.Microphone)
+      const mediaTrack = (publication?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined
+      if (!mediaTrack) return
+
+      try {
+        setLiveTranscriptError(null)
+        const token = await getSpeechmaticsRealtimeToken()
+        if (cancelled) return
+        const stream = new MediaStream([mediaTrack.clone()])
+        const service = new SpeechmaticsRealtimeService(token, {
+          language: (navigator.language || "en").split("-")[0] || "en",
+          enablePartials: true,
+          onTranscript: (result) => {
+            if (cancelled) return
+            if (result.isFinal) {
+              const text = result.transcript.trim()
+              if (!text) return
+              setLiveTranscriptLines((prev) => [
+                ...prev,
+                {
+                  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  text,
+                  timestampMs: Date.now(),
+                },
+              ])
+              setLiveTranscriptPartial("")
+            } else {
+              setLiveTranscriptPartial(result.transcript || "")
+            }
+          },
+          onError: (error) => {
+            if (cancelled) return
+            setLiveTranscriptError(error.message || "Realtime transcription failed")
+          },
+          onConnectionChange: (connected) => {
+            if (cancelled) return
+            setLiveTranscriptConnected(connected)
+          },
+        })
+        speechmaticsServiceRef.current = service
+        await service.start(stream)
+      } catch (error: any) {
+        if (cancelled) return
+        setLiveTranscriptError(error?.message || "Realtime transcription failed")
+        await stopRealtime()
+      }
+    }
+
+    void startRealtime()
+
+    return () => {
+      cancelled = true
+      void stopRealtime()
+    }
+  }, [liveTranscriptEnabled, isConnected, isLocalMicEnabled, localParticipant])
+
+  useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && isConnected) {
         requestWakeLock()
@@ -1272,9 +1372,45 @@ function CallRoomInner({
                   <span className="text-[10px] text-destructive font-medium">REC</span>
                 </div>
               </div>
-              <div className="flex items-center justify-center py-12">
-                <p className="text-sm text-muted-foreground">{t("transcriptAfterCall")}</p>
-              </div>
+              {liveTranscriptEnabled ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "h-2 w-2 rounded-full",
+                      liveTranscriptConnected ? "bg-primary animate-pulse" : "bg-muted-foreground"
+                    )} />
+                    <p className="text-xs text-muted-foreground">
+                      {liveTranscriptConnected ? t("liveTranscriptConnected") : t("liveTranscriptConnecting")}
+                    </p>
+                  </div>
+                  {liveTranscriptError && (
+                    <p className="text-xs text-destructive">{liveTranscriptError}</p>
+                  )}
+                  {liveTranscriptLines.length === 0 && !liveTranscriptPartial ? (
+                    <p className="text-sm text-muted-foreground py-8 text-center">{t("liveTranscriptEmpty")}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {liveTranscriptLines.slice(-120).map((line) => (
+                        <div key={line.id} className="rounded-lg bg-secondary px-3 py-2">
+                          <p className="text-[11px] text-muted-foreground mb-0.5">
+                            {new Date(line.timestampMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                          <p className="text-sm text-foreground">{line.text}</p>
+                        </div>
+                      ))}
+                      {liveTranscriptPartial && (
+                        <div className="rounded-lg border border-dashed border-border px-3 py-2">
+                          <p className="text-sm text-muted-foreground italic">{liveTranscriptPartial}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-12">
+                  <p className="text-sm text-muted-foreground">{t("transcriptAfterCall")}</p>
+                </div>
+              )}
             </div>
           )}
         </div>

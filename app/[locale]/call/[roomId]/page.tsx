@@ -11,6 +11,7 @@ import { CallRoom } from "@/components/call/CallRoom"
 import { CallEndedSignup } from "@/components/call/CallEndedSignup"
 import { Loader2 } from "lucide-react"
 import type { CallMode } from "@/lib/types/call"
+import type { PstnTranscriptionMode } from "@/lib/types/call"
 
 const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || ""
 
@@ -27,6 +28,7 @@ export default function CallRoomPage() {
   const modeParam = (searchParams?.get("mode") as CallMode) || "video"
   const phoneParam = searchParams?.get("phone") || null
   const callTypeParam = (searchParams?.get("callType") as "web" | "pstn_outbound") || "web"
+  const transcriptionModeParam = (searchParams?.get("transcriptionMode") as PstnTranscriptionMode) || "batch"
   const ringPhoneParam = searchParams?.get("ringPhone") || null
   const ringCallerNameParam = searchParams?.get("ringCallerName") || null
   const ringContactNameParam = searchParams?.get("ringContactName") || null
@@ -35,6 +37,7 @@ export default function CallRoomPage() {
   const [callId, setCallId] = useState<string | null>(callIdParam)
   const [token, setToken] = useState<string | null>(tokenParam)
   const [callType, setCallType] = useState<"web" | "pstn_outbound">(callTypeParam)
+  const [pstnTranscriptionMode, setPstnTranscriptionMode] = useState<PstnTranscriptionMode>(transcriptionModeParam)
   const [contactName, setContactName] = useState<string | undefined>()
   const [callerName, setCallerName] = useState<string>("Someone")
   const [joinDisplayName, setJoinDisplayName] = useState<string>("Guest")
@@ -63,6 +66,10 @@ export default function CallRoomPage() {
           if (res.ok) {
             const data = await res.json()
             setCallerName(data.callerName || "Someone")
+            if (data.callType) setCallType(data.callType)
+            if (data.pstnTranscriptionMode === "live" || data.pstnTranscriptionMode === "batch") {
+              setPstnTranscriptionMode(data.pstnTranscriptionMode)
+            }
           }
         } catch {
           // silently ignore -- fall back to "Someone"
@@ -253,6 +260,7 @@ export default function CallRoomPage() {
       serverUrl={LIVEKIT_URL}
       mode={modeParam}
       callType={callType}
+      pstnTranscriptionMode={pstnTranscriptionMode}
       contactName={contactName}
       contactPhone={phoneParam || undefined}
       displayName={user?.user_metadata?.full_name || user?.email?.split("@")[0]}

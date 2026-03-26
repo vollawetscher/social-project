@@ -44,6 +44,9 @@ import { cn } from "@/lib/utils"
 import { DialPad } from "@/components/call/DialPad"
 import { toast } from "sonner"
 import type { Call, CallMode } from "@/lib/types/call"
+import type { PstnTranscriptionMode } from "@/lib/types/call"
+
+const PSTN_TRANSCRIPTION_MODE_STORAGE_KEY = "notissima.pstn.transcriptionMode"
 
 type TabType = "recent" | "contacts" | "dialpad"
 
@@ -152,6 +155,7 @@ export default function CallsPage() {
   const [voicePhone, setVoicePhone] = useState("")
   const [voiceContactName, setVoiceContactName] = useState("")
   const [voiceSaveAsContact, setVoiceSaveAsContact] = useState(false)
+  const [voicePstnTranscriptionMode, setVoicePstnTranscriptionMode] = useState<PstnTranscriptionMode>("batch")
   const [ringPhone, setRingPhone] = useState("")
   const [ringContactName, setRingContactName] = useState("")
   const [ringSending, setRingSending] = useState(false)
@@ -191,6 +195,17 @@ export default function CallsPage() {
 
   useEffect(() => {
     fetchCalls()
+  }, [])
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PSTN_TRANSCRIPTION_MODE_STORAGE_KEY)
+      if (saved === "live" || saved === "batch") {
+        setVoicePstnTranscriptionMode(saved)
+      }
+    } catch {
+      // Ignore localStorage access issues.
+    }
   }, [])
 
   useEffect(() => {
@@ -675,7 +690,11 @@ export default function CallsPage() {
       const res = await fetch("/api/calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callType: "pstn_outbound", mode }),
+        body: JSON.stringify({
+          callType: "pstn_outbound",
+          mode,
+          pstnTranscriptionMode: mode === "audio" ? voicePstnTranscriptionMode : "batch",
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -693,7 +712,8 @@ export default function CallsPage() {
         throw new Error(dialData.error || "Failed to dial")
       }
 
-      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}&callType=pstn_outbound&phone=${encodeURIComponent(normalized)}`)
+      const transcriptionMode = mode === "audio" ? voicePstnTranscriptionMode : "batch"
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}&callType=pstn_outbound&phone=${encodeURIComponent(normalized)}&transcriptionMode=${encodeURIComponent(transcriptionMode)}`)
     } catch (err: any) {
       console.error("[Calls] Failed to create PSTN call:", err)
       setError(err.message || "Failed to create call")
@@ -1356,6 +1376,43 @@ export default function CallsPage() {
                 value={voiceContactName}
                 onChange={(e) => setVoiceContactName(e.target.value)}
               />
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">{t('pstnTranscriptionModeLabel')}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVoicePstnTranscriptionMode("batch")
+                      try { window.localStorage.setItem(PSTN_TRANSCRIPTION_MODE_STORAGE_KEY, "batch") } catch {}
+                    }}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-left",
+                      voicePstnTranscriptionMode === "batch"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:bg-accent"
+                    )}
+                  >
+                    <p className="text-sm font-medium">{t('pstnTranscriptionModeBatch')}</p>
+                    <p className="text-[11px] text-muted-foreground">{t('pstnTranscriptionModeBatchHint')}</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVoicePstnTranscriptionMode("live")
+                      try { window.localStorage.setItem(PSTN_TRANSCRIPTION_MODE_STORAGE_KEY, "live") } catch {}
+                    }}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-left",
+                      voicePstnTranscriptionMode === "live"
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:bg-accent"
+                    )}
+                  >
+                    <p className="text-sm font-medium">{t('pstnTranscriptionModeLive')}</p>
+                    <p className="text-[11px] text-muted-foreground">{t('pstnTranscriptionModeLiveHint')}</p>
+                  </button>
+                </div>
+              </div>
               {voiceContactName.trim() && (
                 <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
                   <input
