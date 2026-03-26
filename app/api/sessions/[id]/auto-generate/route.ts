@@ -110,7 +110,6 @@ export async function POST(
       headers: genHeaders,
       body: JSON.stringify({
         sessionId: params.id,
-        queueMode: 'sync',
         config: {
           templateId: template.id,
           templateName: template.name,
@@ -135,6 +134,16 @@ export async function POST(
         { error: result.error || 'Failed to generate output' },
         { status: generateResponse.status }
       )
+    }
+
+    if (result.queued) {
+      console.log('[Auto-Generate API] Output generation queued, jobId:', result.jobId)
+      return NextResponse.json({
+        success: true,
+        queued: true,
+        jobId: result.jobId,
+        templateName: template.name,
+      })
     }
 
     console.log('[Auto-Generate API] Output generated successfully:', result.id)

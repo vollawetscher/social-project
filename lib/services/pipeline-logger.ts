@@ -15,10 +15,10 @@ export interface PipelineEventInput {
 
 export async function logPipelineEvent(
   input: PipelineEventInput,
-  supabase?: SupabaseClient
+  _supabase?: SupabaseClient
 ): Promise<void> {
   try {
-    const db = supabase || createServiceRoleClient()
+    const db = createServiceRoleClient()
     const { error } = await db
       .from('pipeline_events')
       .insert({

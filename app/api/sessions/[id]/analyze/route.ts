@@ -5,6 +5,7 @@ import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { requireSessionAccess } from '@/lib/auth/helpers'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { resolveTokenBudget } from '@/lib/services/token-budget'
+import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -395,6 +396,49 @@ export async function POST(
       await requireSessionAccess(params.id, userId)
       supabase = authSupabase
       console.log('[Analyze API] User authenticated:', userId)
+    }
+
+    const isWorkerSync = request.headers.get('x-queue-worker') === '1'
+
+    // Quick cache check: if already analyzed, return cached data without heavy processing
+    if (!isWorkerSync) {
+      const cacheClient = isInternalCall ? createServiceRoleClient() : supabase
+      const { data: cachedSession } = await cacheClient
+        .from('sessions')
+        .select('recording_type, recording_type_confidence, suggested_domains, ai_extracted_context, suggested_output_formats, context_locked, user_recording_type, user_domains, transcript_corrections')
+        .eq('id', params.id)
+        .maybeSingle()
+
+      const alreadyCached = cachedSession?.recording_type && cachedSession?.suggested_domains && cachedSession?.ai_extracted_context
+      if (alreadyCached) {
+        console.log('[Analyze API] Returning cached analysis (quick path)')
+        return NextResponse.json({
+          recordingType: cachedSession.user_recording_type || cachedSession.recording_type,
+          recordingTypeConfidence: cachedSession.recording_type_confidence || 1.0,
+          domains: cachedSession.user_domains || cachedSession.suggested_domains || [],
+          extractedContext: cachedSession.ai_extracted_context || {},
+          suggestedOutputFormats: cachedSession.suggested_output_formats || [],
+          locked: cachedSession.context_locked || false,
+          cached: true,
+        })
+      }
+
+      // Not cached — enqueue for async processing
+      if (!isInternalCall) {
+        const job = await enqueueAsyncJob({
+          userId,
+          jobType: 'session_analyze',
+          payload: { sessionId: params.id },
+          idempotencyKey: `session_analyze:${params.id}`,
+          maxAttempts: 5,
+        })
+        triggerAsyncWorker()
+        console.log('[Analyze API] Enqueued to async queue, jobId:', job.id)
+        return NextResponse.json(
+          { queued: true, jobId: job.id },
+          { status: 202 }
+        )
+      }
     }
 
     // Fetch user profile for name comparison (and admin check for session fetch)

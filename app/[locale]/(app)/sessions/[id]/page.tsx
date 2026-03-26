@@ -605,7 +605,14 @@ export default function SessionDetailPage() {
         })
         console.log('[AI Analysis] Response status:', response.status)
         
-        if (response.ok) {
+        if (response.status === 202) {
+          const data = await response.json()
+          console.log('[AI Analysis] Queued for async processing, jobId:', data.jobId)
+          const pollDelays = [3000, 5000, 8000, 12000, 18000]
+          pollDelays.forEach((delay) => {
+            setTimeout(() => analyzeSession(0), delay)
+          })
+        } else if (response.ok) {
           const data = await response.json()
           console.log('[AI Analysis] Success! Data:', data)
           console.log('[AI Analysis] Participants received:', data.extractedContext?.participants)
@@ -615,7 +622,7 @@ export default function SessionDetailPage() {
           if (data.autoGeneration?.status === 'triggered') {
             toast.info('Generating output...', { duration: 3000 })
             const delays = [5000, 10000, 15000]
-            delays.forEach((delay, i) => {
+            delays.forEach((delay) => {
               setTimeout(() => fetchOutputs(), delay)
             })
           }
