@@ -415,10 +415,6 @@ export default function ProfilePage() {
       {/* Voice Sample for Speaker Diarization */}
       <VoiceSampleCard
         displayName={profile.display_name || profile.email?.split("@")[0] || ""}
-        voiceSamplePath={profile.voice_sample_path}
-        voiceSampleDurationMs={profile.voice_sample_duration_ms}
-        onSaved={(path, durationMs) => setProfile((prev) => prev ? { ...prev, voice_sample_path: path, voice_sample_duration_ms: durationMs } : prev)}
-        onDeleted={() => setProfile((prev) => prev ? { ...prev, voice_sample_path: null, voice_sample_duration_ms: null } : prev)}
       />
 
       {/* Install App - mobile only, not already installed */}

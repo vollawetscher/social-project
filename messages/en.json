@@ -1030,7 +1030,12 @@
     "voiceSampleMicError": "Microphone access denied. Please allow microphone access in your browser settings.",
     "voiceSampleTooShort": "Recording too short — please read the full sentence.",
     "voiceSampleSaved": "Voice sample saved successfully",
-    "voiceSampleDeleted": "Voice sample deleted"
+    "voiceSampleDeleted": "Voice sample deleted",
+    "voiceSampleSave": "Save",
+    "voiceSampleCancel": "Cancel",
+    "voiceSampleAddLanguage": "Add language",
+    "voiceSampleSearchLanguage": "Search languages...",
+    "voiceSampleNoLanguages": "All languages recorded or no match"
   },
   "admin": {
     "allSessions": "All Sessions",

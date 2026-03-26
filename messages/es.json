@@ -1029,7 +1029,12 @@
     "voiceSampleMicError": "Acceso al micrófono denegado. Permite el acceso en la configuración de tu navegador.",
     "voiceSampleTooShort": "Grabación muy corta — lee la frase completa.",
     "voiceSampleSaved": "Muestra de voz guardada correctamente",
-    "voiceSampleDeleted": "Muestra de voz eliminada"
+    "voiceSampleDeleted": "Muestra de voz eliminada",
+    "voiceSampleSave": "Guardar",
+    "voiceSampleCancel": "Cancelar",
+    "voiceSampleAddLanguage": "Añadir idioma",
+    "voiceSampleSearchLanguage": "Buscar idiomas...",
+    "voiceSampleNoLanguages": "Todos los idiomas grabados o sin coincidencias"
   },
   "admin": {
     "allSessions": "Todas las sesiones",

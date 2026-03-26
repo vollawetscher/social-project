@@ -25,10 +25,6 @@ export interface UserProfile {
   // Data retention
   default_retention_days: number
 
-  // Voice sample for speaker diarization priming
-  voice_sample_path?: string | null
-  voice_sample_duration_ms?: number | null
-
   // Trial / onboarding
   onboarding_expires_at?: string | null
 }

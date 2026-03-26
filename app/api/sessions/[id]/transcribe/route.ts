@@ -299,19 +299,42 @@ async function processTranscriptionJob(sessionId: string) {
     if (sessionUserId) {
       const { data: userProfile } = await supabase
         .from('profiles')
-        .select('voice_sample_path, voice_sample_duration_ms, display_name, full_name')
+        .select('display_name, full_name')
         .eq('id', sessionUserId)
         .single()
-      if (userProfile?.voice_sample_path && userProfile.voice_sample_duration_ms) {
-        voiceSampleDurationMs = userProfile.voice_sample_duration_ms
-        voiceSampleUserName = userProfile.display_name || userProfile.full_name || null
+      voiceSampleUserName = userProfile?.display_name || userProfile?.full_name || null
+
+      const sampleLang = sessionLanguage || null
+      let voiceSampleRow = null
+      if (sampleLang) {
+        const { data } = await supabase
+          .from('voice_samples')
+          .select('storage_path, duration_ms, language')
+          .eq('user_id', sessionUserId)
+          .eq('language', sampleLang)
+          .maybeSingle()
+        voiceSampleRow = data
+      }
+      if (!voiceSampleRow) {
+        const { data } = await supabase
+          .from('voice_samples')
+          .select('storage_path, duration_ms, language')
+          .eq('user_id', sessionUserId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        voiceSampleRow = data
+      }
+
+      if (voiceSampleRow?.storage_path && voiceSampleRow.duration_ms) {
+        voiceSampleDurationMs = voiceSampleRow.duration_ms
         const { data: vsData } = await supabase.storage
           .from('rohbericht-audio')
-          .download(userProfile.voice_sample_path)
+          .download(voiceSampleRow.storage_path)
         if (vsData) {
           voiceSampleBuffer = Buffer.from(await vsData.arrayBuffer())
-          voiceSampleMime = userProfile.voice_sample_path.endsWith('.webm') ? 'audio/webm' : 'audio/ogg'
-          console.log('[Transcribe] Voice sample loaded:', voiceSampleBuffer.length, 'bytes,', voiceSampleDurationMs, 'ms')
+          voiceSampleMime = voiceSampleRow.storage_path.endsWith('.webm') ? 'audio/webm' : 'audio/ogg'
+          console.log('[Transcribe] Voice sample loaded:', voiceSampleBuffer.length, 'bytes,', voiceSampleDurationMs, 'ms, lang:', voiceSampleRow.language, '(session:', sampleLang || 'auto', ')')
         }
       }
     }

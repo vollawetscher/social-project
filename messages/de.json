@@ -1029,7 +1029,12 @@
     "voiceSampleMicError": "Mikrofonzugriff verweigert. Bitte erlaube den Zugriff in deinen Browsereinstellungen.",
     "voiceSampleTooShort": "Aufnahme zu kurz — bitte lies den ganzen Satz vor.",
     "voiceSampleSaved": "Stimmprobe erfolgreich gespeichert",
-    "voiceSampleDeleted": "Stimmprobe gelöscht"
+    "voiceSampleDeleted": "Stimmprobe gelöscht",
+    "voiceSampleSave": "Speichern",
+    "voiceSampleCancel": "Abbrechen",
+    "voiceSampleAddLanguage": "Sprache hinzufügen",
+    "voiceSampleSearchLanguage": "Sprachen suchen...",
+    "voiceSampleNoLanguages": "Alle Sprachen aufgenommen oder kein Treffer"
   },
   "admin": {
     "allSessions": "Alle Sitzungen",
