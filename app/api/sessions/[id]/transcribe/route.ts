@@ -315,16 +315,8 @@ async function processTranscriptionJob(sessionId: string) {
           .maybeSingle()
         voiceSampleRow = data
       }
-      if (!voiceSampleRow) {
-        const { data } = await supabase
-          .from('voice_samples')
-          .select('storage_path, duration_ms, language')
-          .eq('user_id', sessionUserId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        voiceSampleRow = data
-      }
+      // No cross-language fallback — a mismatched sample could bias
+      // Speechmatics auto-detect to the wrong language.
 
       if (voiceSampleRow?.storage_path && voiceSampleRow.duration_ms) {
         voiceSampleDurationMs = voiceSampleRow.duration_ms
