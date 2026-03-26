@@ -606,7 +606,7 @@ export default function SessionDetailPage() {
         console.log('[AI Analysis] Response status:', response.status)
 
         if (response.status === 202) {
-          console.log('[AI Analysis] Queued — polling sequentially')
+          toast.info('Analyzing session...', { id: 'analyze-progress', duration: 20000 })
           const pollDelays = [3000, 5000, 8000, 12000, 18000]
           for (const delay of pollDelays) {
             await new Promise(r => setTimeout(r, delay))
@@ -649,7 +649,8 @@ export default function SessionDetailPage() {
     }
 
     function applyAnalysisResult(data: any) {
-      console.log('[AI Analysis] Success! Participants:', data.extractedContext?.participants)
+      toast.dismiss('analyze-progress')
+      toast.success('Analysis complete', { duration: 3000 })
       setAnalysis(data)
       if (data.autoGeneration?.status === 'triggered') {
         toast.info('Generating output...', { duration: 3000 })
