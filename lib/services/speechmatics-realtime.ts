@@ -36,6 +36,7 @@ export class SpeechmaticsRealtimeService {
   private maxReconnectAttempts = 3
   private isManualStop = false
   private reconnectTimeout: NodeJS.Timeout | null = null
+  private recognitionStarted = false
 
   constructor(tempToken: string, config: RealtimeConfig) {
     this.tempToken = tempToken
@@ -46,8 +47,26 @@ export class SpeechmaticsRealtimeService {
     this.audioStream = stream
     this.isManualStop = false
     this.reconnectAttempts = 0
+    this.recognitionStarted = false
 
     await this.connectWebSocket()
+  }
+
+  private extractTranscriptText(data: any): string {
+    const metadataTranscript = typeof data?.metadata?.transcript === 'string'
+      ? data.metadata.transcript.trim()
+      : ''
+    if (metadataTranscript) return metadataTranscript
+
+    const results = Array.isArray(data?.results) ? data.results : []
+    const pieces: string[] = []
+    for (const result of results) {
+      const alternatives = Array.isArray(result?.alternatives) ? result.alternatives : []
+      const first = alternatives[0]
+      const content = typeof first?.content === 'string' ? first.content.trim() : ''
+      if (content) pieces.push(content)
+    }
+    return pieces.join(' ').trim()
   }
 
   private async connectWebSocket(): Promise<void> {
@@ -62,7 +81,7 @@ export class SpeechmaticsRealtimeService {
       this.ws.onopen = () => {
         console.log('[Speechmatics RT] WebSocket connected')
         this.reconnectAttempts = 0 // Reset on successful connection
-        this.config.onConnectionChange?.(true)
+        this.recognitionStarted = false
 
         // Send start recognition message
         const startMessage = {
@@ -94,17 +113,25 @@ export class SpeechmaticsRealtimeService {
           const data = JSON.parse(event.data)
           
           if (data.message === 'AddPartialTranscript') {
+            const transcript = this.extractTranscriptText(data)
+            if (!transcript) return
             this.config.onTranscript({
-              transcript: data.metadata.transcript,
+              transcript,
               isFinal: false,
             })
           } else if (data.message === 'AddTranscript') {
+            const transcript = this.extractTranscriptText(data)
+            if (!transcript) return
             this.config.onTranscript({
-              transcript: data.metadata.transcript,
+              transcript,
               isFinal: true,
             })
           } else if (data.message === 'RecognitionStarted') {
             console.log('[Speechmatics RT] Recognition started')
+            this.recognitionStarted = true
+            this.config.onConnectionChange?.(true)
+          } else if (data.message === 'EndOfTranscript') {
+            console.log('[Speechmatics RT] End of transcript')
           } else if (data.message === 'Error') {
             const errorMsg = data.reason || 'Speechmatics API error'
             console.error('[Speechmatics RT] API Error:', errorMsg)
@@ -142,6 +169,7 @@ export class SpeechmaticsRealtimeService {
           wasClean: event.wasClean
         })
         
+        this.recognitionStarted = false
         this.config.onConnectionChange?.(false)
 
         // Attempt reconnection if not manually stopped
@@ -315,8 +343,8 @@ export class SpeechmaticsRealtimeService {
     // Send end of audio stream (Speechmatics RT API v2 format)
     if (this.ws?.readyState === WebSocket.OPEN) {
       try {
-        // According to Speechmatics RT API v2, send an empty binary message to signal end
-        // OR just close the connection - the API handles both
+        // Ask the server to finalize pending hypothesis before disconnect.
+        this.ws.send(JSON.stringify({ message: 'EndOfStream' }))
         console.log('[Speechmatics RT] Sending end of audio signal')
         
         // Wait a moment for any pending transcripts
@@ -370,6 +398,7 @@ export class SpeechmaticsRealtimeService {
     }
 
     this.audioStream = null
+    this.recognitionStarted = false
     this.config.onConnectionChange?.(false)
     console.log('[Speechmatics RT] Stopped')
   }
