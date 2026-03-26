@@ -20,6 +20,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.23.2',
         date: 'March 17, 2026',
+        category: 'fix',
+        title: 'PSTN Live Transcript Can Run Server-Side Relay',
+        description: 'Live PSTN transcript can now be sourced from a server-side LiveKit-to-Speechmatics relay, reducing client-device dependency and improving stability for real-time transcript display.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
         category: 'improvement',
         title: 'Live PSTN Transcript Is Easier to Read in Real Time',
         description: 'Live call transcript now uses slower high-quality realtime settings and phrase buffering, reducing fragmented word-by-word output so on-screen transcript lines are more readable during calls.',

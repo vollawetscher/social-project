@@ -1,5 +1,11 @@
 import { NextResponse } from 'next/server'
-import { verifyWebhook, startCompositeEgress, startTrackEgressForParticipant } from '@/lib/services/livekit'
+import {
+  verifyWebhook,
+  startCompositeEgress,
+  startTrackEgressForParticipant,
+  startTrackRealtimeEgressForParticipant,
+  buildLiveRelayIngestUrl,
+} from '@/lib/services/livekit'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
 
@@ -62,14 +68,14 @@ export async function POST(request: Request) {
         let call: any = null
         const primaryQuery = await supabase
           .from('calls')
-          .select('id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, pstn_consent_state, pstn_transcription_mode')
+          .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, contact_name, phone_number, pstn_consent_state, pstn_transcription_mode')
           .eq('room_name', roomName)
           .maybeSingle()
 
-        if (primaryQuery.error && /pstn_consent_state|column .* does not exist/i.test(primaryQuery.error.message || '')) {
+        if (primaryQuery.error && /pstn_consent_state|live_track_a_egress_id|live_track_b_egress_id|column .* does not exist/i.test(primaryQuery.error.message || '')) {
           const fallbackQuery = await supabase
             .from('calls')
-            .select('id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type')
+            .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, contact_name, phone_number')
             .eq('room_name', roomName)
             .maybeSingle()
           call = fallbackQuery.data
@@ -122,11 +128,43 @@ export async function POST(request: Request) {
                   startTrackEgressForParticipant(roomName, call.session_id, participantAIdentity, 'track_a'),
                   startTrackEgressForParticipant(roomName, call.session_id, participantBIdentity, 'track_b'),
                 ])
+                let liveTrackAId: string | null = null
+                let liveTrackBId: string | null = null
+                const speakerB = call.contact_name || call.phone_number || 'Participant'
+                const relayUrlA = buildLiveRelayIngestUrl({
+                  callId: call.id,
+                  roomName,
+                  sourceKey: 'track_a',
+                  speakerLabel: 'You',
+                  language: 'de',
+                })
+                const relayUrlB = buildLiveRelayIngestUrl({
+                  callId: call.id,
+                  roomName,
+                  sourceKey: 'track_b',
+                  speakerLabel: speakerB,
+                  language: 'de',
+                })
+                if (relayUrlA && relayUrlB) {
+                  try {
+                    const [liveA, liveB] = await Promise.all([
+                      startTrackRealtimeEgressForParticipant(roomName, participantAIdentity, relayUrlA),
+                      startTrackRealtimeEgressForParticipant(roomName, participantBIdentity, relayUrlB),
+                    ])
+                    liveTrackAId = liveA.egressId || null
+                    liveTrackBId = liveB.egressId || null
+                    console.log('[LiveKit Webhook] Server relay egress started:', liveTrackAId, liveTrackBId)
+                  } catch (relayErr: any) {
+                    console.error('[LiveKit Webhook] Failed to start server relay egress:', relayErr?.message || relayErr)
+                  }
+                }
                 await supabase
                   .from('calls')
                   .update({
                     track_a_egress_id: egressA.egressId,
                     track_b_egress_id: egressB.egressId,
+                    live_track_a_egress_id: liveTrackAId,
+                    live_track_b_egress_id: liveTrackBId,
                     track_a_started_at_ns: extractEgressStartedAtNs(egressA),
                     track_b_started_at_ns: extractEgressStartedAtNs(egressB),
                   })

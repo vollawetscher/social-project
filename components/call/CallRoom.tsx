@@ -286,6 +286,7 @@ function CallRoomInner({
   const speechmaticsTracksRef = useRef<Record<string, MediaStreamTrack | null>>({})
   const liveFinalBufferRef = useRef<Record<string, string>>({})
   const liveFlushTimerRef = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({})
+  const liveTranscriptCursorRef = useRef<number>(0)
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
@@ -307,6 +308,8 @@ function CallRoomInner({
   const isScreenSharing = localParticipant.isScreenShareEnabled
   const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
   const liveTranscriptEnabled = callType === "pstn_outbound" && pstnTranscriptionMode === "live"
+  const liveTranscriptUsesServerRelay =
+    liveTranscriptEnabled && process.env.NEXT_PUBLIC_LIVE_TRANSCRIPT_SERVER_RELAY === "1"
   const liveTranscriptConnected = Object.values(liveTranscriptConnections).some(Boolean)
   const remoteParticipantsKey = remoteParticipants
     .map((participant) => `${participant.sid}:${participant.isMicrophoneEnabled ? "1" : "0"}`)
@@ -579,6 +582,29 @@ function CallRoomInner({
 
   useEffect(() => {
     let cancelled = false
+    if (liveTranscriptUsesServerRelay) {
+      void Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSourceForCleanup(key)))
+      return
+    }
+
+    async function stopSourceForCleanup(sourceKey: string) {
+      const service = speechmaticsServicesRef.current[sourceKey]
+      if (service) {
+        try {
+          await service.stop()
+        } catch {
+          // Best effort
+        }
+      }
+      const clonedTrack = speechmaticsTracksRef.current[sourceKey]
+      try {
+        clonedTrack?.stop()
+      } catch {
+        // Best effort
+      }
+      delete speechmaticsServicesRef.current[sourceKey]
+      delete speechmaticsTracksRef.current[sourceKey]
+    }
     ;(async () => {
       try {
         const localValue = window.localStorage.getItem(VIDEO_BACKGROUND_STORAGE_KEY)
@@ -1045,7 +1071,7 @@ function CallRoomInner({
     }
 
     const reconcileSources = async () => {
-      if (!liveTranscriptEnabled || !isConnected || !liveTranscriptArmed) {
+      if (liveTranscriptUsesServerRelay || !liveTranscriptEnabled || !isConnected || !liveTranscriptArmed) {
         await Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSource(key)))
         return
       }
@@ -1091,7 +1117,68 @@ function CallRoomInner({
       cancelled = true
       void Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSource(key)))
     }
-  }, [liveTranscriptEnabled, isConnected, isLocalMicEnabled, localParticipant, remoteParticipantsKey, contactName, contactPhone, t, microphoneTracksKey, realtimeLanguageCode, liveTranscriptArmed])
+  }, [liveTranscriptEnabled, liveTranscriptUsesServerRelay, isConnected, isLocalMicEnabled, localParticipant, remoteParticipantsKey, contactName, contactPhone, t, microphoneTracksKey, realtimeLanguageCode, liveTranscriptArmed])
+
+  useEffect(() => {
+    if (!liveTranscriptUsesServerRelay) return
+    liveTranscriptCursorRef.current = 0
+    setLiveTranscriptLines([])
+    setLiveTranscriptPartials({})
+    setLiveTranscriptConnections({})
+    setLiveTranscriptError(null)
+  }, [liveTranscriptUsesServerRelay, callId])
+
+  useEffect(() => {
+    if (!liveTranscriptUsesServerRelay || !liveTranscriptArmed || !isConnected || !callId) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const poll = async () => {
+      try {
+        const after = liveTranscriptCursorRef.current
+        const res = await fetch(`/api/calls/${callId}/live-transcript?after=${after}`, { cache: "no-store" })
+        if (!res.ok) throw new Error(`Live transcript poll failed (${res.status})`)
+        const data = await res.json()
+        if (cancelled) return
+        const incoming = Array.isArray(data?.lines) ? data.lines : []
+        if (incoming.length > 0) {
+          setLiveTranscriptLines((prev) => {
+            const seen = new Set(prev.map((line) => line.id))
+            const merged = [...prev]
+            for (const line of incoming) {
+              if (!line?.id || seen.has(line.id)) continue
+              merged.push({
+                id: String(line.id),
+                speakerKey: String(line.speakerKey || line.sourceKey || "remote"),
+                speakerLabel: String(line.speakerLabel || t("participant")),
+                text: String(line.text || ""),
+                timestampMs: Number(line.timestampMs || Date.now()),
+              })
+            }
+            return merged.slice(-240)
+          })
+        }
+        if (typeof data?.latestTimestampMs === "number" && data.latestTimestampMs > liveTranscriptCursorRef.current) {
+          liveTranscriptCursorRef.current = data.latestTimestampMs
+        }
+        setLiveTranscriptConnections({ server: true })
+        setLiveTranscriptError(null)
+      } catch (err: any) {
+        if (cancelled) return
+        setLiveTranscriptConnections({ server: false })
+        setLiveTranscriptError(err?.message || "Live transcript relay unavailable")
+      } finally {
+        if (!cancelled) timer = setTimeout(poll, 1200)
+      }
+    }
+
+    void poll()
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+      setLiveTranscriptConnections({ server: false })
+    }
+  }, [liveTranscriptUsesServerRelay, liveTranscriptArmed, isConnected, callId, t])
 
   useEffect(() => {
     if (!liveTranscriptEnabled) {

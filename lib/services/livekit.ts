@@ -11,6 +11,7 @@ import {
 } from 'livekit-server-sdk'
 import type { EgressInfo } from 'livekit-server-sdk'
 import { resolveCallerIdForDestination } from '@/lib/services/pstn-routing'
+import { createHmac } from 'crypto'
 
 // LiveKit Cloud uses wss:// for client, https:// for server API
 function getLivekitHttpUrl(): string {
@@ -207,6 +208,58 @@ export async function startTrackEgressForParticipant(
 
   console.log('[LiveKit] Track egress started:', egress.egressId, 'track:', audioTrack.sid, 'participant:', participantIdentity, 'path:', storagePath)
   return egress
+}
+
+/**
+ * Start raw track egress to a WebSocket endpoint (server-side relay).
+ * LiveKit sends PCM binary chunks directly to the given websocket URL.
+ */
+export async function startTrackRealtimeEgressForParticipant(
+  roomName: string,
+  participantIdentity: string,
+  websocketUrl: string,
+): Promise<EgressInfo> {
+  const egressClient = getEgressClient()
+  const roomService = getRoomService()
+
+  const participants = await roomService.listParticipants(roomName)
+  const participant = participants.find((p) => p.identity === participantIdentity)
+  if (!participant) throw new Error(`Participant ${participantIdentity} not found in room`)
+
+  const audioTrack = participant.tracks.find(
+    (t) => t.type === 1 /* AUDIO */ || t.source === 1 /* MICROPHONE */
+  )
+  if (!audioTrack?.sid) throw new Error(`No audio track found for ${participantIdentity}`)
+
+  const egress = await egressClient.startTrackEgress(roomName, websocketUrl, audioTrack.sid)
+  console.log('[LiveKit] Track realtime egress started:', egress.egressId, 'track:', audioTrack.sid, 'participant:', participantIdentity)
+  return egress
+}
+
+export function buildLiveRelayIngestUrl(input: {
+  callId: string
+  roomName: string
+  sourceKey: 'track_a' | 'track_b'
+  speakerLabel: string
+  language?: string
+}): string | null {
+  const base = process.env.LIVE_TRANSCRIPT_RELAY_WS_BASE
+  const secret = process.env.LIVE_TRANSCRIPT_RELAY_SECRET
+  if (!base || !secret) return null
+
+  const ts = Date.now().toString()
+  const payload = `${input.callId}:${input.roomName}:${input.sourceKey}:${ts}`
+  const sig = createHmac('sha256', secret).update(payload).digest('hex')
+
+  const url = new URL(base)
+  url.searchParams.set('callId', input.callId)
+  url.searchParams.set('room', input.roomName)
+  url.searchParams.set('source', input.sourceKey)
+  url.searchParams.set('speaker', input.speakerLabel || input.sourceKey)
+  url.searchParams.set('lang', (input.language || 'de').toLowerCase())
+  url.searchParams.set('ts', ts)
+  url.searchParams.set('sig', sig)
+  return url.toString()
 }
 
 /**
