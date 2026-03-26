@@ -20,6 +20,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.23.2',
         date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'PSTN Live Mode Uses Track-Based Transcript Merging',
+        description: 'For PSTN live mode, Notissima now merges participant track transcripts using LiveKit timing metadata, improving chronological accuracy and speaker separation in the final transcript.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
         category: 'fix',
         title: 'Live PSTN Transcript Now Forces Remote Audio Subscription',
         description: 'In-call live transcription now explicitly subscribes to remote microphone tracks so callee audio is more reliably available for realtime transcript capture.',

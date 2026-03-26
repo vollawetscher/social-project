@@ -8,6 +8,7 @@ import { generateReport } from '@/lib/services/report-generator'
 import { createErrorLogger } from '@/lib/services/error-logger'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
+import { alignTranscripts } from '@/lib/services/transcript-aligner'
 
 function normalizeVocabCandidate(raw: string): string | null {
   const value = String(raw || '')
@@ -141,6 +142,14 @@ function formatStorageError(error: unknown): string {
   return String(error)
 }
 
+function inferTrackKindFromStoragePath(path: string | null | undefined): 'a' | 'b' | null {
+  const value = String(path || '')
+  if (!value) return null
+  if (value.includes('_track_a.')) return 'a'
+  if (value.includes('_track_b.')) return 'b'
+  return null
+}
+
 /**
  * After the caller's session is transcribed, copy the transcript to any pending
  * callee session that was claimed before transcription completed.
@@ -252,7 +261,7 @@ async function processTranscriptionJob(sessionId: string) {
     }, supabase)
     const { data: linkedCall } = await supabase
       .from('calls')
-      .select('user_id, callee_user_id, contact_name, session_id, callee_session_id')
+      .select('user_id, callee_user_id, contact_name, session_id, callee_session_id, call_type, pstn_transcription_mode, room_created_at_ms, track_a_started_at_ns, track_b_started_at_ns')
       .or(`session_id.eq.${sessionId},callee_session_id.eq.${sessionId}`)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -300,6 +309,27 @@ async function processTranscriptionJob(sessionId: string) {
     }
 
     console.log(`[Transcribe] Found ${files.length} file(s) to transcribe`)
+    const hasTrackAFile = files.some((f) => inferTrackKindFromStoragePath(f.storage_path) === 'a')
+    const hasTrackBFile = files.some((f) => inferTrackKindFromStoragePath(f.storage_path) === 'b')
+    const dualTrackTranscription =
+      linkedCall?.call_type === 'pstn_outbound' &&
+      (linkedCall as any)?.pstn_transcription_mode === 'live' &&
+      hasTrackAFile &&
+      hasTrackBFile &&
+      Number.isFinite(Number((linkedCall as any)?.room_created_at_ms))
+
+    let trackASegments: any[] = []
+    let trackBSegments: any[] = []
+    let trackALanguage: string | null = null
+    let trackBLanguage: string | null = null
+    let dualSummaries: string[] = []
+    if (dualTrackTranscription) {
+      console.log('[Transcribe] Dual-track mode detected, resetting session transcripts before re-build')
+      await supabase
+        .from('transcripts')
+        .delete()
+        .eq('session_id', sessionId)
+    }
 
     // Speechmatics does NOT support WebM/Opus - supported: wav, mp3, aac, ogg, mpeg, amr, m4a, mp4, flac
     const webmFiles = files.filter(f => 
@@ -489,9 +519,23 @@ async function processTranscriptionJob(sessionId: string) {
       }
 
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
+      const trackKind = inferTrackKindFromStoragePath(file.storage_path)
 
       if (transcript.segments.length === 0) {
         console.warn('[Transcribe] No speech detected in audio for file:', file.storage_path)
+      }
+
+      if (dualTrackTranscription && trackKind) {
+        if (trackKind === 'a') {
+          trackASegments = transcript.segments
+          trackALanguage = transcript.language || trackALanguage
+        } else {
+          trackBSegments = transcript.segments
+          trackBLanguage = transcript.language || trackBLanguage
+        }
+        if (transcript.summary) dualSummaries.push(transcript.summary)
+        console.log(`[Transcribe] Buffered dual-track transcript for track ${trackKind.toUpperCase()}`)
+        continue
       }
 
       console.log(`[Transcribe] Step 1 (File ${i + 1}): Starting PII redaction...`)
@@ -545,6 +589,62 @@ async function processTranscriptionJob(sessionId: string) {
       } else {
         console.log(`[Transcribe] Step 3 (File ${i + 1}): No PII hits to save`)
       }
+    }
+
+    if (dualTrackTranscription) {
+      const roomCreatedAtMs = Number((linkedCall as any)?.room_created_at_ms || 0)
+      const trackAStartedAtNs = Number((linkedCall as any)?.track_a_started_at_ns || 0)
+      const trackBStartedAtNs = Number((linkedCall as any)?.track_b_started_at_ns || 0)
+      if (!trackASegments.length || !trackBSegments.length) {
+        throw new Error('Dual-track merge failed: missing participant transcript data')
+      }
+      if (!roomCreatedAtMs || !trackAStartedAtNs || !trackBStartedAtNs) {
+        throw new Error('Dual-track merge failed: missing track timing metadata')
+      }
+
+      const aligned = alignTranscripts({
+        trackASegments,
+        trackBSegments,
+        trackAStartedAtNs,
+        trackBStartedAtNs,
+        roomCreatedAtMs,
+        participantAName: participantNames[0] || 'Participant A',
+        participantBName: linkedCall?.contact_name || participantNames[1] || 'Participant B',
+      })
+      const piiService = createPIIRedactionService()
+      const redactionResult = piiService.redact(aligned.segments as any)
+      const mergedSummary = dualSummaries.length > 0
+        ? compactSpeechmaticsSummary(dualSummaries.join('\n\n'))
+        : null
+
+      const { error: mergedInsertError } = await supabase
+        .from('transcripts')
+        .insert({
+          session_id: sessionId,
+          file_id: null,
+          raw_json: aligned.segments,
+          redacted_json: redactionResult.redactedSegments,
+          raw_text: aligned.fullText,
+          redacted_text: redactionResult.redactedText,
+          language: (trackALanguage || trackBLanguage || sessionLanguage || 'en').slice(0, 2),
+          summary: mergedSummary,
+        })
+      if (mergedInsertError) {
+        throw new Error(`Failed to save merged dual-track transcript: ${mergedInsertError.message}`)
+      }
+      if (redactionResult.piiHits.length > 0) {
+        const piiHitsWithSession = redactionResult.piiHits.map((hit) => ({
+          ...hit,
+          session_id: sessionId,
+        }))
+        const { error: piiError } = await supabase
+          .from('pii_hits')
+          .insert(piiHitsWithSession)
+        if (piiError) {
+          console.error('[Transcribe] Failed to save merged PII hits:', piiError)
+        }
+      }
+      console.log('[Transcribe] Dual-track merge and save completed')
     }
 
     console.log('[Transcribe] All files processed successfully')

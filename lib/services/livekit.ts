@@ -170,6 +170,7 @@ export async function startTrackEgressForParticipant(
   roomName: string,
   sessionId: string,
   participantIdentity: string,
+  outputTag: string = 'caller',
 ): Promise<EgressInfo> {
   const egressClient = getEgressClient()
   const roomService = getRoomService()
@@ -183,7 +184,11 @@ export async function startTrackEgressForParticipant(
   )
   if (!audioTrack?.sid) throw new Error(`No audio track found for ${participantIdentity}`)
 
-  const storagePath = `sessions/${sessionId}/call_${roomName}_${Date.now()}_caller.ogg`
+  const safeTag = String(outputTag || 'caller')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 32) || 'caller'
+  const storagePath = `sessions/${sessionId}/call_${roomName}_${Date.now()}_${safeTag}.ogg`
 
   const output = new EncodedFileOutput({
     fileType: EncodedFileType.OGG,
