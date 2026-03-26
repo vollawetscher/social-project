@@ -1150,6 +1150,8 @@
     "liveTranscriptConnecting": "Live-Transkript wird verbunden...",
     "liveTranscriptConnected": "Live-Transkript verbunden",
     "liveTranscriptEmpty": "Sprechen Sie, um die Live-Transkriptvorschau zu sehen...",
+    "liveTranscriptNeedsStart": "Tippen Sie, um die Live-Transkription fuer diesen Anruf zu starten.",
+    "startLiveTranscript": "Live-Transkript starten",
     "stillRecordingNotes": "Aufnahme läuft — sprechen Sie Ihre Notizen",
     "sayCommand": "Sagen Sie <keyword>\"Notissima:\"</keyword> gefolgt von einem Befehl",
     "ending": "Wird beendet…",

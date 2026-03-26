@@ -228,6 +228,7 @@ function CallRoomInner({
   const [showNotes, setShowNotes] = useState(false)
   const [notes, setNotes] = useState("")
   const [viewMode, setViewMode] = useState<"simple" | "transcript">("simple")
+  const [liveTranscriptArmed, setLiveTranscriptArmed] = useState(false)
   // Post-call notes state
   const [calleeLeft, setCalleeLeft] = useState(false)
   const [savingNotes, setSavingNotes] = useState(false)
@@ -957,7 +958,7 @@ function CallRoomInner({
     }
 
     const reconcileSources = async () => {
-      if (!liveTranscriptEnabled || !isConnected) {
+      if (!liveTranscriptEnabled || !isConnected || !liveTranscriptArmed) {
         await Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSource(key)))
         return
       }
@@ -1003,7 +1004,21 @@ function CallRoomInner({
       cancelled = true
       void Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSource(key)))
     }
-  }, [liveTranscriptEnabled, isConnected, isLocalMicEnabled, localParticipant, remoteParticipants, contactName, contactPhone, t, microphoneTracks, realtimeLanguageCode])
+  }, [liveTranscriptEnabled, isConnected, isLocalMicEnabled, localParticipant, remoteParticipants, contactName, contactPhone, t, microphoneTracks, realtimeLanguageCode, liveTranscriptArmed])
+
+  useEffect(() => {
+    if (!liveTranscriptEnabled) {
+      setLiveTranscriptArmed(false)
+    }
+  }, [liveTranscriptEnabled])
+
+  useEffect(() => {
+    if (!liveTranscriptEnabled) return
+    const transcriptViewOpen = viewMode === "transcript" || showTranscript
+    if (transcriptViewOpen && !liveTranscriptArmed) {
+      setLiveTranscriptArmed(true)
+    }
+  }, [liveTranscriptEnabled, viewMode, showTranscript, liveTranscriptArmed])
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -1366,7 +1381,10 @@ function CallRoomInner({
                 {t('call')}
               </button>
               <button
-                onClick={() => setViewMode("transcript")}
+                onClick={() => {
+                  setViewMode("transcript")
+                  if (liveTranscriptEnabled) setLiveTranscriptArmed(true)
+                }}
                 className={cn(
                   "flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium transition-colors",
                   viewMode === "transcript" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
@@ -1476,6 +1494,18 @@ function CallRoomInner({
               </div>
               {liveTranscriptEnabled ? (
                 <div className="space-y-2">
+                  {!liveTranscriptArmed && (
+                    <div className="rounded-lg border border-border bg-card p-3">
+                      <p className="text-xs text-muted-foreground mb-2">{t("liveTranscriptNeedsStart")}</p>
+                      <button
+                        type="button"
+                        onClick={() => setLiveTranscriptArmed(true)}
+                        className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                      >
+                        {t("startLiveTranscript")}
+                      </button>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <span className={cn(
                       "h-2 w-2 rounded-full",
@@ -1488,7 +1518,7 @@ function CallRoomInner({
                   {liveTranscriptError && (
                     <p className="text-xs text-destructive">{liveTranscriptError}</p>
                   )}
-                  {liveTranscriptLines.length === 0 && Object.values(liveTranscriptPartials).every((text) => !text) ? (
+                  {liveTranscriptArmed && liveTranscriptLines.length === 0 && Object.values(liveTranscriptPartials).every((text) => !text) ? (
                     <p className="text-sm text-muted-foreground py-8 text-center">{t("liveTranscriptEmpty")}</p>
                   ) : (
                     <div className="space-y-2">
@@ -1500,7 +1530,7 @@ function CallRoomInner({
                           <p className="text-sm text-foreground">{line.text}</p>
                         </div>
                       ))}
-                      {Object.entries(liveTranscriptPartials)
+                      {liveTranscriptArmed && Object.entries(liveTranscriptPartials)
                         .filter(([, text]) => Boolean(text))
                         .map(([sourceKey, text]) => {
                           const label = sourceKey === "local" ? t("you") : remoteDisplayName
@@ -1611,7 +1641,11 @@ function CallRoomInner({
                 onToggleHold={toggleHold}
                 onToggleScreenShare={toggleScreenShare}
                 onToggleNotes={() => setShowNotes(!showNotes)}
-                onToggleTranscript={() => setShowTranscript(!showTranscript)}
+                onToggleTranscript={() => {
+                  const next = !showTranscript
+                  setShowTranscript(next)
+                  if (next && liveTranscriptEnabled) setLiveTranscriptArmed(true)
+                }}
                 onSwitchCamera={switchCamera}
                 canSwitchCamera={canSwitchCamera}
                 onEndCall={endCall}
@@ -1961,7 +1995,11 @@ function CallRoomInner({
         onToggleHold={toggleHold}
         onToggleScreenShare={toggleScreenShare}
         onToggleNotes={() => setShowNotes(!showNotes)}
-        onToggleTranscript={() => setShowTranscript(!showTranscript)}
+        onToggleTranscript={() => {
+          const next = !showTranscript
+          setShowTranscript(next)
+          if (next && liveTranscriptEnabled) setLiveTranscriptArmed(true)
+        }}
         onSwitchCamera={switchCamera}
         canSwitchCamera={canSwitchCamera}
         onEndCall={endCall}

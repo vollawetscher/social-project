@@ -1151,6 +1151,8 @@
     "liveTranscriptConnecting": "Connecting live transcript...",
     "liveTranscriptConnected": "Live transcript connected",
     "liveTranscriptEmpty": "Speak to see live transcript preview...",
+    "liveTranscriptNeedsStart": "Tap to start live transcript capture for this call.",
+    "startLiveTranscript": "Start live transcript",
     "stillRecordingNotes": "Still recording — speak your notes",
     "sayCommand": "Say <keyword>\"Notissima:\"</keyword> followed by a command",
     "ending": "Ending…",
