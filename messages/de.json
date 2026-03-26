@@ -1036,6 +1036,22 @@
     "voiceSampleSearchLanguage": "Sprachen suchen...",
     "voiceSampleNoLanguages": "Alle Sprachen aufgenommen oder kein Treffer"
   },
+  "notifications": {
+    "title": "Aktion erforderlich",
+    "empty": "Alles erledigt — keine offenen Aufgaben.",
+    "remindLater": "Später erinnern",
+    "notificationVoiceSampleTitle": "Stimmprobe aufnehmen",
+    "notificationVoiceSampleDesc": "Damit Notissima dich ab der ersten Sekunde in Gesprächen erkennt. Dauert weniger als 30 Sekunden.",
+    "notificationVoiceSampleAction": "Jetzt einrichten",
+    "onboardingTitle": "Stimmprobe einrichten",
+    "onboardingDesc": "Eine kurze Stimmaufnahme hilft Notissima zu erkennen, wer in deinen Gesprächen spricht — keine falschen Sprecherzuordnungen mehr.",
+    "onboardingBenefit1Title": "Genaue Sprechererkennung",
+    "onboardingBenefit1Desc": "Deine Stimme wird ab der ersten Sekunde jedes Gesprächs erkannt, sodass Transkripte korrekt zeigen, wer was gesagt hat.",
+    "onboardingBenefit2Title": "Funktioniert sprachübergreifend",
+    "onboardingBenefit2Desc": "Nimm Stimmproben in jeder Sprache auf, die du verwendest. Jede dauert unter 30 Sekunden.",
+    "onboardingSetupNow": "Stimmprobe aufnehmen",
+    "onboardingRemindLater": "In 7 Tagen erinnern"
+  },
   "admin": {
     "allSessions": "Alle Sitzungen",
     "bugReports": "Fehlerberichte",

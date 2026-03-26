@@ -1037,6 +1037,22 @@
     "voiceSampleSearchLanguage": "Search languages...",
     "voiceSampleNoLanguages": "All languages recorded or no match"
   },
+  "notifications": {
+    "title": "Action Required",
+    "empty": "You're all set — no pending actions.",
+    "remindLater": "Remind me later",
+    "notificationVoiceSampleTitle": "Record your voice sample",
+    "notificationVoiceSampleDesc": "Help Notissima identify you in conversations from the very first second. Takes less than 30 seconds.",
+    "notificationVoiceSampleAction": "Set up now",
+    "onboardingTitle": "Set up your voice sample",
+    "onboardingDesc": "A short voice recording helps Notissima identify who is speaking in your calls — no more misattributed speakers.",
+    "onboardingBenefit1Title": "Accurate speaker identification",
+    "onboardingBenefit1Desc": "Your voice is recognized from the first second of every call, so transcripts correctly show who said what.",
+    "onboardingBenefit2Title": "Works across languages",
+    "onboardingBenefit2Desc": "Record samples in every language you use. Each one takes under 30 seconds.",
+    "onboardingSetupNow": "Record voice sample",
+    "onboardingRemindLater": "Remind me in 7 days"
+  },
   "admin": {
     "allSessions": "All Sessions",
     "bugReports": "Bug Reports",

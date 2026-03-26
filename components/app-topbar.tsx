@@ -22,18 +22,25 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { LocaleSwitcher } from "@/components/locale-switcher"
+import { NotificationPanel } from "@/components/notifications/NotificationPanel"
+import type { NotificationItem } from "@/lib/hooks/useNotifications"
 
 interface AppTopbarProps {
   sidebarCollapsed: boolean
+  notificationItems?: NotificationItem[]
+  notificationCount?: number
+  onSnoozeNotification?: (id: string) => void
 }
 
-export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
+export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificationCount = 0, onSnoozeNotification }: AppTopbarProps) {
   const [isOffline, setIsOffline] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [topbarSearch, setTopbarSearch] = useState("")
+  const [notifOpen, setNotifOpen] = useState(false)
   const { user, profile, signOut } = useAuth()
   const router = useRouter()
   const t = useTranslations('nav')
@@ -154,16 +161,32 @@ export function AppTopbar({ sidebarCollapsed }: AppTopbarProps) {
           </Tooltip>
 
           {/* Notifications */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-info" />
-                <span className="sr-only">Notifications</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Notifications</TooltipContent>
-          </Tooltip>
+          <Popover open={notifOpen} onOpenChange={setNotifOpen}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 relative">
+                    <Bell className="h-4 w-4" />
+                    {notificationCount > 0 && (
+                      <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+                    )}
+                    <span className="sr-only">Notifications</span>
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Notifications</TooltipContent>
+            </Tooltip>
+            <PopoverContent align="end" className="w-80 p-3">
+              <NotificationPanel
+                items={notificationItems}
+                onSnooze={(id) => {
+                  onSnoozeNotification?.(id)
+                  setNotifOpen(false)
+                }}
+                onClose={() => setNotifOpen(false)}
+              />
+            </PopoverContent>
+          </Popover>
 
           {/* Language Switcher */}
           <LocaleSwitcher compact />

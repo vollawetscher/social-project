@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.24.1',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.24.1',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Setup Reminders & Notifications',
+        description: 'A notification bell now shows pending setup actions. New users are guided to record their voice sample on first login, with a gentle reminder if they choose to do it later.',
+      },
+    ],
+  },
+  {
     version: '1.24.0',
     date: 'March 17, 2026',
     entries: [

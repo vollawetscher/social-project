@@ -1036,6 +1036,22 @@
     "voiceSampleSearchLanguage": "Buscar idiomas...",
     "voiceSampleNoLanguages": "Todos los idiomas grabados o sin coincidencias"
   },
+  "notifications": {
+    "title": "Acción requerida",
+    "empty": "Todo listo — no hay acciones pendientes.",
+    "remindLater": "Recordar más tarde",
+    "notificationVoiceSampleTitle": "Graba tu muestra de voz",
+    "notificationVoiceSampleDesc": "Ayuda a Notissima a identificarte en las conversaciones desde el primer segundo. Toma menos de 30 segundos.",
+    "notificationVoiceSampleAction": "Configurar ahora",
+    "onboardingTitle": "Configura tu muestra de voz",
+    "onboardingDesc": "Una breve grabación de voz ayuda a Notissima a identificar quién habla en tus llamadas — sin más atribuciones incorrectas.",
+    "onboardingBenefit1Title": "Identificación precisa del hablante",
+    "onboardingBenefit1Desc": "Tu voz se reconoce desde el primer segundo de cada llamada, para que las transcripciones muestren correctamente quién dijo qué.",
+    "onboardingBenefit2Title": "Funciona en todos los idiomas",
+    "onboardingBenefit2Desc": "Graba muestras en cada idioma que uses. Cada una toma menos de 30 segundos.",
+    "onboardingSetupNow": "Grabar muestra de voz",
+    "onboardingRemindLater": "Recordar en 7 días"
+  },
   "admin": {
     "allSessions": "Todas las sesiones",
     "bugReports": "Reportes de errores",

@@ -7,10 +7,13 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { AppTopbar } from "@/components/app-topbar"
 import { MobileNav } from "@/components/mobile-nav"
 import { BugReporter } from "@/components/error/BugReporter"
+import { VoiceSampleOnboardingModal } from "@/components/notifications/VoiceSampleOnboardingModal"
+import { useNotifications } from "@/lib/hooks/useNotifications"
 import { cn } from "@/lib/utils"
 
 export function AppLayoutClient({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const { items, unreadCount, showOnboardingModal, snooze, dismissModal } = useNotifications()
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,7 +26,12 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
       </div>
       
       {/* Topbar */}
-      <AppTopbar sidebarCollapsed={sidebarCollapsed} />
+      <AppTopbar
+        sidebarCollapsed={sidebarCollapsed}
+        notificationItems={items}
+        notificationCount={unreadCount}
+        onSnoozeNotification={(id) => snooze(id)}
+      />
       
       {/* Main Content */}
       <main
@@ -45,6 +53,13 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
       <div className="fixed bottom-20 right-4 md:bottom-4 z-50">
         <BugReporter variant="outline" size="icon" iconOnly className="rounded-full shadow-lg bg-background" />
       </div>
+
+      {/* Voice sample onboarding modal */}
+      <VoiceSampleOnboardingModal
+        open={showOnboardingModal}
+        onSetupNow={dismissModal}
+        onSnooze={() => snooze("voice_samples", 7)}
+      />
     </div>
   )
 }
