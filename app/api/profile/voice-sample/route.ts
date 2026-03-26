@@ -35,14 +35,16 @@ export async function POST(request: Request) {
       await db.storage.from('rohbericht-audio').remove([existingProfile.voice_sample_path])
     }
 
-    const ext = audioFile.type?.includes('ogg') ? 'ogg' : audioFile.type?.includes('webm') ? 'webm' : 'ogg'
+    const rawMime = audioFile.type || 'audio/ogg'
+    const contentType = rawMime.split(';')[0].trim()
+    const ext = contentType.includes('ogg') ? 'ogg' : contentType.includes('webm') ? 'webm' : 'ogg'
     const storagePath = `voice-samples/${user.id}/${Date.now()}.${ext}`
     const buffer = Buffer.from(await audioFile.arrayBuffer())
 
     const { error: uploadError } = await db.storage
       .from('rohbericht-audio')
       .upload(storagePath, buffer, {
-        contentType: audioFile.type || 'audio/ogg',
+        contentType,
         upsert: false,
       })
 
