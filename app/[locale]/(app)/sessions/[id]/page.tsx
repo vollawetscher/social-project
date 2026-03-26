@@ -1703,6 +1703,7 @@ export default function SessionDetailPage() {
               fileName={sessionFiles[0]?.storage_path?.split('/').pop()}
               onTimeUpdate={setCurrentAudioTime}
               onPlayStateChange={setIsAudioPlaying}
+              showDownload={isAdmin}
             />
           )}
           

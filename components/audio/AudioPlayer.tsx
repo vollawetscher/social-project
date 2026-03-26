@@ -10,7 +10,8 @@ import {
   SkipForward, 
   Volume2, 
   VolumeX,
-  FileAudio
+  FileAudio,
+  Download
 } from 'lucide-react'
 
 interface AudioPlayerProps {
@@ -18,6 +19,7 @@ interface AudioPlayerProps {
   fileName?: string
   onTimeUpdate?: (currentTime: number) => void
   onPlayStateChange?: (isPlaying: boolean) => void
+  showDownload?: boolean
   className?: string
 }
 
@@ -28,7 +30,7 @@ export interface AudioPlayerHandle {
 }
 
 export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>(
-  ({ audioUrl, fileName, onTimeUpdate, onPlayStateChange, className = '' }, ref) => {
+  ({ audioUrl, fileName, onTimeUpdate, onPlayStateChange, showDownload, className = '' }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null)
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
@@ -269,6 +271,23 @@ export const AudioPlayer = React.forwardRef<AudioPlayerHandle, AudioPlayerProps>
           >
             {playbackRate}x
           </Button>
+
+          {showDownload && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title="Download audio"
+              onClick={() => {
+                const a = document.createElement('a')
+                a.href = audioUrl
+                a.download = fileName || 'audio'
+                a.click()
+              }}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          )}
 
           {fileName && (
             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground max-w-[180px]">
