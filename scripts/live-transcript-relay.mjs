@@ -104,6 +104,13 @@ wss.on('connection', async (lkWs, req) => {
 
   let smWs = null
   let smReady = false
+  let smStarted = false
+  let smStartFailed = false
+  let smStartInFlight = false
+  let detectedSampleRate = 0
+  let detectedChannels = 1
+  const pendingAudio = []
+  const maxPendingChunks = 128
   let finalBuffer = ''
   let flushTimer = null
 
@@ -122,64 +129,92 @@ wss.on('connection', async (lkWs, req) => {
     }, 1200)
   }
 
-  try {
-    const token = await getSpeechmaticsRtToken()
-    smWs = new WebSocket(`${smRtBase}?jwt=${token}`)
-  } catch (err) {
-    console.error('[Relay] Failed to initialize Speechmatics socket:', err)
-    lkWs.close(1011, 'Speechmatics init failed')
-    return
-  }
-
-  smWs.on('open', () => {
-    smWs.send(JSON.stringify({
-      message: 'StartRecognition',
-      audio_format: {
-        type: 'raw',
-        encoding: 'pcm_s16le',
-        sample_rate: 48000,
-      },
-      transcription_config: {
-        language: lang || 'de',
-        operating_point: 'enhanced',
-        enable_partials: true,
-        max_delay: 5,
-        enable_entities: false,
-      },
-    }))
-  })
-
-  smWs.on('message', (raw) => {
+  const startSpeechmatics = async () => {
+    if (smStarted || smStartFailed || smStartInFlight) return
+    smStartInFlight = true
     try {
-      const data = JSON.parse(String(raw))
-      if (data.message === 'RecognitionStarted') {
-        smReady = true
-        return
-      }
-      if (data.message === 'AddTranscript') {
-        const text = extractTranscriptText(data)
-        if (!text) return
-        finalBuffer = finalBuffer ? `${finalBuffer} ${text}` : text
-        const endsSentence = /[.!?…]$/.test(finalBuffer)
-        const words = finalBuffer.split(/\s+/).filter(Boolean).length
-        if (endsSentence || words >= 14) {
-          if (flushTimer) {
-            clearTimeout(flushTimer)
-            flushTimer = null
+      const token = await getSpeechmaticsRtToken()
+      smWs = new WebSocket(`${smRtBase}?jwt=${token}`)
+      const initialRate = detectedSampleRate || 48000
+      const initialChannels = detectedChannels || 1
+
+      smWs.on('open', () => {
+        smWs.send(JSON.stringify({
+          message: 'StartRecognition',
+          audio_format: {
+            type: 'raw',
+            encoding: 'pcm_s16le',
+            sample_rate: initialRate,
+            channels: initialChannels,
+          },
+          transcription_config: {
+            language: lang || 'de',
+            operating_point: 'enhanced',
+            enable_partials: true,
+            max_delay: 5,
+            enable_entities: false,
+          },
+        }))
+        smStarted = true
+        console.log('[Relay] StartRecognition sent', { callId, source, sampleRate: initialRate, channels: initialChannels, lang })
+      })
+
+      smWs.on('message', (raw) => {
+        try {
+          const data = JSON.parse(String(raw))
+          if (data.message === 'RecognitionStarted') {
+            smReady = true
+            if (pendingAudio.length > 0 && smWs?.readyState === WebSocket.OPEN) {
+              for (const chunk of pendingAudio.splice(0)) {
+                try {
+                  smWs.send(chunk)
+                } catch {
+                  // ignore
+                }
+              }
+            }
+            return
           }
-          flush().catch((err) => console.error('[Relay] Immediate flush error:', err))
-        } else {
-          queueFlush()
+          if (data.message === 'AddTranscript') {
+            const text = extractTranscriptText(data)
+            if (!text) return
+            finalBuffer = finalBuffer ? `${finalBuffer} ${text}` : text
+            const endsSentence = /[.!?…]$/.test(finalBuffer)
+            const words = finalBuffer.split(/\s+/).filter(Boolean).length
+            if (endsSentence || words >= 14) {
+              if (flushTimer) {
+                clearTimeout(flushTimer)
+                flushTimer = null
+              }
+              flush().catch((err) => console.error('[Relay] Immediate flush error:', err))
+            } else {
+              queueFlush()
+            }
+          } else if (data.message === 'EndOfTranscript') {
+            flush().catch((err) => console.error('[Relay] Final flush error:', err))
+          } else if (data.message === 'Error') {
+            console.error('[Relay] Speechmatics error:', data.reason || 'unknown')
+          }
+        } catch {
+          // ignore malformed message
         }
-      } else if (data.message === 'EndOfTranscript') {
-        flush().catch((err) => console.error('[Relay] Final flush error:', err))
-      } else if (data.message === 'Error') {
-        console.error('[Relay] Speechmatics error:', data.reason || 'unknown')
-      }
-    } catch {
-      // ignore malformed message
+      })
+
+      smWs.on('close', () => {
+        closeAll().catch(() => {})
+      })
+      smWs.on('error', (err) => {
+        console.error('[Relay] Speechmatics socket error:', err)
+        closeAll().catch(() => {})
+      })
+    } catch (err) {
+      smStartFailed = true
+      console.error('[Relay] Failed to initialize Speechmatics socket:', err)
+      lkWs.close(1011, 'Speechmatics init failed')
+    } finally {
+      smStartInFlight = false
     }
-  })
+  }
 
   const closeAll = async () => {
     if (flushTimer) {
@@ -197,8 +232,33 @@ wss.on('connection', async (lkWs, req) => {
   }
 
   lkWs.on('message', (chunk, isBinary) => {
-    if (!isBinary) return
-    if (!smReady || smWs?.readyState !== WebSocket.OPEN) return
+    if (!isBinary) {
+      const text = String(chunk || '')
+      try {
+        const meta = JSON.parse(text)
+        // LiveKit egress websocket can emit JSON text events carrying format metadata.
+        const sr = Number(meta?.sample_rate ?? meta?.sampleRate ?? meta?.rate ?? 0)
+        const ch = Number(meta?.channels ?? meta?.num_channels ?? meta?.channelCount ?? 0)
+        if (Number.isFinite(sr) && sr >= 8000 && sr <= 96000) detectedSampleRate = sr
+        if (Number.isFinite(ch) && ch >= 1 && ch <= 8) detectedChannels = ch
+      } catch {
+        // ignore non-json text frames
+      }
+      if (!smStarted && !smStartFailed) {
+        void startSpeechmatics()
+      }
+      return
+    }
+
+    if (!smStarted && !smStartFailed) {
+      // Binary arrived before metadata. Start with defaults and continue.
+      void startSpeechmatics()
+    }
+
+    if (!smReady || smWs?.readyState !== WebSocket.OPEN) {
+      if (pendingAudio.length < maxPendingChunks) pendingAudio.push(chunk)
+      return
+    }
     try {
       smWs.send(chunk)
     } catch (err) {
@@ -212,11 +272,9 @@ wss.on('connection', async (lkWs, req) => {
   lkWs.on('error', () => {
     closeAll().catch(() => {})
   })
-  smWs.on('close', () => {
-    closeAll().catch(() => {})
-  })
-  smWs.on('error', (err) => {
-    console.error('[Relay] Speechmatics socket error:', err)
-    closeAll().catch(() => {})
-  })
+
+  // Ensure we initialize even if LiveKit sends no early metadata frame.
+  setTimeout(() => {
+    if (!smStarted && !smStartFailed) void startSpeechmatics()
+  }, 200)
 })

@@ -260,12 +260,7 @@ function CallRoomInner({
   const [liveTranscriptPartials, setLiveTranscriptPartials] = useState<Record<string, string>>({})
   const [liveTranscriptConnections, setLiveTranscriptConnections] = useState<Record<string, boolean>>({})
   const [liveTranscriptError, setLiveTranscriptError] = useState<string | null>(null)
-  const [realtimeLanguageCode, setRealtimeLanguageCode] = useState<string>(() => {
-    if (typeof navigator !== "undefined") {
-      return normalizeRealtimeLanguageCode(navigator.language) || "de"
-    }
-    return "de"
-  })
+  const [realtimeLanguageCode, setRealtimeLanguageCode] = useState<string>("de")
 
   const [roomLocked, setRoomLocked] = useState(false)
   const [moderationParticipants, setModerationParticipants] = useState<ModerationParticipant[]>([])
@@ -582,29 +577,6 @@ function CallRoomInner({
 
   useEffect(() => {
     let cancelled = false
-    if (liveTranscriptUsesServerRelay) {
-      void Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSourceForCleanup(key)))
-      return
-    }
-
-    async function stopSourceForCleanup(sourceKey: string) {
-      const service = speechmaticsServicesRef.current[sourceKey]
-      if (service) {
-        try {
-          await service.stop()
-        } catch {
-          // Best effort
-        }
-      }
-      const clonedTrack = speechmaticsTracksRef.current[sourceKey]
-      try {
-        clonedTrack?.stop()
-      } catch {
-        // Best effort
-      }
-      delete speechmaticsServicesRef.current[sourceKey]
-      delete speechmaticsTracksRef.current[sourceKey]
-    }
     ;(async () => {
       try {
         const localValue = window.localStorage.getItem(VIDEO_BACKGROUND_STORAGE_KEY)
