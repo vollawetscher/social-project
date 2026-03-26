@@ -599,8 +599,7 @@ function CallRoomInner({
           setVideoBackground(saved as VideoBackgroundChoice)
         }
         const profileLanguage =
-          normalizeRealtimeLanguageCode(profile?.default_recording_language) ||
-          normalizeRealtimeLanguageCode(profile?.preferred_locale)
+          normalizeRealtimeLanguageCode(profile?.default_recording_language)
         if (profileLanguage) {
           setRealtimeLanguageCode(profileLanguage)
         }
@@ -992,6 +991,7 @@ function CallRoomInner({
         if (cancelled) return
         const clonedTrack = mediaTrack.clone()
         const stream = new MediaStream([clonedTrack])
+        console.log(`[LiveTranscript] Starting source=${sourceKey} language=${realtimeLanguageCode} speaker=${speakerLabel}`)
         const service = new SpeechmaticsRealtimeService(token, {
           language: realtimeLanguageCode,
           enablePartials: true,
