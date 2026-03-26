@@ -20,6 +20,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.23.2',
         date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Live PSTN Transcript Now Forces Remote Audio Subscription',
+        description: 'In-call live transcription now explicitly subscribes to remote microphone tracks so callee audio is more reliably available for realtime transcript capture.',
+      },
+      {
+        version: '1.23.2',
+        date: 'March 17, 2026',
         category: 'improvement',
         title: 'Live Transcript Starts Automatically When Opened',
         description: 'When you open the in-call Transcript view during PSTN live mode, live capture now auto-starts so you no longer need an extra start step in most desktop call flows.',

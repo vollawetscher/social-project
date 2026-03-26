@@ -306,6 +306,20 @@ function CallRoomInner({
   const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
   const liveTranscriptEnabled = callType === "pstn_outbound" && pstnTranscriptionMode === "live"
   const liveTranscriptConnected = Object.values(liveTranscriptConnections).some(Boolean)
+  const remoteParticipantsKey = remoteParticipants
+    .map((participant) => `${participant.sid}:${participant.isMicrophoneEnabled ? "1" : "0"}`)
+    .sort()
+    .join("|")
+  const microphoneTracksKey = microphoneTracks
+    .filter(isTrackReference)
+    .map((trackRef) => {
+      const sid = trackRef.participant.sid
+      const pubSid = trackRef.publication?.trackSid || "na"
+      const hasTrack = trackRef.publication?.track ? "1" : "0"
+      return `${sid}:${pubSid}:${hasTrack}`
+    })
+    .sort()
+    .join("|")
 
   const refreshModeration = useCallback(async () => {
     if (!isInitiator || !callId) return
@@ -709,6 +723,23 @@ function CallRoomInner({
     })()
   }, [isConnected, mode, room])
 
+  // Ensure remote microphone publications are explicitly subscribed.
+  // This avoids edge cases where remote audio exists in-room but the track
+  // isn't ready on this client for realtime transcript capture.
+  useEffect(() => {
+    if (!isConnected) return
+    for (const participant of remoteParticipants as any[]) {
+      const micPublication = participant?.getTrackPublication?.(Track.Source.Microphone) as any
+      if (micPublication?.setSubscribed && !micPublication?.isSubscribed) {
+        try {
+          micPublication.setSubscribed(true)
+        } catch {
+          // Best-effort subscription.
+        }
+      }
+    }
+  }, [isConnected, remoteParticipantsKey])
+
   // Play soft ringtone only for outbound PSTN calls while waiting for callee to pick up.
   // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
   // so we must exclude that post-call phase explicitly.
@@ -1004,7 +1035,7 @@ function CallRoomInner({
       cancelled = true
       void Promise.all(Object.keys(speechmaticsServicesRef.current).map((key) => stopSource(key)))
     }
-  }, [liveTranscriptEnabled, isConnected, isLocalMicEnabled, localParticipant, remoteParticipants, contactName, contactPhone, t, microphoneTracks, realtimeLanguageCode, liveTranscriptArmed])
+  }, [liveTranscriptEnabled, isConnected, isLocalMicEnabled, localParticipant, remoteParticipantsKey, contactName, contactPhone, t, microphoneTracksKey, realtimeLanguageCode, liveTranscriptArmed])
 
   useEffect(() => {
     if (!liveTranscriptEnabled) {
