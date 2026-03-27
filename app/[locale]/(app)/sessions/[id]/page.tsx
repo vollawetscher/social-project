@@ -72,6 +72,26 @@ import type { TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
 import { SessionGuidanceBanner } from "@/components/session/SessionGuidanceBanner"
 import { SessionProgressGuide } from "@/components/session/SessionProgressGuide"
 
+function normalizeWordCorrections(raw: unknown): Record<string, string> {
+  if (Array.isArray(raw)) {
+    const map: Record<string, string> = {}
+    for (const item of raw) {
+      if (item && typeof item === 'object' && 'original' in item && 'corrected' in item) {
+        map[String((item as Record<string, unknown>).original)] = String((item as Record<string, unknown>).corrected)
+      }
+    }
+    return map
+  }
+  if (raw && typeof raw === 'object') {
+    const map: Record<string, string> = {}
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof v === 'string') map[k] = v
+    }
+    return map
+  }
+  return {}
+}
+
 const SUGGESTION_AUDIENCES = ['internal', 'external', 'client', 'legal', 'executive'] as const
 type SuggestionAudience = (typeof SUGGESTION_AUDIENCES)[number]
 function isSuggestionAudience(value: unknown): value is SuggestionAudience {
@@ -716,7 +736,7 @@ export default function SessionDetailPage() {
     const corrections = session.transcriptCorrections || {}
     const initialSpeakerNameMap = (corrections.speaker_name_map || corrections.name_corrections || {}) as Record<string, string>
     const initialSpeakerMergeMap = (corrections.speaker_merge_map || {}) as Record<string, string>
-    const initialWordCorrections = (corrections.word_corrections || {}) as Record<string, string>
+    const initialWordCorrections = normalizeWordCorrections(corrections.word_corrections)
     setSpeakerNameMap(initialSpeakerNameMap)
     setSpeakerMergeMap(initialSpeakerMergeMap)
     setWordCorrectionsDraft(initialWordCorrections)

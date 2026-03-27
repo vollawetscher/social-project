@@ -52,6 +52,26 @@ import {
 import { cn } from "@/lib/utils"
 import type { Session, AiSuggestion, RecordingType, Domain } from "@/lib/types-v0"
 
+function normalizeWordCorrections(raw: unknown): Record<string, string> {
+  if (Array.isArray(raw)) {
+    const map: Record<string, string> = {}
+    for (const item of raw) {
+      if (item && typeof item === 'object' && 'original' in item && 'corrected' in item) {
+        map[String((item as Record<string, unknown>).original)] = String((item as Record<string, unknown>).corrected)
+      }
+    }
+    return map
+  }
+  if (raw && typeof raw === 'object') {
+    const map: Record<string, string> = {}
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof v === 'string') map[k] = v
+    }
+    return map
+  }
+  return {}
+}
+
 interface SessionSetupPanelProps {
   session: Session
   recordingTypeSuggestions: AiSuggestion<RecordingType>[]
@@ -181,7 +201,7 @@ export function SessionSetupPanel({
 
   // Word corrections: original (misheard) → corrected
   const [wordCorrections, setWordCorrections] = useState<Record<string, string>>(
-    () => session.transcriptCorrections?.word_corrections || {}
+    () => normalizeWordCorrections(session.transcriptCorrections?.word_corrections)
   )
   const [newOriginal, setNewOriginal] = useState('')
   const [newCorrected, setNewCorrected] = useState('')
@@ -228,7 +248,7 @@ export function SessionSetupPanel({
     setVenue(session.extractedContext?.venue || "")
     setSelectedRecordingType(session.recordingType)
     setSelectedDomain(session.domain)
-    setWordCorrections(session.transcriptCorrections?.word_corrections || {})
+    setWordCorrections(normalizeWordCorrections(session.transcriptCorrections?.word_corrections))
   }, [session])
 
   useEffect(() => {
@@ -389,7 +409,7 @@ export function SessionSetupPanel({
       })
       if (!response.ok) throw new Error('Failed to save corrections')
       const data = await response.json()
-      setWordCorrections(data.corrections.word_corrections || {})
+      setWordCorrections(normalizeWordCorrections(data.corrections.word_corrections))
       toast.success(t('wordCorrectionsSaved'))
       onContextSaved?.()
     } catch (error) {
