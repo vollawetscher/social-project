@@ -140,6 +140,7 @@ export default function SessionDetailPage() {
   const router = useRouter()
   const sessionId = params.id as string
   const fromProjectId = searchParams.get('fromProject')
+  const initialTab = searchParams.get('tab')
   const backHref = fromProjectId ? `/projects/${fromProjectId}` : '/sessions'
   const t = useTranslations('sessionDetail')
   const tCommon = useTranslations('common')
@@ -164,7 +165,7 @@ export default function SessionDetailPage() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<any>(null)
   const [currentAudioTime, setCurrentAudioTime] = useState(0)
-  const [activeTab, setActiveTab] = useState("transcript")
+  const [activeTab, setActiveTab] = useState(initialTab && ["transcript", "context", "outputs"].includes(initialTab) ? initialTab : "transcript")
   const [isAudioPlaying, setIsAudioPlaying] = useState(false)
   const audioPlayerRef = useRef<any>(null)
   const analyzeSessionRef = useRef<((retryCount?: number) => Promise<void>) | null>(null)
@@ -1297,7 +1298,6 @@ export default function SessionDetailPage() {
               hasOutputs={outputs.length > 0}
               onSwitchTab={setActiveTab}
             />
-            {renderCleanupPanel()}
             {canShowTranscriptReparseControls && (
               <div className="mb-2 flex items-center gap-2">
                 <Button
