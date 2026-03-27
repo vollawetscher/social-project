@@ -43,20 +43,6 @@ System ffmpeg is installed via Nixpacks (`nixPkgs = ["...", "ffmpeg"]`). If conf
 
 ---
 
-## Schema
-
-### `user_is_speaker` — backfill for existing sessions
-Existing sessions have `user_is_speaker = NULL`. Call sessions and quick recordings created before this column was added won't benefit from voice sample prepend on re-transcription.
-
-**Fix:** Run a one-time backfill:
-```sql
-UPDATE sessions SET user_is_speaker = true
-WHERE id IN (SELECT session_id FROM calls WHERE session_id IS NOT NULL)
-   OR input_hint IN ('quick_record', 'voice_note', 'phone_call', 'video_call');
-```
-
----
-
 ## Auto-generation SSL Error
 
 ### `ERR_SSL_PACKET_LENGTH_TOO_LONG` on auto-generation fetch
