@@ -73,7 +73,12 @@ export async function prependVoiceSample(
     await writeFile(sampleFile, voiceSampleBuffer)
     await writeFile(callFile, callAudioBuffer)
 
+    const audioSizeMB = callAudioBuffer.length / (1024 * 1024)
+    const timeoutMs = Math.max(120_000, Math.ceil(audioSizeMB * 10) * 1000)
+
     await execFileAsync(ffmpegPath, [
+      '-nostdin',
+      '-loglevel', 'warning',
       '-i', sampleFile,
       '-i', callFile,
       '-filter_complex', '[0:a][1:a]concat=n=2:v=0:a=1[a]',
@@ -82,7 +87,7 @@ export async function prependVoiceSample(
       '-b:a', '48k',
       '-y',
       outputFile,
-    ], { timeout: 30_000 })
+    ], { timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024 })
 
     const outputBuffer = await readFile(outputFile)
     return { buffer: outputBuffer, mimeType: 'audio/ogg' }
