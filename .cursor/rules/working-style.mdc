@@ -37,3 +37,19 @@ When any change touches the transcript/analysis/summarization pipeline, assess i
 - Summaries must correctly attribute who said what — speaker identity is foundational
 - Analysis must work equally well for all session types, not just the most recent one tested
 - Changes should be additive and not break existing working paths
+
+## Bug-Fixing Protocol (Mandatory)
+
+For bugs, do not jump from symptom to patch. Use a multi-step process until root cause is clear and unambiguous:
+
+1. **Reproduce and scope** — Confirm the issue with concrete evidence (logs, DB rows, pipeline events, UI state) and identify all affected code paths.
+2. **Collect competing hypotheses** — List plausible causes, including infra/runtime behavior (timeouts, retries, deploy overlap), not only code defects.
+3. **Falsify alternatives** — Use targeted checks to eliminate non-causes. Keep iterating until one cause remains.
+4. **Root-cause certainty gate** — Only implement a fix when evidence clearly links symptom -> mechanism -> source location.
+5. **Fix + verify against evidence** — Validate with the same signals used in diagnosis and confirm no duplicate/secondary trigger remains.
+
+### Never do
+
+- Do not implement speculative fixes "to see if it helps"
+- Do not stop at correlation when causal evidence is missing
+- Do not close a bug investigation while multiple plausible causes remain

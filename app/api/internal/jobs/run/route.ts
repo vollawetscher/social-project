@@ -92,6 +92,32 @@ async function processSessionAnalyzeJob(request: Request, job: AsyncJobRow): Pro
   }
 }
 
+async function hasTranscribeCompletedSince(sessionId: string, sinceIso: string): Promise<boolean> {
+  const supabase = createServiceRoleClient()
+
+  const { data: completedEvent } = await supabase
+    .from('pipeline_events')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('stage', 'transcribe')
+    .eq('event', 'job_completed')
+    .gte('created_at', sinceIso)
+    .limit(1)
+    .maybeSingle()
+
+  if (completedEvent?.id) return true
+
+  const { data: transcriptRow } = await supabase
+    .from('transcripts')
+    .select('id')
+    .eq('session_id', sessionId)
+    .gte('created_at', sinceIso)
+    .limit(1)
+    .maybeSingle()
+
+  return !!transcriptRow?.id
+}
+
 async function processSessionTranscribeJob(request: Request, job: AsyncJobRow): Promise<Record<string, unknown>> {
   const payload = (job.payload || {}) as Record<string, unknown>
   const sessionId = String(payload.sessionId || '')
@@ -105,20 +131,39 @@ async function processSessionTranscribeJob(request: Request, job: AsyncJobRow): 
     throw new Error('INTERNAL_API_SECRET is not configured')
   }
 
-  const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/transcribe`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-internal-secret': secret,
-      'x-queue-worker': '1',
-    },
-    body: JSON.stringify({
-      queueMode: 'sync',
-    }),
-  })
+  const startedAtIso = new Date().toISOString()
+  let response: Response
+  try {
+    response = await fetch(`${baseUrl}/api/sessions/${sessionId}/transcribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': secret,
+        'x-queue-worker': '1',
+      },
+      body: JSON.stringify({
+        queueMode: 'sync',
+      }),
+    })
+  } catch (error) {
+    if (await hasTranscribeCompletedSince(sessionId, startedAtIso)) {
+      return {
+        sessionId,
+        recoveredFromFetchFailure: true,
+      }
+    }
+    throw error
+  }
 
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
+    if (await hasTranscribeCompletedSince(sessionId, startedAtIso)) {
+      return {
+        ...(typeof data === 'object' && data ? data : {}),
+        sessionId,
+        recoveredFromHttpError: response.status,
+      }
+    }
     throw new Error(String(data?.error || `Session transcribe failed (${response.status})`))
   }
 
