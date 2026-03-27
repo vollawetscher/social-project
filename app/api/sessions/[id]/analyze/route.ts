@@ -471,6 +471,14 @@ export async function POST(
 
       // Not cached — enqueue for async processing
       if (!isInternalCall) {
+        // Clear any old completed job so a fresh analysis can be enqueued
+        const svcClient = createServiceRoleClient()
+        await svcClient
+          .from('async_jobs')
+          .delete()
+          .eq('idempotency_key', `session_analyze:${params.id}`)
+          .eq('status', 'completed')
+
         const job = await enqueueAsyncJob({
           userId,
           jobType: 'session_analyze',

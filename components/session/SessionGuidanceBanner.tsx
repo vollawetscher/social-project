@@ -87,15 +87,15 @@ export function SessionGuidanceBanner({
   const style = variantStyles[guidance.variant]
 
   return (
-    <div className={`flex items-center gap-3 rounded-lg border px-3 py-2 mb-3 text-sm ${style}`}>
-      {guidance.loading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />}
-      <span className="flex-1">{t(guidance.key as any)}</span>
+    <div className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 mb-2 text-xs ${style}`}>
+      {guidance.loading && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
+      <span className="flex-1 leading-snug">{t(guidance.key as any)}</span>
       <div className="flex items-center gap-1 shrink-0">
         {guidance.targetTab && (
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 text-xs gap-1 px-2 hover:bg-current/10"
+            className="h-5 text-[11px] gap-0.5 px-1.5 hover:bg-current/10"
             onClick={() => {
               onSwitchTab(guidance.targetTab!)
               setDismissed(guidance.key)
@@ -109,7 +109,7 @@ export function SessionGuidanceBanner({
           <Button
             size="sm"
             variant="ghost"
-            className="h-6 w-6 p-0 hover:bg-current/10"
+            className="h-5 w-5 p-0 hover:bg-current/10"
             onClick={() => setDismissed(guidance.key)}
           >
             <X className="h-3 w-3" />

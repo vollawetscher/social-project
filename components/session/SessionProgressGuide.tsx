@@ -85,58 +85,59 @@ export function SessionProgressGuide({
   if (tourDone || allDone) return null
 
   return (
-    <div className="mb-4 rounded-xl border border-border bg-muted/40 px-4 py-3">
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <p className="text-sm font-medium text-foreground">{t("title")}</p>
+    <div className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 md:gap-3 flex-1 min-w-0">
+          {steps.map((step, idx) => {
+            const Icon = step.icon
+            const isNext = !step.done && steps.slice(0, idx).every((s) => s.done)
+            const isLast = idx === steps.length - 1
+            return (
+              <div key={step.key} className="flex items-center gap-1.5 md:gap-3 flex-1 min-w-0">
+                <button
+                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors cursor-pointer min-w-0
+                    ${step.active ? "bg-primary/10" : "hover:bg-muted"}
+                  `}
+                  onClick={() => onSwitchTab(step.tab)}
+                >
+                  <div
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors
+                      ${step.done
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : isNext
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-muted-foreground"
+                      }`}
+                  >
+                    {step.done ? (
+                      <Check className="h-3 w-3" />
+                    ) : (
+                      <Icon className="h-3 w-3" />
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs truncate
+                      ${step.done ? "text-emerald-600 dark:text-emerald-400 line-through" : isNext ? "text-foreground font-medium" : "text-muted-foreground"}
+                    `}
+                  >
+                    {t(step.key as any)}
+                  </span>
+                </button>
+                {!isLast && (
+                  <div className="h-px w-3 md:w-6 bg-border shrink-0" />
+                )}
+              </div>
+            )
+          })}
+        </div>
         <Button
           variant="ghost"
           size="sm"
-          className="h-5 w-5 p-0 text-muted-foreground shrink-0 -mt-0.5"
+          className="h-5 w-5 p-0 text-muted-foreground shrink-0"
           onClick={dismiss}
         >
           <X className="h-3 w-3" />
         </Button>
-      </div>
-      <div className="flex items-start gap-2 md:gap-4">
-        {steps.map((step, idx) => {
-          const Icon = step.icon
-          const isNext = !step.done && steps.slice(0, idx).every((s) => s.done)
-          return (
-            <button
-              key={step.key}
-              className={`flex-1 flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors text-center cursor-pointer
-                ${step.active ? "bg-primary/10" : "hover:bg-muted"}
-              `}
-              onClick={() => onSwitchTab(step.tab)}
-            >
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full border-2 transition-colors
-                  ${step.done
-                    ? "border-emerald-500 bg-emerald-500 text-white"
-                    : isNext
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground"
-                  }`}
-              >
-                {step.done ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : (
-                  <Icon className="h-3.5 w-3.5" />
-                )}
-              </div>
-              <span
-                className={`text-xs leading-tight
-                  ${step.done ? "text-emerald-600 dark:text-emerald-400 line-through" : isNext ? "text-foreground font-medium" : "text-muted-foreground"}
-                `}
-              >
-                {t(step.key as any)}
-              </span>
-              {isNext && (
-                <span className="text-[10px] text-primary font-medium">{t("next")}</span>
-              )}
-            </button>
-          )
-        })}
       </div>
     </div>
   )
