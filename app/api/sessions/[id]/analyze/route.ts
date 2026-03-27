@@ -489,17 +489,15 @@ export async function POST(
     // Fetch user profile for name comparison (and admin check for session fetch)
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, company_name, display_name, role, after_transcript_action, after_transcript_template_id, preferred_report_language')
+      .select('display_name, role, after_transcript_action, after_transcript_template_id, preferred_report_language')
       .eq('id', userId)
       .single()
 
     const isAdmin = profile?.role === 'admin'
 
-    const userName = profile?.display_name || profile?.full_name || profile?.company_name || ''
-    console.log('[Analyze API] Profile data:', { 
-      display_name: profile?.display_name, 
-      full_name: profile?.full_name, 
-      company_name: profile?.company_name 
+    const userName = profile?.display_name || ''
+    console.log('[Analyze API] Profile data:', {
+      display_name: profile?.display_name,
     })
     console.log('[Analyze API] User name for AI identification:', userName)
 
@@ -583,7 +581,7 @@ export async function POST(
         ? (
             await sessionClient
               .from('profiles')
-              .select('display_name, full_name, company_name')
+              .select('display_name')
               .eq('id', linkedCall.user_id)
               .maybeSingle()
           ).data
@@ -595,7 +593,7 @@ export async function POST(
         ? (
             await sessionClient
               .from('profiles')
-              .select('display_name, full_name')
+              .select('display_name')
               .eq('id', linkedCall.callee_user_id)
               .maybeSingle()
           ).data
@@ -604,10 +602,10 @@ export async function POST(
     const linkedInitiatorName =
       linkedCall?.user_id === userId
         ? userName
-        : (callOwnerName?.display_name || callOwnerName?.full_name || callOwnerName?.company_name || null)
+        : (callOwnerName?.display_name || null)
     const linkedOtherName =
       linkedCall?.user_id === userId
-        ? (calleeProfile?.display_name || calleeProfile?.full_name || linkedCall?.contact_name || null)
+        ? (calleeProfile?.display_name || linkedCall?.contact_name || null)
         : userName
 
     const speakerResolution = buildSpeakerResolution({
