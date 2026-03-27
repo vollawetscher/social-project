@@ -6,13 +6,34 @@ import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
 
-let ffmpegPath: string | null = null
-try {
-  ffmpegPath = require('ffmpeg-static') as string
-  console.log('[VoiceSamplePrepend] ffmpeg-static resolved to:', ffmpegPath)
-} catch (e) {
-  console.warn('[VoiceSamplePrepend] ffmpeg-static not available:', (e as Error)?.message)
+function resolveFfmpegPath(): string | null {
+  // 1. System ffmpeg (installed via apt/nixpacks)
+  const systemPaths = ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg']
+  for (const p of systemPaths) {
+    try {
+      require('child_process').execFileSync(p, ['-version'], { stdio: 'ignore', timeout: 5000 })
+      console.log('[VoiceSamplePrepend] Using system ffmpeg:', p)
+      return p
+    } catch { /* not available */ }
+  }
+
+  // 2. ffmpeg-static fallback
+  try {
+    const staticPath = require('ffmpeg-static') as string
+    if (staticPath) {
+      console.log('[VoiceSamplePrepend] Using ffmpeg-static:', staticPath)
+      return staticPath
+    }
+  } catch (e) {
+    console.warn('[VoiceSamplePrepend] ffmpeg-static not available:', (e as Error)?.message)
+  }
+
+  console.error('[VoiceSamplePrepend] No ffmpeg binary found')
+  return null
 }
+
+let ffmpegPath: string | null = null
+let ffmpegResolved = false
 
 export async function prependVoiceSample(
   voiceSampleBuffer: Buffer,
@@ -20,8 +41,12 @@ export async function prependVoiceSample(
   callAudioBuffer: Buffer,
   callAudioMime: string,
 ): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  if (!ffmpegResolved) {
+    ffmpegPath = resolveFfmpegPath()
+    ffmpegResolved = true
+  }
   if (!ffmpegPath) {
-    console.warn('[VoiceSamplePrepend] ffmpeg-static not available, skipping prepend')
+    console.warn('[VoiceSamplePrepend] No ffmpeg available, skipping prepend')
     return null
   }
 
