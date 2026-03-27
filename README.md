@@ -1,4 +1,4 @@
-# Generic Meeting & Conversation Transcription System
+# Generic Meeting & Conversation Transcription System...
 
 Multi-domain, multi-language transcription and report generation system with automatic domain detection and AI-powered structured reporting.
 
