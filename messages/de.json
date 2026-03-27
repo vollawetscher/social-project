@@ -116,6 +116,7 @@
       "tradeShow": "Messe / Standgespraech",
       "voiceNote": "Sprachnotiz oder Diktat"
     },
+    "userIsSpeaker": "Ich bin ein Sprecher in dieser Aufnahme",
     "table": {
       "name": "Name",
       "owner": "Besitzer",

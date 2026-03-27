@@ -191,6 +191,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     uploadSizeBytes: Number((dbSession as any).upload_size_bytes || 0),
     textUploadSizeBytes: Number((dbSession as any).text_upload_size_bytes || 0),
     inputHint: (dbSession as any).input_hint ?? undefined,
+    userIsSpeaker: (dbSession as any).user_is_speaker ?? null,
     hasAudioFile: Boolean((dbSession as any).has_audio_file),
     wordCount: (dbSession as any).word_count ?? null,
     caseId: (dbSession as any).case_id ?? null,

@@ -240,10 +240,11 @@ async function processTranscriptionJob(sessionId: string) {
     // Get session context and language hints for Speechmatics
     const { data: sessionRow } = await supabase
       .from('sessions')
-      .select('user_id, input_hint, language, internal_case_id, context_note, context_text, ai_extracted_context, transcript_corrections')
+      .select('user_id, input_hint, language, internal_case_id, context_note, context_text, ai_extracted_context, transcript_corrections, user_is_speaker')
       .eq('id', sessionId)
       .single()
     const inputHint = (sessionRow as any)?.input_hint || ''
+    const userIsSpeaker = (sessionRow as any)?.user_is_speaker === true
     const rawLang = (sessionRow as any)?.language?.slice(0, 2) || null
     const sessionLanguage = rawLang === 'au' ? null : rawLang // 'auto' → null → Speechmatics auto-detect
     const requestedLanguageRaw = (sessionRow as any)?.language || null
@@ -296,7 +297,7 @@ async function processTranscriptionJob(sessionId: string) {
     let voiceSampleDurationMs = 0
     let voiceSampleUserName: string | null = null
     const sessionUserId = (sessionRow as any)?.user_id
-    if (sessionUserId) {
+    if (sessionUserId && userIsSpeaker) {
       const { data: userProfile } = await supabase
         .from('profiles')
         .select('display_name')
@@ -347,6 +348,8 @@ async function processTranscriptionJob(sessionId: string) {
           metadata: { language: sampleLang },
         }, supabase)
       }
+    } else if (sessionUserId && !userIsSpeaker) {
+      console.log('[Transcribe] Skipping voice sample — user is not a speaker in this recording')
     }
 
     // Get all files for this session

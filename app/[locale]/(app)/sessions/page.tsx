@@ -383,6 +383,7 @@ export default function SessionsPage() {
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [language, setLanguage] = useState<string>('auto')
   const [inputHint, setInputHint] = useState<string>('') // meeting, presentation, trade_show, voice_note, '' = auto
+  const [userIsSpeaker, setUserIsSpeaker] = useState(true)
   const [previewFiles, setPreviewFiles] = useState<File[]>([])
   const [previewOpen, setPreviewOpen] = useState(false)
   const [uploadingTranscript, setUploadingTranscript] = useState(false)
@@ -1048,6 +1049,7 @@ export default function SessionsPage() {
         status: 'uploading',
         language: uploadLanguage || 'auto',
         ...(inputHint && { input_hint: inputHint }),
+        user_is_speaker: userIsSpeaker,
       })
       .select()
       .single()
@@ -1822,6 +1824,18 @@ export default function SessionsPage() {
                 </select>
               </div>
 
+              {/* Speaker identification */}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={userIsSpeaker}
+                  onChange={(e) => setUserIsSpeaker(e.target.checked)}
+                  disabled={uploadingFiles}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <span className="text-sm text-foreground">{t('userIsSpeaker')}</span>
+              </label>
+
               {/* Language Selection */}
               <div>
                 <label htmlFor="upload-language" className="text-xs font-medium text-muted-foreground mb-1.5 block">
@@ -2401,6 +2415,7 @@ export default function SessionsPage() {
                         <DropdownMenuItem 
                           className="text-destructive"
                           onClick={() => handleDeleteSession(session.id)}
+                          disabled={isProcessing(session)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           {tc('delete')}
@@ -2598,6 +2613,7 @@ export default function SessionsPage() {
                             <DropdownMenuItem 
                               className="text-destructive"
                               onClick={() => handleDeleteSession(session.id)}
+                              disabled={isProcessing(session)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               {tc('delete')}

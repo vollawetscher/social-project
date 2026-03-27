@@ -120,6 +120,7 @@ export async function POST(request: Request) {
               last_error: '',
               input_hint: inputHint,
               language: 'auto',
+              user_is_speaker: true,
             })
             .select('id')
             .single()

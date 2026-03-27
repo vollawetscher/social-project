@@ -205,7 +205,7 @@ export async function POST(request: Request) {
     const user = await requireAuth()
     const supabase = await createClient()
     const body = await request.json()
-    const { context_note = '', internal_case_id = '', case_id = null, language, input_hint } = body
+    const { context_note = '', internal_case_id = '', case_id = null, language, input_hint, user_is_speaker } = body
 
     const { data: session, error } = await supabase
       .from('sessions')
@@ -217,6 +217,7 @@ export async function POST(request: Request) {
         status: 'created',
         ...(language && { language }),
         ...(input_hint && { input_hint }),
+        ...(user_is_speaker != null && { user_is_speaker }),
       })
       .select()
       .single()

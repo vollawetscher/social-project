@@ -115,6 +115,7 @@ export default function UploadRecordingsPage() {
         internal_case_id: sessionName,
         language: language,
         input_hint: 'quick_record',
+        user_is_speaker: true,
       }),
     })
     if (!createRes.ok) {

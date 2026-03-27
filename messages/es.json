@@ -116,6 +116,7 @@
       "tradeShow": "Feria / conversación en stand",
       "voiceNote": "Nota de voz o dictado"
     },
+    "userIsSpeaker": "Soy un participante en esta grabación",
     "table": {
       "name": "Nombre",
       "owner": "Propietario",

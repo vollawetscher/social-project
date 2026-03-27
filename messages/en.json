@@ -116,6 +116,7 @@
       "tradeShow": "Trade show / booth talk",
       "voiceNote": "Voice note or dictation"
     },
+    "userIsSpeaker": "I am a speaker in this recording",
     "table": {
       "name": "Name",
       "owner": "Owner",
