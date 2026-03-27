@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { createRouteHandlerClient } from "@/lib/supabase/server"
 
 // PATCH /api/notifications/read  { ids: string[] }
-export async function PATCH(request: Request) {
-  const supabase = await createRouteHandlerClient()
+export async function PATCH(request: NextRequest) {
+  const supabase = await createRouteHandlerClient(request)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
