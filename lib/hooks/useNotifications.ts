@@ -2,15 +2,20 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useAuth } from "@/lib/auth/AuthProvider"
+import { createClient } from "@/lib/supabase/client"
 
 export interface NotificationItem {
   id: string
-  icon: "mic" | "info" | "alert"
+  icon: "mic" | "info" | "alert" | "check" | "file"
   title: string
   description: string
   actionLabel: string
   actionHref: string
   snoozable: boolean
+  /** If set, this maps to a DB notifications.id — allows mark-as-read */
+  dbId?: string
+  /** i18n key or literal string for description; if dbKey is false the value is used as-is */
+  dbKey?: boolean
 }
 
 interface SnoozeMap {
@@ -22,9 +27,41 @@ interface NotificationPreferences {
   notification_dismissed?: Record<string, boolean>
 }
 
+interface DbNotification {
+  id: string
+  type: string
+  title: string
+  message: string | null
+  action_href: string | null
+  data: Record<string, unknown>
+  read_at: string | null
+  created_at: string
+}
+
 function isSnoozed(snoozedUntil: string | undefined): boolean {
   if (!snoozedUntil) return false
   return new Date(snoozedUntil) > new Date()
+}
+
+function dbNotificationToItem(n: DbNotification): NotificationItem {
+  const iconMap: Record<string, NotificationItem["icon"]> = {
+    analysis_complete: "check",
+    output_generated: "file",
+    voice_sample_needed: "mic",
+    system: "info",
+  }
+  return {
+    id: `db:${n.id}`,
+    dbId: n.id,
+    dbKey: false,
+    icon: iconMap[n.type] ?? "info",
+    // title is an i18n key stored in DB (e.g. "analysis_complete")
+    title: n.title,
+    description: n.message ?? "",
+    actionLabel: "notificationActionView",
+    actionHref: n.action_href ?? "/sessions",
+    snoozable: false,
+  }
 }
 
 export function useNotifications() {
@@ -32,7 +69,9 @@ export function useNotifications() {
   const [voiceSampleCount, setVoiceSampleCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [modalDismissedThisSession, setModalDismissedThisSession] = useState(false)
+  const [dbNotifications, setDbNotifications] = useState<DbNotification[]>([])
 
+  // Fetch voice sample count once on mount
   useEffect(() => {
     let cancelled = false
     fetch("/api/profile/voice-sample")
@@ -49,6 +88,48 @@ export function useNotifications() {
     return () => { cancelled = true }
   }, [])
 
+  // Fetch unread DB notifications on mount (once profile loads)
+  useEffect(() => {
+    if (!profile?.id) return
+    const supabase = createClient()
+    supabase
+      .from("notifications")
+      .select("id, type, title, message, action_href, data, read_at, created_at")
+      .eq("user_id", profile.id)
+      .is("read_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (data) setDbNotifications(data as DbNotification[])
+      })
+  }, [profile?.id])
+
+  // Realtime subscription — receives new notifications instantly
+  useEffect(() => {
+    if (!profile?.id) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`notifications:${profile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${profile.id}`,
+        },
+        (payload) => {
+          const newNotification = payload.new as DbNotification
+          setDbNotifications((prev) => [newNotification, ...prev])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [profile?.id])
+
   const prefs = (profile?.preferences ?? {}) as NotificationPreferences
   const snoozedMap = prefs.notification_snoozed ?? {}
   const dismissedMap = prefs.notification_dismissed ?? {}
@@ -56,6 +137,7 @@ export function useNotifications() {
   const items = useMemo<NotificationItem[]>(() => {
     const result: NotificationItem[] = []
 
+    // Condition-based: voice sample missing
     if (
       voiceSampleCount !== null &&
       voiceSampleCount === 0 &&
@@ -73,8 +155,15 @@ export function useNotifications() {
       })
     }
 
+    // DB-backed realtime notifications (unread)
+    for (const n of dbNotifications) {
+      if (!n.read_at) {
+        result.push(dbNotificationToItem(n))
+      }
+    }
+
     return result
-  }, [voiceSampleCount, snoozedMap, dismissedMap])
+  }, [voiceSampleCount, snoozedMap, dismissedMap, dbNotifications])
 
   const unreadCount = items.length
 
@@ -112,6 +201,26 @@ export function useNotifications() {
     [snoozedMap, profile?.preferences, refreshProfile]
   )
 
+  const markRead = useCallback(async (ids: string[]) => {
+    if (!ids.length) return
+    // Optimistically remove from local state
+    setDbNotifications((prev) => prev.filter((n) => !ids.includes(n.id)))
+    try {
+      await fetch("/api/notifications/read", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      })
+    } catch (e) {
+      console.error("[Notifications] Failed to mark as read:", e)
+    }
+  }, [])
+
+  const markAllRead = useCallback(async () => {
+    const ids = dbNotifications.filter((n) => !n.read_at).map((n) => n.id)
+    if (ids.length) await markRead(ids)
+  }, [dbNotifications, markRead])
+
   const dismissModal = useCallback(() => {
     setModalDismissedThisSession(true)
   }, [])
@@ -129,6 +238,8 @@ export function useNotifications() {
     loading,
     showOnboardingModal,
     snooze,
+    markRead,
+    markAllRead,
     dismissModal,
     refreshSamples,
   }

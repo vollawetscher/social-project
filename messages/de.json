@@ -1040,9 +1040,14 @@
     "title": "Aktion erforderlich",
     "empty": "Alles erledigt — keine offenen Aufgaben.",
     "remindLater": "Später erinnern",
+    "markAllRead": "Alle als gelesen markieren",
+    "dismiss": "Schließen",
+    "notificationActionView": "Anzeigen",
     "notificationVoiceSampleTitle": "Stimmprobe aufnehmen",
     "notificationVoiceSampleDesc": "Damit Notissima dich ab der ersten Sekunde in Gesprächen erkennt. Dauert weniger als 30 Sekunden.",
     "notificationVoiceSampleAction": "Jetzt einrichten",
+    "analysis_complete": "Analyse abgeschlossen",
+    "output_generated": "Ausgabe bereit",
     "onboardingTitle": "Stimmprobe einrichten",
     "onboardingDesc": "Eine kurze Stimmaufnahme hilft Notissima zu erkennen, wer in deinen Gesprächen spricht — keine falschen Sprecherzuordnungen mehr.",
     "onboardingBenefit1Title": "Genaue Sprechererkennung",
@@ -1051,6 +1056,25 @@
     "onboardingBenefit2Desc": "Nimm Stimmproben in jeder Sprache auf, die du verwendest. Jede dauert unter 30 Sekunden.",
     "onboardingSetupNow": "Stimmprobe aufnehmen",
     "onboardingRemindLater": "In 7 Tagen erinnern"
+  },
+  "sessionGuidance": {
+    "transcriptInProgress": "Transkription läuft — dein Gespräch erscheint hier in Kürze.",
+    "analysisRunning": "KI-Analyse läuft — Sprecherkontext und Themen sind gleich verfügbar.",
+    "transcriptReadyGoContext": "Transkript bereit. Gehe zu Kontext für Sprechererkennung und KI-Einblicke.",
+    "analysisReadyGoOutputs": "Analyse abgeschlossen. Gehe zu Ausgaben, um dein Dokument zu erstellen.",
+    "contextReadyGoOutputs": "Kontext bereit. Erstelle deine erste Ausgabe im Tab Ausgaben.",
+    "noOutputsYet": "Noch keine Ausgaben. Nutze die Vorschläge oben oder erstelle ein eigenes Dokument.",
+    "goTo": "Zu {tab}",
+    "transcript": "Transkript",
+    "context": "Kontext",
+    "outputs": "Ausgaben"
+  },
+  "sessionProgressGuide": {
+    "title": "Dein Sitzungs-Workflow",
+    "transcript": "Transkript",
+    "context": "KI-Kontext",
+    "outputs": "Ausgaben",
+    "next": "Nächster Schritt"
   },
   "admin": {
     "allSessions": "Alle Sitzungen",

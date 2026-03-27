@@ -34,9 +34,11 @@ interface AppTopbarProps {
   notificationItems?: NotificationItem[]
   notificationCount?: number
   onSnoozeNotification?: (id: string) => void
+  onMarkReadNotifications?: (ids: string[]) => void
+  onMarkAllReadNotifications?: () => void
 }
 
-export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificationCount = 0, onSnoozeNotification }: AppTopbarProps) {
+export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificationCount = 0, onSnoozeNotification, onMarkReadNotifications, onMarkAllReadNotifications }: AppTopbarProps) {
   const [isOffline, setIsOffline] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [topbarSearch, setTopbarSearch] = useState("")
@@ -181,6 +183,11 @@ export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificati
                 items={notificationItems}
                 onSnooze={(id) => {
                   onSnoozeNotification?.(id)
+                  setNotifOpen(false)
+                }}
+                onMarkRead={(ids) => onMarkReadNotifications?.(ids)}
+                onMarkAllRead={() => {
+                  onMarkAllReadNotifications?.()
                   setNotifOpen(false)
                 }}
                 onClose={() => setNotifOpen(false)}

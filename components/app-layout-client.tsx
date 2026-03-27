@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 
 export function AppLayoutClient({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const { items, unreadCount, showOnboardingModal, snooze, dismissModal } = useNotifications()
+  const { items, unreadCount, showOnboardingModal, snooze, markRead, markAllRead, dismissModal } = useNotifications()
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,6 +31,8 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
         notificationItems={items}
         notificationCount={unreadCount}
         onSnoozeNotification={(id) => snooze(id)}
+        onMarkReadNotifications={(ids) => markRead(ids)}
+        onMarkAllReadNotifications={markAllRead}
       />
       
       {/* Main Content */}

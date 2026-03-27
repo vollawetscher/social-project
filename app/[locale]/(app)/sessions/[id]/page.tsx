@@ -69,6 +69,8 @@ import { EditableTitle } from "@/components/ui/editable-title"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { BugReporter } from "@/components/error/BugReporter"
 import type { TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
+import { SessionGuidanceBanner } from "@/components/session/SessionGuidanceBanner"
+import { SessionProgressGuide } from "@/components/session/SessionProgressGuide"
 
 const SUGGESTION_AUDIENCES = ['internal', 'external', 'client', 'legal', 'executive'] as const
 type SuggestionAudience = (typeof SUGGESTION_AUDIENCES)[number]
@@ -1276,7 +1278,25 @@ export default function SessionDetailPage() {
             <TabsTrigger value="context">{t('context')}</TabsTrigger>
             <TabsTrigger value="outputs">{t('outputs')}</TabsTrigger>
           </TabsList>
+
+          {/* Mobile: first-time onboarding guide above all tabs */}
+          <SessionProgressGuide
+            hasTranscript={Boolean(session?.transcript?.length)}
+            hasAnalysis={Boolean(session?.recordingType)}
+            hasOutputs={outputs.length > 0}
+            activeTab={activeTab}
+            onSwitchTab={setActiveTab}
+          />
+
           <TabsContent value="transcript" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
+            <SessionGuidanceBanner
+              activeTab={activeTab}
+              sessionStatus={session?.status}
+              hasAnalysis={Boolean(session?.recordingType)}
+              analyzing={analyzing}
+              hasOutputs={outputs.length > 0}
+              onSwitchTab={setActiveTab}
+            />
             {renderCleanupPanel()}
             {canShowTranscriptReparseControls && (
               <div className="mb-2 flex items-center gap-2">
@@ -1309,6 +1329,14 @@ export default function SessionDetailPage() {
           <TabsContent value="context" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
             <div className="h-full overflow-y-auto rounded-lg border border-border bg-card p-6">
               <div className="space-y-6">
+                <SessionGuidanceBanner
+                  activeTab={activeTab}
+                  sessionStatus={session?.status}
+                  hasAnalysis={Boolean(session?.recordingType)}
+                  analyzing={analyzing}
+                  hasOutputs={outputs.length > 0}
+                  onSwitchTab={setActiveTab}
+                />
                 {/* In-context AI analysis indicator */}
                 {analyzing && (
                   <div className="flex items-center gap-2 p-4 rounded-lg bg-primary/10 border border-primary/20">
@@ -1526,6 +1554,14 @@ export default function SessionDetailPage() {
           </TabsContent>
           <TabsContent value="outputs" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden overflow-hidden">
             <div className="h-full overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-card p-4 space-y-6">
+              <SessionGuidanceBanner
+                activeTab={activeTab}
+                sessionStatus={session?.status}
+                hasAnalysis={Boolean(session?.recordingType)}
+                analyzing={analyzing}
+                hasOutputs={outputs.length > 0}
+                onSwitchTab={setActiveTab}
+              />
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">
@@ -1719,9 +1755,26 @@ export default function SessionDetailPage() {
             />
           )}
           
+          {/* First-time session onboarding guide */}
+          <SessionProgressGuide
+            hasTranscript={Boolean(session?.transcript?.length)}
+            hasAnalysis={Boolean(session?.recordingType)}
+            hasOutputs={outputs.length > 0}
+            activeTab={activeTab}
+            onSwitchTab={setActiveTab}
+          />
+
           {/* Tab Content */}
           {activeTab === "transcript" && (
             <div className="flex-1 min-h-0 flex flex-col">
+              <SessionGuidanceBanner
+                activeTab={activeTab}
+                sessionStatus={session?.status}
+                hasAnalysis={Boolean(session?.recordingType)}
+                analyzing={analyzing}
+                hasOutputs={outputs.length > 0}
+                onSwitchTab={setActiveTab}
+              />
               {renderCleanupPanel()}
               {canShowTranscriptReparseControls && (
                 <div className="mb-2 flex items-center gap-2">
@@ -1756,6 +1809,14 @@ export default function SessionDetailPage() {
           {activeTab === "context" && (
             <div className="flex-1 rounded-lg border border-border bg-card overflow-auto p-6">
               <div className="space-y-6">
+                <SessionGuidanceBanner
+                  activeTab={activeTab}
+                  sessionStatus={session?.status}
+                  hasAnalysis={Boolean(session?.recordingType)}
+                  analyzing={analyzing}
+                  hasOutputs={outputs.length > 0}
+                  onSwitchTab={setActiveTab}
+                />
                 {/* In-context AI analysis indicator */}
                 {analyzing && (
                   <div className="flex items-center gap-2 p-4 rounded-lg bg-primary/10 border border-primary/20">
@@ -1976,6 +2037,14 @@ export default function SessionDetailPage() {
 
           {activeTab === "outputs" && (
             <div className="flex-1 rounded-lg border border-border bg-card overflow-y-auto overflow-x-hidden p-4 space-y-6">
+              <SessionGuidanceBanner
+                activeTab={activeTab}
+                sessionStatus={session?.status}
+                hasAnalysis={Boolean(session?.recordingType)}
+                analyzing={analyzing}
+                hasOutputs={outputs.length > 0}
+                onSwitchTab={setActiveTab}
+              />
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">

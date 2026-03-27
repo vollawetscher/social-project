@@ -11,6 +11,7 @@ import { createHash } from 'crypto'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { resolveTokenBudget } from '@/lib/services/token-budget'
+import { createNotification } from '@/lib/services/notification-service'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -732,6 +733,16 @@ Please generate the requested output following all requirements and guidelines.`
         language: resolvedLanguageCode,
       },
     }, supabase)
+
+    // Push notification so the client receives it via Realtime even if they've navigated away
+    createNotification({
+      userId,
+      type: 'output_generated',
+      title: 'output_generated',
+      message: (session as any)?.display_name || null,
+      actionHref: `/sessions/${sessionId}?tab=outputs`,
+      data: { sessionId, outputId: output.id },
+    }).catch(() => {})
 
     // Record AI token usage for beta cost tracking
     if (usage?.input_tokens != null || usage?.output_tokens != null) {

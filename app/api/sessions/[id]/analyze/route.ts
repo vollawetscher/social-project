@@ -6,6 +6,7 @@ import { requireSessionAccess } from '@/lib/auth/helpers'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { resolveTokenBudget } from '@/lib/services/token-budget'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
+import { createNotification } from '@/lib/services/notification-service'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -989,6 +990,16 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
           suggestedFormats: suggestedFormats.length,
         },
       }, supabase)
+
+      // Push notification so the client receives it via Realtime even if they've navigated away
+      createNotification({
+        userId,
+        type: 'analysis_complete',
+        title: 'analysis_complete',
+        message: (session as any)?.display_name || null,
+        actionHref: `/sessions/${params.id}?tab=context`,
+        data: { sessionId: params.id },
+      }).catch(() => {})
     }
 
     // Check user's auto-generation preference (profile already fetched above)

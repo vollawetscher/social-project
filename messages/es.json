@@ -1040,9 +1040,14 @@
     "title": "Acción requerida",
     "empty": "Todo listo — no hay acciones pendientes.",
     "remindLater": "Recordar más tarde",
+    "markAllRead": "Marcar todo como leído",
+    "dismiss": "Descartar",
+    "notificationActionView": "Ver",
     "notificationVoiceSampleTitle": "Graba tu muestra de voz",
     "notificationVoiceSampleDesc": "Ayuda a Notissima a identificarte en las conversaciones desde el primer segundo. Toma menos de 30 segundos.",
     "notificationVoiceSampleAction": "Configurar ahora",
+    "analysis_complete": "Análisis completo",
+    "output_generated": "Salida lista",
     "onboardingTitle": "Configura tu muestra de voz",
     "onboardingDesc": "Una breve grabación de voz ayuda a Notissima a identificar quién habla en tus llamadas — sin más atribuciones incorrectas.",
     "onboardingBenefit1Title": "Identificación precisa del hablante",
@@ -1051,6 +1056,25 @@
     "onboardingBenefit2Desc": "Graba muestras en cada idioma que uses. Cada una toma menos de 30 segundos.",
     "onboardingSetupNow": "Grabar muestra de voz",
     "onboardingRemindLater": "Recordar en 7 días"
+  },
+  "sessionGuidance": {
+    "transcriptInProgress": "La transcripción está en progreso — tu conversación aparecerá aquí en breve.",
+    "analysisRunning": "El análisis de IA está en curso — el contexto del hablante y los temas estarán listos en un momento.",
+    "transcriptReadyGoContext": "Transcripción lista. Ve a Contexto para ver la identificación de hablantes y los análisis de IA.",
+    "analysisReadyGoOutputs": "Análisis completado. Ve a Salidas para generar tu documento.",
+    "contextReadyGoOutputs": "Contexto listo. Genera tu primera salida en la pestaña Salidas.",
+    "noOutputsYet": "Aún no hay salidas. Usa las sugerencias de arriba o genera un documento personalizado.",
+    "goTo": "Ir a {tab}",
+    "transcript": "Transcripción",
+    "context": "Contexto",
+    "outputs": "Salidas"
+  },
+  "sessionProgressGuide": {
+    "title": "Tu flujo de trabajo de sesión",
+    "transcript": "Transcripción",
+    "context": "Contexto IA",
+    "outputs": "Salidas",
+    "next": "Siguiente paso"
   },
   "admin": {
     "allSessions": "Todas las sesiones",

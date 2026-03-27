@@ -1041,9 +1041,14 @@
     "title": "Action Required",
     "empty": "You're all set — no pending actions.",
     "remindLater": "Remind me later",
+    "markAllRead": "Mark all read",
+    "dismiss": "Dismiss",
+    "notificationActionView": "View",
     "notificationVoiceSampleTitle": "Record your voice sample",
     "notificationVoiceSampleDesc": "Help Notissima identify you in conversations from the very first second. Takes less than 30 seconds.",
     "notificationVoiceSampleAction": "Set up now",
+    "analysis_complete": "Analysis complete",
+    "output_generated": "Output ready",
     "onboardingTitle": "Set up your voice sample",
     "onboardingDesc": "A short voice recording helps Notissima identify who is speaking in your calls — no more misattributed speakers.",
     "onboardingBenefit1Title": "Accurate speaker identification",
@@ -1052,6 +1057,25 @@
     "onboardingBenefit2Desc": "Record samples in every language you use. Each one takes under 30 seconds.",
     "onboardingSetupNow": "Record voice sample",
     "onboardingRemindLater": "Remind me in 7 days"
+  },
+  "sessionGuidance": {
+    "transcriptInProgress": "Transcription is in progress — your conversation will appear here shortly.",
+    "analysisRunning": "AI analysis is running — speaker context and topics will be ready in a moment.",
+    "transcriptReadyGoContext": "Transcript ready. Go to Context to see speaker identification and AI insights.",
+    "analysisReadyGoOutputs": "Analysis complete. Go to Outputs to generate your document.",
+    "contextReadyGoOutputs": "Context ready. Generate your first output in the Outputs tab.",
+    "noOutputsYet": "No outputs yet. Use the suggestions above or generate a custom document.",
+    "goTo": "Go to {tab}",
+    "transcript": "Transcript",
+    "context": "Context",
+    "outputs": "Outputs"
+  },
+  "sessionProgressGuide": {
+    "title": "Your session workflow",
+    "transcript": "Transcript",
+    "context": "AI Context",
+    "outputs": "Outputs",
+    "next": "Next step"
   },
   "admin": {
     "allSessions": "All Sessions",

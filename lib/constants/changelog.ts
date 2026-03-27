@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.26.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.26.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Live Push Notifications',
+        description: 'Analysis and output completion now push instant notifications to the bell icon — even if you\'ve navigated away from the session. No more wondering if your document is ready.',
+      },
+      {
+        version: '1.26.0',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Session Workflow Guide',
+        description: 'A new step-by-step progress bar guides you through Transcript → Context → Outputs on each session. Context-aware hints tell you exactly what to do next at each stage.',
+      },
+    ],
+  },
+  {
     version: '1.25.0',
     date: 'March 17, 2026',
     entries: [

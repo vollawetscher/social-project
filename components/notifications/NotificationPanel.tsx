@@ -2,7 +2,7 @@
 
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
-import { Mic, Info, AlertTriangle, Clock, ChevronRight } from "lucide-react"
+import { Mic, Info, AlertTriangle, Clock, ChevronRight, CheckCircle, FileText, CheckCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { NotificationItem } from "@/lib/hooks/useNotifications"
 
@@ -10,17 +10,24 @@ const iconMap = {
   mic: Mic,
   info: Info,
   alert: AlertTriangle,
+  check: CheckCircle,
+  file: FileText,
 } as const
 
 interface NotificationPanelProps {
   items: NotificationItem[]
   onSnooze: (id: string) => void
+  onMarkRead: (ids: string[]) => void
+  onMarkAllRead: () => void
   onClose: () => void
 }
 
-export function NotificationPanel({ items, onSnooze, onClose }: NotificationPanelProps) {
+export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, onClose }: NotificationPanelProps) {
   const t = useTranslations("notifications")
   const router = useRouter()
+
+  const dbItems = items.filter((i) => i.dbId)
+  const hasUnreadDb = dbItems.length > 0
 
   if (items.length === 0) {
     return (
@@ -32,9 +39,26 @@ export function NotificationPanel({ items, onSnooze, onClose }: NotificationPane
 
   return (
     <div className="space-y-1">
-      <p className="text-sm font-medium text-foreground px-1 pb-2">{t("title")}</p>
+      <div className="flex items-center justify-between px-1 pb-2">
+        <p className="text-sm font-medium text-foreground">{t("title")}</p>
+        {hasUnreadDb && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs gap-1 text-muted-foreground hover:text-foreground"
+            onClick={onMarkAllRead}
+          >
+            <CheckCheck className="h-3 w-3" />
+            {t("markAllRead")}
+          </Button>
+        )}
+      </div>
       {items.map((item) => {
         const Icon = iconMap[item.icon]
+        // DB notifications have literal title/description; condition-based use i18n keys
+        const titleText = item.dbKey === false ? t(item.title as any, { defaultValue: item.title }) : t(item.title as any)
+        const descText = item.dbKey === false ? item.description : t(item.description as any)
+
         return (
           <div
             key={item.id}
@@ -45,8 +69,10 @@ export function NotificationPanel({ items, onSnooze, onClose }: NotificationPane
                 <Icon className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">{t(item.title)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{t(item.description)}</p>
+                <p className="text-sm font-medium text-foreground">{titleText}</p>
+                {descText && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{descText}</p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 pl-9">
@@ -55,11 +81,12 @@ export function NotificationPanel({ items, onSnooze, onClose }: NotificationPane
                 variant="default"
                 className="h-7 text-xs gap-1"
                 onClick={() => {
+                  if (item.dbId) onMarkRead([item.dbId])
                   router.push(item.actionHref)
                   onClose()
                 }}
               >
-                {t(item.actionLabel)}
+                {t(item.actionLabel as any)}
                 <ChevronRight className="h-3 w-3" />
               </Button>
               {item.snoozable && (
@@ -71,6 +98,16 @@ export function NotificationPanel({ items, onSnooze, onClose }: NotificationPane
                 >
                   <Clock className="h-3 w-3" />
                   {t("remindLater")}
+                </Button>
+              )}
+              {item.dbId && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs gap-1 text-muted-foreground"
+                  onClick={() => onMarkRead([item.dbId!])}
+                >
+                  {t("dismiss")}
                 </Button>
               )}
             </div>
