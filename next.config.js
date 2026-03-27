@@ -12,7 +12,9 @@ const nextConfig = {
   },
   images: { unoptimized: true },
   staticPageGenerationTimeout: 120,
-  serverExternalPackages: ['ffmpeg-static'],
+  experimental: {
+    serverComponentsExternalPackages: ['ffmpeg-static'],
+  },
 }
 
 module.exports = withNextIntl(nextConfig)
