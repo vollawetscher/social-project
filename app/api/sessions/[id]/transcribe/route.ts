@@ -9,7 +9,7 @@ import { createErrorLogger } from '@/lib/services/error-logger'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { alignTranscripts } from '@/lib/services/transcript-aligner'
-import { prependVoiceSample, offsetTranscriptSegments, identifyPrimedSpeaker } from '@/lib/services/voice-sample-prepend'
+import { prependVoiceSample } from '@/lib/services/voice-sample-prepend'
 
 function normalizeVocabCandidate(raw: string): string | null {
   const value = String(raw || '')
@@ -546,6 +546,7 @@ async function processTranscriptionJob(sessionId: string) {
           contentType,
           language: sessionLanguage || undefined,
           additionalVocab,
+          voiceSampleOffsetMs: voiceSamplePrepended ? effectiveVoiceSampleDurationMs : undefined,
         })
         await logPipelineEvent({
           sessionId,
@@ -616,17 +617,16 @@ async function processTranscriptionJob(sessionId: string) {
       console.log('[Transcribe] Transcription completed, segments:', transcript.segments.length)
 
       if (voiceSamplePrepended && effectiveVoiceSampleDurationMs > 0 && transcript.segments.length > 0) {
-        const primedSpeaker = identifyPrimedSpeaker(transcript.segments, effectiveVoiceSampleDurationMs)
-        transcript.segments = offsetTranscriptSegments(transcript.segments, effectiveVoiceSampleDurationMs)
-        transcript.fullText = transcript.segments.map((s) => s.text).join(' ')
+        const primedSpeaker = transcript.primedSpeaker || null
         if (primedSpeaker && voiceSampleUserName) {
           for (const seg of transcript.segments) {
             if (seg.speaker === primedSpeaker) {
               seg.speaker = voiceSampleUserName
             }
           }
+          transcript.fullText = transcript.segments.map((s) => s.text).join(' ')
         }
-        console.log('[Transcribe] Voice sample offset applied:', effectiveVoiceSampleDurationMs, 'ms, primed speaker:', primedSpeaker, '→', voiceSampleUserName)
+        console.log('[Transcribe] Voice sample stripped at word level, offset:', effectiveVoiceSampleDurationMs, 'ms, primed speaker:', primedSpeaker, '→', voiceSampleUserName)
         await logPipelineEvent({
           sessionId,
           userId: (sessionRow as any)?.user_id || null,

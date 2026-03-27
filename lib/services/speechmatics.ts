@@ -11,6 +11,7 @@ export interface SpeechmaticsTranscript {
   summary?: string
   jobId?: string
   requestedLanguage?: string | null
+  primedSpeaker?: string | null
 }
 
 function sanitizeAdditionalVocabTerm(raw: string): string | null {
@@ -34,8 +35,9 @@ export class SpeechmaticsService {
   async transcribeAudio(
     audioBuffer: Buffer,
     mimeType: string,
-    options?: { contentType?: 'conversational' | 'informative'; language?: string; additionalVocab?: string[] }
+    options?: { contentType?: 'conversational' | 'informative'; language?: string; additionalVocab?: string[]; voiceSampleOffsetMs?: number }
   ): Promise<SpeechmaticsTranscript> {
+    const voiceSampleOffsetMs = options?.voiceSampleOffsetMs || 0
     console.log('[Speechmatics] Starting transcription')
     console.log('[Speechmatics] Audio buffer size:', audioBuffer.length, 'bytes')
     console.log('[Speechmatics] MIME type:', mimeType)
@@ -115,7 +117,7 @@ export class SpeechmaticsService {
       const jobId = result.id
       console.log('[Speechmatics] Job created with ID:', jobId)
 
-      const transcript = await this.pollJobStatus(jobId, audioBuffer.length)
+      const transcript = await this.pollJobStatus(jobId, audioBuffer.length, voiceSampleOffsetMs)
       return {
         ...transcript,
         jobId,
@@ -143,7 +145,7 @@ export class SpeechmaticsService {
     }
   }
 
-  private async pollJobStatus(jobId: string, audioBytes: number): Promise<SpeechmaticsTranscript> {
+  private async pollJobStatus(jobId: string, audioBytes: number, voiceSampleOffsetMs = 0): Promise<SpeechmaticsTranscript> {
     const pollInterval = 15000
     const timeoutMs = this.getPollingTimeoutMs(audioBytes)
     const maxAttempts = Math.max(1, Math.ceil(timeoutMs / pollInterval))
@@ -191,7 +193,11 @@ export class SpeechmaticsService {
 
           const transcriptData = await transcriptResponse.json()
           console.log('[Speechmatics] Transcript retrieved successfully')
-          return this.parseTranscript(transcriptData)
+          const transcript = this.parseTranscript(transcriptData, voiceSampleOffsetMs)
+          if (voiceSampleOffsetMs > 0) {
+            transcript.primedSpeaker = this.detectPrimedSpeaker(transcriptData.results || [], voiceSampleOffsetMs)
+          }
+          return transcript
         }
 
         if (status.job.status === 'rejected' || status.job.status === 'failed') {
@@ -283,7 +289,7 @@ export class SpeechmaticsService {
     return extension
   }
 
-  private parseTranscript(data: any): SpeechmaticsTranscript {
+  private parseTranscript(data: any, stripOffsetMs = 0): SpeechmaticsTranscript {
     const segments: TranscriptSegment[] = []
     let fullText = ''
     let currentSpeaker = ''
@@ -298,35 +304,41 @@ export class SpeechmaticsService {
         const startMs = Math.floor(result.start_time * 1000)
         const endMs = Math.floor(result.end_time * 1000)
 
+        if (stripOffsetMs > 0 && startMs < stripOffsetMs) continue
+
+        const adjStart = stripOffsetMs > 0 ? startMs - stripOffsetMs : startMs
+        const adjEnd = stripOffsetMs > 0 ? endMs - stripOffsetMs : endMs
+
         if (currentSpeaker !== speaker || !currentSegment) {
           if (currentSegment) {
             segments.push(currentSegment)
           }
 
           currentSegment = {
-            start_ms: startMs,
-            end_ms: endMs,
+            start_ms: adjStart,
+            end_ms: adjEnd,
             speaker: speaker,
             text: word.content,
             confidence: word.confidence,
           }
           currentSpeaker = speaker
         } else {
-          // Add space before word
           currentSegment.text += ' ' + word.content
-          currentSegment.end_ms = endMs
+          currentSegment.end_ms = adjEnd
           if (word.confidence && currentSegment.confidence) {
             currentSegment.confidence = (currentSegment.confidence + word.confidence) / 2
           }
         }
       } else if (result.type === 'punctuation') {
-        // Add punctuation directly to the current segment without space
         const punctuation = result.alternatives[0]
+        if (stripOffsetMs > 0 && result.start_time != null && Math.floor(result.start_time * 1000) < stripOffsetMs) continue
         if (currentSegment) {
           currentSegment.text += punctuation.content
-          // Update end time if punctuation has timing
           if (result.end_time) {
-            currentSegment.end_ms = Math.floor(result.end_time * 1000)
+            const adjPuncEnd = stripOffsetMs > 0
+              ? Math.floor(result.end_time * 1000) - stripOffsetMs
+              : Math.floor(result.end_time * 1000)
+            currentSegment.end_ms = adjPuncEnd
           }
         }
       }
@@ -359,6 +371,25 @@ export class SpeechmaticsService {
       fullText,
       summary: summary || undefined,
     }
+  }
+
+  private detectPrimedSpeaker(results: any[], offsetMs: number): string | null {
+    const durations: Record<string, number> = {}
+    for (const r of results) {
+      if (r.type !== 'word') continue
+      const startMs = Math.floor(r.start_time * 1000)
+      if (startMs >= offsetMs) break
+      const endMs = Math.floor(r.end_time * 1000)
+      const speaker = r.alternatives?.[0]?.speaker || 'S1'
+      const dur = Math.min(endMs, offsetMs) - startMs
+      if (dur > 0) durations[speaker] = (durations[speaker] || 0) + dur
+    }
+    let best: string | null = null
+    let bestDur = 0
+    for (const [spk, dur] of Object.entries(durations)) {
+      if (dur > bestDur) { best = spk; bestDur = dur }
+    }
+    return best
   }
 }
 
