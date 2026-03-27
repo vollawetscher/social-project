@@ -1,4 +1,4 @@
-import { execFile } from 'child_process'
+import { execFile, execSync } from 'child_process'
 import { writeFile, unlink, mkdtemp, readFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -7,17 +7,28 @@ import { promisify } from 'util'
 const execFileAsync = promisify(execFile)
 
 function resolveFfmpegPath(): string | null {
-  // 1. System ffmpeg (installed via apt/nixpacks)
+  // 1. Use `which` / `command -v` to find ffmpeg anywhere on PATH (covers Nix store, apt, etc.)
+  for (const cmd of ['which ffmpeg', 'command -v ffmpeg']) {
+    try {
+      const result = execSync(cmd, { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'ignore'] }).trim()
+      if (result) {
+        console.log('[VoiceSamplePrepend] Found ffmpeg via PATH:', result)
+        return result
+      }
+    } catch { /* not available */ }
+  }
+
+  // 2. Hardcoded system paths
   const systemPaths = ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg']
   for (const p of systemPaths) {
     try {
-      require('child_process').execFileSync(p, ['-version'], { stdio: 'ignore', timeout: 5000 })
+      execSync(`"${p}" -version`, { stdio: 'ignore', timeout: 5000 })
       console.log('[VoiceSamplePrepend] Using system ffmpeg:', p)
       return p
     } catch { /* not available */ }
   }
 
-  // 2. ffmpeg-static fallback
+  // 3. ffmpeg-static fallback
   try {
     const staticPath = require('ffmpeg-static') as string
     if (staticPath) {
@@ -28,7 +39,7 @@ function resolveFfmpegPath(): string | null {
     console.warn('[VoiceSamplePrepend] ffmpeg-static not available:', (e as Error)?.message)
   }
 
-  console.error('[VoiceSamplePrepend] No ffmpeg binary found')
+  console.error('[VoiceSamplePrepend] No ffmpeg binary found anywhere')
   return null
 }
 
