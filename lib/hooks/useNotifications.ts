@@ -118,8 +118,8 @@ export function useNotifications() {
           table: "notifications",
           filter: `user_id=eq.${profile.id}`,
         },
-        (payload) => {
-          const newNotification = payload.new as DbNotification
+        (payload: { new: Record<string, unknown> }) => {
+          const newNotification = payload.new as unknown as DbNotification
           setDbNotifications((prev) => [newNotification, ...prev])
         }
       )
