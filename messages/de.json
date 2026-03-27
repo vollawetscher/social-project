@@ -504,7 +504,7 @@
   },
   "templates": {
     "title": "Vorlagen",
-    "subtitle": "Erstellungsrezepte fuer Ihre Berichte verwalten",
+    "subtitle": "Vorlagen fuer Ihre Berichte verwalten",
     "loadingTemplates": "Vorlagen werden geladen...",
     "createFrom": "Erstellen aus",
     "newTemplate": "Neu",
