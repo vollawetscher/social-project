@@ -569,7 +569,7 @@ export async function POST(
     const segments = allSegments
     const { data: linkedCall } = await sessionClient
       .from('calls')
-      .select('id, user_id, callee_user_id, call_type, contact_name, session_id, callee_session_id')
+      .select('id, user_id, callee_user_id, call_type, contact_name, phone_number, session_id, callee_session_id')
       .or(`session_id.eq.${params.id},callee_session_id.eq.${params.id}`)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -605,7 +605,7 @@ export async function POST(
         : (callOwnerName?.display_name || null)
     const linkedOtherName =
       linkedCall?.user_id === userId
-        ? (calleeProfile?.display_name || linkedCall?.contact_name || null)
+        ? (calleeProfile?.display_name || linkedCall?.contact_name || linkedCall?.phone_number || null)
         : userName
 
     const speakerResolution = buildSpeakerResolution({
