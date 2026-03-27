@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await requireAuth()
+    const user = await requireAuth(request)
     await requireSessionAccess(params.id, user.id)
     const supabase = await createClient()
 

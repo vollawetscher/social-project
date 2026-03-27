@@ -1006,7 +1006,7 @@ export async function POST(
     const isInternalCall = !expectedSecret || providedSecret === expectedSecret
 
     if (!isInternalCall) {
-      const user = await requireAuth()
+      const user = await requireAuth(request)
       await requireSessionAccess(params.id, user.id)
     }
     const supabase = isInternalCall ? createServiceRoleClient() : await createClient()
