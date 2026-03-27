@@ -9,8 +9,9 @@ const execFileAsync = promisify(execFile)
 let ffmpegPath: string | null = null
 try {
   ffmpegPath = require('ffmpeg-static') as string
-} catch {
-  // ffmpeg-static not available
+  console.log('[VoiceSamplePrepend] ffmpeg-static resolved to:', ffmpegPath)
+} catch (e) {
+  console.warn('[VoiceSamplePrepend] ffmpeg-static not available:', (e as Error)?.message)
 }
 
 export async function prependVoiceSample(
@@ -49,8 +50,10 @@ export async function prependVoiceSample(
 
     const outputBuffer = await readFile(outputFile)
     return { buffer: outputBuffer, mimeType: 'audio/ogg' }
-  } catch (err) {
-    console.error('[VoiceSamplePrepend] FFmpeg concatenation failed:', err)
+  } catch (err: any) {
+    console.error('[VoiceSamplePrepend] FFmpeg concatenation failed:', err?.message || err)
+    if (err?.stderr) console.error('[VoiceSamplePrepend] FFmpeg stderr:', err.stderr)
+    if (err?.code) console.error('[VoiceSamplePrepend] FFmpeg exit code:', err.code)
     return null
   } finally {
     for (const f of [sampleFile, callFile, concatList, outputFile]) {

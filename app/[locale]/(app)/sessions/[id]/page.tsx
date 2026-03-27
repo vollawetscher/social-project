@@ -687,6 +687,8 @@ export default function SessionDetailPage() {
         extractedContext: data.extractedContext || {},
         suggestedOutputFormats: data.suggestedOutputFormats || []
       } : null)
+      // Full refetch to pick up all DB-side changes (transcript corrections, speakers, etc.)
+      fetchSession()
     }
     analyzeSessionRef.current = analyzeSession
     
@@ -1589,8 +1591,7 @@ export default function SessionDetailPage() {
                     <Sparkles className="h-4 w-4 text-primary" />
                     {t('suggestedFormats')}
                   </h3>
-                  {/* TODO: i18n - "Based on this conversation's topic and domain" needs a new key */}
-                  <p className="text-xs text-muted-foreground">Based on this conversation&apos;s topic and domain</p>
+                  <p className="text-xs text-muted-foreground">{t('suggestedFormatsDescription')}</p>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {session.suggestedOutputFormats.map((suggestion, idx) => (
                       <div
@@ -1615,8 +1616,7 @@ export default function SessionDetailPage() {
                           {generatingSuggestionIndex === idx ? (
                             <>
                               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
-                              {/* TODO: i18n - "Generating..." needs a new key */}
-                              Generating...
+                              {t('generatingSuggestion')}
                             </>
                           ) : (
                             t('generateOutput')
@@ -2072,8 +2072,7 @@ export default function SessionDetailPage() {
                     <Sparkles className="h-4 w-4 text-primary" />
                     {t('suggestedFormats')}
                   </h3>
-                  {/* TODO: i18n - "Based on this conversation's topic and domain" needs a new key */}
-                  <p className="text-xs text-muted-foreground">Based on this conversation&apos;s topic and domain</p>
+                  <p className="text-xs text-muted-foreground">{t('suggestedFormatsDescription')}</p>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {session.suggestedOutputFormats.map((suggestion, idx) => (
                       <div
@@ -2098,8 +2097,7 @@ export default function SessionDetailPage() {
                           {generatingSuggestionIndex === idx ? (
                             <>
                               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
-                              {/* TODO: i18n - "Generating..." needs a new key */}
-                              Generating...
+                              {t('generatingSuggestion')}
                             </>
                           ) : (
                             t('generateOutput')

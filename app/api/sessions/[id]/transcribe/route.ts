@@ -278,10 +278,10 @@ async function processTranscriptionJob(sessionId: string) {
     if (participantUserIds.length > 0) {
       const { data: participantProfiles } = await supabase
         .from('profiles')
-        .select('id, display_name, full_name, company_name')
+        .select('id, display_name')
         .in('id', participantUserIds)
       participantNames = (participantProfiles || [])
-        .map((p: any) => p.display_name || p.full_name || p.company_name)
+        .map((p: any) => p.display_name)
         .filter((n: any) => typeof n === 'string' && n.trim().length > 0)
     }
 
@@ -299,10 +299,10 @@ async function processTranscriptionJob(sessionId: string) {
     if (sessionUserId) {
       const { data: userProfile } = await supabase
         .from('profiles')
-        .select('display_name, full_name')
+        .select('display_name')
         .eq('id', sessionUserId)
         .single()
-      voiceSampleUserName = userProfile?.display_name || userProfile?.full_name || null
+      voiceSampleUserName = userProfile?.display_name || null
 
       const sampleLang = sessionLanguage || null
       let voiceSampleRow = null
@@ -315,19 +315,37 @@ async function processTranscriptionJob(sessionId: string) {
           .maybeSingle()
         voiceSampleRow = data
       }
-      // No cross-language fallback — a mismatched sample could bias
-      // Speechmatics auto-detect to the wrong language.
 
       if (voiceSampleRow?.storage_path && voiceSampleRow.duration_ms) {
         voiceSampleDurationMs = voiceSampleRow.duration_ms
-        const { data: vsData } = await supabase.storage
+        const { data: vsData, error: vsError } = await supabase.storage
           .from('rohbericht-audio')
           .download(voiceSampleRow.storage_path)
         if (vsData) {
           voiceSampleBuffer = Buffer.from(await vsData.arrayBuffer())
           voiceSampleMime = voiceSampleRow.storage_path.endsWith('.webm') ? 'audio/webm' : 'audio/ogg'
           console.log('[Transcribe] Voice sample loaded:', voiceSampleBuffer.length, 'bytes,', voiceSampleDurationMs, 'ms, lang:', voiceSampleRow.language, '(session:', sampleLang || 'auto', ')')
+        } else {
+          console.error('[Transcribe] Voice sample download failed:', vsError?.message, 'path:', voiceSampleRow.storage_path)
+          await logPipelineEvent({
+            sessionId,
+            userId: sessionUserId,
+            stage: 'transcribe',
+            event: 'voice_sample_download_failed',
+            severity: 'warning',
+            metadata: { storagePath: voiceSampleRow.storage_path, error: vsError?.message || 'no data returned' },
+          }, supabase)
         }
+      } else if (sampleLang) {
+        console.log('[Transcribe] No voice sample found for language:', sampleLang)
+        await logPipelineEvent({
+          sessionId,
+          userId: sessionUserId,
+          stage: 'transcribe',
+          event: 'voice_sample_not_found',
+          severity: 'info',
+          metadata: { language: sampleLang },
+        }, supabase)
       }
     }
 
@@ -485,6 +503,7 @@ async function processTranscriptionJob(sessionId: string) {
       let voiceSamplePrepended = false
       let effectiveVoiceSampleDurationMs = 0
       if (voiceSampleBuffer && voiceSampleDurationMs > 0) {
+        console.log('[Transcribe] Attempting voice sample prepend, sample:', voiceSampleBuffer.length, 'bytes, audio:', audioBuffer.length, 'bytes, sampleMime:', voiceSampleMime, 'audioMime:', file.mime_type)
         const prepended = await prependVoiceSample(
           voiceSampleBuffer,
           voiceSampleMime,
@@ -496,6 +515,23 @@ async function processTranscriptionJob(sessionId: string) {
           voiceSamplePrepended = true
           effectiveVoiceSampleDurationMs = voiceSampleDurationMs
           console.log('[Transcribe] Voice sample prepended, new size:', audioBuffer.length, 'offset:', voiceSampleDurationMs, 'ms')
+          await logPipelineEvent({
+            sessionId,
+            userId: (sessionRow as any)?.user_id || null,
+            stage: 'transcribe',
+            event: 'voice_sample_prepended',
+            metadata: { durationMs: voiceSampleDurationMs, userName: voiceSampleUserName, originalSize: audioBuffer.length },
+          }, supabase)
+        } else {
+          console.error('[Transcribe] Voice sample prepend FAILED — ffmpeg concat returned null')
+          await logPipelineEvent({
+            sessionId,
+            userId: (sessionRow as any)?.user_id || null,
+            stage: 'transcribe',
+            event: 'voice_sample_prepend_failed',
+            severity: 'warning',
+            metadata: { sampleMime: voiceSampleMime, audioMime: file.mime_type, sampleSize: voiceSampleBuffer.length, audioSize: audioBuffer.length },
+          }, supabase)
         }
       }
 
@@ -591,6 +627,18 @@ async function processTranscriptionJob(sessionId: string) {
           }
         }
         console.log('[Transcribe] Voice sample offset applied:', effectiveVoiceSampleDurationMs, 'ms, primed speaker:', primedSpeaker, '→', voiceSampleUserName)
+        await logPipelineEvent({
+          sessionId,
+          userId: (sessionRow as any)?.user_id || null,
+          stage: 'transcribe',
+          event: 'voice_sample_speaker_identified',
+          metadata: {
+            primedSpeaker,
+            userName: voiceSampleUserName,
+            offsetMs: effectiveVoiceSampleDurationMs,
+            segmentsAfterOffset: transcript.segments.length,
+          },
+        }, supabase)
       }
 
       const trackKind = inferTrackKindFromStoragePath(file.storage_path)
