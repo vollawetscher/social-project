@@ -99,8 +99,8 @@ export function useNotifications() {
       .is("read_at", null)
       .order("created_at", { ascending: false })
       .limit(20)
-      .then(({ data }) => {
-        if (data) setDbNotifications(data as DbNotification[])
+      .then(({ data }: { data: DbNotification[] | null }) => {
+        if (data) setDbNotifications(data)
       })
   }, [profile?.id])
 
