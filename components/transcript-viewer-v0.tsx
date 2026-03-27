@@ -51,11 +51,32 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
     return current || String(speakerId || '').trim()
   }
 
-  // Combine all corrections (name corrections + PII redactions + word corrections)
+  // Normalize word_corrections: may arrive as {original,corrected,confidence}[] from AI
+  const normalizedWordCorrections: Record<string, string> = (() => {
+    const raw = corrections?.word_corrections
+    if (Array.isArray(raw)) {
+      const map: Record<string, string> = {}
+      for (const item of raw) {
+        if (item && typeof item === 'object' && 'original' in item && 'corrected' in item) {
+          map[String((item as Record<string, unknown>).original)] = String((item as Record<string, unknown>).corrected)
+        }
+      }
+      return map
+    }
+    if (raw && typeof raw === 'object') {
+      const map: Record<string, string> = {}
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+        if (typeof v === 'string') map[k] = v
+      }
+      return map
+    }
+    return {}
+  })()
+
   const allCorrections: Record<string, string> = {
     ...speakerNameMap,
     ...(corrections?.pii_redactions || {}),
-    ...(corrections?.word_corrections || {})
+    ...normalizedWordCorrections,
   }
 
   // Apply corrections to text (uses utility for correct ordering: longer phrases first)
@@ -124,8 +145,8 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                     {corrections?.pii_redactions && Object.keys(corrections.pii_redactions).length > 0 && (
                       <p><strong>PII redactions:</strong> {Object.keys(corrections.pii_redactions).length}</p>
                     )}
-                    {corrections?.word_corrections && Object.keys(corrections.word_corrections).length > 0 && (
-                      <p><strong>Word corrections:</strong> {Object.keys(corrections.word_corrections).length}</p>
+                    {Object.keys(normalizedWordCorrections).length > 0 && (
+                      <p><strong>Word corrections:</strong> {Object.keys(normalizedWordCorrections).length}</p>
                     )}
                   </div>
                 </TooltipContent>
