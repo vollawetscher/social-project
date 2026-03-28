@@ -46,8 +46,14 @@ function resolveGuidance(
   }
 
   if (activeTab === "context") {
+    if (sessionStatus === "transcribing" || sessionStatus === "uploading") {
+      return { key: "transcriptInProgress", variant: "subtle", loading: true }
+    }
     if (analyzing) {
       return { key: "analysisRunning", variant: "subtle", loading: true }
+    }
+    if (!hasAnalysis && !analyzing) {
+      return { key: "contextWaitingForAnalysis", variant: "info", targetTab: "transcript" }
     }
     if (hasAnalysis && !hasOutputs) {
       return { key: "contextReadyGoOutputs", variant: "success", targetTab: "outputs" }
@@ -55,6 +61,15 @@ function resolveGuidance(
   }
 
   if (activeTab === "outputs") {
+    if (sessionStatus === "transcribing" || sessionStatus === "uploading") {
+      return { key: "transcriptInProgress", variant: "subtle", loading: true }
+    }
+    if (analyzing) {
+      return { key: "outputsWaitingForAnalysis", variant: "subtle", loading: true }
+    }
+    if (!hasAnalysis && !hasOutputs) {
+      return { key: "outputsNeedAnalysis", variant: "info", targetTab: "transcript" }
+    }
     if (!hasOutputs && hasAnalysis) {
       return { key: "noOutputsYet", variant: "info" }
     }
