@@ -44,6 +44,7 @@ export interface Call {
   live_track_a_egress_id?: string | null
   live_track_b_egress_id?: string | null
   last_error: string | null
+  last_heartbeat_at?: string | null
   callee_user_id?: string | null
   callee_session_id?: string | null
   invited_at?: string | null

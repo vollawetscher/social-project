@@ -693,7 +693,8 @@ export default function SessionDetailPage() {
     analyzeSessionRef.current = analyzeSession
     
     fetchSession().then((v0) => {
-      if (v0?.transcript?.length) {
+      const alreadyAnalyzed = v0?.suggestedOutputFormats?.length || v0?.extractedContext?.purpose
+      if (v0?.transcript?.length && !alreadyAnalyzed) {
         setTimeout(() => analyzeSession(), 1000)
       }
     })

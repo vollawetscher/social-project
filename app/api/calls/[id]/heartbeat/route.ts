@@ -26,13 +26,12 @@ export async function POST(
       return NextResponse.json({ error: 'Call not found' }, { status: 404 })
     }
 
-    const updates: Record<string, unknown> = {}
+    const now = new Date().toISOString()
+    const updates: Record<string, unknown> = { last_heartbeat_at: now }
     if (call.status === 'waiting') updates.status = 'active'
-    if (!call.started_at) updates.started_at = new Date().toISOString()
+    if (!call.started_at) updates.started_at = now
 
-    if (Object.keys(updates).length > 0) {
-      await supabase.from('calls').update(updates).eq('id', params.id)
-    }
+    await supabase.from('calls').update(updates).eq('id', params.id)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

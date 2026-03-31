@@ -62,8 +62,13 @@ export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, 
       </div>
       {items.map((item) => {
         const Icon = iconMap[item.icon]
-        const titleText = item.dbKey === false ? item.title : t(item.title as any)
-        const descText = item.dbKey === false ? item.description : t(item.description as any)
+        const isLegacyTypeKey = item.dbKey === false && typeBadgeMap[item.title]
+        const titleText = isLegacyTypeKey
+          ? (item.description || t(item.title as any, { defaultValue: item.title }))
+          : (item.dbKey === false ? item.title : t(item.title as any))
+        const descText = isLegacyTypeKey
+          ? undefined
+          : (item.dbKey === false ? item.description : t(item.description as any))
         const badge = item.notificationType ? typeBadgeMap[item.notificationType] : undefined
 
         const handleNavigate = () => {

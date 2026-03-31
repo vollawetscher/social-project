@@ -2,6 +2,7 @@
 
 import { AppLayoutClient } from "@/components/app-layout-client"
 import { GlobalIncomingCallListener } from "@/components/call/GlobalIncomingCallListener"
+import { ActiveCallBanner } from "@/components/call/ActiveCallBanner"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function AppLayout({
@@ -11,6 +12,7 @@ export default function AppLayout({
 }) {
   return (
     <>
+      <ActiveCallBanner />
       <AppLayoutClient>{children}</AppLayoutClient>
       <GlobalIncomingCallListener />
       <Toaster />
