@@ -18,10 +18,35 @@ function normalizeLanguageCode(raw: string | null | undefined): string | null {
   return value.slice(0, 2)
 }
 
+function detectLanguageFromText(text: string): string | null {
+  const words = text.toLowerCase().replace(/[^a-zäöüßàâéèêëïîôùûç\s]/g, ' ').split(/\s+/).filter(Boolean)
+  if (words.length < 10) return null
+
+  const EN_WORDS = new Set(['the', 'and', 'is', 'are', 'was', 'were', 'for', 'you', 'that', 'with', 'have', 'this', 'from', 'they', 'been', 'would', 'could', 'should', 'about', 'which', 'their', 'what', 'your', 'will', 'there', 'also', 'does', 'had', 'but', 'not', 'can'])
+  const DE_WORDS = new Set(['der', 'die', 'das', 'und', 'ist', 'ein', 'eine', 'für', 'nicht', 'mit', 'auf', 'den', 'dem', 'von', 'des', 'sich', 'auch', 'wird', 'oder', 'nach', 'wie', 'noch', 'bei', 'hat', 'aus', 'wenn', 'über', 'aber', 'dann', 'kann', 'dass'])
+  const FR_WORDS = new Set(['les', 'des', 'une', 'est', 'dans', 'pour', 'que', 'pas', 'sur', 'sont', 'avec', 'plus', 'par', 'qui', 'ont', 'mais', 'cette', 'nous', 'vous', 'leur', 'elle', 'ses', 'aux', 'ces', 'entre', 'comme', 'tout', 'fait', 'bien', 'aussi'])
+  const ES_WORDS = new Set(['los', 'las', 'una', 'del', 'con', 'para', 'por', 'que', 'como', 'más', 'pero', 'sus', 'sobre', 'este', 'entre', 'cuando', 'esta', 'son', 'todo', 'desde', 'está', 'muy', 'hay', 'puede', 'todos', 'nos', 'sido', 'tiene', 'también', 'ese'])
+
+  const scores: Record<string, number> = { en: 0, de: 0, fr: 0, es: 0 }
+  for (const w of words) {
+    if (EN_WORDS.has(w)) scores.en++
+    if (DE_WORDS.has(w)) scores.de++
+    if (FR_WORDS.has(w)) scores.fr++
+    if (ES_WORDS.has(w)) scores.es++
+  }
+
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0]
+  if (best[1] < 3) return null
+  const second = Object.entries(scores).sort((a, b) => b[1] - a[1])[1]
+  if (second[1] > 0 && best[1] / second[1] < 1.5) return null
+  return best[0]
+}
+
 function resolveOutputLanguageCode(
   preferredReportLanguage: string | null | undefined,
   sessionLanguage: string | null | undefined,
-  detectedTranscriptLanguage?: string | null
+  detectedTranscriptLanguage?: string | null,
+  transcriptSampleText?: string | null
 ): string {
   const pref = (preferredReportLanguage || '').toLowerCase()
   if (pref && pref !== 'session' && pref !== 'auto') return pref.slice(0, 2)
@@ -29,6 +54,10 @@ function resolveOutputLanguageCode(
   if (transcriptLang) return transcriptLang
   const sessionLang = normalizeLanguageCode(sessionLanguage)
   if (sessionLang) return sessionLang
+  if (transcriptSampleText) {
+    const detected = detectLanguageFromText(transcriptSampleText)
+    if (detected) return detected
+  }
   return 'de'
 }
 
@@ -309,9 +338,10 @@ function buildSpeakerResolution(params: {
   const bySpeaker = aggregateSpeakers(params.segments)
   const ranked = Array.from(bySpeaker.values())
     .sort((a, b) => (b.totalMs - a.totalMs) || (b.turns - a.turns))
-    .slice(0, 2)
-  if (ranked.length < 2) {
-    if (ranked.length === 1 && params.initiatorName) {
+  if (ranked.length === 0) return null
+
+  if (ranked.length === 1) {
+    if (params.initiatorName) {
       return {
         participants: [{ name: params.initiatorName, role: null, isUser: true }],
         nameMap: { [ranked[0].speaker]: params.initiatorName },
@@ -324,6 +354,7 @@ function buildSpeakerResolution(params: {
 
   const majorA = ranked[0]
   const majorB = ranked[1]
+  const additionalSpeakers = ranked.slice(2)
   const majorByStart = [majorA, majorB].sort((a, b) => a.firstStart - b.firstStart)
 
   const initiator = normalizeHumanName(params.initiatorName)
@@ -389,18 +420,27 @@ function buildSpeakerResolution(params: {
     [otherSpeaker]: otherLabel,
   }
 
+  const participants: Array<{ name: string; role: string | null; isUser: boolean }> = [
+    { name: initiatorLabel, role: null, isUser: userIsInitiator },
+    { name: otherLabel, role: null, isUser: !userIsInitiator },
+  ]
+
   const participantParts: string[] = []
   participantParts.push(`${initiatorLabel} (${userIsInitiator ? 'You, session owner' : 'other participant'})`)
   participantParts.push(`${otherLabel} (${!userIsInitiator ? 'You, session owner' : 'other participant'})`)
 
+  for (const sp of additionalSpeakers) {
+    const label = sp.speaker
+    nameMap[sp.speaker] = label
+    participants.push({ name: label, role: null, isUser: false })
+    participantParts.push(`${label} (additional participant, ${sp.turns} turns)`)
+  }
+
   return {
-    participants: [
-      { name: initiatorLabel, role: null, isUser: userIsInitiator },
-      { name: otherLabel, role: null, isUser: !userIsInitiator },
-    ],
+    participants,
     nameMap,
     knownParticipantBlock: participantParts.join(', '),
-    reason,
+    reason: additionalSpeakers.length > 0 ? `${reason}+${additionalSpeakers.length}_additional` : reason,
   }
 }
 
@@ -721,7 +761,8 @@ export async function POST(
     const outputLangCode = resolveOutputLanguageCode(
       profile?.preferred_report_language,
       session.language,
-      detectedTranscriptLanguage
+      detectedTranscriptLanguage,
+      sample
     )
     const outputLangName = LANG_NAMES[outputLangCode] || outputLangCode
 
@@ -960,17 +1001,23 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
             }
           })
       : []
+    const sessionUpdate: Record<string, any> = {
+      recording_type: finalRecordingType,
+      recording_type_confidence: finalRecordingTypeConfidence,
+      suggested_domains: analysis.domains,
+      ai_extracted_context: mergedExtractedContext,
+      suggested_output_formats: suggestedFormats,
+      transcript_corrections: mergedTranscriptCorrections,
+      speechmatics_summary: canonicalSummary,
+    }
+    const currentSessionLang = normalizeLanguageCode(session.language)
+    if (!currentSessionLang) {
+      sessionUpdate.language = outputLangCode
+      console.log(`[Analyze API] Session language was unresolved, setting to detected: ${outputLangCode}`)
+    }
     const { error: updateError } = await supabase
       .from('sessions')
-      .update({
-        recording_type: finalRecordingType,
-        recording_type_confidence: finalRecordingTypeConfidence,
-        suggested_domains: analysis.domains,
-        ai_extracted_context: mergedExtractedContext,
-        suggested_output_formats: suggestedFormats,
-        transcript_corrections: mergedTranscriptCorrections,
-        speechmatics_summary: canonicalSummary,
-      })
+      .update(sessionUpdate)
       .eq('id', params.id)
 
     if (updateError) {
@@ -1000,13 +1047,17 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
       }, supabase)
 
       // Push notification so the client receives it via Realtime even if they've navigated away
+      const summaryFirstLine = (canonicalSummary || '')
+        .split('\n')
+        .map((l: string) => l.replace(/^[-•*]\s*/, '').trim())
+        .find((l: string) => l.length > 0) || undefined
       createNotification({
         userId,
         type: 'analysis_complete',
         title: 'analysis_complete',
-        message: (session as any)?.display_name || null,
+        message: summaryFirstLine,
         actionHref: `/sessions/${params.id}?tab=context`,
-        data: { sessionId: params.id },
+        data: { sessionId: params.id, recordingType: finalRecordingType, domains: analysis.domains },
       }).catch(() => {})
     }
 
@@ -1033,7 +1084,8 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
       const preferredOutputLanguage = resolveOutputLanguageCode(
         profile?.preferred_report_language,
         (session as any)?.language,
-        detectedTranscriptLanguage
+        detectedTranscriptLanguage,
+        sample
       )
       fetch(`${request.url.split('/analyze')[0]}/auto-generate`, {
         method: 'POST',
@@ -1114,7 +1166,8 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
                 language: resolveOutputLanguageCode(
                   profile?.preferred_report_language,
                   (session as any)?.language,
-                  detectedTranscriptLanguage
+                  detectedTranscriptLanguage,
+                  sample
                 ),
                 tone: 'neutral',
                 format: 'markdown',

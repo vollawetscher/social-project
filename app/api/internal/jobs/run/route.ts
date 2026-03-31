@@ -303,6 +303,16 @@ export async function POST(request: Request) {
         const result = await processJob(request, job)
         await completeAsyncJob(job.id, result)
         processed.push({ id: job.id, status: 'completed' })
+
+        if (job.attempt_count > 1) {
+          try {
+            await supabase
+              .from('error_logs')
+              .update({ resolved: true, resolved_at: new Date().toISOString(), resolution_notes: 'Auto-resolved: job succeeded on retry' })
+              .eq('resolved', false)
+              .filter('metadata->>jobId', 'eq', job.id)
+          } catch {}
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown worker error'
         await errorLogger.log({

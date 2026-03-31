@@ -739,7 +739,7 @@ Please generate the requested output following all requirements and guidelines.`
       userId,
       type: 'output_generated',
       title: 'output_generated',
-      message: (session as any)?.display_name || null,
+      message: config.templateName || undefined,
       actionHref: `/sessions/${sessionId}?tab=outputs`,
       data: { sessionId, outputId: output.id },
     }).catch(() => {})

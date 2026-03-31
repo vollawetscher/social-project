@@ -143,7 +143,7 @@ function getSessionOriginKind(session: Session): SessionOriginKind {
 
   // Fallback for sessions without input_hint (AI-detected recording type)
   if (session.recordingType === 'call_inbound' || session.recordingType === 'call_outbound'
-      || session.recordingType === 'sales_call') return "call"
+      || session.recordingType === 'sales_call' || session.recordingType === 'ai_agent_conversation') return "call"
   if (session.recordingType === 'dictation') return "quick_record"
 
   // Last resort: inspect whether any audio/video file is attached

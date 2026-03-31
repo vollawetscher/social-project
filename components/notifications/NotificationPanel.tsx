@@ -2,7 +2,7 @@
 
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
-import { Mic, Info, AlertTriangle, Clock, ChevronRight, CheckCircle, FileText, CheckCheck } from "lucide-react"
+import { Mic, Info, AlertTriangle, Clock, ChevronRight, CheckCircle, FileText, CheckCheck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { NotificationItem } from "@/lib/hooks/useNotifications"
 
@@ -32,84 +32,79 @@ export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, 
   if (items.length === 0) {
     return (
       <div className="py-6 text-center">
-        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+        <p className="text-xs text-muted-foreground">{t("empty")}</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between px-1 pb-2">
-        <p className="text-sm font-medium text-foreground">{t("title")}</p>
+    <div className="space-y-0.5">
+      <div className="flex items-center justify-between px-1 pb-1.5">
+        <p className="text-xs font-medium text-foreground">{t("title")}</p>
         {hasUnreadDb && (
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 text-xs gap-1 text-muted-foreground hover:text-foreground"
+            className="h-5 text-[11px] gap-1 text-muted-foreground hover:text-foreground px-1.5"
             onClick={onMarkAllRead}
           >
-            <CheckCheck className="h-3 w-3" />
+            <CheckCheck className="h-2.5 w-2.5" />
             {t("markAllRead")}
           </Button>
         )}
       </div>
       {items.map((item) => {
         const Icon = iconMap[item.icon]
-        // DB notifications have literal title/description; condition-based use i18n keys
         const titleText = item.dbKey === false ? t(item.title as any, { defaultValue: item.title }) : t(item.title as any)
         const descText = item.dbKey === false ? item.description : t(item.description as any)
+
+        const handleNavigate = () => {
+          if (item.dbId) onMarkRead([item.dbId])
+          router.push(item.actionHref)
+          onClose()
+        }
 
         return (
           <div
             key={item.id}
-            className="rounded-lg border border-border bg-secondary/30 p-3 space-y-2"
+            className="rounded-md border border-border bg-secondary/30 px-2.5 py-2 group"
           >
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 shrink-0 rounded-full bg-primary/10 p-1.5">
-                <Icon className="h-3.5 w-3.5 text-primary" />
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 shrink-0 rounded-full bg-primary/10 p-1">
+                <Icon className="h-3 w-3 text-primary" />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">{titleText}</p>
+              <div
+                className="min-w-0 flex-1 cursor-pointer"
+                onClick={handleNavigate}
+              >
+                <div className="flex items-center gap-1">
+                  <p className="text-xs font-medium text-foreground truncate">{titleText}</p>
+                  <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                </div>
                 {descText && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{descText}</p>
+                  <p className="text-[11px] leading-tight text-muted-foreground mt-0.5 line-clamp-2">{descText}</p>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-2 pl-9">
-              <Button
-                size="sm"
-                variant="default"
-                className="h-7 text-xs gap-1"
-                onClick={() => {
-                  if (item.dbId) onMarkRead([item.dbId])
-                  router.push(item.actionHref)
-                  onClose()
-                }}
-              >
-                {t(item.actionLabel as any)}
-                <ChevronRight className="h-3 w-3" />
-              </Button>
-              {item.snoozable && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs gap-1 text-muted-foreground"
-                  onClick={() => onSnooze(item.id)}
-                >
-                  <Clock className="h-3 w-3" />
-                  {t("remindLater")}
-                </Button>
-              )}
-              {item.dbId && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs gap-1 text-muted-foreground"
-                  onClick={() => onMarkRead([item.dbId!])}
-                >
-                  {t("dismiss")}
-                </Button>
-              )}
+              <div className="shrink-0 flex items-center gap-0.5">
+                {item.snoozable && (
+                  <button
+                    className="p-0.5 text-muted-foreground hover:text-foreground rounded transition-colors"
+                    onClick={() => onSnooze(item.id)}
+                    title={t("remindLater")}
+                  >
+                    <Clock className="h-3 w-3" />
+                  </button>
+                )}
+                {item.dbId && (
+                  <button
+                    className="p-0.5 text-muted-foreground hover:text-foreground rounded transition-colors"
+                    onClick={() => onMarkRead([item.dbId!])}
+                    title={t("dismiss")}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )
