@@ -175,27 +175,19 @@ export function CallSetup({
         <div className="flex justify-center">
           {mode === "video" && isCameraReady ? (
             <div className="w-48 h-36 rounded-xl bg-[#1a1a1a] overflow-hidden relative">
-              {BG_CHOICES.find((c) => c.value === videoBackground)?.image && (
-                <img
-                  src={BG_CHOICES.find((c) => c.value === videoBackground)!.image}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  alt=""
-                />
-              )}
               <video
                 ref={videoRef}
                 autoPlay
                 muted
                 playsInline
                 className="absolute inset-0 w-full h-full object-cover"
-                style={
-                  videoBackground === "blur"
-                    ? { filter: "blur(8px)", transform: "scale(1.1) scaleX(-1)" }
-                    : videoBackground !== "none"
-                    ? { opacity: 0.35, transform: "scaleX(-1)" }
-                    : { transform: "scaleX(-1)" }
-                }
+                style={{ transform: "scaleX(-1)" }}
               />
+              {videoBackground !== "none" && (
+                <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/60 text-[9px] text-white/80">
+                  {t(BG_CHOICES.find((c) => c.value === videoBackground)?.labelKey as any)}
+                </div>
+              )}
             </div>
           ) : (
             <Avatar className="h-24 w-24">

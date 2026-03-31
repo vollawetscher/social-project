@@ -673,7 +673,7 @@ function CallRoomInner({
 
       const imagePath = getBackgroundImagePath(videoBackground)
       const targetMode = videoBackground === "blur"
-        ? ({ mode: "background-blur" as const, blurRadius: 16 })
+        ? ({ mode: "background-blur" as const, blurRadius: 22 })
         : ({ mode: "virtual-background" as const, imagePath: `${window.location.origin}${imagePath}` })
 
       try {

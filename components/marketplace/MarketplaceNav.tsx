@@ -1,14 +1,14 @@
 'use client'
 
 import { Link, usePathname } from '@/i18n/navigation'
-import { Search, MessageSquareText, Upload } from 'lucide-react'
+import { LayoutTemplate, MessageSquareText, User } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 
 const tabs = [
-  { key: 'explore', href: '/marketplace', icon: Search },
+  { key: 'templates', href: '/marketplace', icon: LayoutTemplate },
   { key: 'community', href: '/marketplace/community', icon: MessageSquareText },
-  { key: 'share', href: '/marketplace/upload', icon: Upload },
+  { key: 'mine', href: '/marketplace/mine', icon: User },
 ] as const
 
 export function MarketplaceNav() {
@@ -16,9 +16,9 @@ export function MarketplaceNav() {
   const t = useTranslations('marketplace')
 
   const labels: Record<string, string> = {
-    explore: t('explore.title'),
+    templates: t('nav.templates' as any, { defaultValue: 'Templates' }),
     community: t('community.title'),
-    share: t('upload.title'),
+    mine: t('nav.mine' as any, { defaultValue: 'My Contributions' }),
   }
 
   function isActive(href: string) {
