@@ -45,7 +45,7 @@
     "outputs": "Outputs",
     "calls": "Calls",
     "templates": "Templates",
-    "marketplace": "Community",
+    "marketplace": "Marketplace",
     "settings": "Settings",
     "profile": "Profile",
     "adminSessions": "All Sessions",
@@ -1588,6 +1588,57 @@
     "es": "Español"
   },
   "marketplace": {
+    "nav": {
+      "community": "Community",
+      "templates": "Templates",
+      "modules": "Modules",
+      "integrations": "Integrations",
+      "mine": "My Contributions"
+    },
+    "landing": {
+      "featuredTemplates": "Featured Templates",
+      "featuredTemplatesDesc": "Ready-to-use output formats for your sessions",
+      "browseAll": "Browse all templates",
+      "recentDiscussions": "Recent Discussions",
+      "recentDiscussionsDesc": "Join the conversation with fellow Notissima users",
+      "viewAll": "View all discussions",
+      "modulesTitle": "Modules",
+      "modulesDesc": "Extend Notissima with specialized add-ons — coaching, medical intake, sales workflows and more.",
+      "integrationsTitle": "Integrations",
+      "integrationsDesc": "Connect Notissima with your tools — CRM, calendar, Slack, and more.",
+      "comingSoon": "Coming Soon",
+      "myContributions": "My Contributions"
+    },
+    "modules": {
+      "title": "Modules",
+      "subtitle": "Extend Notissima with specialized add-ons",
+      "comingSoon": "Coming Soon",
+      "description": "Modules are functional add-ons that extend what Notissima can do. From coaching packs and medical intake workflows to sales follow-up automation — modules bring domain-specific power to your sessions.",
+      "planned": "Planned Modules",
+      "coaching": "Coaching Packs",
+      "coachingDesc": "Structured frameworks for coaching sessions with guided outputs and progress tracking.",
+      "medicalIntake": "Medical Intake",
+      "medicalIntakeDesc": "Streamlined patient intake workflows with structured forms and summary generation.",
+      "salesFollowup": "Sales Follow-up",
+      "salesFollowupDesc": "Automated follow-up workflows after sales calls with action items and CRM updates.",
+      "notify": "Get notified when available"
+    },
+    "integrations": {
+      "title": "Integrations",
+      "subtitle": "Connect Notissima with your favorite tools",
+      "comingSoon": "Coming Soon",
+      "description": "Integrations connect Notissima to the tools you already use. Push session outputs to your CRM, sync with your calendar, get notified in Slack — or build your own integration with our API.",
+      "planned": "Planned Integrations",
+      "crm": "CRM Systems",
+      "crmDesc": "Push session summaries and action items directly into Salesforce, HubSpot, or Pipedrive.",
+      "calendar": "Calendar Sync",
+      "calendarDesc": "Automatically link sessions to calendar events and prepare meeting briefs.",
+      "slack": "Slack & Teams",
+      "slackDesc": "Get session notifications and share outputs in your team channels.",
+      "api": "API & Webhooks",
+      "apiDesc": "Build custom integrations with our REST API and webhook endpoints.",
+      "notify": "Get notified when available"
+    },
     "categories": {
       "business": "Business",
       "legal": "Legal",
@@ -1787,9 +1838,8 @@
       "subtitle": "Share knowledge, ask questions, and help fellow Notissima users",
       "tabs": {
         "all": "All",
-        "articles": "Articles",
-        "questions": "Q&A",
-        "tips": "Tips"
+        "discussions": "Discussions",
+        "articles": "Articles"
       },
       "newPost": "New Post",
       "loginToPost": "Log in to post",
@@ -1797,13 +1847,13 @@
       "noResults": "No posts yet. Be the first to share!",
       "postTypes": {
         "article": "Article",
+        "discussion": "Discussion",
         "question": "Question",
         "tip": "Tip"
       },
       "postTypeDesc": {
         "article": "Share your experience, guides, or best practices",
-        "question": "Ask the community for help or advice",
-        "tip": "Share a quick, actionable tip"
+        "discussion": "Start a conversation, ask questions, or share ideas"
       },
       "card": {
         "votes": "votes",

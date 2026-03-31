@@ -10,7 +10,7 @@ import { PostCard } from '@/components/marketplace/PostCard'
 import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import type { CommunityPost, PostType, MarketplaceProfile } from '@/lib/types/marketplace'
+import type { CommunityPost, MarketplaceProfile } from '@/lib/types/marketplace'
 import { MarketplaceNav } from '@/components/marketplace/MarketplaceNav'
 
 export default function CommunityPage() {
@@ -18,7 +18,7 @@ export default function CommunityPage() {
   const { user } = useAuth()
   const supabase = createClient()
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'all' | PostType>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'article' | 'discussion'>('all')
   const [posts, setPosts] = useState<CommunityPost[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -31,7 +31,9 @@ export default function CommunityPage() {
       .eq('is_published', true)
       .order('created_at', { ascending: false })
 
-    if (activeTab !== 'all') {
+    if (activeTab === 'discussion') {
+      query = query.in('type', ['question', 'tip', 'discussion'])
+    } else if (activeTab !== 'all') {
       query = query.eq('type', activeTab)
     }
 
@@ -97,13 +99,12 @@ export default function CommunityPage() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | PostType)}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'article' | 'discussion')}>
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <TabsList>
             <TabsTrigger value="all">{t('community.tabs.all')}</TabsTrigger>
+            <TabsTrigger value="discussion">{t('community.tabs.discussions')}</TabsTrigger>
             <TabsTrigger value="article">{t('community.tabs.articles')}</TabsTrigger>
-            <TabsTrigger value="question">{t('community.tabs.questions')}</TabsTrigger>
-            <TabsTrigger value="tip">{t('community.tabs.tips')}</TabsTrigger>
           </TabsList>
 
           <div className="relative flex-1">

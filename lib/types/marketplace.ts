@@ -86,7 +86,7 @@ export interface MarketplaceDownload {
   downloaded_at: string
 }
 
-export type PostType = 'article' | 'question' | 'tip'
+export type PostType = 'article' | 'question' | 'tip' | 'discussion'
 
 export interface CommunityPost {
   id: string

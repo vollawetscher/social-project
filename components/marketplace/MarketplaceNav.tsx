@@ -1,25 +1,20 @@
 'use client'
 
 import { Link, usePathname } from '@/i18n/navigation'
-import { LayoutTemplate, MessageSquareText, User } from 'lucide-react'
+import { LayoutTemplate, MessageSquareText, Puzzle, Plug } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 
 const tabs = [
-  { key: 'templates', href: '/marketplace', icon: LayoutTemplate },
-  { key: 'community', href: '/marketplace/community', icon: MessageSquareText },
-  { key: 'mine', href: '/marketplace/mine', icon: User },
+  { key: 'community', href: '/marketplace', icon: MessageSquareText },
+  { key: 'templates', href: '/marketplace/templates', icon: LayoutTemplate },
+  { key: 'modules', href: '/marketplace/modules', icon: Puzzle },
+  { key: 'integrations', href: '/marketplace/integrations', icon: Plug },
 ] as const
 
 export function MarketplaceNav() {
   const pathname = usePathname()
   const t = useTranslations('marketplace')
-
-  const labels: Record<string, string> = {
-    templates: t('nav.templates' as any, { defaultValue: 'Templates' }),
-    community: t('community.title'),
-    mine: t('nav.mine' as any, { defaultValue: 'My Contributions' }),
-  }
 
   function isActive(href: string) {
     if (href === '/marketplace') return pathname === '/marketplace'
@@ -42,7 +37,7 @@ export function MarketplaceNav() {
             )}
           >
             <Icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{labels[key]}</span>
+            <span className="hidden sm:inline">{t(`nav.${key}`)}</span>
           </Link>
         )
       })}

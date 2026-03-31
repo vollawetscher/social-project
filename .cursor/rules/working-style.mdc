@@ -5,7 +5,24 @@ alwaysApply: true
 
 # Working Style
 
-## Approach to Changes
+## Planning New Features and Design Work
+
+Follow this sequence. Do not skip or compress steps:
+
+1. **Goal setting** — Clarify what we are trying to achieve. Ask questions if the goal is ambiguous. Do not assume scope.
+2. **Brainstorming** — Explore ideas openly with the user. No jumping to code, no tool calls for implementation, no plans yet. Think out loud, propose alternatives, discuss trade-offs.
+3. **Narrowing down** — Through back-and-forth discussion, converge on the specific functionality, structure, and UX. Let the user steer.
+4. **Final decision** — The user decides what to build and how. Present a clear summary of what was agreed before moving on.
+5. **Implementation** — Only now write code.
+
+### Anti-patterns for planning
+
+- Jumping from a user idea straight to a plan or code
+- Asking implementation-level questions (tool choices, file structure) before the design is settled
+- Treating brainstorming as a step to rush through
+- Creating plans before the user has made a final decision
+
+## Approach to Bug Fixes and Improvements
 
 Follow this sequence for any non-trivial work:
 

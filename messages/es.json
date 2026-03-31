@@ -45,7 +45,7 @@
     "outputs": "Informes",
     "calls": "Llamadas",
     "templates": "Plantillas",
-    "marketplace": "Community",
+    "marketplace": "Marketplace",
     "settings": "Ajustes",
     "profile": "Perfil",
     "adminSessions": "Todas las sesiones",
@@ -1587,6 +1587,57 @@
     "es": "Español"
   },
   "marketplace": {
+    "nav": {
+      "community": "Comunidad",
+      "templates": "Plantillas",
+      "modules": "Módulos",
+      "integrations": "Integraciones",
+      "mine": "Mis contribuciones"
+    },
+    "landing": {
+      "featuredTemplates": "Plantillas destacadas",
+      "featuredTemplatesDesc": "Formatos de salida listos para usar en tus sesiones",
+      "browseAll": "Ver todas las plantillas",
+      "recentDiscussions": "Discusiones recientes",
+      "recentDiscussionsDesc": "Únete a la conversación con otros usuarios de Notissima",
+      "viewAll": "Ver todas las discusiones",
+      "modulesTitle": "Módulos",
+      "modulesDesc": "Extiende Notissima con complementos especializados — coaching, ingreso médico, flujos de ventas y más.",
+      "integrationsTitle": "Integraciones",
+      "integrationsDesc": "Conecta Notissima con tus herramientas — CRM, calendario, Slack y más.",
+      "comingSoon": "Próximamente",
+      "myContributions": "Mis contribuciones"
+    },
+    "modules": {
+      "title": "Módulos",
+      "subtitle": "Extiende Notissima con complementos especializados",
+      "comingSoon": "Próximamente",
+      "description": "Los módulos son complementos funcionales que amplían lo que Notissima puede hacer. Desde paquetes de coaching y flujos de ingreso médico hasta automatización de seguimiento de ventas — los módulos aportan funcionalidad específica a tus sesiones.",
+      "planned": "Módulos planificados",
+      "coaching": "Paquetes de Coaching",
+      "coachingDesc": "Marcos estructurados para sesiones de coaching con salidas guiadas y seguimiento de progreso.",
+      "medicalIntake": "Ingreso Médico",
+      "medicalIntakeDesc": "Flujos de ingreso de pacientes optimizados con formularios estructurados y generación de resúmenes.",
+      "salesFollowup": "Seguimiento de Ventas",
+      "salesFollowupDesc": "Flujos de seguimiento automatizados después de llamadas de ventas con elementos de acción y actualizaciones de CRM.",
+      "notify": "Recibir notificación"
+    },
+    "integrations": {
+      "title": "Integraciones",
+      "subtitle": "Conecta Notissima con tus herramientas favoritas",
+      "comingSoon": "Próximamente",
+      "description": "Las integraciones conectan Notissima con las herramientas que ya usas. Envía resultados de sesiones a tu CRM, sincroniza con tu calendario, recibe notificaciones en Slack — o construye tu propia integración con nuestra API.",
+      "planned": "Integraciones planificadas",
+      "crm": "Sistemas CRM",
+      "crmDesc": "Envía resúmenes de sesiones y elementos de acción directamente a Salesforce, HubSpot o Pipedrive.",
+      "calendar": "Sincronización de Calendario",
+      "calendarDesc": "Vincula automáticamente sesiones con eventos de calendario y prepara informes de reuniones.",
+      "slack": "Slack & Teams",
+      "slackDesc": "Recibe notificaciones de sesiones y comparte resultados en tus canales de equipo.",
+      "api": "API & Webhooks",
+      "apiDesc": "Construye integraciones personalizadas con nuestra API REST y endpoints de webhooks.",
+      "notify": "Recibir notificación"
+    },
     "categories": {
       "business": "Negocios",
       "legal": "Legal",
@@ -1786,9 +1837,8 @@
       "subtitle": "Comparte conocimiento, haz preguntas y ayuda a otros usuarios de Notissima",
       "tabs": {
         "all": "Todo",
-        "articles": "Artículos",
-        "questions": "Preguntas",
-        "tips": "Consejos"
+        "discussions": "Discusiones",
+        "articles": "Artículos"
       },
       "newPost": "Nuevo Post",
       "loginToPost": "Inicia sesión para publicar",
@@ -1796,13 +1846,13 @@
       "noResults": "No hay posts aún. ¡Sé el primero en compartir!",
       "postTypes": {
         "article": "Artículo",
+        "discussion": "Discusión",
         "question": "Pregunta",
         "tip": "Consejo"
       },
       "postTypeDesc": {
         "article": "Comparte experiencias, guías o mejores prácticas",
-        "question": "Pide ayuda o consejo a la comunidad",
-        "tip": "Comparte un consejo rápido y práctico"
+        "discussion": "Inicia una conversación, haz preguntas o comparte ideas"
       },
       "card": {
         "votes": "votos",

@@ -11,6 +11,7 @@ import type { CommunityPost, PostType } from '@/lib/types/marketplace'
 
 const typeStyles: Record<PostType, string> = {
   article: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
+  discussion: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
   question: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
   tip: 'bg-green-500/20 text-green-600 border-green-500/30',
 }

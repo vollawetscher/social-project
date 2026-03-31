@@ -2,7 +2,7 @@
 
 import { useState, type KeyboardEvent } from 'react'
 import { Link, useRouter } from '@/i18n/navigation'
-import { FileText, HelpCircle, Lightbulb, Send, LogIn, X } from 'lucide-react'
+import { FileText, MessageSquareText, Send, LogIn, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,9 +18,8 @@ import { cn } from '@/lib/utils'
 import type { PostType } from '@/lib/types/marketplace'
 
 const POST_TYPES: { value: PostType; icon: typeof FileText; color: string }[] = [
+  { value: 'discussion', icon: MessageSquareText, color: 'border-orange-500 bg-orange-500/10 text-orange-600' },
   { value: 'article', icon: FileText, color: 'border-blue-500 bg-blue-500/10 text-blue-600' },
-  { value: 'question', icon: HelpCircle, color: 'border-orange-500 bg-orange-500/10 text-orange-600' },
-  { value: 'tip', icon: Lightbulb, color: 'border-green-500 bg-green-500/10 text-green-600' },
 ]
 
 const CATEGORIES = [
