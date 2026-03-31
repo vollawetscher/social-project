@@ -33,6 +33,7 @@ export type Domain =
 
 // Participant role in the conversation (assigned at transcription level)
 export type ParticipantRole = 'party_a' | 'party_b' | 'observer'
+export type OutputPerspective = ParticipantRole | 'reader_facing'
 
 // Semantic labels for participant roles based on domain context
 export type SemanticRole = 
@@ -168,6 +169,7 @@ export interface SuggestedOutputFormat {
   description: string
   generationInstructions: string
   audience?: Audience
+  perspective?: 'observer' | 'party_a' | 'party_b' | 'reader_facing'
 }
 
 export interface TemplateSection {
@@ -204,7 +206,7 @@ export interface Output {
   sessionFilename: string
   templateId: string
   templateName: string
-  perspective: ParticipantRole // From whose perspective (party_a, party_b, observer)
+  perspective: OutputPerspective
   audience: Audience
   language: string
   tone: OutputTone
@@ -213,7 +215,6 @@ export interface Output {
   createdAt: string
   transcriptVersionHash: string
   citeTimestamps: boolean
-  // Sharing fields
   isPublic?: boolean
   shareToken?: string | null
   viewCount?: number
@@ -229,7 +230,7 @@ export interface AiSuggestion<T> {
 export interface GenerateOutputConfig {
   templateId?: string | null // Optional - when generating from AI suggestion, can be empty
   templateName?: string // Custom name when no template (e.g. suggestion title)
-  perspective: ParticipantRole | null // From whose perspective to generate
+  perspective: OutputPerspective | null
   perspectiveSpeakerName?: string // Actual name of the selected speaker (for first-person perspective)
   audience: Audience | null
   language: string

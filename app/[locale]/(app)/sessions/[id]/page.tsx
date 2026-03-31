@@ -503,7 +503,7 @@ export default function SessionDetailPage() {
           config: {
             templateId: null,
             templateName: suggestion.title,
-            perspective: 'observer',
+            perspective: suggestion.perspective || 'observer',
             audience: suggestionAudience,
             language: 'session',
             tone: 'neutral',

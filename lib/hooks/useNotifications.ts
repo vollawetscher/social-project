@@ -16,6 +16,8 @@ export interface NotificationItem {
   dbId?: string
   /** i18n key or literal string for description; if dbKey is false the value is used as-is */
   dbKey?: boolean
+  /** DB notification type (analysis_complete, output_generated, etc.) for badge display */
+  notificationType?: string
 }
 
 interface SnoozeMap {
@@ -55,12 +57,12 @@ function dbNotificationToItem(n: DbNotification): NotificationItem {
     dbId: n.id,
     dbKey: false,
     icon: iconMap[n.type] ?? "info",
-    // title is an i18n key stored in DB (e.g. "analysis_complete")
     title: n.title,
     description: n.message ?? "",
     actionLabel: "notificationActionView",
     actionHref: n.action_href ?? "/sessions",
     snoozable: false,
+    notificationType: n.type,
   }
 }
 

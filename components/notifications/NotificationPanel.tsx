@@ -14,6 +14,13 @@ const iconMap = {
   file: FileText,
 } as const
 
+const typeBadgeMap: Record<string, { label: string; className: string }> = {
+  analysis_complete: { label: "Analyzed", className: "bg-emerald-500/10 text-emerald-600" },
+  output_generated: { label: "Output", className: "bg-blue-500/10 text-blue-600" },
+  voice_sample_needed: { label: "Action", className: "bg-amber-500/10 text-amber-600" },
+  system: { label: "System", className: "bg-muted text-muted-foreground" },
+}
+
 interface NotificationPanelProps {
   items: NotificationItem[]
   onSnooze: (id: string) => void
@@ -55,8 +62,9 @@ export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, 
       </div>
       {items.map((item) => {
         const Icon = iconMap[item.icon]
-        const titleText = item.dbKey === false ? t(item.title as any, { defaultValue: item.title }) : t(item.title as any)
+        const titleText = item.dbKey === false ? item.title : t(item.title as any)
         const descText = item.dbKey === false ? item.description : t(item.description as any)
+        const badge = item.notificationType ? typeBadgeMap[item.notificationType] : undefined
 
         const handleNavigate = () => {
           if (item.dbId) onMarkRead([item.dbId])
@@ -67,7 +75,7 @@ export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, 
         return (
           <div
             key={item.id}
-            className="rounded-md border border-border bg-secondary/30 px-2.5 py-2 group"
+            className="rounded-md border border-border bg-secondary/30 px-2.5 py-1.5 group"
           >
             <div className="flex items-start gap-2">
               <div className="mt-0.5 shrink-0 rounded-full bg-primary/10 p-1">
@@ -77,7 +85,12 @@ export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, 
                 className="min-w-0 flex-1 cursor-pointer"
                 onClick={handleNavigate}
               >
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
+                  {badge && (
+                    <span className={`shrink-0 text-[9px] font-medium px-1.5 py-0.5 rounded-full ${badge.className}`}>
+                      {badge.label}
+                    </span>
+                  )}
                   <p className="text-xs font-medium text-foreground truncate">{titleText}</p>
                   <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
                 </div>

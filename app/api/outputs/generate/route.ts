@@ -250,13 +250,15 @@ export async function POST(request: Request) {
     const perspectiveMap: Record<string, string> = {
       party_a: 'first speaker (party A)',
       party_b: 'second speaker (party B)',
-      observer: 'neutral observer'
+      observer: 'neutral observer',
+      reader_facing: 'addressing the reader directly'
     }
 
-    // Build perspective instruction using speaker name when available
     const speakerName = config.perspectiveSpeakerName
     let perspectiveInstruction: string
-    if (config.perspective === 'observer' || !config.perspective) {
+    if (config.perspective === 'reader_facing') {
+      perspectiveInstruction = 'addressing the reader directly (second person — use "you" and "your" when referring to the person this document is intended for)'
+    } else if (config.perspective === 'observer' || !config.perspective) {
       perspectiveInstruction = 'a neutral observer (third person)'
     } else if (speakerName) {
       perspectiveInstruction = `${speakerName} (first person — use "I" when referring to ${speakerName}, and refer to other participants by name)`
@@ -734,12 +736,13 @@ Please generate the requested output following all requirements and guidelines.`
       },
     }, supabase)
 
-    // Push notification so the client receives it via Realtime even if they've navigated away
+    const outputLabel = config.templateName || 'Output'
+    const sessionLabel = (session as any)?.internal_case_id || `Session ${sessionId.slice(0, 8)}`
     createNotification({
       userId,
       type: 'output_generated',
-      title: 'output_generated',
-      message: config.templateName || undefined,
+      title: outputLabel,
+      message: sessionLabel,
       actionHref: `/sessions/${sessionId}?tab=outputs`,
       data: { sessionId, outputId: output.id },
     }).catch(() => {})

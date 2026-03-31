@@ -72,6 +72,10 @@ const ALLOWED_SUGGESTION_AUDIENCES = ['internal', 'external', 'client', 'legal',
 function isAllowedSuggestionAudience(value: unknown): value is (typeof ALLOWED_SUGGESTION_AUDIENCES)[number] {
   return typeof value === 'string' && ALLOWED_SUGGESTION_AUDIENCES.includes(value as (typeof ALLOWED_SUGGESTION_AUDIENCES)[number])
 }
+const ALLOWED_SUGGESTION_PERSPECTIVES = ['observer', 'reader_facing'] as const
+function isAllowedSuggestionPerspective(value: unknown): value is (typeof ALLOWED_SUGGESTION_PERSPECTIVES)[number] {
+  return typeof value === 'string' && ALLOWED_SUGGESTION_PERSPECTIVES.includes(value as (typeof ALLOWED_SUGGESTION_PERSPECTIVES)[number])
+}
 
 function extractBalancedJsonObject(input: string): string | null {
   const text = String(input || '')
@@ -827,8 +831,9 @@ export async function POST(
    - Legal: deposition summary, client status memo, billing timeline notes
    - Medical: consultation notes, referral summary, patient-facing summary
    - General: meeting minutes, action items, executive summary
-  Customize suggestions for the ACTUAL domain and conversation type. Each needs: title (short), description (1 line), generationInstructions (detailed prompt for AI to generate this output), audience.
+  Customize suggestions for the ACTUAL domain and conversation type. Each needs: title (short), description (1 line), generationInstructions (detailed prompt for AI to generate this output), audience, perspective.
   Audience must be one of: "internal", "external", "client", "legal", "executive".
+  Perspective must be one of: "observer" (neutral third person — default for most professional documents), "reader_facing" (second person addressing the reader directly as "you" — use for patient summaries, client-facing explanations, or any document written TO someone rather than ABOUT them). Choose the perspective that best matches the output's purpose and audience.
    **LANGUAGE for suggestedOutputFormats**: Write the title and description fields in **${outputLangName}**. The generationInstructions should also be in ${outputLangName}.
 9. **Transcript Corrections**: If you notice obvious transcription errors (ASR misspellings of proper nouns, technical terms, place names), suggest corrections. Also, if the transcript has more than 2 speaker labels but the conversation is clearly between only 2 speakers, suggest speaker merges (e.g. "S3" should be merged into "S1").
 
@@ -886,9 +891,9 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
     {"from": "S3", "into": "S1", "confidence": 0.9, "reason": "Only 2 speakers in conversation"}
   ],
   "suggestedOutputFormats": [
-    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "internal"},
-    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "external"},
-    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "client"}
+    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "internal", "perspective": "observer"},
+    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "external", "perspective": "reader_facing"},
+    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "executive", "perspective": "observer"}
   ]
 }
 
@@ -998,6 +1003,9 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
               audience: isAllowedSuggestionAudience(suggestion.audience)
                 ? suggestion.audience
                 : 'internal',
+              perspective: isAllowedSuggestionPerspective(suggestion.perspective)
+                ? suggestion.perspective
+                : 'observer',
             }
           })
       : []
@@ -1046,16 +1054,16 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
         },
       }, supabase)
 
-      // Push notification so the client receives it via Realtime even if they've navigated away
       const summaryFirstLine = (canonicalSummary || '')
         .split('\n')
         .map((l: string) => l.replace(/^[-•*]\s*/, '').trim())
         .find((l: string) => l.length > 0) || undefined
+      const sessionLabel = (session as any)?.internal_case_id || summaryFirstLine || `Session ${params.id.slice(0, 8)}`
       createNotification({
         userId,
         type: 'analysis_complete',
-        title: 'analysis_complete',
-        message: summaryFirstLine,
+        title: sessionLabel,
+        message: summaryFirstLine && summaryFirstLine !== sessionLabel ? summaryFirstLine : undefined,
         actionHref: `/sessions/${params.id}?tab=context`,
         data: { sessionId: params.id, recordingType: finalRecordingType, domains: analysis.domains },
       }).catch(() => {})
