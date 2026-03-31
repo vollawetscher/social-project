@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from '@/i18n/navigation'
-import { Search, Download, User, SlidersHorizontal, Loader2, X, Share2 } from 'lucide-react'
+import { Search, Download, User, Loader2, X, Share2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -52,7 +50,6 @@ export default function MarketplacePage() {
   const [selectedCreator, setSelectedCreator] = useState<string | null>(null)
   const [creatorName, setCreatorName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showFilters, setShowFilters] = useState(true)
   const t = useTranslations('marketplace')
   const supabase = createClient()
 
@@ -173,13 +170,7 @@ export default function MarketplacePage() {
     window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
   }
 
-  const activeFilterCount = [
-    selectedCategory,
-    selectedCreator,
-  ].filter(Boolean).length
-
   return (
-    <TooltipProvider delayDuration={0}>
       <div className="space-y-6">
         <MarketplaceNav />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -188,6 +179,22 @@ export default function MarketplacePage() {
             <p className="text-sm text-muted-foreground mt-1">{t('explore.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2">
+            <Select
+              value={selectedCategory ?? 'all'}
+              onValueChange={(v) => setSelectedCategory(v === 'all' ? null : v)}
+            >
+              <SelectTrigger className="w-[160px] bg-transparent">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('explore.all')}</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {t.has(`categories.${cat.slug}` as any) ? t(`categories.${cat.slug}` as any) : cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
               <SelectTrigger className="w-[160px] bg-transparent">
                 <SelectValue />
@@ -198,20 +205,6 @@ export default function MarketplacePage() {
                 <SelectItem value="rating">{t('explore.sortOptions.rating')}</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              variant={showFilters ? 'secondary' : 'outline'}
-              size="sm"
-              className="bg-transparent"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <SlidersHorizontal className="h-4 w-4 mr-2" />
-              {t('explore.filter')}
-              {activeFilterCount > 0 && (
-                <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
-                  {activeFilterCount}
-                </span>
-              )}
-            </Button>
           </div>
         </div>
 
@@ -226,46 +219,20 @@ export default function MarketplacePage() {
           />
         </div>
 
-        {showFilters && (
-          <div className="space-y-3">
-            {categories.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <Badge
-                  variant={selectedCategory === null ? 'default' : 'outline'}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedCategory(null)}
-                >
-                  {t('explore.all')}
-                </Badge>
-                {categories.map((cat) => (
-                  <Badge
-                    key={cat.id}
-                    variant={selectedCategory === cat.id ? 'default' : 'outline'}
-                    className={`cursor-pointer ${selectedCategory !== cat.id ? (categoryColors[cat.slug] ?? '') : ''}`}
-                    onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-                  >
-                    {t.has(`categories.${cat.slug}` as any) ? t(`categories.${cat.slug}` as any) : cat.name}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {selectedCreator && (
-              <div className="flex items-center gap-2">
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-                <Badge variant="secondary" className="flex items-center gap-1.5">
-                  {creatorName || selectedCreator.slice(0, 8)}
-                  <Share2
-                    className="h-3 w-3 cursor-pointer hover:text-primary transition-colors"
-                    onClick={handleCopyCreatorLink}
-                  />
-                  <X
-                    className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
-                    onClick={clearCreator}
-                  />
-                </Badge>
-              </div>
-            )}
+        {selectedCreator && (
+          <div className="flex items-center gap-2">
+            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <Badge variant="secondary" className="flex items-center gap-1.5">
+              {creatorName || selectedCreator.slice(0, 8)}
+              <Share2
+                className="h-3 w-3 cursor-pointer hover:text-primary transition-colors"
+                onClick={handleCopyCreatorLink}
+              />
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-destructive transition-colors"
+                onClick={clearCreator}
+              />
+            </Badge>
           </div>
         )}
 
@@ -334,6 +301,5 @@ export default function MarketplacePage() {
           </div>
         )}
       </div>
-    </TooltipProvider>
   )
 }
