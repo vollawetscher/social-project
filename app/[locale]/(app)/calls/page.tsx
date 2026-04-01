@@ -297,35 +297,7 @@ export default function CallsPage() {
     if (activeTab === "contacts") fetchContacts()
   }, [activeTab])
 
-  useEffect(() => {
-    if (!user?.id) return
-
-    const sendPresenceHeartbeat = async () => {
-      try {
-        await fetch("/api/calls/presence/heartbeat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            appState: document.visibilityState === "visible" ? "foreground" : "background",
-            route: "/calls",
-          }),
-          keepalive: true,
-        })
-      } catch {
-        // Best-effort only.
-      }
-    }
-
-    sendPresenceHeartbeat()
-    const interval = setInterval(sendPresenceHeartbeat, 20_000)
-    const onVisibilityChange = () => { void sendPresenceHeartbeat() }
-    document.addEventListener("visibilitychange", onVisibilityChange)
-
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener("visibilitychange", onVisibilityChange)
-    }
-  }, [user?.id])
+  // Presence heartbeat moved to GlobalPresenceHeartbeat (global layout)
 
   async function getAuthHeaders(): Promise<Record<string, string>> {
     try {

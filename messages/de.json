@@ -1187,6 +1187,7 @@
     "youAreSharing": "Sie teilen Ihren Bildschirm",
     "endSharing": "Freigabe beenden",
     "shareScreen": "Teilen",
+    "shareScreenHint": "Bildschirm teilen. Optionen variieren je nach Browser.",
     "mute": "Stummschalten",
     "unmute": "Ton einschalten",
     "cameraOn": "Kamera ein",
@@ -1281,7 +1282,11 @@
     "invitesToCall": "lädt Sie zu einem Anruf ein",
     "decline": "Ablehnen",
     "join": "Beitreten",
-    "securedBy": "Gesichert durch Notissima"
+    "securedBy": "Gesichert durch Notissima",
+    "background": "Hintergrund",
+    "backgroundNone": "Keiner",
+    "backgroundBlur": "Unschärfe",
+    "backgroundOffice": "Büro"
   },
   "callEnded": {
     "title": "Anruf beendet",

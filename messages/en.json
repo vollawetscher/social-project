@@ -1188,6 +1188,7 @@
     "youAreSharing": "You are sharing your screen",
     "endSharing": "End sharing",
     "shareScreen": "Share",
+    "shareScreenHint": "Share your screen. Options vary by browser.",
     "mute": "Mute",
     "unmute": "Unmute",
     "cameraOn": "Camera on",
@@ -1282,7 +1283,11 @@
     "invitesToCall": "invites you to a call",
     "decline": "Decline",
     "join": "Join",
-    "securedBy": "Secured by Notissima"
+    "securedBy": "Secured by Notissima",
+    "background": "Background",
+    "backgroundNone": "None",
+    "backgroundBlur": "Blur",
+    "backgroundOffice": "Office"
   },
   "callEnded": {
     "title": "Call Ended",

@@ -98,23 +98,19 @@ function normalizeRealtimeLanguageCode(input: unknown): string | null {
   return /^[a-z]{2}$/.test(base) ? base : null
 }
 
-type VideoBackgroundChoice = "none" | "blur" | "home" | "conference" | "office"
+type VideoBackgroundChoice = "none" | "blur" | "office"
 
 const VIDEO_BACKGROUND_CHOICES: Array<{ value: VideoBackgroundChoice; labelKey: string }> = [
-  { value: "none",       labelKey: "backgroundNone" },
-  { value: "blur",       labelKey: "backgroundBlur" },
-  { value: "home",       labelKey: "backgroundHome" },
-  { value: "conference", labelKey: "backgroundConference" },
-  { value: "office",     labelKey: "backgroundOffice" },
+  { value: "none",   labelKey: "backgroundNone" },
+  { value: "blur",   labelKey: "backgroundBlur" },
+  { value: "office", labelKey: "backgroundOffice" },
 ]
 const VIDEO_BACKGROUND_STORAGE_KEY = "notissima.video_background"
 const AUDIO_INPUT_KEY = "notissima.call.audioInputDeviceId"
 const VIDEO_INPUT_KEY = "notissima.call.videoInputDeviceId"
 
 function getBackgroundImagePath(choice: VideoBackgroundChoice): string | null {
-  if (choice === "home")       return "/backgrounds/home.jpg"
-  if (choice === "conference") return "/backgrounds/conference.jpg"
-  if (choice === "office")     return "/backgrounds/office.jpg"
+  if (choice === "office") return "/backgrounds/office.svg"
   return null
 }
 
@@ -301,6 +297,18 @@ function CallRoomInner({
   const isLocalMicEnabled = localParticipant.isMicrophoneEnabled
   const isCameraOn = localParticipant.isCameraEnabled
   const isScreenSharing = localParticipant.isScreenShareEnabled
+
+  useEffect(() => {
+    if (mode !== "video") return
+    const camPub = localParticipant.getTrackPublication(Track.Source.Camera)
+    console.log('[CallRoom] Video state:', {
+      connectionState,
+      isCameraOn,
+      hasTrack: !!camPub?.track,
+      trackMuted: camPub?.isMuted,
+      remoteCount: remoteParticipants.length,
+    })
+  }, [mode, connectionState, isCameraOn, localParticipant, remoteParticipants.length])
   const canScreenShare = typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia
   const liveTranscriptEnabled = callType === "pstn_outbound" && pstnTranscriptionMode === "live"
   const liveTranscriptUsesServerRelay =
@@ -677,14 +685,16 @@ function CallRoomInner({
         : ({ mode: "virtual-background" as const, imagePath: `${window.location.origin}${imagePath}` })
 
       try {
-        if (!backgroundProcessorRef.current) {
-          const processor = BackgroundProcessor(targetMode)
-          if (cancelled) return
-          await videoTrack.setProcessor(processor)
-          backgroundProcessorRef.current = processor
-        } else {
-          await backgroundProcessorRef.current.switchTo(targetMode)
+        // Always tear down and recreate the processor to avoid dimension/rotation
+        // bugs that occur when switchTo() doesn't re-read track dimensions.
+        if (backgroundProcessorRef.current) {
+          try { await videoTrack.stopProcessor?.() } catch { /* ignore */ }
+          backgroundProcessorRef.current = null
         }
+        const processor = BackgroundProcessor(targetMode)
+        if (cancelled) return
+        await videoTrack.setProcessor(processor)
+        backgroundProcessorRef.current = processor
       } catch {
         if (!backgroundSupportWarnedRef.current) {
           backgroundSupportWarnedRef.current = true
@@ -742,7 +752,7 @@ function CallRoomInner({
   // Play soft ringtone only for outbound PSTN calls while waiting for callee to pick up.
   // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
   // so we must exclude that post-call phase explicitly.
-  useRingtone(callType === "pstn_outbound" && callStatus === "ringing" && !calleeLeft)
+  useRingtone((callType === "pstn_outbound" || callType === "web") && callStatus === "ringing" && !calleeLeft)
 
   // Trigger Ring+SMS once room is connected
   useEffect(() => {

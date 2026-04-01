@@ -104,6 +104,7 @@ export function CallControls({
           <ControlButton
             icon={MonitorUp}
             label={t('shareScreen')}
+            title={t('shareScreenHint')}
             active={isScreenSharing}
             accent
             onClick={onToggleScreenShare}
@@ -142,7 +143,7 @@ export function CallControls({
         )}
         <ControlButton icon={Volume2} label={t('speaker')} active={isSpeaker} onClick={onToggleSpeaker} dark={dark} />
         {mode === "video" && canScreenShare && (
-          <ControlButton icon={MonitorUp} label={t('shareScreen')} active={isScreenSharing} onClick={onToggleScreenShare} dark={dark} accent />
+          <ControlButton icon={MonitorUp} label={t('shareScreen')} title={t('shareScreenHint')} active={isScreenSharing} onClick={onToggleScreenShare} dark={dark} accent />
         )}
         {isInitiator && <ControlButton icon={isOnHold ? Play : Pause} label={isOnHold ? t('resume') : t('hold')} active={isOnHold} onClick={onToggleHold} dark={dark} />}
         <ControlButton icon={StickyNote} label={t('notes')} active={showNotes} onClick={onToggleNotes} dark={dark} />
@@ -158,16 +159,17 @@ export function CallControls({
   )
 }
 
-function ControlButton({ icon: Icon, label, active, onClick, dark, accent }: {
+function ControlButton({ icon: Icon, label, active, onClick, dark, accent, title }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
   active: boolean
   onClick: () => void
   dark?: boolean
   accent?: boolean
+  title?: string
 }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-1">
+    <button onClick={onClick} title={title} className="flex flex-col items-center gap-1">
       <div className={cn(
         "h-12 w-12 rounded-full flex items-center justify-center transition-colors",
         active
