@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.27.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.27.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Personal Meeting Link',
+        description: 'Get your own permanent meeting URL (e.g. notissima.app/meet/your-name) that you can paste into calendar invites, emails, or messages. One click in the top bar copies it to your clipboard. Visitors enter their name and join your video call instantly.',
+      },
+    ],
+  },
+  {
     version: '1.26.0',
     date: 'March 17, 2026',
     entries: [

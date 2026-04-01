@@ -55,6 +55,8 @@
     "offline": "Offline — Änderungen werden synchronisiert, sobald eine Verbindung besteht",
     "syncing": "Wird synchronisiert...",
     "syncNow": "Jetzt synchronisieren",
+    "meetingLink": "Meeting-Link",
+    "linkCopied": "Kopiert!",
     "whatsNew": "Neuigkeiten",
     "featureRequest": "Feature-Wunsch"
   },
@@ -1037,7 +1039,13 @@
     "voiceSampleCancel": "Abbrechen",
     "voiceSampleAddLanguage": "Sprache hinzufügen",
     "voiceSampleSearchLanguage": "Sprachen suchen...",
-    "voiceSampleNoLanguages": "Alle Sprachen aufgenommen oder kein Treffer"
+    "voiceSampleNoLanguages": "Alle Sprachen aufgenommen oder kein Treffer",
+    "meetingLinkTitle": "Persönlicher Meeting-Link",
+    "meetingLinkDesc": "Teile diesen Link, damit andere direkt deinem Meetingraum beitreten können",
+    "meetingSlugLabel": "Dein Meeting-URL-Kürzel",
+    "saveSlug": "Speichern",
+    "slugSaved": "Meeting-Link aktualisiert",
+    "slugFailedSave": "Meeting-Link konnte nicht gespeichert werden"
   },
   "notifications": {
     "title": "Aktion erforderlich",
@@ -1256,6 +1264,22 @@
     "backgroundOffice": "Büro",
     "backgroundNotSupported": "Hintergrundeffekte werden auf diesem Geraet/Browser nicht unterstuetzt.",
     "backgroundApplyFailed": "Videohintergrund konnte nicht angewendet werden."
+  },
+  "meet": {
+    "loading": "Meetingraum wird geladen...",
+    "notFound": "Meetingraum nicht gefunden",
+    "notFoundHint": "Dieser Meeting-Link ist möglicherweise falsch oder nicht mehr aktiv.",
+    "goHome": "Zur Startseite",
+    "error": "Beitritt zum Meeting nicht möglich",
+    "tryAgain": "Erneut versuchen",
+    "joinTitle": "Meeting von {name} beitreten",
+    "joinSubtitle": "Gib deine Daten ein, um am Videoanruf teilzunehmen",
+    "yourName": "Dein Name",
+    "namePlaceholder": "Name eingeben",
+    "yourEmail": "E-Mail (optional)",
+    "emailPlaceholder": "du@beispiel.de",
+    "emailHint": "Damit der Gastgeber dich bei Bedarf kontaktieren kann",
+    "continue": "Weiter"
   },
   "callSetup": {
     "title": "Anruf starten",

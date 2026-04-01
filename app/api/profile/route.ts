@@ -58,6 +58,7 @@ export async function PATCH(request: Request) {
       'phone_number',
       'preferences',
       'default_retention_days',
+      'meeting_slug',
     ]
     
     const filteredUpdates = Object.keys(updates)
@@ -97,6 +98,22 @@ export async function PATCH(request: Request) {
       }
     }
 
+    if ('meeting_slug' in filteredUpdates) {
+      const raw = filteredUpdates.meeting_slug
+      if (raw !== null && raw !== undefined) {
+        const slug = String(raw).trim().toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+        if (slug.length < 2 || slug.length > 60) {
+          return NextResponse.json(
+            { error: 'Meeting slug must be between 2 and 60 characters' },
+            { status: 400 }
+          )
+        }
+        filteredUpdates.meeting_slug = slug
+      }
+    }
+
     if ('preferences' in filteredUpdates) {
       const value = filteredUpdates.preferences
       if (value !== null && (typeof value !== 'object' || Array.isArray(value))) {
@@ -121,11 +138,19 @@ export async function PATCH(request: Request) {
     if (error) {
       console.error('Error updating profile:', error)
       console.error('Error details:', JSON.stringify(error, null, 2))
-      if (error.code === '23505' && (error.message || '').includes('phone_number')) {
-        return NextResponse.json(
-          { error: 'This phone number is already used by another account' },
-          { status: 409 }
-        )
+      if (error.code === '23505') {
+        if ((error.message || '').includes('phone_number')) {
+          return NextResponse.json(
+            { error: 'This phone number is already used by another account' },
+            { status: 409 }
+          )
+        }
+        if ((error.message || '').includes('meeting_slug')) {
+          return NextResponse.json(
+            { error: 'This meeting link slug is already taken. Please choose another.' },
+            { status: 409 }
+          )
+        }
       }
       return NextResponse.json({ 
         error: 'Failed to update profile', 

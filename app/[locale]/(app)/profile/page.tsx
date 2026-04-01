@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations, useLocale } from "next-intl"
-import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug, Smartphone, Share, Plus } from "lucide-react"
+import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug, Smartphone, Share, Plus, Link2, Check, Copy, Video } from "lucide-react"
 import { BugReporter } from "@/components/error/BugReporter"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -109,6 +109,11 @@ export default function ProfilePage() {
   const [phoneSaving, setPhoneSaving] = useState(false)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [phoneSuccess, setPhoneSuccess] = useState<string | null>(null)
+  const [slugInput, setSlugInput] = useState('')
+  const [slugSaving, setSlugSaving] = useState(false)
+  const [slugError, setSlugError] = useState<string | null>(null)
+  const [slugSuccess, setSlugSuccess] = useState<string | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     async function fetchProfile() {
@@ -126,6 +131,7 @@ export default function ProfilePage() {
         const data: UserProfile = await profileRes.json()
         setProfile(data)
         setPhoneNumberInput(data.phone_number || '')
+        setSlugInput((data as any).meeting_slug || '')
         if (templatesRes.ok) {
           const t = await templatesRes.json()
           setTemplates(t.map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })))
@@ -225,6 +231,50 @@ export default function ProfilePage() {
     } finally {
       setPhoneSaving(false)
     }
+  }
+
+  const meetingSlug = (profile as any)?.meeting_slug as string | undefined
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  const meetingLink = meetingSlug ? `${appUrl}/meet/${meetingSlug}` : null
+
+  const saveSlug = async () => {
+    setSlugError(null)
+    setSlugSuccess(null)
+    setSlugSaving(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meeting_slug: slugInput }),
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(payload?.error || 'Failed to save meeting slug')
+      }
+      setProfile(payload)
+      setSlugInput(payload.meeting_slug || '')
+      setSlugSuccess(t('slugSaved'))
+    } catch (error: any) {
+      setSlugError(error?.message || t('slugFailedSave'))
+    } finally {
+      setSlugSaving(false)
+    }
+  }
+
+  const copyMeetingLink = async () => {
+    if (!meetingLink) return
+    try {
+      await navigator.clipboard.writeText(meetingLink)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = meetingLink
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
   }
 
   return (
@@ -345,6 +395,57 @@ export default function ProfilePage() {
                 </p>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Personal Meeting Link */}
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Video className="h-5 w-5" />
+            {t('meetingLinkTitle')}
+          </CardTitle>
+          <CardDescription>{t('meetingLinkDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {meetingLink && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
+              <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <code className="text-sm text-foreground flex-1 truncate">{meetingLink}</code>
+              <Button variant="ghost" size="sm" onClick={copyMeetingLink} className="shrink-0 h-8">
+                {linkCopied ? (
+                  <Check className="h-4 w-4 text-success" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          )}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">{t('meetingSlugLabel')}</label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex items-center gap-0 flex-1 max-w-sm">
+                <span className="text-sm text-muted-foreground whitespace-nowrap pr-1">/meet/</span>
+                <Input
+                  value={slugInput}
+                  onChange={(e) => setSlugInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="your-name"
+                  className="flex-1"
+                  disabled={slugSaving}
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={saveSlug}
+                disabled={slugSaving || slugInput === meetingSlug}
+                className="sm:w-auto w-full"
+              >
+                {slugSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('saveSlug')}
+              </Button>
+            </div>
+            {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+            {slugSuccess && <p className="text-xs text-success">{slugSuccess}</p>}
           </div>
         </CardContent>
       </Card>

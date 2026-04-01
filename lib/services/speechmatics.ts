@@ -69,8 +69,9 @@ export class SpeechmaticsService {
         language: options?.language || 'auto',
         operating_point: 'enhanced',
         diarization: 'speaker',
-        speaker_sensitivity: Number(process.env.SPEECHMATICS_SPEAKER_SENSITIVITY || '0.8'),
-        prefer_current_speaker: process.env.SPEECHMATICS_PREFER_CURRENT_SPEAKER !== 'false',
+        speaker_diarization_config: {
+          speaker_sensitivity: Number(process.env.SPEECHMATICS_SPEAKER_SENSITIVITY || '0.8'),
+        },
         enable_entities: false,
         additional_vocab: [
           { content: 'Notissima', sounds_like: ['Notiz immer', 'Notiz ima', 'no ti si ma', 'Notisima'] },

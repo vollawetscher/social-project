@@ -24,6 +24,7 @@ export interface Profile {
   preferences?: Json  // Additional user preferences for future extensibility
   created_at: string
   onboarding_expires_at?: string | null  // Trial expiry set when callee claims a call
+  meeting_slug?: string | null
 }
 
 export interface Case {

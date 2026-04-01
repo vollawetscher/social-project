@@ -55,6 +55,8 @@
     "offline": "Sin conexión — los cambios se sincronizarán cuando haya conexión",
     "syncing": "Sincronizando...",
     "syncNow": "Sincronizar ahora",
+    "meetingLink": "Enlace de reunión",
+    "linkCopied": "¡Copiado!",
     "whatsNew": "Novedades",
     "featureRequest": "Solicitar función"
   },
@@ -1037,7 +1039,13 @@
     "voiceSampleCancel": "Cancelar",
     "voiceSampleAddLanguage": "Añadir idioma",
     "voiceSampleSearchLanguage": "Buscar idiomas...",
-    "voiceSampleNoLanguages": "Todos los idiomas grabados o sin coincidencias"
+    "voiceSampleNoLanguages": "Todos los idiomas grabados o sin coincidencias",
+    "meetingLinkTitle": "Enlace de reunión personal",
+    "meetingLinkDesc": "Comparte este enlace para que cualquiera pueda unirse a tu sala de reuniones directamente",
+    "meetingSlugLabel": "Tu slug de URL de reunión",
+    "saveSlug": "Guardar",
+    "slugSaved": "Enlace de reunión actualizado",
+    "slugFailedSave": "No se pudo actualizar el enlace de reunión"
   },
   "notifications": {
     "title": "Acción requerida",
@@ -1256,6 +1264,22 @@
     "backgroundOffice": "Oficina",
     "backgroundNotSupported": "Los efectos de fondo no son compatibles con este dispositivo/navegador.",
     "backgroundApplyFailed": "No se pudo aplicar el fondo de video."
+  },
+  "meet": {
+    "loading": "Cargando sala de reuniones...",
+    "notFound": "Sala de reuniones no encontrada",
+    "notFoundHint": "Este enlace de reunión puede ser incorrecto o ya no estar activo.",
+    "goHome": "Ir al inicio",
+    "error": "No se pudo unir a la reunión",
+    "tryAgain": "Intentar de nuevo",
+    "joinTitle": "Unirse a la reunión de {name}",
+    "joinSubtitle": "Ingresa tus datos para unirte a la videollamada",
+    "yourName": "Tu nombre",
+    "namePlaceholder": "Ingresa tu nombre",
+    "yourEmail": "Correo electrónico (opcional)",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "emailHint": "Para que el anfitrión pueda contactarte si es necesario",
+    "continue": "Continuar"
   },
   "callSetup": {
     "title": "Iniciar una Llamada",

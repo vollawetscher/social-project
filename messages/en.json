@@ -55,6 +55,8 @@
     "offline": "Working offline - changes will sync when connected",
     "syncing": "Syncing...",
     "syncNow": "Sync now",
+    "meetingLink": "Meeting link",
+    "linkCopied": "Copied!",
     "whatsNew": "What's New",
     "featureRequest": "Feature Request"
   },
@@ -1038,7 +1040,13 @@
     "voiceSampleCancel": "Cancel",
     "voiceSampleAddLanguage": "Add language",
     "voiceSampleSearchLanguage": "Search languages...",
-    "voiceSampleNoLanguages": "All languages recorded or no match"
+    "voiceSampleNoLanguages": "All languages recorded or no match",
+    "meetingLinkTitle": "Personal Meeting Link",
+    "meetingLinkDesc": "Share this link so anyone can join your meeting room directly",
+    "meetingSlugLabel": "Your meeting URL slug",
+    "saveSlug": "Save",
+    "slugSaved": "Meeting link updated",
+    "slugFailedSave": "Failed to update meeting link"
   },
   "notifications": {
     "title": "Action Required",
@@ -1257,6 +1265,22 @@
     "backgroundOffice": "Office",
     "backgroundNotSupported": "Background effects are not supported on this device/browser.",
     "backgroundApplyFailed": "Could not apply video background."
+  },
+  "meet": {
+    "loading": "Loading meeting room...",
+    "notFound": "Meeting room not found",
+    "notFoundHint": "This meeting link may be incorrect or no longer active.",
+    "goHome": "Go to home",
+    "error": "Unable to join meeting",
+    "tryAgain": "Try again",
+    "joinTitle": "Join {name}'s meeting",
+    "joinSubtitle": "Enter your details to join the video call",
+    "yourName": "Your name",
+    "namePlaceholder": "Enter your name",
+    "yourEmail": "Email (optional)",
+    "emailPlaceholder": "you@example.com",
+    "emailHint": "So the host can follow up with you if needed",
+    "continue": "Continue"
   },
   "callSetup": {
     "title": "Start a Call",

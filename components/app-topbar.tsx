@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
-import { Search, WifiOff, RefreshCw, Bell, User, LogOut, Settings, Mic } from "lucide-react"
+import { Search, Link2, Check, Bell, User, LogOut, Settings } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -39,18 +39,34 @@ interface AppTopbarProps {
 }
 
 export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificationCount = 0, onSnoozeNotification, onMarkReadNotifications, onMarkAllReadNotifications }: AppTopbarProps) {
-  const [isOffline, setIsOffline] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [topbarSearch, setTopbarSearch] = useState("")
   const [notifOpen, setNotifOpen] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const { user, profile, signOut } = useAuth()
   const router = useRouter()
   const t = useTranslations('nav')
 
-  // Simulated sync function
-  const handleSync = () => {
-    setIsSyncing(true)
-    setTimeout(() => setIsSyncing(false), 2000)
+  const meetingSlug = (profile as any)?.meeting_slug as string | undefined
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  const meetingLink = meetingSlug ? `${appUrl}/meet/${meetingSlug}` : null
+
+  const handleCopyMeetingLink = async () => {
+    if (!meetingLink) return
+    try {
+      await navigator.clipboard.writeText(meetingLink)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea')
+      textarea.value = meetingLink
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    }
   }
 
   const handleLogout = async () => {
@@ -116,51 +132,34 @@ export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificati
 
         {/* Right: Status Indicators + User Menu */}
         <div className="flex items-center gap-2">
-          {/* Offline Indicator */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsOffline(!isOffline)}
-                className={cn(
-                  "h-8 gap-1.5",
-                  isOffline && "text-warning"
-                )}
-              >
-                <WifiOff className={cn("h-4 w-4", !isOffline && "opacity-30")} />
-                {isOffline && (
-                  <span className="text-xs hidden sm:inline">Offline</span>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isOffline
-                ? "Working offline - changes will sync when connected"
-                : "Connected"}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Sync Status */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSync}
-                disabled={isSyncing}
-                className="h-8"
-              >
-                <RefreshCw
-                  className={cn("h-4 w-4", isSyncing && "animate-spin")}
-                />
-                <span className="sr-only">Sync</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isSyncing ? "Syncing..." : "Sync now"}
-            </TooltipContent>
-          </Tooltip>
+          {/* Meeting Link */}
+          {meetingLink && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyMeetingLink}
+                  className={cn(
+                    "h-8 gap-1.5",
+                    linkCopied && "text-success"
+                  )}
+                >
+                  {linkCopied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                  <span className="text-xs hidden sm:inline">
+                    {linkCopied ? t('linkCopied') : t('meetingLink')}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {linkCopied ? t('linkCopied') : meetingLink}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Notifications */}
           <Popover open={notifOpen} onOpenChange={setNotifOpen}>
