@@ -652,13 +652,30 @@ export async function POST(
           ).data
         : null
 
+    // Fallback: look up consent logs for participant names when callee info is missing
+    let consentOtherName: string | null = null
+    if (linkedCall?.id && !calleeProfile?.display_name && !linkedCall?.contact_name) {
+      const { data: consentLogs } = await sessionClient
+        .from('consent_logs')
+        .select('participant_name, participant_identity')
+        .eq('call_id', linkedCall.id)
+        .eq('granted', true)
+      const otherConsent = (consentLogs || []).find(
+        (cl: any) => cl.participant_identity !== userId && cl.participant_name && cl.participant_name !== 'Guest'
+      )
+      if (otherConsent?.participant_name) {
+        consentOtherName = otherConsent.participant_name
+        console.log('[Analyze API] Resolved other participant name from consent log:', consentOtherName)
+      }
+    }
+
     const linkedInitiatorName =
       linkedCall?.user_id === userId
         ? userName
         : (callOwnerName?.display_name || null)
     const linkedOtherName =
       linkedCall?.user_id === userId
-        ? (calleeProfile?.display_name || linkedCall?.contact_name || linkedCall?.phone_number || null)
+        ? (calleeProfile?.display_name || linkedCall?.contact_name || linkedCall?.phone_number || consentOtherName || null)
         : userName
 
     const speakerResolution = buildSpeakerResolution({
@@ -835,6 +852,8 @@ export async function POST(
   Audience must be one of: "internal", "external", "client", "legal", "executive".
   Perspective must be one of: "observer" (neutral third person — default for most professional documents), "reader_facing" (second person addressing the reader directly as "you" — use for patient summaries, client-facing explanations, or any document written TO someone rather than ABOUT them). Choose the perspective that best matches the output's purpose and audience.
    **LANGUAGE for suggestedOutputFormats**: Write the title and description fields in **${outputLangName}**. The generationInstructions should also be in ${outputLangName}.
+
+**GLOBAL LANGUAGE RULE**: ALL user-facing text fields MUST be written in **${outputLangName}**. This includes: sessionSummary, extractedContext.purpose, extractedContext.topics, extractedContext.agenda, extractedContext.decisions, extractedContext.actionItems (task field), extractedContext.mood, extractedContext.outcome, domain descriptions, and all suggestedOutputFormats fields. Only participant names, roles, and technical identifiers should remain in their original language.
 9. **Transcript Corrections**: If you notice obvious transcription errors (ASR misspellings of proper nouns, technical terms, place names), suggest corrections. Also, if the transcript has more than 2 speaker labels but the conversation is clearly between only 2 speakers, suggest speaker merges (e.g. "S3" should be merged into "S1").
 
 Transcript sample:
@@ -915,7 +934,7 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
 - Be accurate and preserve correct spelling from transcript
 - For consent: focus on the first 1-2 minutes of the conversation. If nothing found, use discussed: false, participantsConsented: [], summary: null
 - For spokenCommands: use fuzzy matching. Accept Notissima + common ASR misspellings (Notisima, Notissma, Natissima, etc.). Accept phonetically similar wake words. Include if it reasonably looks like a command to the assistant. Preserve the exact phrase from transcript. Empty array if none found
-- Add "sessionSummary" as 2-5 concise bullets in the transcript language, focused on what happened, decisions, and next actions.
+- Add "sessionSummary" as 2-5 concise bullets in **${outputLangName}**, focused on what happened, decisions, and next actions.
 - For wordCorrections: only flag high-confidence corrections (names, places, technical terms that ASR clearly misspelled). Empty array if none.
 - For speakerMerges: only suggest if clearly fewer actual speakers than labels. Empty array if none.`
         }

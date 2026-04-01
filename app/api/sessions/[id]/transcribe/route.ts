@@ -263,7 +263,7 @@ async function processTranscriptionJob(sessionId: string) {
     }, supabase)
     const { data: linkedCall } = await supabase
       .from('calls')
-      .select('user_id, callee_user_id, contact_name, session_id, callee_session_id, call_type, pstn_transcription_mode, room_created_at_ms, track_a_started_at_ns, track_b_started_at_ns')
+      .select('id, user_id, callee_user_id, contact_name, session_id, callee_session_id, call_type, pstn_transcription_mode, room_created_at_ms, track_a_started_at_ns, track_b_started_at_ns, started_at, ended_at')
       .or(`session_id.eq.${sessionId},callee_session_id.eq.${sessionId}`)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -833,8 +833,22 @@ async function processTranscriptionJob(sessionId: string) {
       .eq('id', sessionId)
       .single()
 
-    const sessionDuration = sessionData?.duration_sec || 0
+    let sessionDuration = sessionData?.duration_sec || 0
     const userId = sessionData?.user_id
+
+    // Fallback: compute duration from call timestamps when egress reported 0
+    if (sessionDuration === 0 && linkedCall?.started_at && linkedCall?.ended_at) {
+      const startMs = new Date(linkedCall.started_at).getTime()
+      const endMs = new Date(linkedCall.ended_at).getTime()
+      if (endMs > startMs) {
+        sessionDuration = Math.round((endMs - startMs) / 1000)
+        await supabase
+          .from('sessions')
+          .update({ duration_sec: sessionDuration })
+          .eq('id', sessionId)
+        console.log(`[Transcribe] Duration fallback from call window: ${sessionDuration}s`)
+      }
+    }
 
     // Record transcription minutes for usage tracking (beta cost calculation)
     if (sessionDuration > 0) {
@@ -925,6 +939,15 @@ async function processTranscriptionJob(sessionId: string) {
 
     // If a callee claimed this call before transcription finished, copy the transcript now
     await copyTranscriptToCalleeSession(supabase, sessionId)
+
+    // Mark linked call as done now that transcription is complete
+    if (linkedCall?.id) {
+      await supabase
+        .from('calls')
+        .update({ status: 'done' })
+        .eq('id', linkedCall.id)
+      console.log('[Transcribe] Call marked as done:', linkedCall.id)
+    }
 
     console.log('[Transcribe] All steps completed successfully!')
     await logPipelineEvent({
