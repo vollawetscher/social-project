@@ -254,7 +254,7 @@ export default function MeetPage() {
     return (
       <CallSetup
         mode="video"
-        isAuthenticated={!!user}
+        isAuthenticated={true}
         userName={visitorName || user?.user_metadata?.full_name || user?.email?.split("@")[0]}
         onJoin={handleJoinCall}
         onCancel={() => {

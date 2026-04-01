@@ -98,19 +98,23 @@ function normalizeRealtimeLanguageCode(input: unknown): string | null {
   return /^[a-z]{2}$/.test(base) ? base : null
 }
 
-type VideoBackgroundChoice = "none" | "blur" | "office"
+type VideoBackgroundChoice = "none" | "blur" | "home" | "office" | "conference"
 
 const VIDEO_BACKGROUND_CHOICES: Array<{ value: VideoBackgroundChoice; labelKey: string }> = [
-  { value: "none",   labelKey: "backgroundNone" },
-  { value: "blur",   labelKey: "backgroundBlur" },
-  { value: "office", labelKey: "backgroundOffice" },
+  { value: "none",       labelKey: "backgroundNone" },
+  { value: "blur",       labelKey: "backgroundBlur" },
+  { value: "home",       labelKey: "backgroundHome" },
+  { value: "office",     labelKey: "backgroundOffice" },
+  { value: "conference", labelKey: "backgroundConference" },
 ]
 const VIDEO_BACKGROUND_STORAGE_KEY = "notissima.video_background"
 const AUDIO_INPUT_KEY = "notissima.call.audioInputDeviceId"
 const VIDEO_INPUT_KEY = "notissima.call.videoInputDeviceId"
 
 function getBackgroundImagePath(choice: VideoBackgroundChoice): string | null {
-  if (choice === "office") return "/backgrounds/office.svg"
+  if (choice === "home") return "/backgrounds/home.jpg"
+  if (choice === "office") return "/backgrounds/office.jpg"
+  if (choice === "conference") return "/backgrounds/conference.jpg"
   return null
 }
 

@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
-type VideoBackgroundChoice = "none" | "blur" | "office"
+type VideoBackgroundChoice = "none" | "blur" | "home" | "office" | "conference"
 const VIDEO_BACKGROUND_STORAGE_KEY = "notissima.video_background"
 
 const BG_CHOICES: Array<{ value: VideoBackgroundChoice; image?: string; labelKey: string }> = [
-  { value: "none",   labelKey: "backgroundNone" },
-  { value: "blur",   labelKey: "backgroundBlur" },
-  { value: "office", image: "/backgrounds/office.svg", labelKey: "backgroundOffice" },
+  { value: "none",       labelKey: "backgroundNone" },
+  { value: "blur",       labelKey: "backgroundBlur" },
+  { value: "home",       image: "/backgrounds/home.jpg",       labelKey: "backgroundHome" },
+  { value: "office",     image: "/backgrounds/office.jpg",     labelKey: "backgroundOffice" },
+  { value: "conference", image: "/backgrounds/conference.jpg", labelKey: "backgroundConference" },
 ]
 
 interface CallSetupProps {

@@ -14,11 +14,14 @@ export async function GET() {
 
     const activeStatuses = ['waiting', 'invited', 'active', 'connected', 'recording']
 
+    // Exclude calls where the user is the callee — those are handled by
+    // GlobalIncomingCallListener (incoming call dialog), not the Rejoin banner.
     const { data: call } = await supabase
       .from('calls')
-      .select('id, room_name, call_type, call_mode, status, contact_name, phone_number, started_at, last_heartbeat_at, created_at')
+      .select('id, room_name, call_type, call_mode, status, contact_name, phone_number, started_at, last_heartbeat_at, created_at, callee_user_id')
       .eq('user_id', user.id)
       .in('status', activeStatuses)
+      .or(`callee_user_id.is.null,callee_user_id.neq.${user.id}`)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()

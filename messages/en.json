@@ -1311,7 +1311,9 @@
     "background": "Background",
     "backgroundNone": "None",
     "backgroundBlur": "Blur",
-    "backgroundOffice": "Office"
+    "backgroundHome": "Home",
+    "backgroundOffice": "Office",
+    "backgroundConference": "Conference"
   },
   "callEnded": {
     "title": "Call Ended",

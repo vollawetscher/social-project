@@ -1310,7 +1310,9 @@
     "background": "Hintergrund",
     "backgroundNone": "Keiner",
     "backgroundBlur": "Unschärfe",
-    "backgroundOffice": "Büro"
+    "backgroundHome": "Zuhause",
+    "backgroundOffice": "Büro",
+    "backgroundConference": "Konferenz"
   },
   "callEnded": {
     "title": "Anruf beendet",
