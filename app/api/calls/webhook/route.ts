@@ -209,22 +209,36 @@ export async function POST(request: Request) {
 
         if (!call) break
 
+        const hasEgress = !!(call.track_a_egress_id || call.track_b_egress_id)
         const wasNeverActive = call.status === 'invited' || call.status === 'waiting'
+
         if (call.status === 'active' || call.status === 'waiting' || call.status === 'invited') {
           const nextStatus = wasNeverActive ? 'missed' : 'ended'
-          await supabase
-            .from('calls')
-            .update({
-              status: nextStatus,
-              ended_at: new Date().toISOString(),
-              missed_at: nextStatus === 'missed' ? new Date().toISOString() : undefined,
-            })
-            .eq('id', call.id)
+
+          if (call.status === 'active' && !hasEgress) {
+            console.error('[LiveKit Webhook] WARNING: Active call ended with NO recording:', call.id,
+              'started_at:', call.started_at, 'session:', call.session_id)
+            await supabase
+              .from('calls')
+              .update({
+                status: nextStatus,
+                ended_at: new Date().toISOString(),
+                last_error: 'Call was active but no recording was started (egress never triggered)',
+              })
+              .eq('id', call.id)
+          } else {
+            await supabase
+              .from('calls')
+              .update({
+                status: nextStatus,
+                ended_at: new Date().toISOString(),
+                missed_at: nextStatus === 'missed' ? new Date().toISOString() : undefined,
+              })
+              .eq('id', call.id)
+          }
 
           console.log('[LiveKit Webhook] Call', nextStatus, ':', call.id)
         }
-
-        const hasEgress = !!(call.track_a_egress_id || call.track_b_egress_id)
 
         if (call.session_id && hasEgress && !wasNeverActive) {
           // Egress is still flushing to S3 — set session to 'uploading'.

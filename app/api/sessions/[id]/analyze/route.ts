@@ -5,7 +5,7 @@ import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { requireSessionAccess } from '@/lib/auth/helpers'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { resolveTokenBudget } from '@/lib/services/token-budget'
-import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
+import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/services/queue'
 import { createNotification } from '@/lib/services/notification-service'
 import { normalizeLanguageCode, resolveOutputLanguageCode, LANG_NAMES } from '@/lib/utils/language'
 
@@ -475,6 +475,7 @@ export async function POST(
           idempotencyKey: `session_analyze:${params.id}`,
           maxAttempts: 5,
         })
+        await linkJobToSession(job.id, params.id)
         triggerAsyncWorker()
         console.log('[Analyze API] Enqueued to async queue, jobId:', job.id)
         return NextResponse.json(

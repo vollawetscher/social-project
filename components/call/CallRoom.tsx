@@ -859,6 +859,8 @@ function CallRoomInner({
     const interval = setInterval(() => {
       fetch(`/api/calls/${callId}/heartbeat`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hasRemote }),
         keepalive: true,
       }).catch(() => {})
       fetch(`/api/calls/presence/heartbeat`, {
@@ -872,7 +874,7 @@ function CallRoomInner({
       }).catch(() => {})
     }, 15_000)
     return () => clearInterval(interval)
-  }, [callId, isConnected, roomName])
+  }, [callId, isConnected, roomName, hasRemote])
 
   useEffect(() => {
     if (isConnected) {

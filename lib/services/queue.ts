@@ -136,6 +136,38 @@ export async function failAsyncJob(jobId: string, message: string): Promise<void
   if (error) throw error
 }
 
+/**
+ * Link a queued job to its session so the session knows it's waiting for work.
+ * Called after enqueueAsyncJob at each dispatch site.
+ */
+export async function linkJobToSession(jobId: string, sessionId: string): Promise<void> {
+  const supabase = createServiceRoleClient()
+  const { error } = await supabase
+    .from('sessions')
+    .update({ pending_job_id: jobId })
+    .eq('id', sessionId)
+  if (error) {
+    console.warn('[Queue] Failed to link job to session:', error.message)
+  }
+}
+
+/**
+ * Clear the pending job flag on a session. Called when a job completes or
+ * permanently fails. Passing the jobId ensures we only clear if the session
+ * is still waiting for *this* job (avoids race with a newer job).
+ */
+export async function unlinkJobFromSession(jobId: string, sessionId: string): Promise<void> {
+  const supabase = createServiceRoleClient()
+  const { error } = await supabase
+    .from('sessions')
+    .update({ pending_job_id: null })
+    .eq('id', sessionId)
+    .eq('pending_job_id', jobId)
+  if (error) {
+    console.warn('[Queue] Failed to unlink job from session:', error.message)
+  }
+}
+
 export function triggerAsyncWorker(): void {
   const secret = process.env.INTERNAL_API_SECRET
   if (!secret) return

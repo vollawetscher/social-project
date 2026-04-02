@@ -5,7 +5,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { logError } from '@/lib/services/error-logger'
-import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
+import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/services/queue'
 
 export async function POST(request: Request) {
   try {
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       idempotencyKey: `session_analyze:${sessionId}`,
       maxAttempts: 5,
     })
+    await linkJobToSession(job.id, sessionId)
     triggerAsyncWorker()
 
     console.log('[Post-Transcribe] Analyze queued for session:', sessionId, 'job:', job.id)

@@ -6,7 +6,7 @@ import { createPIIRedactionService } from '@/lib/services/pii-redaction'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { generateReport } from '@/lib/services/report-generator'
 import { createErrorLogger } from '@/lib/services/error-logger'
-import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
+import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/services/queue'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { alignTranscripts } from '@/lib/services/transcript-aligner'
 import { prependVoiceSample } from '@/lib/services/voice-sample-prepend'
@@ -1063,6 +1063,7 @@ export async function POST(
         idempotencyKey: `session_transcribe:${params.id}`,
         maxAttempts: 5,
       })
+      await linkJobToSession(job.id, params.id)
       triggerAsyncWorker()
       await logPipelineEvent({
         sessionId: params.id,

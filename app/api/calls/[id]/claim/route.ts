@@ -84,6 +84,12 @@ export async function POST(
       .eq('session_id', call.session_id)
 
     const transcriptDone = (callerTranscripts?.length ?? 0) > 0
+    const hasRecording = (callerFiles?.length ?? 0) > 0 || !!call.track_a_egress_id
+
+    // No recording AND no transcript → nothing to fork
+    if (!transcriptDone && !hasRecording && callerSession.status === 'created') {
+      return NextResponse.json({ error: 'No recording available for this call' }, { status: 404 })
+    }
 
     // --- 5. Create the callee's forked session ---
     const callName = call.contact_name

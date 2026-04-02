@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
   const { data: stuckSessions, error: sessError } = await supabase
     .from('sessions')
-    .select('id, status, created_at')
+    .select('id, status, created_at, pending_job_id')
     .in('status', ['uploading', 'recording'])
     .lt('created_at', sessionCutoff)
 
@@ -97,6 +97,7 @@ export async function POST(request: Request) {
         .from('sessions')
         .update({
           status: 'error',
+          pending_job_id: null,
           last_error: `Stuck in '${session.status}' for over ${STALE_SESSION_MINUTES} minutes — cleaned up automatically`,
         })
         .eq('id', session.id)
@@ -108,9 +109,63 @@ export async function POST(request: Request) {
     }
   }
 
+  // --- Phase 3: Reconcile sessions with orphaned pending_job_id ---
+  // Sessions that have a pending_job_id but the job is completed/failed/missing.
+  const { data: pendingSessions, error: pendingErr } = await supabase
+    .from('sessions')
+    .select('id, status, pending_job_id')
+    .not('pending_job_id', 'is', null)
+
+  if (pendingErr) {
+    console.error('[Stale Cleanup] Pending job query error:', pendingErr.message)
+  }
+
+  let reconciledSessions = 0
+
+  for (const session of pendingSessions || []) {
+    try {
+      const { data: job } = await supabase
+        .from('async_jobs')
+        .select('id, status, last_error')
+        .eq('id', session.pending_job_id)
+        .maybeSingle()
+
+      if (!job) {
+        // Job row is gone — clear the stale pointer
+        await supabase
+          .from('sessions')
+          .update({ pending_job_id: null })
+          .eq('id', session.id)
+        reconciledSessions++
+        console.log(`[Stale Cleanup] Cleared missing job ref on session ${session.id}`)
+      } else if (job.status === 'completed') {
+        await supabase
+          .from('sessions')
+          .update({ pending_job_id: null })
+          .eq('id', session.id)
+        reconciledSessions++
+        console.log(`[Stale Cleanup] Cleared completed job ref on session ${session.id}`)
+      } else if (job.status === 'failed') {
+        await supabase
+          .from('sessions')
+          .update({
+            pending_job_id: null,
+            status: 'error',
+            last_error: `Job failed: ${(job.last_error || 'unknown').slice(0, 500)}`,
+          })
+          .eq('id', session.id)
+        reconciledSessions++
+        console.log(`[Stale Cleanup] Marked session ${session.id} as error (job ${job.id} failed)`)
+      }
+    } catch (err: any) {
+      console.error(`[Stale Cleanup] Error reconciling session ${session.id}:`, err.message)
+    }
+  }
+
   return NextResponse.json({
     cleanedCalls,
     cleanedSessions,
-    checked: (staleCalls?.length || 0) + (stuckSessions?.length || 0),
+    reconciledSessions,
+    checked: (staleCalls?.length || 0) + (stuckSessions?.length || 0) + (pendingSessions?.length || 0),
   })
 }

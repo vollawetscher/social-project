@@ -8,6 +8,8 @@ import {
   retryAsyncJob,
   failAsyncJob,
   triggerAsyncWorker,
+  linkJobToSession,
+  unlinkJobFromSession,
   type AsyncJobRow,
 } from '@/lib/services/queue'
 import { runPulseUpdateJob } from '@/lib/services/pulse/pulse-service'
@@ -235,13 +237,14 @@ async function processPulseUpdateJob(job: AsyncJobRow): Promise<Record<string, u
     // If analysis is not ready yet, ensure an analyze job exists.
     // Idempotency keeps this safe across retries.
     if (['done', 'ready', 'error'].includes(status)) {
-      await enqueueAsyncJob({
+      const analyzeJob = await enqueueAsyncJob({
         userId: job.user_id,
         jobType: 'session_analyze',
         payload: { sessionId },
         idempotencyKey: `session_analyze:${sessionId}`,
         maxAttempts: 5,
       })
+      await linkJobToSession(analyzeJob.id, sessionId).catch(() => {})
       triggerAsyncWorker()
     }
     throw new Error(`Pulse waiting for analysis artifacts (session=${sessionId}, status=${status || 'unknown'})`)
@@ -299,9 +302,12 @@ export async function POST(request: Request) {
 
     const processed: Array<{ id: string; status: string }> = []
     for (const job of jobs) {
+      const sessionId = typeof (job.payload as any)?.sessionId === 'string' ? (job.payload as any).sessionId : null
+
       try {
         const result = await processJob(request, job)
         await completeAsyncJob(job.id, result)
+        if (sessionId) await unlinkJobFromSession(job.id, sessionId).catch(() => {})
         processed.push({ id: job.id, status: 'completed' })
 
         if (job.attempt_count > 1) {
@@ -320,7 +326,7 @@ export async function POST(request: Request) {
           severity: job.attempt_count >= job.max_attempts ? 'error' : 'warning',
           message: `[Async Queue] Job ${job.id} (${job.job_type}) failed: ${message}`,
           error,
-          sessionId: typeof (job.payload as any)?.sessionId === 'string' ? (job.payload as any).sessionId : null,
+          sessionId,
           userId: job.user_id,
           endpoint: '/api/internal/jobs/run',
           method: 'POST',
@@ -337,6 +343,15 @@ export async function POST(request: Request) {
 
         if (job.attempt_count >= job.max_attempts) {
           await failAsyncJob(job.id, message)
+          if (sessionId) {
+            await unlinkJobFromSession(job.id, sessionId).catch(() => {})
+            try {
+              await supabase
+                .from('sessions')
+                .update({ status: 'error', last_error: `Job ${job.job_type} failed after ${job.max_attempts} attempts: ${message.slice(0, 500)}` })
+                .eq('id', sessionId)
+            } catch {}
+          }
           processed.push({ id: job.id, status: 'failed' })
         } else {
           await retryAsyncJob(job, message)
