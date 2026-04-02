@@ -1,0 +1,42 @@
+---
+description: Prefer AI-native solutions over deterministic heuristics when Claude or another LLM is already in the loop
+alwaysApply: true
+---
+
+# AI-First Design Principle
+
+When building features where an LLM already processes the data, prefer delegating decisions to the model over writing deterministic code.
+
+## The Anti-Pattern
+
+Writing heuristic code to solve problems the AI can solve better in context:
+
+- Stop-word counting to detect language when Claude is already reading the transcript
+- Token multipliers and page-count maps to control output length instead of telling Claude to use professional judgment
+- Regex-based classification when the model already analyzes the content
+
+## The Rule
+
+**Before writing deterministic logic, ask: "Is an LLM already seeing this data?"**
+
+If yes — add a field to the prompt or an instruction, not a function. The model has full context (content, value, audience, complexity) that no heuristic can match.
+
+## When Deterministic Code IS Appropriate
+
+- Pre-analysis quick previews (e.g., initial language guess before Claude runs)
+- Validation and sanitization of AI output
+- Performance-critical paths where LLM latency is unacceptable
+- Security boundaries and access control
+
+## Examples
+
+```
+BAD:  Write a detectLanguage() function with stop-word sets
+GOOD: Add "detectedLanguage" to Claude's response format
+
+BAD:  Map lengthPreference to token ceilings with scaling factors
+GOOD: Tell Claude "use professional judgment — length should match substance and stakes"
+
+BAD:  Regex to classify recording type, then post-process overrides
+GOOD: Give Claude the input_hint and participant metadata, let it classify correctly
+```

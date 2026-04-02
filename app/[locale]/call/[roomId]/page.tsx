@@ -41,10 +41,17 @@ export default function CallRoomPage() {
   const [contactName, setContactName] = useState<string | undefined>()
   const [callerName, setCallerName] = useState<string>("Someone")
   const [joinDisplayName, setJoinDisplayName] = useState<string>("Guest")
+  const [participantIdentity, setParticipantIdentity] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (authLoading) return
+
+    // Lock in the participant identity once auth is resolved (avoids race conditions
+    // where user.id is temporarily unavailable, causing a guest-* fallback).
+    if (!participantIdentity) {
+      setParticipantIdentity(user?.id || `guest-${Date.now()}`)
+    }
 
     // Authenticated user with token = go straight to active
     if (tokenParam && callIdParam) {
@@ -79,7 +86,7 @@ export default function CallRoomPage() {
     }
 
     fetchCallerInfo()
-  }, [authLoading, callIdParam, tokenParam, user])
+  }, [authLoading, callIdParam, tokenParam, user, participantIdentity])
 
   const handleJoin = useCallback(async (displayName: string) => {
     setPhase("joining")
@@ -214,7 +221,7 @@ export default function CallRoomPage() {
           body: JSON.stringify({
             granted,
             participantName: joinDisplayName,
-            participantIdentity: user?.id || `guest-${Date.now()}`,
+            participantIdentity: participantIdentity || user?.id || `guest-${Date.now()}`,
           }),
         }).catch(() => {})
       }

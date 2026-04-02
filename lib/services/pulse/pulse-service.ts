@@ -3,16 +3,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildPulsePrompt } from '@/lib/services/pulse/buildPulsePrompt'
 import type { ProjectPulse, PulseSessionInput, ParticipantEntry, DecisionEntry } from '@/lib/types/pulse'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { normalizeLanguageCode } from '@/lib/utils/language'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null
-
-function normalizeLanguageCode(value?: string | null): string {
-  const raw = String(value || '').trim().toLowerCase()
-  if (!raw || raw === 'session' || raw === 'auto') return 'de'
-  return raw.slice(0, 2)
-}
 
 function readSummaryBullets(input: string | null | undefined): string[] {
   const raw = String(input || '').trim()
@@ -261,8 +256,8 @@ export async function runPulseUpdateJob(input: {
     .maybeSingle()
 
   const userLanguage = normalizeLanguageCode(
-    (ownerProfile as any)?.preferred_report_language || (ownerProfile as any)?.preferred_locale || 'de'
-  )
+    (ownerProfile as any)?.preferred_report_language || (ownerProfile as any)?.preferred_locale
+  ) || 'de'
   const currentPulse = (caseRow.pulse || null) as ProjectPulse | null
   const resolvedMarkers = extractResolvedLoopMarkers(
     `${String(sessionRow?.private_comments || '')}\n${String(sessionRow?.context_note || '')}`

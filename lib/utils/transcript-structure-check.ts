@@ -23,6 +23,9 @@ export function needsStructureHeuristic(rawFileContent: string, filename: string
   if (trimmed.includes('-->') && /\d{2}:\d{2}:\d{2}[.,]\d{3}/.test(trimmed)) return false
   if (lower.startsWith('webvtt')) return false
 
+  // MS Teams / generic timed transcript: "0:00:12.340 --> 0:00:18.560" (single-digit hour)
+  if (trimmed.includes('-->') && /\d{1,2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{1,2}:\d{2}:\d{2}\.\d{3}/.test(trimmed)) return false
+
   // Speaker-labeled transcript (S1:, S2:, Speaker 1:, SPEAKER_00:) — already handled by parseTXT
   const speakerLabelLines = trimmed.split(/\r?\n/).filter(l =>
     /^\s*(S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:\s+/i.test(l)

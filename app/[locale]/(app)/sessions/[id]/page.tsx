@@ -597,9 +597,11 @@ export default function SessionDetailPage() {
         setSession(v0Session)
         setSessionFiles(sessionData.files || [])
 
-        // Detect language mismatch: session configured language vs transcript-detected language
+        // Detect language mismatch: session configured language vs transcript-detected language.
+        // Ignore 'auto' — it means no detection ran (common for imported transcripts).
         const sessionLang = (sessionData.language || '').slice(0, 2).toLowerCase()
-        const transcriptLang = (transcriptData?.language || '').slice(0, 2).toLowerCase()
+        const rawTranscriptLang = (transcriptData?.language || '').toLowerCase()
+        const transcriptLang = rawTranscriptLang === 'auto' ? '' : rawTranscriptLang.slice(0, 2)
         if (sessionLang && transcriptLang && sessionLang !== transcriptLang) {
           setLanguageMismatch({ sessionLang, transcriptLang })
         } else {

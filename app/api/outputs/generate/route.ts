@@ -12,6 +12,7 @@ import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { resolveTokenBudget } from '@/lib/services/token-budget'
 import { createNotification } from '@/lib/services/notification-service'
+import { normalizeLanguageCode, detectLanguageHint, resolveOutputLanguageCode, LANG_NAMES } from '@/lib/utils/language'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -283,133 +284,6 @@ export async function POST(request: Request) {
       technical: 'technical and detailed',
     }
 
-    const normalizeLanguageCode = (value?: string | null): string | null => {
-      const raw = String(value || '').trim().toLowerCase()
-      if (!raw || raw === 'auto' || raw === 'session') return null
-
-      const aliases: Record<string, string> = {
-        en: 'en',
-        english: 'en',
-        de: 'de',
-        german: 'de',
-        deutsch: 'de',
-        es: 'es',
-        spanish: 'es',
-        espanol: 'es',
-        'español': 'es',
-        fr: 'fr',
-        french: 'fr',
-        it: 'it',
-        italian: 'it',
-        pt: 'pt',
-        portuguese: 'pt',
-        nl: 'nl',
-        dutch: 'nl',
-        pl: 'pl',
-        polish: 'pl',
-        th: 'th',
-        thai: 'th',
-        ja: 'ja',
-        japanese: 'ja',
-        ko: 'ko',
-        korean: 'ko',
-        zh: 'zh',
-        chinese: 'zh',
-        ar: 'ar',
-        arabic: 'ar',
-        ru: 'ru',
-        russian: 'ru',
-        tr: 'tr',
-        turkish: 'tr',
-        vi: 'vi',
-        vietnamese: 'vi',
-        hi: 'hi',
-        hindi: 'hi',
-      }
-
-      if (aliases[raw]) return aliases[raw]
-
-      // Handle locale variants like de-DE, en_US, pt-BR.
-      const localePrefix = raw.split(/[-_]/)[0]
-      if (aliases[localePrefix]) return aliases[localePrefix]
-
-      return null
-    }
-
-    const detectLanguageFromTranscriptText = (text: string): string | null => {
-      const sample = String(text || '').slice(0, 6000)
-      if (!sample.trim()) return null
-
-      // Script-based detection first (high confidence for non-Latin scripts)
-      if (/[\u3040-\u30ff]/.test(sample)) return 'ja' // Hiragana + Katakana
-      if (/[\uac00-\ud7af]/.test(sample)) return 'ko' // Hangul
-      if (/[\u0e00-\u0e7f]/.test(sample)) return 'th' // Thai
-      if (/[\u0600-\u06ff]/.test(sample)) return 'ar' // Arabic
-      if (/[\u0900-\u097f]/.test(sample)) return 'hi' // Devanagari
-      if (/[\u0400-\u04ff]/.test(sample)) return 'ru' // Cyrillic (default to Russian)
-
-      // Han-only text without Kana can be Chinese.
-      if (/[\u4e00-\u9fff]/.test(sample)) return 'zh'
-
-      // Lightweight Latin-language heuristic fallback
-      const lower = sample.toLowerCase()
-      const tokens = lower.match(/[a-z\u00c0-\u017f]+/g) || []
-      if (tokens.length < 8) return null
-
-      const scoreByLang: Record<string, number> = {
-        en: 0, de: 0, es: 0, fr: 0, it: 0, pt: 0, nl: 0, pl: 0, tr: 0, vi: 0,
-      }
-      const addScore = (lang: string, points: number) => {
-        scoreByLang[lang] = (scoreByLang[lang] || 0) + points
-      }
-
-      const markers: Record<string, string[]> = {
-        en: ['the', 'and', 'with', 'from', 'that', 'this'],
-        de: ['und', 'der', 'die', 'das', 'nicht', 'mit', 'ist'],
-        es: ['el', 'la', 'de', 'que', 'con', 'para', 'los'],
-        fr: ['le', 'la', 'les', 'des', 'avec', 'pour', 'dans'],
-        it: ['il', 'la', 'di', 'che', 'con', 'per', 'nel'],
-        pt: ['de', 'que', 'com', 'para', 'uma', 'não'],
-        nl: ['de', 'het', 'een', 'met', 'van', 'voor'],
-        pl: ['i', 'że', 'nie', 'się', 'jest', 'dla'],
-        tr: ['ve', 'bir', 'ile', 'için', 'gibi', 'ama'],
-        vi: ['và', 'là', 'cho', 'trong', 'không', 'của'],
-      }
-
-      for (const token of tokens) {
-        for (const [lang, words] of Object.entries(markers)) {
-          if (words.includes(token)) addScore(lang, 1)
-        }
-      }
-
-      const ranked = Object.entries(scoreByLang).sort((a, b) => b[1] - a[1])
-      if (!ranked[0] || ranked[0][1] < 2) return null
-      return ranked[0][0]
-    }
-
-    const resolveOutputLanguageCode = (
-      requested: string | undefined,
-      sessionLang: string | undefined,
-      preferredReportLanguage: string | undefined,
-      detectedTranscriptLanguage?: string | undefined
-    ): string => {
-      const requestedRaw = String(requested || '').trim().toLowerCase()
-      if (requestedRaw && requestedRaw !== 'session' && requestedRaw !== 'auto') {
-        return normalizeLanguageCode(requested) || 'de'
-      }
-
-      const preferredRaw = String(preferredReportLanguage || '').trim().toLowerCase()
-      if (preferredRaw && preferredRaw !== 'session' && preferredRaw !== 'auto') {
-        return normalizeLanguageCode(preferredReportLanguage) || 'de'
-      }
-
-      return (
-        normalizeLanguageCode(detectedTranscriptLanguage) ||
-        normalizeLanguageCode(sessionLang) ||
-        'de'
-      )
-    }
-
     const detectedTranscriptLanguage = Array.from(
       new Set(
         (transcriptRows || [])
@@ -419,14 +293,14 @@ export async function POST(request: Request) {
     )[0] || normalizeLanguageCode((transcript as any)?.language || undefined) || undefined
 
     const heuristicTranscriptLanguage =
-      detectLanguageFromTranscriptText(transcriptText) || undefined
+      detectLanguageHint(transcriptText) || undefined
 
-    const resolvedLanguageCode = resolveOutputLanguageCode(
-      config.language,
-      (session as any).language,
-      (session as any).preferred_report_language,
-      detectedTranscriptLanguage || heuristicTranscriptLanguage
-    )
+    const resolvedLanguageCode = resolveOutputLanguageCode({
+      requested: config.language,
+      userPreference: (session as any).preferred_report_language,
+      sessionLanguage: (session as any).language,
+      transcriptLanguage: detectedTranscriptLanguage || heuristicTranscriptLanguage,
+    })
 
     const dateLocaleCodeMap: Record<string, string> = {
       de: 'de-DE', en: 'en-US', es: 'es-ES', fr: 'fr-FR', it: 'it-IT',
@@ -451,26 +325,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const languageMap: Record<string, string> = {
-      en: 'English',
-      de: 'German',
-      pl: 'Polish',
-      fr: 'French',
-      es: 'Spanish',
-      it: 'Italian',
-      pt: 'Portuguese',
-      nl: 'Dutch',
-      th: 'Thai',
-      ja: 'Japanese',
-      ko: 'Korean',
-      zh: 'Chinese',
-      ar: 'Arabic',
-      ru: 'Russian',
-      tr: 'Turkish',
-      vi: 'Vietnamese',
-      hi: 'Hindi',
-    }
-    const outputLanguage = languageMap[resolvedLanguageCode] || 'English'
+    const outputLanguage = LANG_NAMES[resolvedLanguageCode] || 'English'
 
     const formatMap: Record<string, string> = {
       email: 'an email',
@@ -493,6 +348,7 @@ Key requirements:
 - Include a clear "Date/Time" line near the top of the output using the provided session start date/time value.
 - Do NOT use the current date/time when session timing is provided; use the provided session timing context instead.
 - Do NOT use any emojis or emoticons anywhere in the output.
+- **Length**: Use professional judgment. The output length should be proportionate to the substance, complexity, and stakes of the conversation — not to the transcript length. A routine 15-minute internal call does not warrant a 9-page report. Aim for the length a competent professional would write for this specific audience and purpose. Prefer concise and actionable over exhaustive.
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
     if (isEmailOutput) {

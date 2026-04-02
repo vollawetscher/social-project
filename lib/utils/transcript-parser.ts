@@ -143,6 +143,61 @@ function extractSpeakerFromText(text: string): { speaker: string; text: string }
 }
 
 /**
+ * Parse MS Teams transcript export (.txt), which uses single-digit hours:
+ *
+ * Speaker Name
+ * 0:00:12.340 --> 0:00:18.560
+ * Spoken text here
+ */
+function parseMSTeams(content: string): ParseResult | null {
+  const TIMESTAMP_RE = /(\d{1,2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})\.(\d{3})/
+  if (!TIMESTAMP_RE.test(content)) return null
+
+  const blocks = content.trim().split(/\r?\n\r?\n+/).filter(Boolean)
+  const segments: ParsedSegment[] = []
+
+  for (const block of blocks) {
+    const lines = block.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    if (lines.length < 2) continue
+
+    let speakerLine: string | null = null
+    let timeMatch: RegExpMatchArray | null = null
+    let textStartIdx = 0
+
+    for (let i = 0; i < Math.min(lines.length, 3); i++) {
+      const m = lines[i].match(TIMESTAMP_RE)
+      if (m) {
+        timeMatch = m
+        speakerLine = i > 0 ? lines.slice(0, i).join(' ') : null
+        textStartIdx = i + 1
+        break
+      }
+    }
+    if (!timeMatch) continue
+
+    const startMs =
+      parseInt(timeMatch[1], 10) * 3600000 +
+      parseInt(timeMatch[2], 10) * 60000 +
+      parseInt(timeMatch[3], 10) * 1000 +
+      parseInt(timeMatch[4], 10)
+    const endMs =
+      parseInt(timeMatch[5], 10) * 3600000 +
+      parseInt(timeMatch[6], 10) * 60000 +
+      parseInt(timeMatch[7], 10) * 1000 +
+      parseInt(timeMatch[8], 10)
+
+    const textContent = lines.slice(textStartIdx).join(' ').trim()
+    if (!textContent) continue
+
+    const speaker = speakerLine?.trim() || 'S1'
+    segments.push({ start_ms: startMs, end_ms: endMs, speaker, text: textContent })
+  }
+
+  if (segments.length < 2) return null
+  return { segments, rawText: segments.map(s => s.text).join(' ') }
+}
+
+/**
  * Parse WebVTT format:
  * WEBVTT
  *
@@ -561,6 +616,11 @@ export function parseTranscriptFile(
 
   if (ext === 'srt') return parseSRT(content)
   if (ext === 'vtt') return parseVTT(content)
+
+  // Try MS Teams format early — it uses .txt extension with timed --> blocks
+  const msTeamsResult = parseMSTeams(content)
+  if (msTeamsResult) return msTeamsResult
+
   if (ext === 'txt' || ext === '') {
     const chatResult = parseChatFormat(content)
     if (chatResult) return chatResult

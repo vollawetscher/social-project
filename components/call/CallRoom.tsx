@@ -119,52 +119,73 @@ function getBackgroundImagePath(choice: VideoBackgroundChoice): string | null {
 }
 
 /**
- * Plays a soft two-tone outbound ringtone (440 Hz + 480 Hz, European-style)
- * using the Web Audio API while `playing` is true. No audio files needed.
+ * Plays the German Freizeichen (425 Hz, 1 s on / 4 s off) as outbound ringtone.
+ * Uses the Web Audio API — no audio files needed.
+ *
+ * `minPlayMs` guarantees the tone is audible even if the callee joins instantly.
+ * Once minPlayMs has elapsed the hook respects `playing` going false.
  */
-function useRingtone(playing: boolean) {
+function useRingtone(playing: boolean, minPlayMs = 2500) {
   const ctxRef = useRef<AudioContext | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const startedRef = useRef<number>(0)
+  const wantsStopRef = useRef(false)
 
   const stop = useCallback(() => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null }
     if (ctxRef.current) { ctxRef.current.close().catch(() => {}); ctxRef.current = null }
+    startedRef.current = 0
+    wantsStopRef.current = false
   }, [])
 
   const scheduleRing = useCallback((ctx: AudioContext) => {
     const now = ctx.currentTime
-    // Two simultaneous sine tones blended softly — classic double-ring
-    for (const freq of [440, 480]) {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.type = "sine"
-      osc.frequency.value = freq
-      gain.gain.setValueAtTime(0, now)
-      gain.gain.linearRampToValueAtTime(0.055, now + 0.06)   // soft fade-in
-      gain.gain.setValueAtTime(0.055, now + 0.38)
-      gain.gain.linearRampToValueAtTime(0, now + 0.44)        // soft fade-out
-      osc.start(now)
-      osc.stop(now + 0.44)
-    }
-    // Repeat every 2.4 s (ring 0.44 s, pause 1.96 s)
+    // German Freizeichen: single 425 Hz tone, 1 s on
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = "sine"
+    osc.frequency.value = 425
+    gain.gain.setValueAtTime(0, now)
+    gain.gain.linearRampToValueAtTime(0.06, now + 0.04)
+    gain.gain.setValueAtTime(0.06, now + 0.96)
+    gain.gain.linearRampToValueAtTime(0, now + 1.0)
+    osc.start(now)
+    osc.stop(now + 1.0)
+
+    // 4 s pause before next ring (total cycle 5 s)
     timerRef.current = setTimeout(() => {
+      if (wantsStopRef.current && Date.now() - startedRef.current >= minPlayMs) {
+        stop()
+        return
+      }
       if (ctxRef.current) scheduleRing(ctxRef.current)
-    }, 2400)
-  }, [])
+    }, 5000)
+  }, [minPlayMs, stop])
 
   useEffect(() => {
-    if (!playing) { stop(); return }
-    try {
-      const ctx = new AudioContext()
-      ctxRef.current = ctx
-      scheduleRing(ctx)
-    } catch {
-      // AudioContext unavailable (e.g. SSR)
+    if (playing) {
+      wantsStopRef.current = false
+      if (!ctxRef.current) {
+        try {
+          const ctx = new AudioContext()
+          ctxRef.current = ctx
+          startedRef.current = Date.now()
+          scheduleRing(ctx)
+        } catch {
+          // AudioContext unavailable (e.g. SSR)
+        }
+      }
+    } else {
+      if (startedRef.current && Date.now() - startedRef.current < minPlayMs) {
+        wantsStopRef.current = true
+      } else {
+        stop()
+      }
     }
-    return stop
-  }, [playing, scheduleRing, stop])
+    return () => { stop() }
+  }, [playing, scheduleRing, stop, minPlayMs])
 }
 
 export function CallRoom(props: CallRoomProps) {
@@ -753,10 +774,16 @@ function CallRoomInner({
     }
   }, [isConnected, remoteParticipantsKey])
 
-  // Play soft ringtone only for outbound PSTN calls while waiting for callee to pick up.
-  // calleeLeft=true also produces callStatus="ringing" (connected, no remote),
-  // so we must exclude that post-call phase explicitly.
-  useRingtone((callType === "pstn_outbound" || callType === "web") && callStatus === "ringing" && !calleeLeft)
+  // Play ringtone for outbound calls while waiting for callee.
+  // Start ringing as soon as we're connecting OR connected with no remote participant.
+  // The minimum play duration (2.5 s) ensures the caller hears at least one ring
+  // even when the callee joins almost instantly (< 4 s pickup).
+  const shouldRing =
+    (callType === "pstn_outbound" || callType === "web") &&
+    !calleeLeft &&
+    !remoteEverConnected.current &&
+    (callStatus === "ringing" || callStatus === "connecting")
+  useRingtone(shouldRing)
 
   // Trigger Ring+SMS once room is connected
   useEffect(() => {

@@ -16,6 +16,7 @@ import type { TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
 import { logError } from '@/lib/services/error-logger'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { detectLanguageHint } from '@/lib/utils/language'
 
 interface ParsedSegment {
   start_ms: number
@@ -157,9 +158,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const langCode = language === 'auto' ? 'auto'
-      : typeof language === 'string' ? language.slice(0, 2).toLowerCase()
-      : 'auto'
+    let langCode: string
+    if (language && language !== 'auto') {
+      langCode = language.slice(0, 2).toLowerCase()
+    } else {
+      const textSample = rawText || segments.map((s: ParsedSegment) => s.text).join(' ')
+      langCode = detectLanguageHint(textSample, filename) || 'auto'
+    }
     const timestamp = new Date().toLocaleString('en-US', {
       month: '2-digit',
       day: '2-digit',

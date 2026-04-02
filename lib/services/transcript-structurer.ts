@@ -71,7 +71,7 @@ export async function structureTranscript(
   const truncated = rawContent.slice(0, 50000) // ~12k tokens input limit consideration
 
   // Wrap Claude call with a timeout to prevent hanging on very long content
-  const TIMEOUT_MS = 90_000 // 90 seconds
+  const TIMEOUT_MS = 150_000 // 150 seconds (large transcripts need more time)
   let response: Anthropic.Message
   try {
     response = await Promise.race([
@@ -86,7 +86,7 @@ export async function structureTranscript(
         ],
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`AI structuring timed out after ${TIMEOUT_MS / 1000}s. The content may be too long or complex. Try pasting a shorter excerpt.`)), TIMEOUT_MS)
+        setTimeout(() => reject(new Error(`AI structuring timed out after ${Math.round(TIMEOUT_MS / 1000)}s. The content may be too long or complex. Try pasting a shorter excerpt.`)), TIMEOUT_MS)
       ),
     ])
   } catch (err: any) {

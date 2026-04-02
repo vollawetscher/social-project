@@ -14,6 +14,46 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.27.2',
+    date: 'April 2, 2026',
+    entries: [
+      {
+        version: '1.27.2',
+        date: 'April 2, 2026',
+        category: 'improvement',
+        title: 'Better Language Detection',
+        description: 'Session language is now detected by AI during analysis instead of heuristics. More accurate for multilingual content and imported transcripts.',
+      },
+      {
+        version: '1.27.2',
+        date: 'April 2, 2026',
+        category: 'improvement',
+        title: 'Proportionate Output Length',
+        description: 'Generated outputs now match the substance and stakes of your conversation. A quick internal call produces a concise summary, not a 9-page report.',
+      },
+    ],
+  },
+  {
+    version: '1.27.1',
+    date: 'April 2, 2026',
+    entries: [
+      {
+        version: '1.27.1',
+        date: 'April 2, 2026',
+        category: 'fix',
+        title: 'Ringtone & Call Quality',
+        description: 'Outbound ringtone now plays reliably even when the other party picks up instantly. Changed to the familiar German Freizeichen tone (425 Hz).',
+      },
+      {
+        version: '1.27.1',
+        date: 'April 2, 2026',
+        category: 'improvement',
+        title: 'Smarter Session Analysis',
+        description: 'Video calls between users are no longer misclassified as AI conversations. Output suggestion cards now appear in the correct language matching your session.',
+      },
+    ],
+  },
+  {
     version: '1.27.0',
     date: 'March 17, 2026',
     entries: [

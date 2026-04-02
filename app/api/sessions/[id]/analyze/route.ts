@@ -7,67 +7,12 @@ import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { resolveTokenBudget } from '@/lib/services/token-budget'
 import { enqueueAsyncJob, triggerAsyncWorker } from '@/lib/services/queue'
 import { createNotification } from '@/lib/services/notification-service'
+import { normalizeLanguageCode, resolveOutputLanguageCode, LANG_NAMES } from '@/lib/utils/language'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
 
-function normalizeLanguageCode(raw: string | null | undefined): string | null {
-  const value = (raw || '').toLowerCase().trim()
-  if (!value || value === 'auto' || value === 'session') return null
-  return value.slice(0, 2)
-}
-
-function detectLanguageFromText(text: string): string | null {
-  const words = text.toLowerCase().replace(/[^a-zäöüßàâéèêëïîôùûç\s]/g, ' ').split(/\s+/).filter(Boolean)
-  if (words.length < 10) return null
-
-  const EN_WORDS = new Set(['the', 'and', 'is', 'are', 'was', 'were', 'for', 'you', 'that', 'with', 'have', 'this', 'from', 'they', 'been', 'would', 'could', 'should', 'about', 'which', 'their', 'what', 'your', 'will', 'there', 'also', 'does', 'had', 'but', 'not', 'can'])
-  const DE_WORDS = new Set(['der', 'die', 'das', 'und', 'ist', 'ein', 'eine', 'für', 'nicht', 'mit', 'auf', 'den', 'dem', 'von', 'des', 'sich', 'auch', 'wird', 'oder', 'nach', 'wie', 'noch', 'bei', 'hat', 'aus', 'wenn', 'über', 'aber', 'dann', 'kann', 'dass'])
-  const FR_WORDS = new Set(['les', 'des', 'une', 'est', 'dans', 'pour', 'que', 'pas', 'sur', 'sont', 'avec', 'plus', 'par', 'qui', 'ont', 'mais', 'cette', 'nous', 'vous', 'leur', 'elle', 'ses', 'aux', 'ces', 'entre', 'comme', 'tout', 'fait', 'bien', 'aussi'])
-  const ES_WORDS = new Set(['los', 'las', 'una', 'del', 'con', 'para', 'por', 'que', 'como', 'más', 'pero', 'sus', 'sobre', 'este', 'entre', 'cuando', 'esta', 'son', 'todo', 'desde', 'está', 'muy', 'hay', 'puede', 'todos', 'nos', 'sido', 'tiene', 'también', 'ese'])
-
-  const scores: Record<string, number> = { en: 0, de: 0, fr: 0, es: 0 }
-  for (const w of words) {
-    if (EN_WORDS.has(w)) scores.en++
-    if (DE_WORDS.has(w)) scores.de++
-    if (FR_WORDS.has(w)) scores.fr++
-    if (ES_WORDS.has(w)) scores.es++
-  }
-
-  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0]
-  if (best[1] < 3) return null
-  const second = Object.entries(scores).sort((a, b) => b[1] - a[1])[1]
-  if (second[1] > 0 && best[1] / second[1] < 1.5) return null
-  return best[0]
-}
-
-function resolveOutputLanguageCode(
-  preferredReportLanguage: string | null | undefined,
-  sessionLanguage: string | null | undefined,
-  detectedTranscriptLanguage?: string | null,
-  transcriptSampleText?: string | null
-): string {
-  const pref = (preferredReportLanguage || '').toLowerCase()
-  if (pref && pref !== 'session' && pref !== 'auto') return pref.slice(0, 2)
-  const transcriptLang = normalizeLanguageCode(detectedTranscriptLanguage)
-  if (transcriptLang) return transcriptLang
-  const sessionLang = normalizeLanguageCode(sessionLanguage)
-  if (sessionLang) return sessionLang
-  if (transcriptSampleText) {
-    const detected = detectLanguageFromText(transcriptSampleText)
-    if (detected) return detected
-  }
-  return 'de'
-}
-
-const LANG_NAMES: Record<string, string> = {
-  de: 'German', en: 'English', es: 'Spanish', fr: 'French',
-  it: 'Italian', pt: 'Portuguese', nl: 'Dutch', pl: 'Polish',
-  cs: 'Czech', da: 'Danish', fi: 'Finnish', no: 'Norwegian',
-  sv: 'Swedish', ru: 'Russian', ja: 'Japanese', zh: 'Chinese',
-  ko: 'Korean', ar: 'Arabic', hi: 'Hindi',
-}
 const ALLOWED_SUGGESTION_AUDIENCES = ['internal', 'external', 'client', 'legal', 'executive'] as const
 function isAllowedSuggestionAudience(value: unknown): value is (typeof ALLOWED_SUGGESTION_AUDIENCES)[number] {
   return typeof value === 'string' && ALLOWED_SUGGESTION_AUDIENCES.includes(value as (typeof ALLOWED_SUGGESTION_AUDIENCES)[number])
@@ -778,13 +723,14 @@ export async function POST(
       })
     }
 
-    // Resolve target language for suggested output format titles/descriptions
-    const outputLangCode = resolveOutputLanguageCode(
-      profile?.preferred_report_language,
-      session.language,
-      detectedTranscriptLanguage,
-      sample
-    )
+    // Resolve output language for suggested output format titles/descriptions.
+    // This respects the user's preferred_report_language setting.
+    const outputLangCode = resolveOutputLanguageCode({
+      userPreference: profile?.preferred_report_language,
+      sessionLanguage: session.language,
+      transcriptLanguage: detectedTranscriptLanguage,
+      transcriptText: sample,
+    })
     const outputLangName = LANG_NAMES[outputLangCode] || outputLangCode
 
     // Call Claude to analyze with enhanced context extraction
@@ -851,16 +797,18 @@ export async function POST(
   Customize suggestions for the ACTUAL domain and conversation type. Each needs: title (short), description (1 line), generationInstructions (detailed prompt for AI to generate this output), audience, perspective.
   Audience must be one of: "internal", "external", "client", "legal", "executive".
   Perspective must be one of: "observer" (neutral third person — default for most professional documents), "reader_facing" (second person addressing the reader directly as "you" — use for patient summaries, client-facing explanations, or any document written TO someone rather than ABOUT them). Choose the perspective that best matches the output's purpose and audience.
-   **LANGUAGE for suggestedOutputFormats**: Write the title and description fields in **${outputLangName}**. The generationInstructions should also be in ${outputLangName}.
+   **LANGUAGE for suggestedOutputFormats**: Write the title and description fields in **${outputLangName}**. The generationInstructions should also be in ${outputLangName}. Do NOT use English for these fields when the output language is not English.
 
-**GLOBAL LANGUAGE RULE**: ALL user-facing text fields MUST be written in **${outputLangName}**. This includes: sessionSummary, extractedContext.purpose, extractedContext.topics, extractedContext.agenda, extractedContext.decisions, extractedContext.actionItems (task field), extractedContext.mood, extractedContext.outcome, domain descriptions, and all suggestedOutputFormats fields. Only participant names, roles, and technical identifiers should remain in their original language.
+**CRITICAL GLOBAL LANGUAGE RULE**: ALL user-facing text fields MUST be written in **${outputLangName}** — NOT in English (unless ${outputLangName} IS English). This applies to: sessionSummary, extractedContext.purpose, extractedContext.topics, extractedContext.agenda, extractedContext.decisions, extractedContext.actionItems (task field), extractedContext.mood, extractedContext.outcome, domain descriptions, and ALL suggestedOutputFormats fields (title, description, generationInstructions). Only participant names, roles, and technical identifiers should remain in their original language. Violating this rule by writing English text when the output language is ${outputLangName} is a critical error.
 9. **Transcript Corrections**: If you notice obvious transcription errors (ASR misspellings of proper nouns, technical terms, place names), suggest corrections. Also, if the transcript has more than 2 speaker labels but the conversation is clearly between only 2 speakers, suggest speaker merges (e.g. "S3" should be merged into "S1").
+10. **Detected Language**: Return the ISO 639-1 language code of the primary language SPOKEN in the transcript (e.g., "en", "de", "fr"). This is the language of the conversation itself, NOT the output language you are writing in.
 
 Transcript sample:
 ${sample}
 
 Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). Use this exact format:
 {
+  "detectedLanguage": "de",
   "sessionSummary": "- concise bullet 1\\n- concise bullet 2\\n- concise bullet 3",
   "recordingType": "consultation",
   "recordingTypeConfidence": 0.92,
@@ -910,9 +858,9 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
     {"from": "S3", "into": "S1", "confidence": 0.9, "reason": "Only 2 speakers in conversation"}
   ],
   "suggestedOutputFormats": [
-    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "internal", "perspective": "observer"},
-    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "external", "perspective": "reader_facing"},
-    {"title": "...", "description": "...", "generationInstructions": "...", "audience": "executive", "perspective": "observer"}
+    {"title": "${outputLangCode !== 'en' ? `<title in ${outputLangName}>` : '...'}", "description": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "generationInstructions": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "audience": "internal", "perspective": "observer"},
+    {"title": "${outputLangCode !== 'en' ? `<title in ${outputLangName}>` : '...'}", "description": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "generationInstructions": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "audience": "external", "perspective": "reader_facing"},
+    {"title": "${outputLangCode !== 'en' ? `<title in ${outputLangName}>` : '...'}", "description": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "generationInstructions": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "audience": "executive", "perspective": "observer"}
   ]
 }
 
@@ -959,14 +907,27 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
     console.log('[Analyze API] AI identified participants:', JSON.stringify(analysis.extractedContext?.participants, null, 2))
 
     // Prevent false "dictation" labels for external inbound inquiries.
-    const finalRecordingType =
+    let finalRecordingType =
       hasExternalInquirySignal && analysis.recordingType === 'dictation'
         ? 'other'
         : analysis.recordingType
-    const finalRecordingTypeConfidence =
+    let finalRecordingTypeConfidence =
       hasExternalInquirySignal && analysis.recordingType === 'dictation'
         ? Math.min(Number(analysis.recordingTypeConfidence || 0.5), 0.6)
         : analysis.recordingTypeConfidence
+
+    // Prevent false "ai_agent_conversation" for known human calls.
+    // When input_hint says video_call/phone_call, or the call has two real participants,
+    // override to "meeting" since it's clearly a human-to-human conversation.
+    const inputHint = (session as any)?.input_hint as string | undefined
+    const isKnownHumanCall =
+      (inputHint === 'video_call' || inputHint === 'phone_call') ||
+      (linkedCall?.call_type === 'web' && linkedCall?.callee_user_id)
+    if (isKnownHumanCall && finalRecordingType === 'ai_agent_conversation') {
+      console.log(`[Analyze API] Overriding ai_agent_conversation → meeting (input_hint=${inputHint}, callType=${linkedCall?.call_type})`)
+      finalRecordingType = 'meeting'
+      finalRecordingTypeConfidence = Math.min(Number(finalRecordingTypeConfidence || 0.7), 0.75)
+    }
 
     const existingExtractedContext = ((session as any)?.ai_extracted_context || {}) as Record<string, any>
     const existingCorrections = ((session as any)?.transcript_corrections || {}) as Record<string, any>
@@ -1037,10 +998,11 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
       transcript_corrections: mergedTranscriptCorrections,
       speechmatics_summary: canonicalSummary,
     }
-    const currentSessionLang = normalizeLanguageCode(session.language)
-    if (!currentSessionLang) {
-      sessionUpdate.language = outputLangCode
-      console.log(`[Analyze API] Session language was unresolved, setting to detected: ${outputLangCode}`)
+    // Claude detects the transcript language authoritatively — always trust it over heuristics.
+    const claudeDetectedLang = normalizeLanguageCode(analysis.detectedLanguage)
+    if (claudeDetectedLang) {
+      sessionUpdate.language = claudeDetectedLang
+      console.log(`[Analyze API] Session language set from Claude detection: ${claudeDetectedLang} (output lang: ${outputLangCode})`)
     }
     const { error: updateError } = await supabase
       .from('sessions')
@@ -1108,12 +1070,12 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
         autoGenHeaders['x-internal-secret'] = process.env.INTERNAL_API_SECRET
         autoGenHeaders['x-internal-user-id'] = userId
       }
-      const preferredOutputLanguage = resolveOutputLanguageCode(
-        profile?.preferred_report_language,
-        (session as any)?.language,
-        detectedTranscriptLanguage,
-        sample
-      )
+      const preferredOutputLanguage = resolveOutputLanguageCode({
+        userPreference: profile?.preferred_report_language,
+        sessionLanguage: (session as any)?.language,
+        transcriptLanguage: detectedTranscriptLanguage,
+        transcriptText: sample,
+      })
       fetch(`${request.url.split('/analyze')[0]}/auto-generate`, {
         method: 'POST',
         headers: autoGenHeaders,
@@ -1190,12 +1152,12 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
                 templateId: commandTemplateId,
                 perspective: 'observer',
                 audience: 'internal',
-                language: resolveOutputLanguageCode(
-                  profile?.preferred_report_language,
-                  (session as any)?.language,
-                  detectedTranscriptLanguage,
-                  sample
-                ),
+                language: resolveOutputLanguageCode({
+                  userPreference: profile?.preferred_report_language,
+                  sessionLanguage: (session as any)?.language,
+                  transcriptLanguage: detectedTranscriptLanguage,
+                  transcriptText: sample,
+                }),
                 tone: 'neutral',
                 format: 'markdown',
                 // Use the exact spoken phrase as the generation instruction
