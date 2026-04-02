@@ -869,12 +869,28 @@ async function processTranscriptionJob(sessionId: string) {
     // Check if any of the transcribed files were "meeting" type
     const hasMeetingRecording = files.some(f => f.file_purpose === 'meeting')
 
-    // Always trigger post-transcribe to enqueue analysis (and auto-generate if configured)
+    // Check whether any transcript has actual speech content before triggering analysis.
+    const { data: transcriptTexts } = await supabase
+      .from('transcripts')
+      .select('raw_text')
+      .eq('session_id', sessionId)
+    const hasAnySpeech = (transcriptTexts || []).some(
+      (t: any) => typeof t.raw_text === 'string' && t.raw_text.trim().length > 0
+    )
+
+    if (!hasAnySpeech) {
+      console.warn('[Transcribe] No speech detected in any file — skipping analysis, setting session to done')
+      await supabase
+        .from('sessions')
+        .update({ status: 'done' })
+        .eq('id', sessionId)
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
       || 'http://localhost:3000'
     const secret = process.env.INTERNAL_API_SECRET
-    if (secret) {
+    if (hasAnySpeech && secret) {
       console.log('[Transcribe] Triggering post-transcribe for session:', sessionId)
       fetch(`${baseUrl}/api/internal/post-transcribe`, {
         method: 'POST',
@@ -884,6 +900,8 @@ async function processTranscriptionJob(sessionId: string) {
         },
         body: JSON.stringify({ sessionId }),
       }).catch(err => console.error('[Transcribe] Post-transcribe trigger failed:', err))
+    } else if (!hasAnySpeech) {
+      console.log('[Transcribe] Skipping post-transcribe — no speech content')
     } else {
       console.warn('[Transcribe] INTERNAL_API_SECRET not set - skipping post-transcribe')
     }
@@ -891,6 +909,7 @@ async function processTranscriptionJob(sessionId: string) {
     // LEGACY: Only auto-generate report if user has old auto_generate_reports enabled
     // AND it's a meeting recording with meaningful duration (30+ seconds)
     const shouldGenerateReport = 
+      hasAnySpeech &&
       autoGenerateReports && 
       hasMeetingRecording && 
       sessionDuration >= 30
