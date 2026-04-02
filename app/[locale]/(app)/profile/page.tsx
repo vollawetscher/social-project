@@ -2,10 +2,11 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations, useLocale } from "next-intl"
-import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug, Smartphone, Share, Plus, Link2, Check, Copy, Video } from "lucide-react"
+import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug, Smartphone, Share, Plus, Link2, Check, Copy, Video, Download, QrCode } from "lucide-react"
+import { QRCodeCanvas } from "qrcode.react"
 import { BugReporter } from "@/components/error/BugReporter"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -114,6 +115,7 @@ export default function ProfilePage() {
   const [slugError, setSlugError] = useState<string | null>(null)
   const [slugSuccess, setSlugSuccess] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [showQr, setShowQr] = useState(false)
 
   useEffect(() => {
     async function fetchProfile() {
@@ -277,6 +279,16 @@ export default function ProfilePage() {
     setTimeout(() => setLinkCopied(false), 2000)
   }
 
+  const downloadQr = useCallback(() => {
+    const canvas = document.getElementById('meeting-qr') as HTMLCanvasElement | null
+    if (!canvas) return
+    const url = canvas.toDataURL('image/png')
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `meeting-qr-${meetingSlug || 'link'}.png`
+    a.click()
+  }, [meetingSlug])
+
   return (
     <div className="max-w-4xl space-y-6">
       {/* Header */}
@@ -410,17 +422,37 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {meetingLink && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
-              <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
-              <code className="text-sm text-foreground flex-1 truncate">{meetingLink}</code>
-              <Button variant="ghost" size="sm" onClick={copyMeetingLink} className="shrink-0 h-8">
-                {linkCopied ? (
-                  <Check className="h-4 w-4 text-success" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            <>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
+                <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                <code className="text-sm text-foreground flex-1 truncate">{meetingLink}</code>
+                <Button variant="ghost" size="sm" onClick={() => setShowQr(v => !v)} className="shrink-0 h-8" title={t('showQrCode')}>
+                  <QrCode className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={copyMeetingLink} className="shrink-0 h-8">
+                  {linkCopied ? (
+                    <Check className="h-4 w-4 text-success" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {showQr && (
+                <div className="flex flex-col items-center gap-3 p-4 rounded-lg border border-border bg-white">
+                  <QRCodeCanvas
+                    id="meeting-qr"
+                    value={meetingLink}
+                    size={180}
+                    level="M"
+                    marginSize={2}
+                  />
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadQr}>
+                    <Download className="h-3.5 w-3.5" />
+                    {t('downloadQr')}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">{t('meetingSlugLabel')}</label>

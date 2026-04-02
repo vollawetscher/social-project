@@ -393,8 +393,11 @@
     "noOutputsFound": "No outputs found",
     "noOutputsHint": "Generate your first output from a session",
     "noMatchingHint": "Try adjusting your filters",
-    "view": "View",
     "open": "Open",
+    "addToTemplates": "Add to Templates",
+    "savedAsTemplate": "Saved as template: {name}",
+    "openTemplate": "Open",
+    "saveTemplateFailed": "Failed to save as template",
     "generatedFrom": "Generated from {session}",
     "outputMetadata": "Output Metadata",
     "language": "Language",
@@ -1046,7 +1049,9 @@
     "meetingSlugLabel": "Your meeting URL slug",
     "saveSlug": "Save",
     "slugSaved": "Meeting link updated",
-    "slugFailedSave": "Failed to update meeting link"
+    "slugFailedSave": "Failed to update meeting link",
+    "showQrCode": "QR Code",
+    "downloadQr": "Download QR"
   },
   "notifications": {
     "title": "Action Required",

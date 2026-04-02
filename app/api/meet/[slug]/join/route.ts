@@ -24,6 +24,7 @@ export async function POST(
     const body = await request.json()
     const visitorName = String(body.visitorName || '').trim() || 'Guest'
     const visitorEmail = body.visitorEmail ? String(body.visitorEmail).trim() : null
+    const isOwner = body.isOwner === true
 
     const supabase = createServiceRoleClient()
 
@@ -57,15 +58,17 @@ export async function POST(
       roomName = existingCall.room_name
       sessionId = existingCall.session_id
 
-      // Update the call to record the visitor (as callee) and set status to invited
-      await supabase
-        .from('calls')
-        .update({
-          contact_name: visitorName,
-          guest_invite_email: visitorEmail,
-          status: existingCall.status === 'waiting' ? 'invited' : existingCall.status,
-        })
-        .eq('id', callId)
+      if (!isOwner) {
+        await supabase
+          .from('calls')
+          .update({
+            contact_name: visitorName,
+            guest_invite_email: visitorEmail,
+            callee_user_id: owner.id,
+            status: existingCall.status === 'waiting' ? 'invited' : existingCall.status,
+          })
+          .eq('id', callId)
+      }
     } else {
       // Create a new room + session + call
       roomName = `meet-${generateRoomName()}`
@@ -105,22 +108,21 @@ export async function POST(
 
       sessionId = session.id
 
-      // Create the call record — owner is callee (they receive the notification)
       const visitorIdentity = `guest-${Date.now()}`
       const { data: call, error: callError } = await supabase
         .from('calls')
         .insert({
           session_id: sessionId,
           user_id: owner.id,
-          callee_user_id: owner.id,
+          callee_user_id: isOwner ? null : owner.id,
           room_name: roomName,
           call_type: 'web',
           call_mode: 'video',
-          contact_name: visitorName,
-          guest_invite_email: visitorEmail,
-          status: 'invited',
-          invited_at: new Date().toISOString(),
-          participant_a_identity: visitorIdentity,
+          contact_name: isOwner ? null : visitorName,
+          guest_invite_email: isOwner ? null : visitorEmail,
+          status: isOwner ? 'waiting' : 'invited',
+          invited_at: isOwner ? null : new Date().toISOString(),
+          participant_a_identity: isOwner ? owner.id : visitorIdentity,
           room_created_at_ms: Date.now(),
         })
         .select('id')
@@ -134,9 +136,9 @@ export async function POST(
       callId = call.id
     }
 
-    // Generate a token for the visitor
-    const visitorIdentity = `guest-${Date.now()}`
-    const token = await createRoomToken(roomName, visitorIdentity, visitorName)
+    const tokenIdentity = isOwner ? owner.id : `guest-${Date.now()}`
+    const tokenName = isOwner ? (owner.display_name || 'Host') : visitorName
+    const token = await createRoomToken(roomName, tokenIdentity, tokenName)
 
     return NextResponse.json({
       callId,

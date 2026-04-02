@@ -393,8 +393,11 @@
     "noOutputsFound": "Keine Berichte gefunden",
     "noOutputsHint": "Erstellen Sie Ihren ersten Bericht aus einer Sitzung",
     "noMatchingHint": "Versuchen Sie Ihre Filter anzupassen",
-    "view": "Ansehen",
     "open": "Oeffnen",
+    "addToTemplates": "Als Vorlage speichern",
+    "savedAsTemplate": "Als Vorlage gespeichert: {name}",
+    "openTemplate": "Öffnen",
+    "saveTemplateFailed": "Vorlage konnte nicht gespeichert werden",
     "generatedFrom": "Erstellt aus {session}",
     "outputMetadata": "Bericht-Metadaten",
     "language": "Sprache",
@@ -1045,7 +1048,9 @@
     "meetingSlugLabel": "Dein Meeting-URL-Kürzel",
     "saveSlug": "Speichern",
     "slugSaved": "Meeting-Link aktualisiert",
-    "slugFailedSave": "Meeting-Link konnte nicht gespeichert werden"
+    "slugFailedSave": "Meeting-Link konnte nicht gespeichert werden",
+    "showQrCode": "QR-Code",
+    "downloadQr": "QR herunterladen"
   },
   "notifications": {
     "title": "Aktion erforderlich",

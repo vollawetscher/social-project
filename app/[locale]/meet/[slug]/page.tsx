@@ -83,12 +83,14 @@ export default function MeetPage() {
   const handleJoinCall = useCallback(async () => {
     setPhase("joining")
     try {
+      const isOwner = user?.id === ownerInfo?.ownerId
       const res = await fetch(`/api/meet/${encodeURIComponent(slug)}/join`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           visitorName: visitorName.trim() || "Guest",
           visitorEmail: visitorEmail.trim() || null,
+          isOwner,
         }),
       })
 

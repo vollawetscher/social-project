@@ -12,11 +12,7 @@ import {
   User,
   Users,
   LayoutTemplate,
-  ChevronRight,
   ExternalLink,
-  Copy,
-  Download,
-  Eye,
   Search,
   X,
   Globe,
@@ -34,20 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+import { useRouter } from "@/i18n/navigation"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,7 +42,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import type { Output } from "@/lib/types-v0"
 
@@ -140,145 +122,16 @@ function getOutputLanguageBadge(language?: string | null): string {
   return code.toUpperCase()
 }
 
-function OutputDetailSheet({ output }: { output: Output }) {
-  const t = useTranslations('outputs')
-  const td = useTranslations('outputDetail')
-  const tc = useTranslations('common')
-  const tl = useTranslations('labels')
-  const [copySuccess, setCopySuccess] = React.useState(false)
-
-  const handleCopy = async (content: string) => {
-    try {
-      await navigator.clipboard.writeText(content)
-      setCopySuccess(true)
-      setTimeout(() => setCopySuccess(false), 2000)
-    } catch (error) {
-      console.error('Failed to copy:', error)
-      alert(t('copyFailed'))
-    }
-  }
-
-  const handleDownload = (output: Output) => {
-    const blob = new Blob([output.content], { type: 'text/plain' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${output.templateName}-${output.perspective}-${output.audience}.txt`
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
-  }
-
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1.5" title={t('view')}>
-          <Eye className="h-4 w-4" />
-          <span className="hidden sm:inline">{t('view')}</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-full sm:w-[600px] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{output.templateName}</SheetTitle>
-          <SheetDescription>
-            {t('generatedFrom', { session: output.sessionFilename })}
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="mt-6 space-y-6">
-          {/* Metadata Accordion */}
-          <Accordion type="single" collapsible defaultValue="">
-            <AccordionItem value="metadata" className="border-border">
-              <AccordionTrigger className="text-sm font-medium">
-                {t('outputMetadata')}
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t('templateFilter')}</span>
-                    <span className="font-medium">{output.templateName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{td('perspective')}</span>
-                    <span className="font-medium">{tl('perspectives.' + output.perspective)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{td('audience')}</span>
-                    <Badge variant={output.audience === "internal" ? "secondary" : "outline"}>
-                      {tl('audiences.' + output.audience)}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t('language')}</span>
-                    <span className="font-medium">{output.language}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t('tone')}</span>
-                    <span className="font-medium capitalize">{output.tone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t('format')}</span>
-                    <span className="font-mono text-xs">{output.format.toUpperCase()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{t('transcriptVersion')}</span>
-                    <span className="font-mono text-xs">{output.transcriptVersionHash}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{td('timestamps')}</span>
-                    <span className="font-medium">{output.citeTimestamps ? tc('yes') : tc('no')}</span>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
-          {/* Content */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">{t('content')}</h3>
-              <div className="flex gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8" 
-                  onClick={() => handleCopy(output.content)}
-                  title={copySuccess ? tc('copied') : tc('copy')}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8"
-                  onClick={() => handleDownload(output)}
-                  title={tc('download')}
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-              <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed">
-                {output.content}
-              </pre>
-            </div>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  )
-}
-
 export default function OutputsPage() {
   const t = useTranslations('outputs')
   const tc = useTranslations('common')
   const tl = useTranslations('labels')
   const locale = useLocale()
+  const router = useRouter()
   const [outputs, setOutputs] = useState<Output[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null)
   const [templates, setTemplates] = useState<any[]>([])
   const [templateFilter, setTemplateFilter] = useState<string>("all")
   const [audienceFilter, setAudienceFilter] = useState<string>("all")
@@ -378,6 +231,30 @@ export default function OutputsPage() {
       toast.error(error instanceof Error ? error.message : t('deleteFailed'))
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleSaveAsTemplate = async (outputId: string) => {
+    setSavingTemplateId(outputId)
+    try {
+      const response = await fetch('/api/templates/from-output', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outputId }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Failed to save template')
+      toast.success(t('savedAsTemplate', { name: data.name }), {
+        action: {
+          label: t('openTemplate'),
+          onClick: () => router.push(`/templates/${data.id}/edit`),
+        },
+      })
+    } catch (error) {
+      console.error('Save as template error:', error)
+      toast.error(error instanceof Error ? error.message : t('saveTemplateFailed'))
+    } finally {
+      setSavingTemplateId(null)
     }
   }
 
@@ -541,7 +418,21 @@ export default function OutputsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2 self-end sm:self-start">
-                    <OutputDetailSheet output={output} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => handleSaveAsTemplate(output.id)}
+                      disabled={savingTemplateId === output.id}
+                      title={t('addToTemplates')}
+                    >
+                      {savingTemplateId === output.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <LayoutTemplate className="h-4 w-4" />
+                      )}
+                      <span className="hidden sm:inline">{t('addToTemplates')}</span>
+                    </Button>
                     <Button variant="ghost" size="sm" className="gap-1.5" asChild title={t('open')}>
                       <Link href={`/outputs/${output.id}`}>
                         <ExternalLink className="h-4 w-4" />
