@@ -28,6 +28,7 @@ export function ActiveCallBanner() {
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null)
   const [ending, setEnding] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval>>()
+  const endedCallIdsRef = useRef<Set<string>>(new Set())
 
   const isOnCallPage = pathname?.includes("/call/")
 
@@ -37,7 +38,11 @@ export function ActiveCallBanner() {
       const res = await fetch("/api/calls/active")
       if (!res.ok) return
       const data = await res.json()
-      setActiveCall(data.active ? data.call : null)
+      if (data.active && !endedCallIdsRef.current.has(data.call.id)) {
+        setActiveCall(data.call)
+      } else {
+        setActiveCall(null)
+      }
     } catch {
       // ignore
     }
@@ -51,17 +56,18 @@ export function ActiveCallBanner() {
 
   const handleRejoin = () => {
     if (!activeCall) return
-    router.push(`/call/${activeCall.roomName}`)
+    router.push(`/call/${activeCall.roomName}?callId=${activeCall.id}`)
   }
 
   const handleEnd = async () => {
     if (!activeCall) return
     setEnding(true)
     try {
+      endedCallIdsRef.current.add(activeCall.id)
       await fetch(`/api/calls/${activeCall.id}/end`, { method: "POST" })
       setActiveCall(null)
     } catch {
-      // ignore
+      endedCallIdsRef.current.delete(activeCall.id)
     } finally {
       setEnding(false)
     }

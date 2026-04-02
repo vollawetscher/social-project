@@ -203,14 +203,15 @@ export async function POST(request: Request) {
 
         const { data: call } = await supabase
           .from('calls')
-          .select('id, status, session_id, track_a_egress_id, track_b_egress_id')
+          .select('id, status, session_id, started_at, track_a_egress_id, track_b_egress_id')
           .eq('room_name', roomName)
           .maybeSingle()
 
         if (!call) break
 
+        const wasNeverActive = call.status === 'invited' || call.status === 'waiting'
         if (call.status === 'active' || call.status === 'waiting' || call.status === 'invited') {
-          const nextStatus = call.status === 'invited' ? 'missed' : 'ended'
+          const nextStatus = wasNeverActive ? 'missed' : 'ended'
           await supabase
             .from('calls')
             .update({
@@ -220,12 +221,14 @@ export async function POST(request: Request) {
             })
             .eq('id', call.id)
 
-          console.log('[LiveKit Webhook] Call ended:', call.id)
+          console.log('[LiveKit Webhook] Call', nextStatus, ':', call.id)
         }
 
-        // Recording exists — egress is still uploading the file to S3.
-        // Set session to 'uploading' so the UI shows progress instead of "stuck".
-        if (call.session_id && (call.track_a_egress_id || call.track_b_egress_id)) {
+        const hasEgress = !!(call.track_a_egress_id || call.track_b_egress_id)
+
+        if (call.session_id && hasEgress && !wasNeverActive) {
+          // Egress is still flushing to S3 — set session to 'uploading'.
+          // egress_ended webhook will transition to 'transcribing'.
           await supabase
             .from('sessions')
             .update({ status: 'uploading' })
@@ -233,17 +236,22 @@ export async function POST(request: Request) {
           console.log('[LiveKit Webhook] Session set to uploading (egress pending):', call.session_id)
         }
 
-        // If no egress was started (nobody answered), delete the session + call entirely
-        // so they don't pollute the user's sessions list.
-        if (call.session_id && !call.track_a_egress_id && !call.track_b_egress_id) {
+        // Delete session for calls that never connected or had no recording.
+        // Covers: missed/declined calls, calls ended before egress started,
+        // and edge cases where egress IDs exist but call was never active.
+        const shouldDeleteSession =
+          call.session_id &&
+          (!hasEgress || wasNeverActive)
+
+        if (shouldDeleteSession) {
           const { data: session } = await supabase
             .from('sessions')
             .select('status')
             .eq('id', call.session_id)
             .maybeSingle()
 
-          if (session?.status === 'created') {
-            // Null out session_id on call first (FK), then delete both
+          const deletableStatuses = ['created', 'recording', 'uploading']
+          if (session && deletableStatuses.includes(session.status)) {
             await supabase
               .from('calls')
               .update({ session_id: null })
@@ -252,7 +260,7 @@ export async function POST(request: Request) {
               .from('sessions')
               .delete()
               .eq('id', call.session_id)
-            console.log('[LiveKit Webhook] Deleted unanswered session+call (no egress):', call.session_id, call.id)
+            console.log('[LiveKit Webhook] Deleted orphan session (call never active or no egress):', call.session_id, call.id)
           }
         }
         break

@@ -47,29 +47,48 @@ export default function CallRoomPage() {
   useEffect(() => {
     if (authLoading) return
 
-    // Lock in the participant identity once auth is resolved (avoids race conditions
-    // where user.id is temporarily unavailable, causing a guest-* fallback).
     if (!participantIdentity) {
       setParticipantIdentity(user?.id || `guest-${Date.now()}`)
     }
 
-    // Authenticated user with token = go straight to active
     if (tokenParam && callIdParam) {
       setPhase("active")
       return
     }
 
-    if (user) {
-      // Logged-in user joining as second participant (no token)
-      setPhase("setup")
-      return
-    }
+    // Resolve callId from room name when not in the URL (e.g., rejoin from banner)
+    async function resolveAndContinue() {
+      let resolvedCallId = callIdParam
 
-    // Guest: fetch caller info, then show incoming call banner
-    async function fetchCallerInfo() {
-      if (callIdParam) {
+      if (!resolvedCallId && user) {
         try {
-          const res = await fetch(`/api/calls/${callIdParam}/info`)
+          const res = await fetch(`/api/calls/active`)
+          if (res.ok) {
+            const data = await res.json()
+            if (data.active && data.call?.roomName === roomId) {
+              resolvedCallId = data.call.id
+              setCallId(resolvedCallId)
+            }
+          }
+        } catch {
+          // fallback: no callId
+        }
+      }
+
+      if (user) {
+        if (!resolvedCallId) {
+          setError("This call has ended or is no longer available.")
+          setPhase("error")
+          return
+        }
+        setPhase("setup")
+        return
+      }
+
+      // Guest: fetch caller info, then show incoming call banner
+      if (resolvedCallId) {
+        try {
+          const res = await fetch(`/api/calls/${resolvedCallId}/info`)
           if (res.ok) {
             const data = await res.json()
             setCallerName(data.callerName || "Someone")
@@ -79,14 +98,14 @@ export default function CallRoomPage() {
             }
           }
         } catch {
-          // silently ignore -- fall back to "Someone"
+          // silently ignore — fall back to "Someone"
         }
       }
       setPhase("incoming")
     }
 
-    fetchCallerInfo()
-  }, [authLoading, callIdParam, tokenParam, user, participantIdentity])
+    resolveAndContinue()
+  }, [authLoading, callIdParam, tokenParam, user, participantIdentity, roomId])
 
   const handleJoin = useCallback(async (displayName: string) => {
     setPhase("joining")
@@ -162,7 +181,7 @@ export default function CallRoomPage() {
           <p className="text-lg font-medium text-foreground">Unable to join call</p>
           <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push(user ? "/sessions" : "/")}
             className="text-sm text-primary hover:underline"
           >
             Go back
