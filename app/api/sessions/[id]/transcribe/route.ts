@@ -882,7 +882,7 @@ async function processTranscriptionJob(sessionId: string) {
       console.warn('[Transcribe] No speech detected in any file — skipping analysis, setting session to done')
       await supabase
         .from('sessions')
-        .update({ status: 'done' })
+        .update({ status: 'done', last_error: 'no_speech_detected' })
         .eq('id', sessionId)
     }
 

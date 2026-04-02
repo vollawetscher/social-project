@@ -348,6 +348,8 @@
     "actionItems": "Aufgaben",
     "summary": "Zusammenfassung",
     "noSpeechError": "Keine Sprache aufgenommen — der Anruf war zu kurz oder stumm.",
+    "noSpeechTitle": "Keine Sprache erkannt",
+    "noSpeechHint": "Die Aufnahme wurde verarbeitet, aber es wurde keine erkennbare Sprache gefunden. Dies kann bei stummen Aufnahmen, fehlendem Mikrofonzugriff oder sehr kurzen Anrufen passieren.",
     "languageDetectError": "Sprache konnte nicht erkannt werden. Das Audio ist möglicherweise zu kurz, zu verrauscht oder enthält keine Sprache.",
     "audioTooShort": "Die Audiodatei ist zu kurz oder enthält keine verwertbare Sprache für die Transkription.",
     "formatNotSupported": "Das Audioformat wird nicht unterstützt. Bitte konvertieren Sie in MP3, M4A oder WAV.",

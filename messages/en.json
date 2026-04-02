@@ -348,6 +348,8 @@
     "actionItems": "Action Items",
     "summary": "Summary",
     "noSpeechError": "No speech recorded — the call was too short or silent.",
+    "noSpeechTitle": "No speech detected",
+    "noSpeechHint": "The recording was processed but no recognizable speech was found. This can happen with silent recordings, poor microphone access, or very short calls.",
     "languageDetectError": "Could not detect the language. The audio may be too short, too noisy, or contain no speech.",
     "audioTooShort": "The audio file is too short or contains no usable speech for transcription.",
     "formatNotSupported": "The audio format is not supported. Please convert to MP3, M4A, or WAV.",
