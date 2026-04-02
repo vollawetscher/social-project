@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { User, Mail, Phone, Calendar, Settings, Shield, Loader2, AlertTriangle, Bug, Smartphone, Share, Plus, Link2, Check, Copy, Video, Download, QrCode } from "lucide-react"
@@ -279,7 +279,7 @@ export default function ProfilePage() {
     setTimeout(() => setLinkCopied(false), 2000)
   }
 
-  const downloadQr = useCallback(() => {
+  const downloadQr = () => {
     const canvas = document.getElementById('meeting-qr') as HTMLCanvasElement | null
     if (!canvas) return
     const url = canvas.toDataURL('image/png')
@@ -287,7 +287,7 @@ export default function ProfilePage() {
     a.href = url
     a.download = `meeting-qr-${meetingSlug || 'link'}.png`
     a.click()
-  }, [meetingSlug])
+  }
 
   return (
     <div className="max-w-4xl space-y-6">
