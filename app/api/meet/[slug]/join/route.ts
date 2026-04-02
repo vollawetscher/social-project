@@ -25,6 +25,7 @@ export async function POST(
     const visitorName = String(body.visitorName || '').trim() || 'Guest'
     const visitorEmail = body.visitorEmail ? String(body.visitorEmail).trim() : null
     const isOwner = body.isOwner === true
+    const guestIdentity = `guest-${Date.now()}`
 
     const supabase = createServiceRoleClient()
 
@@ -108,7 +109,6 @@ export async function POST(
 
       sessionId = session.id
 
-      const visitorIdentity = `guest-${Date.now()}`
       const { data: call, error: callError } = await supabase
         .from('calls')
         .insert({
@@ -122,7 +122,7 @@ export async function POST(
           guest_invite_email: isOwner ? null : visitorEmail,
           status: isOwner ? 'waiting' : 'invited',
           invited_at: isOwner ? null : new Date().toISOString(),
-          participant_a_identity: isOwner ? owner.id : visitorIdentity,
+          participant_a_identity: isOwner ? owner.id : guestIdentity,
           room_created_at_ms: Date.now(),
         })
         .select('id')
@@ -136,7 +136,7 @@ export async function POST(
       callId = call.id
     }
 
-    const tokenIdentity = isOwner ? owner.id : `guest-${Date.now()}`
+    const tokenIdentity = isOwner ? owner.id : guestIdentity
     const tokenName = isOwner ? (owner.display_name || 'Host') : visitorName
     const token = await createRoomToken(roomName, tokenIdentity, tokenName)
 
