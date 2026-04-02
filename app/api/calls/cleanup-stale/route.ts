@@ -81,9 +81,9 @@ export async function POST(request: Request) {
 
   const { data: stuckSessions, error: sessError } = await supabase
     .from('sessions')
-    .select('id, status, updated_at')
+    .select('id, status, created_at')
     .in('status', ['uploading', 'recording'])
-    .lt('updated_at', sessionCutoff)
+    .lt('created_at', sessionCutoff)
 
   if (sessError) {
     console.error('[Stale Cleanup] Session query error:', sessError.message)
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
         .eq('id', session.id)
 
       cleanedSessions++
-      console.log(`[Stale Cleanup] Unstuck session ${session.id} (was: ${session.status}, last updated: ${session.updated_at})`)
+      console.log(`[Stale Cleanup] Unstuck session ${session.id} (was: ${session.status}, created: ${session.created_at})`)
     } catch (err: any) {
       console.error(`[Stale Cleanup] Error cleaning session ${session.id}:`, err.message)
     }
