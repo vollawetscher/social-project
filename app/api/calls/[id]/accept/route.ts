@@ -25,7 +25,8 @@ export async function POST(
       return NextResponse.json({ error: 'Call not found' }, { status: 404 })
     }
 
-    if (call.user_id === user.id) {
+    const isPersonalMeeting = call.room_name?.startsWith('meet-')
+    if (call.user_id === user.id && !isPersonalMeeting) {
       return NextResponse.json({ error: 'Caller cannot accept own invite' }, { status: 400 })
     }
 
