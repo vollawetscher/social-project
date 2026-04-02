@@ -1413,6 +1413,11 @@
         "mixedOrUnknown": "Mixed or unknown"
       }
     },
+    "editPropagate": {
+      "empty": "(remove)",
+      "remaining": "{count, plural, one {# more instance} other {# more instances}}",
+      "applyAll": "Apply to all"
+    },
     "cancel": "Cancel",
     "import": "Import",
       "importing": "Importing...",

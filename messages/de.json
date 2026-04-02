@@ -1412,6 +1412,11 @@
         "mixedOrUnknown": "Gemischt oder unbekannt"
       }
     },
+    "editPropagate": {
+      "empty": "(entfernen)",
+      "remaining": "{count, plural, one {# weitere Stelle} other {# weitere Stellen}}",
+      "applyAll": "Alle ersetzen"
+    },
     "cancel": "Abbrechen",
     "import": "Importieren",
     "importing": "Wird importiert...",

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,9 +13,57 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet'
-import { FileText, Loader2, Shuffle, Upload } from 'lucide-react'
+import { FileText, Loader2, Shuffle, Upload, Replace } from 'lucide-react'
 import { detectTranscriptType, type TranscriptIngestionSource } from '@/lib/utils/transcript-type-detection'
 import { parseTranscriptFile, type ParseResult, type TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
+
+type EditSuggestion = { find: string; replace: string; count: number }
+
+function detectEditPropagation(oldText: string, newText: string): EditSuggestion | null {
+  if (oldText === newText) return null
+
+  let i = 0
+  while (i < oldText.length && i < newText.length && oldText[i] === newText[i]) i++
+
+  let j = 0
+  while (
+    j < oldText.length - i &&
+    j < newText.length - i &&
+    oldText[oldText.length - 1 - j] === newText[newText.length - 1 - j]
+  ) j++
+
+  const removed = oldText.slice(i, oldText.length - j)
+  const added = newText.slice(i, newText.length - j)
+
+  if (removed.length > 40 || added.length > 40) return null
+  if (!removed && !added) return null
+
+  // Expand to word boundaries around the changed region
+  let ls = i
+  while (ls > 0 && !/[\s\n]/.test(oldText[ls - 1])) ls--
+  let re = oldText.length - j
+  while (re < oldText.length && !/[\s\n]/.test(oldText[re])) re++
+
+  let lsNew = i
+  while (lsNew > 0 && !/[\s\n]/.test(newText[lsNew - 1])) lsNew--
+  let reNew = newText.length - j
+  while (reNew < newText.length && !/[\s\n]/.test(newText[reNew])) reNew++
+
+  const find = oldText.slice(ls, re).trim()
+  const replace = newText.slice(lsNew, reNew).trim()
+
+  if (!find || find.length < 2 || find === replace) return null
+
+  let count = 0
+  let pos = 0
+  while ((pos = newText.indexOf(find, pos)) !== -1) {
+    count++
+    pos += find.length
+  }
+
+  if (count < 1) return null
+  return { find, replace, count }
+}
 
 interface PastePreviewSheetProps {
   open: boolean
@@ -42,7 +90,10 @@ export function PastePreviewSheet({
   const [text, setText] = useState(initialText)
   const [modeIndex, setModeIndex] = useState(0)
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  const [editSuggestion, setEditSuggestion] = useState<EditSuggestion | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const prevTextRef = useRef(initialText)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const parseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt', 'raw_text']
 
@@ -51,8 +102,27 @@ export function PastePreviewSheet({
       setText(initialText)
       setModeIndex(0)
       setSelectedTemplateId('')
+      setEditSuggestion(null)
+      prevTextRef.current = initialText
     }
   }, [open, initialText])
+
+  const handleTextChange = useCallback((newText: string) => {
+    setText(newText)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      const suggestion = detectEditPropagation(prevTextRef.current, newText)
+      setEditSuggestion(suggestion)
+    }, 600)
+  }, [])
+
+  const applyEditToAll = useCallback(() => {
+    if (!editSuggestion) return
+    const updated = text.split(editSuggestion.find).join(editSuggestion.replace)
+    setText(updated)
+    prevTextRef.current = updated
+    setEditSuggestion(null)
+  }, [editSuggestion, text])
 
   useEffect(() => {
     if (open && textareaRef.current) {
@@ -103,13 +173,17 @@ export function PastePreviewSheet({
   const handleTryNextParse = () => {
     const next = (modeIndex + 1) % parseModes.length
     const nextMode = parseModes[next]
+    setEditSuggestion(null)
     if (nextMode === 'raw_text') {
       setText(initialText)
+      prevTextRef.current = initialText
       setModeIndex(next)
       return
     }
     const parsed = parseTranscriptFile(initialText, fileName || 'pasted.txt', { strategy: nextMode })
-    setText(toPreviewText(parsed) || initialText)
+    const newText = toPreviewText(parsed) || initialText
+    setText(newText)
+    prevTextRef.current = newText
     setModeIndex(next)
   }
 
@@ -143,10 +217,36 @@ export function PastePreviewSheet({
               {t('detection.detectedType')}: {typeLabelMap[signals.detectedType] || signals.detectedType}
             </p>
           </div>
+          {editSuggestion && (
+            <div className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+              <Replace className="h-4 w-4 shrink-0 text-primary" />
+              <span className="flex-1 text-xs text-foreground">
+                <span className="font-mono line-through opacity-60">{editSuggestion.find}</span>
+                {' → '}
+                <span className="font-mono font-medium">{editSuggestion.replace || t('editPropagate.empty')}</span>
+                {' · '}
+                {t('editPropagate.remaining', { count: editSuggestion.count })}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={applyEditToAll}
+              >
+                {t('editPropagate.applyAll')}
+              </Button>
+              <button
+                className="text-muted-foreground hover:text-foreground text-xs"
+                onClick={() => { setEditSuggestion(null); prevTextRef.current = text }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <Textarea
             ref={textareaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => handleTextChange(e.target.value)}
             className="h-full min-h-[200px] resize-none font-mono text-sm"
             disabled={loading}
           />
