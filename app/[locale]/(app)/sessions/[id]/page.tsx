@@ -1818,7 +1818,7 @@ export default function SessionDetailPage() {
                 </div>
               )}
               <div className="flex-1 min-h-0 rounded-lg border border-border bg-card overflow-hidden">
-                {session.status === 'done' && session.lastError === 'no_speech_detected' ? (
+                {session.status === 'ready' && session.lastError === 'no_speech_detected' ? (
                   <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-3">
                     <VolumeX className="h-10 w-10 text-muted-foreground/50" />
                     <p className="text-sm font-medium text-foreground">{t('noSpeechTitle')}</p>
