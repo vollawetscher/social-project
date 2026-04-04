@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, ArrowLeft, CheckCircle2, Mail } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@supabase/supabase-js'
 import { Logo } from '@/components/ui/logo'
 
 export default function ResetPasswordPage() {
@@ -24,8 +24,14 @@ export default function ResetPasswordPage() {
     setLoading(true)
 
     try {
-      const supabase = createClient()
-      // Prefer NEXT_PUBLIC_SITE_URL but NEVER use localhost (common Railway misconfiguration)
+      // Use implicit flow — PKCE stores a code_verifier cookie in the current browser,
+      // but email links often open in a different browser (e.g. Safari default while app
+      // runs in Chrome), causing the exchange to fail.
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { flowType: 'implicit', persistSession: false } }
+      )
       const envUrl = process.env.NEXT_PUBLIC_SITE_URL || ''
       const isInvalidEnv = !envUrl || /localhost|127\.0\.0\.1/.test(envUrl)
       const siteUrl = isInvalidEnv ? window.location.origin : envUrl

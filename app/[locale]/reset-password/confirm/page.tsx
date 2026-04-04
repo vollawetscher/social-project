@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, CheckCircle2, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Logo } from '@/components/ui/logo'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 export default function ResetPasswordConfirmPage() {
   const router = useRouter()
@@ -26,27 +27,51 @@ export default function ResetPasswordConfirmPage() {
   const [tokenValid, setTokenValid] = useState(false)
 
   useEffect(() => {
-    // Check if we have a valid session (user clicked the reset link)
-    const checkSession = async () => {
-      try {
-        const supabase = createClient()
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error || !session) {
-          setError('Invalid or expired reset link. Please request a new password reset.')
-          setTokenValid(false)
-        } else {
-          setTokenValid(true)
-        }
-      } catch (err) {
-        setError('Failed to validate reset link')
-        setTokenValid(false)
-      } finally {
-        setValidatingToken(false)
-      }
+    const supabase = createClient()
+    let resolved = false
+
+    const resolve = (valid: boolean, errorMsg?: string) => {
+      if (resolved) return
+      resolved = true
+      setTokenValid(valid)
+      if (errorMsg) setError(errorMsg)
+      setValidatingToken(false)
     }
 
-    checkSession()
+    const hash = typeof window !== 'undefined' ? window.location.hash : ''
+
+    // Supabase puts errors in the hash fragment when token verification fails
+    if (hash.includes('error=')) {
+      const params = new URLSearchParams(hash.substring(1))
+      const errorDesc = params.get('error_description')?.replace(/\+/g, ' ')
+      resolve(false, errorDesc || 'Invalid or expired reset link. Please request a new password reset.')
+      return
+    }
+
+    // Implicit flow delivers tokens via hash — listen for PASSWORD_RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      if (session && (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN')) {
+        resolve(true)
+      }
+    })
+
+    // Also check for existing session (handles PKCE flow or already-processed tokens)
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
+      if (session) {
+        resolve(true)
+      } else if (!hash.includes('access_token')) {
+        resolve(false, 'Invalid or expired reset link. Please request a new password reset.')
+      }
+    })
+
+    const timeout = setTimeout(() => {
+      resolve(false, 'Reset link validation timed out. Please request a new link.')
+    }, 15000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   const handlePasswordReset = async (e: React.FormEvent) => {
