@@ -439,10 +439,27 @@ export default function SessionDetailPage() {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data?.error || t('cleanup.saveFailed'))
 
-      setSession((prev) => prev ? {
-        ...prev,
-        transcriptCorrections: data.corrections || prev.transcriptCorrections,
-      } : prev)
+      // Re-fetch session so the adapter re-transforms transcript with the new merge map.
+      // Without this, getSpeakerIds() still sees pre-merge speaker IDs.
+      try {
+        const sessionRes = await fetch(`/api/sessions/${sessionId}`)
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json()
+          const transcriptRes = await fetch(`/api/sessions/${sessionId}/transcript`)
+          const transcriptData = transcriptRes.ok ? await transcriptRes.json() : null
+          const v0Session = toV0Session(sessionData, {
+            filename: sessionData.internal_case_id,
+            transcript: transcriptData,
+            files: sessionData.files,
+          })
+          setSession(v0Session)
+        }
+      } catch {
+        setSession((prev) => prev ? {
+          ...prev,
+          transcriptCorrections: data.corrections || prev.transcriptCorrections,
+        } : prev)
+      }
       toast.success(t('cleanup.saved'))
     } catch (error) {
       console.error('[Cleanup] Save failed:', error)
