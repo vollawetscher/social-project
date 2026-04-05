@@ -6,7 +6,7 @@ import { routing } from './i18n/routing'
 
 const intlMiddleware = createIntlMiddleware(routing)
 
-const protectedPatterns = ['/sessions', '/templates', '/outputs', '/settings', '/calls', '/profile', '/admin']
+const protectedPatterns = ['/sessions', '/templates', '/outputs', '/settings', '/calls', '/profile', '/admin', '/marketplace', '/projects']
 const publicPatterns = ['/api/', '/auth/', '/_next/', '/favicon', '/icon-', '/apple-touch', '/manifest', '/og-image', '/sw.js']
 
 function isPublicAsset(pathname: string) {
