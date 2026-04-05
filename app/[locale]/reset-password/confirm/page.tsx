@@ -39,23 +39,39 @@ export default function ResetPasswordConfirmPage() {
     }
 
     const hash = typeof window !== 'undefined' ? window.location.hash : ''
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+    const tokenHash = params?.get('token_hash')
 
-    // Supabase puts errors in the hash fragment when token verification fails
+    // Primary path: token_hash in query string (custom email template, immune to link scanners)
+    if (tokenHash) {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+        .then(({ error: verifyError }: { error: Error | null }) => {
+          if (verifyError) {
+            resolve(false, verifyError.message)
+          } else {
+            resolve(true)
+          }
+        })
+        .catch(() => resolve(false, 'Failed to verify reset link.'))
+      return
+    }
+
+    // Fallback: error in hash fragment (from Supabase verify endpoint redirect)
     if (hash.includes('error=')) {
-      const params = new URLSearchParams(hash.substring(1))
-      const errorDesc = params.get('error_description')?.replace(/\+/g, ' ')
+      const hashParams = new URLSearchParams(hash.substring(1))
+      const errorDesc = hashParams.get('error_description')?.replace(/\+/g, ' ')
       resolve(false, errorDesc || 'Invalid or expired reset link. Please request a new password reset.')
       return
     }
 
-    // Implicit flow delivers tokens via hash — listen for PASSWORD_RECOVERY event
+    // Fallback: implicit flow tokens via hash fragment
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (session && (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN')) {
         resolve(true)
       }
     })
 
-    // Also check for existing session (handles PKCE flow or already-processed tokens)
+    // Fallback: existing session (PKCE flow or already-processed tokens)
     supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       if (session) {
         resolve(true)
