@@ -720,9 +720,16 @@ export default function SessionDetailPage() {
     })
   }, [sessionId, fetchOutputs])
 
-  // Poll while call is recording, uploading, or transcribing so the UI stays in sync
+  // Poll while session is processing OR ready but analysis hasn't arrived yet
+  const needsAnalysisPoll = session?.status === 'ready'
+    && session.transcript?.length > 0
+    && !session.suggestedOutputFormats?.length
+    && !session.extractedContext?.purpose
+
   useEffect(() => {
-    if (!session || !['recording', 'transcribing', 'uploading', 'summarizing'].includes(session.status)) return
+    const isProcessing = session && ['recording', 'transcribing', 'uploading', 'summarizing'].includes(session.status)
+    if (!session || (!isProcessing && !needsAnalysisPoll)) return
+
     const interval = setInterval(async () => {
       try {
         const sessionRes = await fetch(`/api/sessions/${sessionId}`)
@@ -736,7 +743,7 @@ export default function SessionDetailPage() {
           files: sessionData.files
         })
         setSession(v0Session)
-        if (v0Session.status === 'ready') {
+        if (isProcessing && v0Session.status === 'ready') {
           fetchOutputs()
           // Workflow automation: auto-gen runs async after transcribe; poll for new outputs
           ;[3000, 6000, 9000, 12000].forEach((delay) => {
@@ -747,12 +754,16 @@ export default function SessionDetailPage() {
             setTimeout(() => analyzeSessionRef.current?.(), 1000)
           }
         }
+        // When polling for analysis results, also refresh outputs
+        if (needsAnalysisPoll && v0Session.suggestedOutputFormats?.length) {
+          fetchOutputs()
+        }
       } catch {
         // ignore
       }
-    }, 3000)
+    }, isProcessing ? 3000 : 5000)
     return () => clearInterval(interval)
-  }, [sessionId, session?.status, fetchOutputs])
+  }, [sessionId, session?.status, fetchOutputs, needsAnalysisPoll])
 
   useEffect(() => {
     if (!session) return
@@ -995,10 +1006,10 @@ export default function SessionDetailPage() {
       </div>
 
       {!cleanupPanelOpen ? null : (
-        <>
+        <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
       {speakerIds.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">{t('cleanup.speakers')}</p>
+          <p className="text-xs font-medium text-muted-foreground">{t('cleanup.speakers')} ({speakerIds.length})</p>
           <div className="space-y-2">
             {speakerIds.map((speakerId) => (
               <div key={speakerId} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
@@ -1104,13 +1115,13 @@ export default function SessionDetailPage() {
         )}
       </div>
 
-      <div className="flex justify-end">
+      <div className="sticky bottom-0 bg-card pt-2 flex justify-end">
         <Button size="sm" onClick={() => void handleSaveCleanup()} disabled={savingCleanup}>
           {savingCleanup ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
           {t('cleanup.applyCleanup')}
         </Button>
       </div>
-      </>
+        </div>
       )}
     </div>
   )
