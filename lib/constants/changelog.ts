@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.28.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.28.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Background Task Indicator',
+        description: 'The notification icon now shows a spinner when tasks like transcription, analysis, or output generation are running in the background. Tap to see what\'s processing and jump to the session.',
+      },
+    ],
+  },
+  {
     version: '1.27.2',
     date: 'April 2, 2026',
     entries: [

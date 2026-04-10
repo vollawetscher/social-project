@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
-import { Search, Link2, Check, Bell, User, LogOut, Settings } from "lucide-react"
+import { Search, Link2, Check, Bell, User, LogOut, Settings, Loader2 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -27,18 +27,19 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/AuthProvider"
 import { LocaleSwitcher } from "@/components/locale-switcher"
 import { NotificationPanel } from "@/components/notifications/NotificationPanel"
-import type { NotificationItem } from "@/lib/hooks/useNotifications"
+import type { NotificationItem, ActiveJob } from "@/lib/hooks/useNotifications"
 
 interface AppTopbarProps {
   sidebarCollapsed: boolean
   notificationItems?: NotificationItem[]
   notificationCount?: number
+  activeJobs?: ActiveJob[]
   onSnoozeNotification?: (id: string) => void
   onMarkReadNotifications?: (ids: string[]) => void
   onMarkAllReadNotifications?: () => void
 }
 
-export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificationCount = 0, onSnoozeNotification, onMarkReadNotifications, onMarkAllReadNotifications }: AppTopbarProps) {
+export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificationCount = 0, activeJobs = [], onSnoozeNotification, onMarkReadNotifications, onMarkAllReadNotifications }: AppTopbarProps) {
   const [topbarSearch, setTopbarSearch] = useState("")
   const [notifOpen, setNotifOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
@@ -167,7 +168,11 @@ export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificati
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 relative">
-                    <Bell className="h-4 w-4" />
+                    {activeJobs.length > 0 ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    ) : (
+                      <Bell className="h-4 w-4" />
+                    )}
                     {notificationCount > 0 && (
                       <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
                     )}
@@ -175,11 +180,16 @@ export function AppTopbar({ sidebarCollapsed, notificationItems = [], notificati
                   </Button>
                 </PopoverTrigger>
               </TooltipTrigger>
-              <TooltipContent>Notifications</TooltipContent>
+              <TooltipContent>
+                {activeJobs.length > 0
+                  ? `${activeJobs.length} task${activeJobs.length > 1 ? 's' : ''} processing`
+                  : 'Notifications'}
+              </TooltipContent>
             </Tooltip>
             <PopoverContent align="end" className="w-80 p-3">
               <NotificationPanel
                 items={notificationItems}
+                activeJobs={activeJobs}
                 onSnooze={(id) => {
                   onSnoozeNotification?.(id)
                   setNotifOpen(false)

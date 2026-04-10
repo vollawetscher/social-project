@@ -20,6 +20,17 @@ export interface NotificationItem {
   notificationType?: string
 }
 
+export interface ActiveJob {
+  id: string
+  jobType: string
+  status: 'queued' | 'running' | 'retryable'
+  sessionId: string | null
+  attemptCount: number
+  maxAttempts: number
+  createdAt: string
+  updatedAt: string
+}
+
 interface SnoozeMap {
   [notificationId: string]: string // ISO date string
 }
@@ -72,6 +83,7 @@ export function useNotifications() {
   const [loading, setLoading] = useState(true)
   const [modalDismissedThisSession, setModalDismissedThisSession] = useState(false)
   const [dbNotifications, setDbNotifications] = useState<DbNotification[]>([])
+  const [activeJobs, setActiveJobs] = useState<ActiveJob[]>([])
 
   // Fetch voice sample count once on mount
   useEffect(() => {
@@ -89,6 +101,25 @@ export function useNotifications() {
       })
     return () => { cancelled = true }
   }, [])
+
+  // Poll for active async jobs
+  useEffect(() => {
+    if (!profile?.id) return
+    let cancelled = false
+
+    const fetchJobs = () => {
+      fetch("/api/jobs")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => {
+          if (!cancelled && d?.jobs) setActiveJobs(d.jobs)
+        })
+        .catch(() => {})
+    }
+
+    fetchJobs()
+    const interval = setInterval(fetchJobs, 5000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [profile?.id])
 
   // Fetch unread DB notifications on mount (once profile loads)
   useEffect(() => {
@@ -237,6 +268,7 @@ export function useNotifications() {
   return {
     items,
     unreadCount,
+    activeJobs,
     loading,
     showOnboardingModal,
     snooze,

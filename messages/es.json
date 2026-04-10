@@ -1066,7 +1066,18 @@
     "onboardingBenefit2Title": "Funciona en todos los idiomas",
     "onboardingBenefit2Desc": "Graba muestras en cada idioma que uses. Cada una toma menos de 30 segundos.",
     "onboardingSetupNow": "Grabar muestra de voz",
-    "onboardingRemindLater": "Recordar en 7 días"
+    "onboardingRemindLater": "Recordar en 7 días",
+    "processing": "Procesando",
+    "processingAnalyze": "Analizando sesión",
+    "processingTranscribe": "Transcribiendo audio",
+    "processingOutput": "Generando salida",
+    "processingImport": "Procesando importación",
+    "processingPulse": "Actualizando pulse",
+    "processingGeneric": "Procesando tarea",
+    "statusQueued": "En cola",
+    "statusRunning": "En progreso",
+    "statusRetrying": "Reintentando",
+    "attempt": "intento {current}/{max}"
   },
   "sessionGuidance": {
     "transcriptInProgress": "La transcripción está en progreso — tu conversación aparecerá aquí en breve.",

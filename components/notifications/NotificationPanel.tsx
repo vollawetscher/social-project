@@ -2,9 +2,9 @@
 
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
-import { Mic, Info, AlertTriangle, Clock, ChevronRight, CheckCircle, FileText, CheckCheck, X } from "lucide-react"
+import { Mic, Info, AlertTriangle, Clock, ChevronRight, CheckCircle, FileText, CheckCheck, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { NotificationItem } from "@/lib/hooks/useNotifications"
+import type { NotificationItem, ActiveJob } from "@/lib/hooks/useNotifications"
 
 const iconMap = {
   mic: Mic,
@@ -21,22 +21,31 @@ const typeBadgeMap: Record<string, { label: string; className: string }> = {
   system: { label: "System", className: "bg-muted text-muted-foreground" },
 }
 
+const jobTypeLabels: Record<string, string> = {
+  session_analyze: "processingAnalyze",
+  session_transcribe: "processingTranscribe",
+  output_generate: "processingOutput",
+  import_transcript_process: "processingImport",
+  pulse_update: "processingPulse",
+}
+
 interface NotificationPanelProps {
   items: NotificationItem[]
+  activeJobs?: ActiveJob[]
   onSnooze: (id: string) => void
   onMarkRead: (ids: string[]) => void
   onMarkAllRead: () => void
   onClose: () => void
 }
 
-export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, onClose }: NotificationPanelProps) {
+export function NotificationPanel({ items, activeJobs = [], onSnooze, onMarkRead, onMarkAllRead, onClose }: NotificationPanelProps) {
   const t = useTranslations("notifications")
   const router = useRouter()
 
   const dbItems = items.filter((i) => i.dbId)
   const hasUnreadDb = dbItems.length > 0
 
-  if (items.length === 0) {
+  if (items.length === 0 && activeJobs.length === 0) {
     return (
       <div className="py-6 text-center">
         <p className="text-xs text-muted-foreground">{t("empty")}</p>
@@ -46,6 +55,47 @@ export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, 
 
   return (
     <div className="space-y-0.5">
+      {/* Active jobs section */}
+      {activeJobs.length > 0 && (
+        <>
+          <div className="flex items-center gap-1.5 px-1 pb-1">
+            <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            <p className="text-xs font-medium text-foreground">{t("processing")}</p>
+          </div>
+          {activeJobs.map((job) => {
+            const labelKey = jobTypeLabels[job.jobType] || "processingGeneric"
+            const statusKey = job.status === 'queued' ? 'statusQueued' : job.status === 'retryable' ? 'statusRetrying' : 'statusRunning'
+            return (
+              <div
+                key={job.id}
+                className="rounded-md border border-border bg-primary/5 px-2.5 py-1.5 cursor-pointer"
+                onClick={() => {
+                  if (job.sessionId) {
+                    router.push(`/sessions/${job.sessionId}`)
+                    onClose()
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground truncate">{t(labelKey as any)}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {t(statusKey as any)}
+                      {job.attemptCount > 1 && ` (${t('attempt', { current: job.attemptCount, max: job.maxAttempts })})`}
+                    </p>
+                  </div>
+                  {job.sessionId && <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
+                </div>
+              </div>
+            )
+          })}
+          {items.length > 0 && <div className="border-t border-border my-1.5" />}
+        </>
+      )}
+
+      {items.length > 0 && (
+      <>
       <div className="flex items-center justify-between px-1 pb-1.5">
         <p className="text-xs font-medium text-foreground">{t("title")}</p>
         {hasUnreadDb && (
@@ -127,6 +177,8 @@ export function NotificationPanel({ items, onSnooze, onMarkRead, onMarkAllRead, 
           </div>
         )
       })}
+      </>
+      )}
     </div>
   )
 }

@@ -1074,7 +1074,18 @@
     "onboardingBenefit2Title": "Works across languages",
     "onboardingBenefit2Desc": "Record samples in every language you use. Each one takes under 30 seconds.",
     "onboardingSetupNow": "Record voice sample",
-    "onboardingRemindLater": "Remind me in 7 days"
+    "onboardingRemindLater": "Remind me in 7 days",
+    "processing": "Processing",
+    "processingAnalyze": "Analyzing session",
+    "processingTranscribe": "Transcribing audio",
+    "processingOutput": "Generating output",
+    "processingImport": "Processing import",
+    "processingPulse": "Updating pulse",
+    "processingGeneric": "Processing task",
+    "statusQueued": "Queued",
+    "statusRunning": "In progress",
+    "statusRetrying": "Retrying",
+    "attempt": "attempt {current}/{max}"
   },
   "sessionGuidance": {
     "transcriptInProgress": "Transcription is in progress — your conversation will appear here shortly.",

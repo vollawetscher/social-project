@@ -1073,7 +1073,18 @@
     "onboardingBenefit2Title": "Funktioniert sprachübergreifend",
     "onboardingBenefit2Desc": "Nimm Stimmproben in jeder Sprache auf, die du verwendest. Jede dauert unter 30 Sekunden.",
     "onboardingSetupNow": "Stimmprobe aufnehmen",
-    "onboardingRemindLater": "In 7 Tagen erinnern"
+    "onboardingRemindLater": "In 7 Tagen erinnern",
+    "processing": "In Bearbeitung",
+    "processingAnalyze": "Sitzung wird analysiert",
+    "processingTranscribe": "Audio wird transkribiert",
+    "processingOutput": "Bericht wird erstellt",
+    "processingImport": "Import wird verarbeitet",
+    "processingPulse": "Pulse wird aktualisiert",
+    "processingGeneric": "Aufgabe wird bearbeitet",
+    "statusQueued": "In Warteschlange",
+    "statusRunning": "Wird verarbeitet",
+    "statusRetrying": "Erneuter Versuch",
+    "attempt": "Versuch {current}/{max}"
   },
   "sessionGuidance": {
     "transcriptInProgress": "Transkription läuft — dein Gespräch erscheint hier in Kürze.",
