@@ -1,21 +1,25 @@
 'use client'
 
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { applyTranscriptCorrections } from '@/lib/utils/transcript-corrections'
 import type { TranscriptSegment, TranscriptCorrections } from '@/lib/types-v0'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
+import { Check, Pencil } from 'lucide-react'
 
 interface TranscriptViewerProps {
   segments: TranscriptSegment[]
-  currentTime?: number // Current audio playback time for highlighting
-  onSeek?: (time: number) => void // Callback when user clicks on a timestamp
-  corrections?: TranscriptCorrections // Alias system for name corrections and PII redaction
-  onTogglePlayback?: () => void // Callback to toggle play/pause
-  isPlaying?: boolean // Current playback state
+  currentTime?: number
+  onSeek?: (time: number) => void
+  corrections?: TranscriptCorrections
+  onTogglePlayback?: () => void
+  isPlaying?: boolean
+  onSpeakerChange?: (segmentIndex: number, newSpeaker: string) => void
 }
 
-// Speaker colors for visual distinction
 const SPEAKER_COLORS = [
   'bg-blue-500/20 text-blue-700 border-blue-500/30 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30',
   'bg-green-500/20 text-green-700 border-green-500/30 dark:bg-green-500/20 dark:text-green-300 dark:border-green-500/30',
@@ -25,7 +29,144 @@ const SPEAKER_COLORS = [
   'bg-cyan-500/20 text-cyan-700 border-cyan-500/30 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-500/30',
 ]
 
-export function TranscriptViewer({ segments, currentTime = 0, onSeek, corrections, onTogglePlayback, isPlaying = false }: TranscriptViewerProps) {
+function SpeakerBadge({
+  displayName,
+  originalName,
+  isOverridden,
+  colorClass,
+  allSpeakers,
+  editable,
+  onSelect,
+}: {
+  displayName: string
+  originalName: string
+  isOverridden: boolean
+  colorClass: string
+  allSpeakers: string[]
+  editable: boolean
+  onSelect: (name: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [customName, setCustomName] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (open) {
+      setCustomName('')
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+  }, [open])
+
+  const handleSelect = useCallback((name: string) => {
+    onSelect(name)
+    setOpen(false)
+  }, [onSelect])
+
+  const handleCustomSubmit = useCallback(() => {
+    const trimmed = customName.trim()
+    if (trimmed) {
+      onSelect(trimmed)
+      setOpen(false)
+    }
+  }, [customName, onSelect])
+
+  if (!editable) {
+    if (isOverridden) {
+      return (
+        <Tooltip>
+          <TooltipTrigger>
+            <Badge variant="outline" className={cn("text-xs font-medium", colorClass)}>
+              {displayName} <Pencil className="ml-1 h-2.5 w-2.5 inline" />
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">Original: {originalName}</p>
+          </TooltipContent>
+        </Tooltip>
+      )
+    }
+    return (
+      <Badge variant="outline" className={cn("text-xs font-medium", colorClass)}>
+        {displayName}
+      </Badge>
+    )
+  }
+
+  const badge = (
+    <Badge
+      variant="outline"
+      className={cn(
+        "text-xs font-medium cursor-pointer hover:ring-1 hover:ring-primary/50 transition-shadow",
+        colorClass,
+      )}
+    >
+      {displayName}
+      {isOverridden && <Pencil className="ml-1 h-2.5 w-2.5 inline" />}
+    </Badge>
+  )
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+        {isOverridden ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent><p className="text-xs">Original: {originalName}</p></TooltipContent>
+          </Tooltip>
+        ) : (
+          badge
+        )}
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-52 p-2"
+        align="start"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDownOutside={() => setOpen(false)}
+      >
+        <div className="space-y-1">
+          <p className="text-[11px] font-medium text-muted-foreground px-1 pb-1">Assign speaker</p>
+          {allSpeakers.map((speaker) => (
+            <button
+              key={speaker}
+              type="button"
+              className={cn(
+                "flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left hover:bg-accent transition-colors",
+                speaker === displayName && "bg-accent font-medium",
+              )}
+              onClick={() => handleSelect(speaker)}
+            >
+              <span className="flex-1 truncate">{speaker}</span>
+              {speaker === displayName && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+            </button>
+          ))}
+          <div className="border-t border-border pt-1.5 mt-1.5">
+            <form
+              onSubmit={(e) => { e.preventDefault(); handleCustomSubmit() }}
+              className="flex gap-1"
+            >
+              <Input
+                ref={inputRef}
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                placeholder="New name…"
+                className="h-7 text-xs"
+              />
+              <button
+                type="submit"
+                disabled={!customName.trim()}
+                className="shrink-0 rounded-md px-2 h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                OK
+              </button>
+            </form>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+export function TranscriptViewer({ segments, currentTime = 0, onSeek, corrections, onTogglePlayback, isPlaying = false, onSpeakerChange }: TranscriptViewerProps) {
   if (!segments || segments.length === 0) {
     return (
       <div className="flex items-center justify-center h-full p-8">
@@ -39,6 +180,8 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
     ...(corrections?.name_corrections || {}),
   }
   const speakerMergeMap = corrections?.speaker_merge_map || {}
+  const segmentSpeakerOverrides = corrections?.segment_speaker_overrides || {}
+
   const resolveMergedSpeakerId = (speakerId: string): string => {
     let current = String(speakerId || '').trim()
     const visited = new Set<string>()
@@ -51,7 +194,6 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
     return current || String(speakerId || '').trim()
   }
 
-  // Normalize word_corrections: may arrive as {original,corrected,confidence}[] from AI
   const normalizedWordCorrections: Record<string, string> = (() => {
     const raw = corrections?.word_corrections
     if (Array.isArray(raw)) {
@@ -79,7 +221,6 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
     ...normalizedWordCorrections,
   }
 
-  // Apply corrections to text (uses utility for correct ordering: longer phrases first)
   const applyCorrections = (text: string): { text: string; hasCorrections: boolean; original: string[] } => {
     const originalTerms: string[] = []
     Object.keys(allCorrections).forEach((original) => {
@@ -93,22 +234,28 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
     }
   }
 
-  // Group speakers for consistent coloring (apply corrections to speaker names)
+  // Resolve display name for each segment, respecting per-segment overrides first
+  const resolveSegmentSpeaker = (segment: TranscriptSegment, index: number): { display: string; original: string; isOverridden: boolean } => {
+    const override = segmentSpeakerOverrides[String(index)]
+    if (override) {
+      return { display: override, original: segment.speakerName, isOverridden: true }
+    }
+    const mergedSpeakerId = resolveMergedSpeakerId(segment.speakerId || segment.speakerName)
+    const display = speakerNameMap[mergedSpeakerId] || allCorrections[segment.speakerName] || mergedSpeakerId || segment.speakerName
+    const isOverridden = display !== segment.speakerName
+    return { display, original: segment.speakerName, isOverridden }
+  }
+
+  // Build unique speaker list from resolved names
   const speakers = Array.from(
-    new Set(
-      segments.map((s) => {
-        const merged = resolveMergedSpeakerId(s.speakerId || s.speakerName)
-        return speakerNameMap[merged] || allCorrections[s.speakerName] || merged || s.speakerName
-      })
-    )
+    new Set(segments.map((s, i) => resolveSegmentSpeaker(s, i).display))
   )
   const getSpeakerColor = (speaker: string) => {
     const index = speakers.indexOf(speaker)
     return SPEAKER_COLORS[index % SPEAKER_COLORS.length]
   }
 
-  // Count total corrections
-  const correctionCount = Object.keys(allCorrections).length
+  const correctionCount = Object.keys(allCorrections).length + Object.keys(segmentSpeakerOverrides).length
   const hasPiiRedactions = corrections?.pii_redactions && Object.keys(corrections.pii_redactions).length > 0
 
   return (
@@ -142,6 +289,9 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                     {corrections?.name_corrections && Object.keys(corrections.name_corrections).length > 0 && (
                       <p><strong>Name corrections:</strong> {Object.keys(corrections.name_corrections).length}</p>
                     )}
+                    {Object.keys(segmentSpeakerOverrides).length > 0 && (
+                      <p><strong>Speaker overrides:</strong> {Object.keys(segmentSpeakerOverrides).length} segments</p>
+                    )}
                     {corrections?.pii_redactions && Object.keys(corrections.pii_redactions).length > 0 && (
                       <p><strong>PII redactions:</strong> {Object.keys(corrections.pii_redactions).length}</p>
                     )}
@@ -161,9 +311,7 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
             const isActive = currentTime >= segment.startTime && 
                             (index === segments.length - 1 || currentTime < segments[index + 1].startTime)
             
-            // Apply corrections to speaker name and text
-            const mergedSpeakerId = resolveMergedSpeakerId(segment.speakerId || segment.speakerName)
-            const correctedSpeaker = speakerNameMap[mergedSpeakerId] || allCorrections[segment.speakerName] || mergedSpeakerId || segment.speakerName
+            const { display: correctedSpeaker, original: originalSpeaker, isOverridden: speakerOverridden } = resolveSegmentSpeaker(segment, index)
             const { text: correctedText, hasCorrections, original } = applyCorrections(segment.text)
             
             return (
@@ -175,11 +323,9 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                   onSeek && "cursor-pointer"
                 )}
                 onClick={() => {
-                  // If clicking the currently active segment and audio is playing, pause
                   if (isActive && isPlaying && onTogglePlayback) {
                     onTogglePlayback()
                   } else if (onSeek) {
-                    // Otherwise, seek to this segment
                     onSeek(segment.startTime)
                   }
                 }}
@@ -196,29 +342,15 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                 
                 {/* Content */}
                 <div className="flex-1 min-w-0 space-y-1.5">
-                  {/* Speaker Badge */}
-                  {(speakerNameMap[mergedSpeakerId] || allCorrections[segment.speakerName]) ? (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Badge 
-                          variant="outline" 
-                          className={cn("text-xs font-medium", getSpeakerColor(correctedSpeaker))}
-                        >
-                          {correctedSpeaker} <span className="ml-1 text-[10px]">✏️</span>
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                          <p className="text-xs">Original: {segment.speakerName}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Badge 
-                      variant="outline" 
-                      className={cn("text-xs font-medium", getSpeakerColor(segment.speakerName))}
-                    >
-                      {segment.speakerName}
-                    </Badge>
-                  )}
+                  <SpeakerBadge
+                    displayName={correctedSpeaker}
+                    originalName={originalSpeaker}
+                    isOverridden={speakerOverridden}
+                    colorClass={getSpeakerColor(correctedSpeaker)}
+                    allSpeakers={speakers}
+                    editable={!!onSpeakerChange}
+                    onSelect={(name) => onSpeakerChange?.(index, name)}
+                  />
                   
                   {/* Text */}
                   {hasCorrections ? (

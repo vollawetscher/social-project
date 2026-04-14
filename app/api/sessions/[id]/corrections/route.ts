@@ -80,6 +80,7 @@ export async function POST(
       'word_corrections',
       'speaker_name_map',
       'speaker_merge_map',
+      'segment_speaker_overrides',
       'accepted_suggestions',
       'bulk_cleanup',
     ])

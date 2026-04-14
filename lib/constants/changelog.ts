@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.29.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.29.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Inline Speaker Editing',
+        description: 'Click any speaker label in the transcript to reassign it. Fix wrong speaker diarization on individual segments — pick from existing speakers or type a new name. Changes are saved instantly.',
+      },
+    ],
+  },
+  {
     version: '1.28.0',
     date: 'March 17, 2026',
     entries: [

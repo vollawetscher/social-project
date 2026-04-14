@@ -469,6 +469,52 @@ export default function SessionDetailPage() {
     }
   }, [cleanupSuggestions, session, sessionId, speakerMergeMap, speakerNameMap, t, wordCorrectionsDraft])
 
+  const handleSpeakerChange = useCallback(async (segmentIndex: number, newSpeaker: string) => {
+    if (!session) return
+    const existing = session.transcriptCorrections?.segment_speaker_overrides || {}
+    const segment = session.transcript[segmentIndex]
+    const currentDisplay = existing[String(segmentIndex)]
+    if (currentDisplay === newSpeaker) return
+    // If resetting to the original speaker name, remove the override
+    const isOriginal = newSpeaker === segment?.speakerName
+    const updated = { ...existing }
+    if (isOriginal) {
+      delete updated[String(segmentIndex)]
+    } else {
+      updated[String(segmentIndex)] = newSpeaker
+    }
+    // Optimistic update
+    setSession((prev) => prev ? {
+      ...prev,
+      transcriptCorrections: {
+        ...prev.transcriptCorrections,
+        segment_speaker_overrides: updated,
+      },
+    } : prev)
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/corrections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          corrections: updated,
+          type: 'segment_speaker_overrides',
+          replace: true,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save speaker override')
+    } catch (error) {
+      console.error('[SpeakerOverride] Save failed:', error)
+      toast.error('Failed to save speaker change')
+      setSession((prev) => prev ? {
+        ...prev,
+        transcriptCorrections: {
+          ...prev.transcriptCorrections,
+          segment_speaker_overrides: existing,
+        },
+      } : prev)
+    }
+  }, [session, sessionId])
+
   // Fetch outputs - reusable for initial load and after generation
   const fetchOutputs = useCallback(async () => {
     try {
@@ -1377,6 +1423,7 @@ export default function SessionDetailPage() {
                 corrections={session.transcriptCorrections}
                 onTogglePlayback={handleTogglePlayback}
                 isPlaying={isAudioPlaying}
+                onSpeakerChange={handleSpeakerChange}
               />
             </div>
           </TabsContent>
@@ -1860,6 +1907,7 @@ export default function SessionDetailPage() {
                     corrections={session.transcriptCorrections}
                     onTogglePlayback={handleTogglePlayback}
                     isPlaying={isAudioPlaying}
+                    onSpeakerChange={handleSpeakerChange}
                   />
                 )}
               </div>
