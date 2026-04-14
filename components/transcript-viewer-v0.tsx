@@ -106,8 +106,9 @@ function SpeakerBadge({
   )
 
   return (
+    <span onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+      <PopoverTrigger asChild>
         {isOverridden ? (
           <Tooltip>
             <TooltipTrigger asChild>{badge}</TooltipTrigger>
@@ -120,7 +121,6 @@ function SpeakerBadge({
       <PopoverContent
         className="w-52 p-2"
         align="start"
-        onClick={(e) => e.stopPropagation()}
         onPointerDownOutside={() => setOpen(false)}
       >
         <div className="space-y-1">
@@ -163,6 +163,7 @@ function SpeakerBadge({
         </div>
       </PopoverContent>
     </Popover>
+    </span>
   )
 }
 
