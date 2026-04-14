@@ -106,7 +106,6 @@ function SpeakerBadge({
   )
 
   return (
-    <span onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         {isOverridden ? (
@@ -163,7 +162,6 @@ function SpeakerBadge({
         </div>
       </PopoverContent>
     </Popover>
-    </span>
   )
 }
 
@@ -315,29 +313,32 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
             const { display: correctedSpeaker, original: originalSpeaker, isOverridden: speakerOverridden } = resolveSegmentSpeaker(segment, index)
             const { text: correctedText, hasCorrections, original } = applyCorrections(segment.text)
             
+            const handleSeekOrToggle = onSeek ? () => {
+              if (isActive && isPlaying && onTogglePlayback) {
+                onTogglePlayback()
+              } else {
+                onSeek(segment.startTime)
+              }
+            } : undefined
+
             return (
               <div 
                 key={index} 
                 className={cn(
                   "flex gap-3 group hover:bg-muted/50 -mx-2 px-2 py-2 rounded-md transition-colors",
                   isActive && "bg-primary/10 border-l-2 border-primary",
-                  onSeek && "cursor-pointer"
                 )}
-                onClick={() => {
-                  if (isActive && isPlaying && onTogglePlayback) {
-                    onTogglePlayback()
-                  } else if (onSeek) {
-                    onSeek(segment.startTime)
-                  }
-                }}
-                role={onSeek ? "button" : undefined}
-                tabIndex={onSeek ? 0 : undefined}
               >
                 {/* Timestamp */}
-                <div className={cn(
-                  "text-xs text-muted-foreground font-mono pt-1 min-w-[60px] shrink-0 tabular-nums",
-                  onSeek && "group-hover:text-primary transition-colors"
-                )}>
+                <div
+                  className={cn(
+                    "text-xs text-muted-foreground font-mono pt-1 min-w-[60px] shrink-0 tabular-nums",
+                    onSeek && "cursor-pointer group-hover:text-primary transition-colors"
+                  )}
+                  onClick={handleSeekOrToggle}
+                  role={onSeek ? "button" : undefined}
+                  tabIndex={onSeek ? 0 : undefined}
+                >
                   {formatTimestamp(segment.startTime)}
                 </div>
                 
@@ -353,30 +354,37 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                     onSelect={(name) => onSpeakerChange?.(index, name)}
                   />
                   
-                  {/* Text */}
-                  {hasCorrections ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <p className="text-sm leading-relaxed text-foreground cursor-help">
-                          {correctedText}
-                        </p>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">
-                          <strong>Corrections applied:</strong>
-                          {original.map((term, i) => (
-                            <span key={i} className="block">
-                              {term} → {allCorrections[term]}
-                            </span>
-                          ))}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <p className="text-sm leading-relaxed text-foreground">
-                      {segment.text}
-                    </p>
-                  )}
+                  {/* Text — click to seek/toggle audio */}
+                  <div
+                    className={cn(onSeek && "cursor-pointer")}
+                    onClick={handleSeekOrToggle}
+                    role={onSeek ? "button" : undefined}
+                    tabIndex={onSeek ? -1 : undefined}
+                  >
+                    {hasCorrections ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-sm leading-relaxed text-foreground cursor-help">
+                            {correctedText}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">
+                            <strong>Corrections applied:</strong>
+                            {original.map((term, i) => (
+                              <span key={i} className="block">
+                                {term} → {allCorrections[term]}
+                              </span>
+                            ))}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <p className="text-sm leading-relaxed text-foreground">
+                        {segment.text}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             )
