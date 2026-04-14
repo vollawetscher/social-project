@@ -92,35 +92,34 @@ function SpeakerBadge({
     )
   }
 
-  const badge = (
-    <Badge
-      variant="outline"
-      className={cn(
-        "text-xs font-medium cursor-pointer hover:ring-1 hover:ring-primary/50 transition-shadow",
-        colorClass,
-      )}
-    >
-      {displayName}
-      {isOverridden && <Pencil className="ml-1 h-2.5 w-2.5 inline" />}
-    </Badge>
+  const badgeEl = (
+    <PopoverTrigger asChild>
+      <Badge
+        variant="outline"
+        className={cn(
+          "text-xs font-medium cursor-pointer hover:ring-1 hover:ring-primary/50 transition-shadow",
+          colorClass,
+        )}
+      >
+        {displayName}
+        {isOverridden && <Pencil className="ml-1 h-2.5 w-2.5 inline" />}
+      </Badge>
+    </PopoverTrigger>
   )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {isOverridden ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{badge}</TooltipTrigger>
-            <TooltipContent><p className="text-xs">Original: {originalName}</p></TooltipContent>
-          </Tooltip>
-        ) : (
-          badge
-        )}
-      </PopoverTrigger>
+      {isOverridden && !open ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{badgeEl}</TooltipTrigger>
+          <TooltipContent><p className="text-xs">Original: {originalName}</p></TooltipContent>
+        </Tooltip>
+      ) : (
+        badgeEl
+      )}
       <PopoverContent
         className="w-52 p-2"
         align="start"
-        onPointerDownOutside={() => setOpen(false)}
       >
         <div className="space-y-1">
           <p className="text-[11px] font-medium text-muted-foreground px-1 pb-1">Assign speaker</p>
