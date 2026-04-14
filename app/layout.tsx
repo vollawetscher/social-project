@@ -50,6 +50,8 @@ export const metadata: Metadata = {
       'Notissima automatically converts your calls, meetings, and recordings into decision logs, action plans, and risk summaries.',
     images: ['/og-image.png'],
   },
+  // Block indexing while legal pages are not finalized. Remove when ready to go live with SEO.
+  robots: { index: false, follow: false },
 }
 
 export const viewport: Viewport = {

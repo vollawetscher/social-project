@@ -1,28 +1,14 @@
 import { MetadataRoute } from 'next'
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://notissima.com'
-
+// Block all crawlers while legal pages (privacy, terms, imprint) are not finalized.
+// To go live with SEO: restore the allow/disallow list and re-add the sitemap reference.
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
-        disallow: [
-          '/*/admin/',        // admin panels
-          '/*/sessions/',     // private user data
-          '/*/outputs/',      // private user data
-          '/*/calls/',        // private
-          '/*/profile/',      // private
-          '/*/settings/',     // private
-          '/*/templates/',    // private
-          '/*/record/',       // private
-          '/*/reset-password/',
-          '/auth/',
-          '/api/',
-        ],
+        disallow: '/',
       },
     ],
-    sitemap: `${BASE_URL}/sitemap.xml`,
   }
 }
