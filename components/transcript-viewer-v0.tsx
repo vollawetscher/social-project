@@ -92,31 +92,23 @@ function SpeakerBadge({
     )
   }
 
-  const badgeEl = (
-    <PopoverTrigger asChild>
-      <Badge
-        variant="outline"
-        className={cn(
-          "text-xs font-medium cursor-pointer hover:ring-1 hover:ring-primary/50 transition-shadow",
-          colorClass,
-        )}
-      >
-        {displayName}
-        {isOverridden && <Pencil className="ml-1 h-2.5 w-2.5 inline" />}
-      </Badge>
-    </PopoverTrigger>
-  )
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {isOverridden && !open ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{badgeEl}</TooltipTrigger>
-          <TooltipContent><p className="text-xs">Original: {originalName}</p></TooltipContent>
-        </Tooltip>
-      ) : (
-        badgeEl
-      )}
+      <PopoverTrigger
+        className="inline-flex border-0 bg-transparent p-0 outline-none"
+        title={isOverridden ? `Original: ${originalName}` : undefined}
+      >
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-xs font-medium cursor-pointer hover:ring-1 hover:ring-primary/50 transition-shadow",
+            colorClass,
+          )}
+        >
+          {displayName}
+          {isOverridden && <Pencil className="ml-1 h-2.5 w-2.5 inline" />}
+        </Badge>
+      </PopoverTrigger>
       <PopoverContent
         className="w-52 p-2"
         align="start"
