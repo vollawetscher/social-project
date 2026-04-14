@@ -92,45 +92,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create a session for this call
-    const inputHint =
-      callType === 'pstn_outbound'
-        ? 'phone_call'
-        : mode === 'video'
-          ? 'video_call'
-          : 'phone_call'
-
-    const sessionLabel =
-      callType === 'pstn_outbound'
-        ? 'Call'
-        : mode === 'video'
-          ? 'Video Call'
-          : 'Voice Call'
-
-    const session = !isScheduled
-      ? await (async () => {
-          const { data: createdSession, error: sessionError } = await supabase
-            .from('sessions')
-            .insert({
-              user_id: user.id,
-              status: 'created',
-              context_note: '',
-              internal_case_id: sessionLabel,
-              duration_sec: 0,
-              last_error: '',
-              input_hint: inputHint,
-              language: 'auto',
-              user_is_speaker: true,
-            })
-            .select('id')
-            .single()
-
-          if (sessionError) {
-            throw new Error(`Session creation failed: ${sessionError.message}`)
-          }
-          return createdSession
-        })()
-      : null
+    // Session is created later by the webhook when both participants connect
+    // and recording starts. This avoids orphan sessions for missed/declined calls.
 
     // Create the call record
     const isInvite = !isScheduled && callType === 'web' && Boolean(calleeUserId)
@@ -140,7 +103,7 @@ export async function POST(request: Request) {
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
-        session_id: session?.id ?? null,
+        session_id: null,
         user_id: user.id,
         callee_user_id: calleeUserId || null,
         room_name: roomName,
@@ -293,7 +256,7 @@ export async function POST(request: Request) {
       callId: call.id,
       roomName,
       token,
-      sessionId: session?.id ?? null,
+      sessionId: null,
       displayName,
       invited: isInvite,
       calleeReachability,

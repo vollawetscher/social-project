@@ -156,7 +156,7 @@ async function handleConsentWebhook(
 
     const { data: call } = await db
       .from('calls')
-      .select('id, room_name, phone_number, participant_a_identity, track_a_egress_id, session_id, contact_name, sip_call_id')
+      .select('id, user_id, room_name, phone_number, participant_a_identity, track_a_egress_id, session_id, contact_name, sip_call_id')
       .eq('id', callId)
       .maybeSingle()
 
@@ -227,11 +227,33 @@ async function handleConsentWebhook(
     })
 
     // Keep initiator recording even when callee declines/does not respond.
-    if (call.session_id && call.participant_a_identity && !call.track_a_egress_id) {
+    if (call.participant_a_identity && !call.track_a_egress_id) {
       try {
+        let sessionId = call.session_id as string | null
+        if (!sessionId) {
+          const { data: newSession, error: sessionError } = await db
+            .from('sessions')
+            .insert({
+              user_id: call.user_id,
+              status: 'recording',
+              context_note: '',
+              internal_case_id: 'Call',
+              duration_sec: 0,
+              last_error: '',
+              input_hint: 'phone_call',
+              language: 'auto',
+              user_is_speaker: true,
+            })
+            .select('id')
+            .single()
+          if (sessionError || !newSession) throw new Error(`Session creation failed: ${sessionError?.message}`)
+          sessionId = newSession.id
+          await db.from('calls').update({ session_id: sessionId }).eq('id', call.id)
+          console.log('[PSTN Consent] Session created for caller-only recording:', call.id, 'session:', sessionId)
+        }
         const egress = await startTrackEgressForParticipant(
           call.room_name,
-          call.session_id,
+          sessionId!,
           call.participant_a_identity,
         )
         await db
@@ -241,7 +263,7 @@ async function handleConsentWebhook(
         await db
           .from('sessions')
           .update({ status: 'recording' })
-          .eq('id', call.session_id)
+          .eq('id', sessionId)
       } catch (egressError: any) {
         console.error('[PSTN Consent] Failed to start caller-only egress:', egressError)
       }

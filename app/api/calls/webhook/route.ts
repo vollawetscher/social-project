@@ -68,14 +68,14 @@ export async function POST(request: Request) {
         let call: any = null
         const primaryQuery = await supabase
           .from('calls')
-          .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, contact_name, phone_number, pstn_consent_state, pstn_transcription_mode')
+          .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number, pstn_consent_state, pstn_transcription_mode')
           .eq('room_name', roomName)
           .maybeSingle()
 
         if (primaryQuery.error && /pstn_consent_state|live_track_a_egress_id|live_track_b_egress_id|column .* does not exist/i.test(primaryQuery.error.message || '')) {
           const fallbackQuery = await supabase
             .from('calls')
-            .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, contact_name, phone_number')
+            .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number')
             .eq('room_name', roomName)
             .maybeSingle()
           call = fallbackQuery.data
@@ -113,8 +113,38 @@ export async function POST(request: Request) {
           const calleeDeclinedPstnConsent =
             call.call_type === 'pstn_outbound' && call.pstn_consent_state === 'declined'
 
-          if (call.session_id && !hasExistingEgress && !calleeDeclinedPstnConsent) {
+          if (!hasExistingEgress && !calleeDeclinedPstnConsent) {
             try {
+              // Create session now that both participants are connected.
+              // Deferred from call creation to avoid orphan sessions for missed/declined calls.
+              let sessionId = call.session_id as string | null
+              if (!sessionId) {
+                const callMode = (call as any).call_mode
+                const inputHint = call.call_type === 'pstn_outbound' ? 'phone_call' : callMode === 'video' ? 'video_call' : 'phone_call'
+                const sessionLabel = call.call_type === 'pstn_outbound' ? 'Call' : callMode === 'video' ? 'Video Call' : 'Voice Call'
+                const { data: newSession, error: sessionError } = await supabase
+                  .from('sessions')
+                  .insert({
+                    user_id: call.user_id,
+                    status: 'recording',
+                    context_note: '',
+                    internal_case_id: sessionLabel,
+                    duration_sec: 0,
+                    last_error: '',
+                    input_hint: inputHint,
+                    language: 'auto',
+                    user_is_speaker: true,
+                  })
+                  .select('id')
+                  .single()
+                if (sessionError || !newSession) {
+                  throw new Error(`Session creation failed: ${sessionError?.message || 'unknown'}`)
+                }
+                sessionId = newSession.id
+                await supabase.from('calls').update({ session_id: sessionId }).eq('id', call.id)
+                console.log('[LiveKit Webhook] Session created for call:', call.id, 'session:', sessionId)
+              }
+
               const useDualTrack =
                 call.call_type === 'pstn_outbound' &&
                 (call as any).pstn_transcription_mode === 'live' &&
@@ -125,8 +155,8 @@ export async function POST(request: Request) {
                 const participantAIdentity = call.participant_a_identity
                 const participantBIdentity = call.participant_b_identity || identity
                 const [egressA, egressB] = await Promise.all([
-                  startTrackEgressForParticipant(roomName, call.session_id, participantAIdentity, 'track_a'),
-                  startTrackEgressForParticipant(roomName, call.session_id, participantBIdentity, 'track_b'),
+                  startTrackEgressForParticipant(roomName, sessionId!, participantAIdentity, 'track_a'),
+                  startTrackEgressForParticipant(roomName, sessionId!, participantBIdentity, 'track_b'),
                 ])
                 let liveTrackAId: string | null = null
                 let liveTrackBId: string | null = null
@@ -171,7 +201,7 @@ export async function POST(request: Request) {
                   .eq('id', call.id)
                 console.log('[LiveKit Webhook] Dual track egress started:', egressA.egressId, egressB.egressId)
               } else {
-                const egress = await startCompositeEgress(roomName, call.session_id)
+                const egress = await startCompositeEgress(roomName, sessionId!)
                 await supabase
                   .from('calls')
                   .update({
@@ -184,7 +214,7 @@ export async function POST(request: Request) {
               await supabase
                 .from('sessions')
                 .update({ status: 'recording' })
-                .eq('id', call.session_id)
+                .eq('id', sessionId)
             } catch (err: any) {
               console.error('[LiveKit Webhook] Failed to start egress:', err.message)
               await supabase
@@ -250,32 +280,13 @@ export async function POST(request: Request) {
           console.log('[LiveKit Webhook] Session set to uploading (egress pending):', call.session_id)
         }
 
-        // Delete session for calls that never connected or had no recording.
-        // Covers: missed/declined calls, calls ended before egress started,
-        // and edge cases where egress IDs exist but call was never active.
-        const shouldDeleteSession =
-          call.session_id &&
-          (!hasEgress || wasNeverActive)
-
-        if (shouldDeleteSession) {
-          const { data: session } = await supabase
-            .from('sessions')
-            .select('status')
-            .eq('id', call.session_id)
-            .maybeSingle()
-
-          const deletableStatuses = ['created', 'recording', 'uploading']
-          if (session && deletableStatuses.includes(session.status)) {
-            await supabase
-              .from('calls')
-              .update({ session_id: null })
-              .eq('id', call.id)
-            await supabase
-              .from('sessions')
-              .delete()
-              .eq('id', call.session_id)
-            console.log('[LiveKit Webhook] Deleted orphan session (call never active or no egress):', call.session_id, call.id)
-          }
+        // Sessions are now created only when recording starts (participant_joined),
+        // so calls that never connected will have session_id = null — no cleanup needed.
+        // Guard: if a session exists but has no egress (edge case), clean it up.
+        if (call.session_id && !hasEgress) {
+          await supabase.from('calls').update({ session_id: null }).eq('id', call.id)
+          await supabase.from('sessions').delete().eq('id', call.session_id)
+          console.log('[LiveKit Webhook] Deleted session with no recording:', call.session_id, call.id)
         }
         break
       }

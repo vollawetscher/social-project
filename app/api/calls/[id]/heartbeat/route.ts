@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceRoleClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { startCompositeEgress } from '@/lib/services/livekit'
 
 /**
@@ -25,7 +24,7 @@ export async function POST(
 
     const { data: call } = await supabase
       .from('calls')
-      .select('id, status, session_id, room_name, participant_b_identity, track_a_egress_id, track_b_egress_id, call_type')
+      .select('id, user_id, status, session_id, room_name, participant_b_identity, track_a_egress_id, track_b_egress_id, call_type')
       .eq('id', params.id)
       .or(`user_id.eq.${user.id},callee_user_id.eq.${user.id}`)
       .maybeSingle()
@@ -47,14 +46,37 @@ export async function POST(
 
     await supabase.from('calls').update(updates).eq('id', params.id)
 
-    // Self-healing: start egress if client has remote but no recording exists
+    // Self-healing: start egress if client has remote but no recording exists.
+    // Also creates the session if the participant_joined webhook was missed.
     const hasEgress = !!(call.track_a_egress_id || call.track_b_egress_id)
     let egressStarted = false
 
-    if (clientHasRemote && !hasEgress && call.session_id && call.room_name && call.call_type !== 'pstn_outbound') {
+    if (clientHasRemote && !hasEgress && call.room_name && call.call_type !== 'pstn_outbound') {
       try {
         const db = createServiceRoleClient()
-        const egress = await startCompositeEgress(call.room_name, call.session_id)
+        let sessionId = call.session_id as string | null
+        if (!sessionId) {
+          const { data: newSession, error: sessionError } = await db
+            .from('sessions')
+            .insert({
+              user_id: call.user_id,
+              status: 'recording',
+              context_note: '',
+              internal_case_id: 'Voice Call',
+              duration_sec: 0,
+              last_error: '',
+              input_hint: 'phone_call',
+              language: 'auto',
+              user_is_speaker: true,
+            })
+            .select('id')
+            .single()
+          if (sessionError || !newSession) throw new Error(`Session creation failed: ${sessionError?.message}`)
+          sessionId = newSession.id
+          await db.from('calls').update({ session_id: sessionId }).eq('id', call.id)
+          console.log('[Heartbeat] Fallback session created for call', call.id, 'session:', sessionId)
+        }
+        const egress = await startCompositeEgress(call.room_name, sessionId!)
         await db
           .from('calls')
           .update({ track_a_egress_id: egress.egressId })
@@ -62,7 +84,7 @@ export async function POST(
         await db
           .from('sessions')
           .update({ status: 'recording' })
-          .eq('id', call.session_id)
+          .eq('id', sessionId)
         egressStarted = true
         console.log('[Heartbeat] Fallback egress started for call', call.id, 'egress:', egress.egressId)
       } catch (err: any) {

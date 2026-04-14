@@ -110,6 +110,9 @@ export function GlobalIncomingCallListener() {
   const [incomingInvite, setIncomingInvite] = useState<Call | null>(null)
   const [joining, setJoining] = useState(false)
   const missedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const incomingInviteRef = useRef<Call | null>(null)
+
+  useEffect(() => { incomingInviteRef.current = incomingInvite }, [incomingInvite])
 
   const onCallsPage = pathname?.endsWith("/calls")
   useIncomingRingtone(Boolean(incomingInvite) && !joining)
@@ -126,7 +129,7 @@ export function GlobalIncomingCallListener() {
         if (!row || row.callee_user_id !== user.id) return
 
         if (payload.eventType === "DELETE") {
-          if (incomingInvite?.id === row.id) setIncomingInvite(null)
+          if (incomingInviteRef.current?.id === row.id) setIncomingInvite(null)
           return
         }
 
@@ -137,14 +140,19 @@ export function GlobalIncomingCallListener() {
           !row.missed_at
 
         if (isFreshInvite) setIncomingInvite(row)
-        else if (incomingInvite?.id === row.id) setIncomingInvite(null)
+        else if (incomingInviteRef.current?.id === row.id) setIncomingInvite(null)
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        if (status !== "SUBSCRIBED") {
+          console.warn("[GlobalIncomingCallListener] Realtime subscription status:", status)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user?.id, incomingInvite?.id])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
 
   useEffect(() => {
     if (!incomingInvite) return
