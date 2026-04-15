@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
+import { getCalleeReachability } from '@/lib/services/call-reachability'
 
 /**
  * GET /api/meet/[slug] - Resolve a meeting slug to public profile info.
@@ -33,10 +34,13 @@ export async function GET(
       return NextResponse.json({ error: 'Meeting room not found' }, { status: 404 })
     }
 
+    const reachability = await getCalleeReachability(supabase, profile.id)
+
     return NextResponse.json({
       ownerId: profile.id,
       displayName: profile.display_name || 'Host',
       slug: profile.meeting_slug,
+      reachability: reachability.state,
     })
   } catch (error: any) {
     console.error('[Meet] Error:', error)

@@ -538,7 +538,7 @@ async function processTranscriptionJob(sessionId: string) {
         }
       }
 
-      const contentType = (inputHint === 'presentation' || inputHint === 'voice_note') ? 'informative' : 'conversational'
+      const contentType = (inputHint === 'presentation' || inputHint === 'voice_note' || inputHint === 'voice_message') ? 'informative' : 'conversational'
       const effectiveMime = voiceSamplePrepended ? 'audio/ogg' : file.mime_type
       console.log('[Transcribe] Calling Speechmatics API...', { inputHint, contentType, sessionLanguage, additionalVocabCount: additionalVocab.length, voiceSamplePrepended })
       const speechmatics = createSpeechmaticsService()

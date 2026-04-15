@@ -127,7 +127,7 @@ export interface Session {
   consentLogs?: Array<{ participant_name: string; participant_identity: string; granted: boolean; created_at: string }>
   uploadSizeBytes?: number
   textUploadSizeBytes?: number
-  inputHint?: string // Creation-time hint: phone_call | video_call | quick_record | voice_note | meeting | presentation | trade_show
+  inputHint?: string // Creation-time hint: phone_call | video_call | quick_record | voice_note | voice_message | meeting | presentation | trade_show
   userIsSpeaker?: boolean | null // Whether the user is a speaker in this recording
   hasAudioFile?: boolean // True when at least one audio/video file is attached
   wordCount?: number | null // Word count for text-only imports; null for audio sessions

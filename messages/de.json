@@ -145,7 +145,8 @@
       "call": "Anruf",
       "quickRecord": "Notissima Rec",
       "audioUpload": "Audio-Upload",
-      "textImport": "Eingefügter Text"
+      "textImport": "Eingefügter Text",
+      "voiceMessage": "Sprachnachricht"
     },
     "status": {
       "recording": "Aufnahme",
@@ -1297,7 +1298,19 @@
     "yourEmail": "E-Mail (optional)",
     "emailPlaceholder": "du@beispiel.de",
     "emailHint": "Damit der Gastgeber dich bei Bedarf kontaktieren kann",
-    "continue": "Weiter"
+    "continue": "Weiter",
+    "unavailableTitle": "{name} ist derzeit nicht erreichbar",
+    "unavailableSubtitle": "Du kannst eine Sprachnachricht hinterlassen oder trotzdem beitreten",
+    "leaveVoiceMessage": "Sprachnachricht hinterlassen",
+    "joinAnyway": "Trotzdem beitreten",
+    "recordingFor": "Nachricht für {name} aufnehmen",
+    "recordingHint": "Sprich deutlich — deine Nachricht wird automatisch transkribiert",
+    "tapToRecord": "Tippe auf das Mikrofon, um die Aufnahme zu starten",
+    "reRecord": "Neu aufnehmen",
+    "sendMessage": "Nachricht senden",
+    "messageSent": "Nachricht gesendet!",
+    "messageConfirmation": "{name} wird benachrichtigt und kann deine Nachricht anhören.",
+    "micPermissionDenied": "Mikrofonzugriff ist erforderlich, um eine Sprachnachricht aufzunehmen"
   },
   "callSetup": {
     "title": "Anruf starten",

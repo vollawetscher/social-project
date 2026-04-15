@@ -145,7 +145,8 @@
       "call": "Llamada",
       "quickRecord": "Notissima Rec",
       "audioUpload": "Audio subido",
-      "textImport": "Texto pegado"
+      "textImport": "Texto pegado",
+      "voiceMessage": "Mensaje de voz"
     },
     "status": {
       "recording": "Grabando",
@@ -1290,7 +1291,19 @@
     "yourEmail": "Correo electrónico (opcional)",
     "emailPlaceholder": "tu@ejemplo.com",
     "emailHint": "Para que el anfitrión pueda contactarte si es necesario",
-    "continue": "Continuar"
+    "continue": "Continuar",
+    "unavailableTitle": "{name} no está disponible en este momento",
+    "unavailableSubtitle": "Puedes dejar un mensaje de voz o intentar unirte de todos modos",
+    "leaveVoiceMessage": "Dejar mensaje de voz",
+    "joinAnyway": "Unirme de todos modos",
+    "recordingFor": "Grabando un mensaje para {name}",
+    "recordingHint": "Habla con claridad — tu mensaje se transcribirá automáticamente",
+    "tapToRecord": "Toca el micrófono para empezar a grabar",
+    "reRecord": "Volver a grabar",
+    "sendMessage": "Enviar mensaje",
+    "messageSent": "¡Mensaje enviado!",
+    "messageConfirmation": "{name} será notificado y podrá escuchar tu mensaje.",
+    "micPermissionDenied": "Se necesita acceso al micrófono para grabar un mensaje de voz"
   },
   "callSetup": {
     "title": "Iniciar una Llamada",

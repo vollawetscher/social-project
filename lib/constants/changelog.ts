@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.30.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.30.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Voice Messages on Meeting Link',
+        description: 'When you\'re unavailable, visitors on your meeting link can now record a voice message for you. The message is automatically transcribed and analyzed, and appears in your sessions list.',
+      },
+    ],
+  },
+  {
     version: '1.29.0',
     date: 'March 17, 2026',
     entries: [

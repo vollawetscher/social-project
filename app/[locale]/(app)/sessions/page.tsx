@@ -131,9 +131,10 @@ function formatDate(dateString: string): string {
   })
 }
 
-type SessionOriginKind = "call" | "quick_record" | "audio_upload" | "text_import"
+type SessionOriginKind = "call" | "quick_record" | "audio_upload" | "text_import" | "voice_message"
 
 function getSessionOriginKind(session: Session): SessionOriginKind {
+  if (session.inputHint === 'voice_message') return "voice_message"
   if (session.isFromCall) return "call"
 
   const hint = session.inputHint
@@ -173,6 +174,7 @@ function getOriginSummary(session: Session, t: (key: string) => string): string 
 }
 
 function getOriginBadgeLabel(origin: SessionOriginKind, t: (key: string) => string): string {
+  if (origin === "voice_message") return t('source.voiceMessage')
   if (origin === "call") return t('source.call')
   if (origin === "quick_record") return t('source.quickRecord')
   if (origin === "audio_upload") return t('source.audioUpload')
@@ -180,6 +182,7 @@ function getOriginBadgeLabel(origin: SessionOriginKind, t: (key: string) => stri
 }
 
 function getOriginBadgeClass(origin: SessionOriginKind): string {
+  if (origin === "voice_message") return "bg-pink-500/10 text-pink-700 border-pink-500/30 dark:text-pink-400 dark:border-pink-700/50"
   if (origin === "call") return "bg-primary/10 text-primary border-primary/30"
   if (origin === "quick_record") return "bg-success/10 text-success border-success/30"
   if (origin === "audio_upload") return "bg-warning/10 text-warning border-warning/30"

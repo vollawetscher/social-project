@@ -145,7 +145,8 @@
       "call": "Call",
       "quickRecord": "Notissima Rec",
       "audioUpload": "Uploaded audio",
-      "textImport": "Pasted text"
+      "textImport": "Pasted text",
+      "voiceMessage": "Voice message"
     },
     "status": {
       "recording": "Recording",
@@ -1298,7 +1299,19 @@
     "yourEmail": "Email (optional)",
     "emailPlaceholder": "you@example.com",
     "emailHint": "So the host can follow up with you if needed",
-    "continue": "Continue"
+    "continue": "Continue",
+    "unavailableTitle": "{name} is currently unavailable",
+    "unavailableSubtitle": "You can leave a voice message or try joining anyway",
+    "leaveVoiceMessage": "Leave a voice message",
+    "joinAnyway": "Join meeting anyway",
+    "recordingFor": "Recording a message for {name}",
+    "recordingHint": "Speak clearly — your message will be transcribed automatically",
+    "tapToRecord": "Tap the microphone to start recording",
+    "reRecord": "Re-record",
+    "sendMessage": "Send message",
+    "messageSent": "Message sent!",
+    "messageConfirmation": "{name} will be notified and can listen to your message.",
+    "micPermissionDenied": "Microphone access is required to record a voice message"
   },
   "callSetup": {
     "title": "Start a Call",

@@ -784,7 +784,7 @@ export async function POST(
    - Use free-form text - be specific and accurate
 
 3. **Rich Context** to help understand and document this session
-4. **User-Indicated Content Hint**: The user selected this before upload (use to guide recording type/domain if relevant): ${(session as { input_hint?: string }).input_hint || 'none'}
+4. **User-Indicated Content Hint**: The user selected this before upload (use to guide recording type/domain if relevant): ${(session as { input_hint?: string }).input_hint || 'none'}${(session as { input_hint?: string }).input_hint === 'voice_message' ? '\n   NOTE: This is a VOICE MESSAGE left by a visitor on the user\'s meeting link while the user was unavailable. Treat it as a message TO the user, not a meeting. Extract: who left the message, what they want/need, urgency level, any callback contact info. The recording type should be "dictation". For suggested outputs, focus on: message summary, reply draft, action items.' : ''}
 4b. **Imported Text Source Signals** (heuristic): ${sourceSignals ? JSON.stringify(sourceSignals) : 'none'}
 5. **Known Participants** (pre-resolved from metadata — trust this data): ${knownParticipantBlock}
    The recording/session was made by "${userName || 'unknown user'}". Use speaker names from the transcript as-is; they have already been resolved.
@@ -928,6 +928,11 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
       console.log(`[Analyze API] Overriding ai_agent_conversation → meeting (input_hint=${inputHint}, callType=${linkedCall?.call_type})`)
       finalRecordingType = 'meeting'
       finalRecordingTypeConfidence = Math.min(Number(finalRecordingTypeConfidence || 0.7), 0.75)
+    }
+
+    if (inputHint === 'voice_message' && finalRecordingType !== 'dictation') {
+      finalRecordingType = 'dictation'
+      finalRecordingTypeConfidence = 0.95
     }
 
     const existingExtractedContext = ((session as any)?.ai_extracted_context || {}) as Record<string, any>
