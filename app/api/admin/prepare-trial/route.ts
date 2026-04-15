@@ -39,16 +39,30 @@ export async function POST(request: Request) {
     }
 
     const adminSupabase = createServiceRoleClient()
-
-    // 1. Create or find the client user via magic link generation
-    //    generateLink with type 'magiclink' creates the user if they don't exist
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+
+    // Check if this email already belongs to an existing user
+    const { data: existingProfile } = await adminSupabase
+      .from('profiles')
+      .select('id, role, email')
+      .ilike('email', email)
+      .maybeSingle()
+
+    const isExistingUser = Boolean(existingProfile)
+
+    if (existingProfile?.id === user.id) {
+      return NextResponse.json(
+        { error: 'Cannot prepare a trial for yourself' },
+        { status: 400 }
+      )
+    }
+
+    let clientUserId: string
+
+    // Generate magic link — works for both new and existing users
     const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
       type: 'magiclink',
       email,
-      options: {
-        redirectTo: `${siteUrl}/auth/callback?next=/sessions`,
-      },
     })
 
     if (linkError || !linkData?.user) {
@@ -59,18 +73,28 @@ export async function POST(request: Request) {
       )
     }
 
-    const clientUserId = linkData.user.id
-    const actionLink = linkData.properties?.action_link
+    clientUserId = linkData.user.id
+    const hashedToken = linkData.properties?.hashed_token
 
-    // Ensure the client has a profiles row (Supabase trigger may not fire for admin-created users)
-    await adminSupabase
-      .from('profiles')
-      .upsert(
-        { id: clientUserId, email, role: 'user' },
-        { onConflict: 'id' }
-      )
+    if (!hashedToken) {
+      console.error('[PrepareTrial] No hashed_token in generateLink response')
+      return NextResponse.json({ error: 'Failed to generate login link' }, { status: 500 })
+    }
 
-    // 2. Transfer sessions to client & mark as curated
+    // Build a verify URL that works client-side (bypasses PKCE code-verifier issue)
+    const magicLink = `${siteUrl}/auth/verify?token_hash=${encodeURIComponent(hashedToken)}&type=magiclink&next=/sessions`
+
+    // Only create a profile row for brand-new users (don't overwrite existing roles)
+    if (!existingProfile) {
+      await adminSupabase
+        .from('profiles')
+        .upsert(
+          { id: clientUserId, email, role: 'user' },
+          { onConflict: 'id', ignoreDuplicates: true }
+        )
+    }
+
+    // Transfer sessions to client & mark as curated
     const { error: transferError } = await adminSupabase
       .from('sessions')
       .update({ user_id: clientUserId, curated: true })
@@ -87,8 +111,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       clientUserId,
-      magicLink: actionLink,
+      magicLink,
       sessionsTransferred: sessionIds.length,
+      isExistingUser,
     })
   } catch (error: any) {
     if (error instanceof Error) {

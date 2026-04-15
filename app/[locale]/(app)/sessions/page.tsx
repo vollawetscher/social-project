@@ -2943,7 +2943,7 @@ export default function SessionsPage() {
 
       {/* Prepare Client Trial Dialog */}
       <Dialog open={showPrepareTrialDialog} onOpenChange={setShowPrepareTrialDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
@@ -2991,8 +2991,8 @@ export default function SessionsPage() {
               </DialogFooter>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
+            <div className="flex flex-col gap-4 min-h-0">
+              <div className="space-y-2 shrink-0">
                 <label className="text-sm font-medium">{t('prepareTrial.email')}</label>
                 <Input
                   type="email"
@@ -3002,11 +3002,11 @@ export default function SessionsPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">
+              <div className="flex flex-col gap-2 min-h-0 flex-1">
+                <label className="text-sm font-medium shrink-0">
                   {t('prepareTrial.sessionsLabel', { count: trialSelectedIds.size })}
                 </label>
-                <div className="max-h-60 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                <div className="overflow-y-auto rounded-md border border-border divide-y divide-border min-h-0">
                   {(sessions || []).filter(s => s.status === 'ready').map(s => (
                     <label
                       key={s.id}
@@ -3032,7 +3032,7 @@ export default function SessionsPage() {
                 </div>
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="shrink-0">
                 <Button variant="outline" onClick={() => setShowPrepareTrialDialog(false)}>
                   {t('prepareTrial.cancel')}
                 </Button>
