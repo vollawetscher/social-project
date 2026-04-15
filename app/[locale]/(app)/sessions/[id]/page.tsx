@@ -197,7 +197,7 @@ export default function SessionDetailPage() {
   const [editedParticipants, setEditedParticipants] = useState<any[]>([])
   const [applyToTranscript, setApplyToTranscript] = useState(true)
   const [savingCorrections, setSavingCorrections] = useState(false)
-  const   [generatingSuggestionIndex, setGeneratingSuggestionIndex] = useState<number | null>(null)
+  const [generatingSuggestionIndices, setGeneratingSuggestionIndices] = useState<Set<number>>(new Set())
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
   const [deletingOutputId, setDeletingOutputId] = useState<string | null>(null)
   const [retryingTranscribe, setRetryingTranscribe] = useState(false)
@@ -557,7 +557,7 @@ export default function SessionDetailPage() {
     const suggestionAudience = isSuggestionAudience(suggestion.audience)
       ? suggestion.audience
       : 'internal'
-    setGeneratingSuggestionIndex(index)
+    setGeneratingSuggestionIndices(prev => new Set(prev).add(index))
     try {
       const response = await fetch('/api/outputs/generate', {
         method: 'POST',
@@ -582,7 +582,26 @@ export default function SessionDetailPage() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Generation failed')
       if (data?.queued && data?.jobId) {
-        await waitForJobCompletion(data.jobId)
+        // Don't block the UI — poll for completion in the background
+        waitForJobCompletion(data.jobId)
+          .then(() => {
+            toast.success(`Generated: ${suggestion.title}`)
+            fetchOutputs()
+          })
+          .catch((err) => {
+            console.error('Async suggestion job failed:', err)
+            toast.error(err instanceof Error ? err.message : 'Output generation failed')
+          })
+          .finally(() => {
+            setGeneratingSuggestionIndices(prev => {
+              const next = new Set(prev)
+              next.delete(index)
+              return next
+            })
+          })
+        toast.info(`Generating "${suggestion.title}"…`, { duration: 3000 })
+        setActiveTab('outputs')
+        return
       }
       toast.success(`Generated: ${suggestion.title}`)
       fetchOutputs()
@@ -591,7 +610,11 @@ export default function SessionDetailPage() {
       console.error('Generate from suggestion error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate output')
     } finally {
-      setGeneratingSuggestionIndex(null)
+      setGeneratingSuggestionIndices(prev => {
+        const next = new Set(prev)
+        next.delete(index)
+        return next
+      })
     }
   }
 
@@ -1690,9 +1713,9 @@ export default function SessionDetailPage() {
                           size="sm"
                           className="w-full"
                           onClick={() => handleGenerateFromSuggestion(suggestion, idx)}
-                          disabled={generatingSuggestionIndex !== null}
+                          disabled={generatingSuggestionIndices.has(idx)}
                         >
-                          {generatingSuggestionIndex === idx ? (
+                          {generatingSuggestionIndices.has(idx) ? (
                             <>
                               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
                               {t('generatingSuggestion')}
@@ -2180,9 +2203,9 @@ export default function SessionDetailPage() {
                           size="sm"
                           className="w-full"
                           onClick={() => handleGenerateFromSuggestion(suggestion, idx)}
-                          disabled={generatingSuggestionIndex !== null}
+                          disabled={generatingSuggestionIndices.has(idx)}
                         >
-                          {generatingSuggestionIndex === idx ? (
+                          {generatingSuggestionIndices.has(idx) ? (
                             <>
                               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
                               {t('generatingSuggestion')}
