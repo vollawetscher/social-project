@@ -1425,6 +1425,7 @@
       "auto": "Auto",
       "sprecherZeit": "SPRECHER/ZEIT",
       "timestampedSpeakerLines": "Zeitstempel-Zeilen",
+      "speakerTimestampLines": "Sprecher + Zeit",
       "plainText": "Klartext",
       "rawText": "Rohtext (kein Parsing)"
     },

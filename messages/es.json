@@ -1418,6 +1418,7 @@
       "auto": "Auto",
       "sprecherZeit": "SPRECHER/ZEIT",
       "timestampedSpeakerLines": "Lineas con marcas de tiempo",
+      "speakerTimestampLines": "Hablante + hora",
       "plainText": "Texto plano",
       "rawText": "Texto en bruto (sin parseo)"
     },

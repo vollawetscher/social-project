@@ -225,11 +225,12 @@ export default function SessionDetailPage() {
     (sessionFiles?.length || 0) > 0
   const canShowTranscriptReparseControls = !hasAudioInSession
 
-  const reparseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'plain_txt', 'raw_text']
+  const reparseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'speaker_timestamp_lines', 'plain_txt', 'raw_text']
   const reparseModeLabel: Record<TranscriptParseStrategy, string> = {
     auto: tPastePreview('parseModes.auto'),
     sprecher_zeit: tPastePreview('parseModes.sprecherZeit'),
     timestamped_speaker_lines: tPastePreview('parseModes.timestampedSpeakerLines'),
+    speaker_timestamp_lines: tPastePreview('parseModes.speakerTimestampLines'),
     plain_txt: tPastePreview('parseModes.plainText'),
     raw_text: tPastePreview('parseModes.rawText'),
   }

@@ -47,6 +47,7 @@ export type TranscriptParseStrategy =
   | 'auto'
   | 'sprecher_zeit'
   | 'timestamped_speaker_lines'
+  | 'speaker_timestamp_lines'
   | 'plain_txt'
   | 'raw_text'
 
@@ -122,9 +123,9 @@ function extractSpeakerFromText(text: string): { speaker: string; text: string }
   let trimmed = text.trim()
   // Strip leading [timestamp] prefix (e.g. [0:08], [12:34], [1:02:15])
   trimmed = trimmed.replace(/^\[\d{1,2}:\d{2}(?::\d{2})?\]\s*/, '')
-  // S1:, S2:, Speaker 1:, Speaker 2:, SPEAKER_00:, Speaker_1:
+  // S1:, S2:, Speaker 1:, Speaker 2:, Sprecher 1:, SPEAKER_00:, Speaker_1:
   const match = trimmed.match(
-    /^(S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:?\s*(.*)$/i
+    /^(S\d+|Speaker\s*\d+|Sprecher\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:?\s*(.*)$/i
   )
   if (match) {
     const label = match[1]
@@ -506,6 +507,74 @@ function parseInlineNamedSpeakerTurns(content: string, speakerHints?: string[]):
 }
 
 /**
+ * Parse "Speaker N HH:MM text" format common in German meeting transcripts and
+ * recording tools. Also handles English "Speaker N" variants.
+ *
+ * Lines like:
+ *   Sprecher 1 14:00 Hallo zusammen. Also, äh, …
+ *   Sprecher 2 14:01 Ja, passt.
+ *   [System] 14:00 Aufzeichnung gestartet        ← skipped
+ *
+ * The key difference from parseTimestampedSpeakerLines is that
+ * the timestamp has NO brackets and the speaker label has NO colon.
+ */
+function parseSpeakerTimestampLines(content: string): ParseResult | null {
+  const lines = content.trim().split(/\r?\n/).filter(l => l.trim().length > 0)
+  if (lines.length < 3) return null
+
+  // Match: "Sprecher 1 14:00 text" / "Speaker 1 14:00 text" / "S1 14:00 text"
+  // Also handle generic names: "Max Müller 14:05 text" (name + time + text,
+  // only when at least some Sprecher/Speaker lines anchor the format).
+  const SPEAKER_TS_RE =
+    /^(Sprecher\s*\d+|Speaker\s*\d+|S\d+|SPEAKER_\d+)\s+(\d{1,2}):(\d{2})\s+(.+)$/iu
+  const SYSTEM_RE = /^\[.*?\]\s+\d{1,2}:\d{2}/
+
+  const matched: { startMs: number; speaker: string; text: string }[] = []
+  let systemLines = 0
+  let headerLines = 0
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (SYSTEM_RE.test(trimmed)) { systemLines++; continue }
+
+    const m = trimmed.match(SPEAKER_TS_RE)
+    if (m) {
+      const hours = parseInt(m[2], 10)
+      const mins = parseInt(m[3], 10)
+      const startMs = (hours * 60 + mins) * 60 * 1000
+      const rawSpeaker = m[1].trim()
+      const speaker = /^(S\d+|Speaker\s*\d+|Sprecher\s*\d+|SPEAKER_\d+)$/i.test(rawSpeaker)
+        ? `S${rawSpeaker.replace(/\D/g, '') || '1'}`
+        : rawSpeaker
+      matched.push({ startMs, speaker, text: m[4].trim() })
+    } else {
+      headerLines++
+    }
+  }
+
+  if (matched.length < 3) return null
+  // Too many non-matching lines → probably not this format
+  if (headerLines > matched.length) return null
+
+  // Normalize wall-clock times relative to the first segment (e.g. 14:00 → 0:00)
+  const baseMs = matched[0].startMs
+
+  const segments: ParsedSegment[] = matched.map((entry, i) => {
+    const relStart = entry.startMs - baseMs
+    const nextRelStart = i + 1 < matched.length ? matched[i + 1].startMs - baseMs : relStart + 5000
+    return {
+      start_ms: relStart,
+      end_ms: Math.max(nextRelStart, relStart + 1000),
+      speaker: entry.speaker,
+      text: entry.text,
+    }
+  })
+
+  const rawText = segments.map(s => s.text).join('\n\n')
+  return { segments, rawText }
+}
+
+/**
  * Parse plain TXT: split by double newlines (paragraphs) or single newlines.
  * Assign sequential timestamps (~150 words/min ≈ 2.5 words/sec).
  */
@@ -607,6 +676,9 @@ export function parseTranscriptFile(
   if (strategy === 'timestamped_speaker_lines') {
     return parseTimestampedSpeakerLines(content) || parseTXT(content, speakerHints)
   }
+  if (strategy === 'speaker_timestamp_lines') {
+    return parseSpeakerTimestampLines(content) || parseTXT(content, speakerHints)
+  }
   if (strategy === 'plain_txt') {
     return parseTXT(content, speakerHints)
   }
@@ -628,6 +700,8 @@ export function parseTranscriptFile(
     if (sprecherZeitResult) return sprecherZeitResult
     const timestampedResult = parseTimestampedSpeakerLines(content)
     if (timestampedResult) return timestampedResult
+    const speakerTsResult = parseSpeakerTimestampLines(content)
+    if (speakerTsResult) return speakerTsResult
     const inlineNamedTurnsResult = parseInlineNamedSpeakerTurns(content, speakerHints)
     if (inlineNamedTurnsResult) return inlineNamedTurnsResult
     return parseTXT(content, speakerHints)
@@ -636,6 +710,8 @@ export function parseTranscriptFile(
   if (sprecherZeitResult) return sprecherZeitResult
   const timestampedResult = parseTimestampedSpeakerLines(content)
   if (timestampedResult) return timestampedResult
+  const speakerTsResult = parseSpeakerTimestampLines(content)
+  if (speakerTsResult) return speakerTsResult
   const inlineNamedTurnsResult = parseInlineNamedSpeakerTurns(content, speakerHints)
   if (inlineNamedTurnsResult) return inlineNamedTurnsResult
   return parseTXT(content, speakerHints)

@@ -1426,6 +1426,7 @@
       "auto": "Auto",
       "sprecherZeit": "SPRECHER/ZEIT",
       "timestampedSpeakerLines": "Timestamped lines",
+      "speakerTimestampLines": "Speaker + time",
       "plainText": "Plain text",
       "rawText": "Raw text (no parsing)"
     },

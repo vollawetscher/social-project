@@ -34,7 +34,10 @@ const CHAT_MARKERS = [
 ]
 
 const SPEAKER_LINE_RE =
-  /^\s*(?:speaker\s*\d+|s\d+|sprecher|[A-Z][A-Za-z0-9.'’\- ]{1,70})\s*:\s+\S+/i
+  /^\s*(?:speaker\s*\d+|s\d+|sprecher\s*\d*|[A-Z][A-Za-z0-9.'’\- ]{1,70})\s*:?\s+\S+/i
+
+const SPEAKER_TIMESTAMP_LINE_RE =
+  /^\s*(?:Sprecher\s*\d+|Speaker\s*\d+|S\d+)\s+\d{1,2}:\d{2}\s+\S+/i
 
 const SQUARE_TS_SPEAKER_RE =
   /^\s*\[\d{1,2}:\d{2}(?::\d{2})?\]\s*[A-Z][A-Za-z0-9.'’\- ]{0,70}:\s+\S+/i
@@ -82,6 +85,7 @@ export function detectTranscriptType(input: DetectTranscriptTypeInput): Transcri
 
   const lines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
   const speakerLines = lines.filter((l) => SPEAKER_LINE_RE.test(l))
+  const speakerTimestampLines = lines.filter((l) => SPEAKER_TIMESTAMP_LINE_RE.test(l))
   const timestampedSpeakerLines = lines.filter((l) => SQUARE_TS_SPEAKER_RE.test(l))
   const distinctSpeakers = new Set(
     speakerLines.map(getSpeakerName).filter((name): name is string => Boolean(name))
@@ -103,6 +107,10 @@ export function detectTranscriptType(input: DetectTranscriptTypeInput): Transcri
   if (hasGermanStructuredMarkers) {
     transcriptScore += 4
     reasons.push('sprecher_zeit_pattern')
+  }
+  if (speakerTimestampLines.length >= 3) {
+    transcriptScore += 5
+    reasons.push('speaker_timestamp_lines')
   }
   if (speakerLines.length >= 3 && distinctSpeakers.size >= 2) {
     transcriptScore += 4
