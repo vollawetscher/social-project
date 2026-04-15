@@ -153,6 +153,7 @@ export function PastePreviewSheet({
     auto: t('parseModes.auto'),
     sprecher_zeit: t('parseModes.sprecherZeit'),
     timestamped_speaker_lines: t('parseModes.timestampedSpeakerLines'),
+    speaker_timestamp_lines: t('parseModes.speakerTimestampLines'),
     plain_txt: t('parseModes.plainText'),
     raw_text: t('parseModes.rawText'),
   }
