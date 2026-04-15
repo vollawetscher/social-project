@@ -578,10 +578,10 @@ export default function SessionsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
       setTrialResult({ magicLink: data.magicLink, count: data.sessionsTransferred })
-      toast.success(`Trial prepared for ${trialEmail}`)
+      toast.success(t('prepareTrial.success', { email: trialEmail }))
       fetchSessions()
     } catch (err: any) {
-      toast.error(err.message || 'Failed to prepare trial')
+      toast.error(err.message || t('prepareTrial.error'))
     } finally {
       setPreparingTrial(false)
     }
@@ -2308,7 +2308,7 @@ export default function SessionsPage() {
                   }}
                 >
                   <Gift className="h-3.5 w-3.5" />
-                  Prepare Trial
+                  {t('prepareTrial.button')}
                 </Button>
               </div>
             )}
@@ -2947,10 +2947,10 @@ export default function SessionsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
-              Prepare Client Trial
+              {t('prepareTrial.title')}
             </DialogTitle>
             <DialogDescription>
-              Select sessions and enter the client&apos;s email. They&apos;ll receive a magic link to explore the sessions instantly.
+              {t('prepareTrial.description')}
             </DialogDescription>
           </DialogHeader>
 
@@ -2958,10 +2958,10 @@ export default function SessionsPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="h-4 w-4" />
-                {trialResult.count} session{trialResult.count !== 1 ? 's' : ''} transferred to {trialEmail}
+                {t('prepareTrial.transferred', { count: trialResult.count, email: trialEmail })}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Magic Link</label>
+                <label className="text-sm font-medium">{t('prepareTrial.magicLinkLabel')}</label>
                 <div className="flex gap-2">
                   <Input
                     readOnly
@@ -2974,29 +2974,29 @@ export default function SessionsPage() {
                     variant="outline"
                     onClick={() => {
                       navigator.clipboard.writeText(trialResult.magicLink)
-                      toast.success('Link copied')
+                      toast.success(t('prepareTrial.copied'))
                     }}
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Share this link with the client. It will log them in automatically.
+                  {t('prepareTrial.magicLinkHint')}
                 </p>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowPrepareTrialDialog(false)}>
-                  Done
+                  {t('prepareTrial.done')}
                 </Button>
               </DialogFooter>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Client Email</label>
+                <label className="text-sm font-medium">{t('prepareTrial.email')}</label>
                 <Input
                   type="email"
-                  placeholder="client@example.com"
+                  placeholder={t('prepareTrial.emailPlaceholder')}
                   value={trialEmail}
                   onChange={e => setTrialEmail(e.target.value)}
                 />
@@ -3004,7 +3004,7 @@ export default function SessionsPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  Sessions to transfer ({trialSelectedIds.size} selected)
+                  {t('prepareTrial.sessionsLabel', { count: trialSelectedIds.size })}
                 </label>
                 <div className="max-h-60 overflow-y-auto rounded-md border border-border divide-y divide-border">
                   {(sessions || []).filter(s => s.status === 'ready').map(s => (
@@ -3024,7 +3024,7 @@ export default function SessionsPage() {
                       </div>
                       {s.outputCount != null && s.outputCount > 0 && (
                         <Badge variant="secondary" className="text-[10px] shrink-0">
-                          {s.outputCount} output{s.outputCount !== 1 ? 's' : ''}
+                          {t('prepareTrial.outputsBadge', { count: s.outputCount })}
                         </Badge>
                       )}
                     </label>
@@ -3034,14 +3034,14 @@ export default function SessionsPage() {
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowPrepareTrialDialog(false)}>
-                  Cancel
+                  {t('prepareTrial.cancel')}
                 </Button>
                 <Button
                   onClick={handlePrepareTrial}
                   disabled={preparingTrial || !trialEmail || trialSelectedIds.size === 0}
                 >
                   {preparingTrial && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-                  Prepare & Get Link
+                  {t('prepareTrial.prepare')}
                 </Button>
               </DialogFooter>
             </div>

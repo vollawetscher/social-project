@@ -197,6 +197,24 @@
       "error": "No se pudieron combinar las sesiones",
       "defaultCombinedSuffix": "combinada"
     },
+    "prepareTrial": {
+      "button": "Preparar prueba",
+      "title": "Preparar prueba para cliente",
+      "description": "Selecciona sesiones e introduce el email del cliente. Recibirá un enlace mágico para explorar las sesiones al instante.",
+      "email": "Email del cliente",
+      "emailPlaceholder": "cliente@ejemplo.com",
+      "sessionsLabel": "Sesiones a transferir ({count} seleccionadas)",
+      "outputsBadge": "{count, plural, one {# salida} other {# salidas}}",
+      "prepare": "Preparar y obtener enlace",
+      "cancel": "Cancelar",
+      "done": "Hecho",
+      "success": "Prueba preparada para {email}",
+      "error": "No se pudo preparar la prueba",
+      "transferred": "{count, plural, one {# sesión transferida} other {# sesiones transferidas}} a {email}",
+      "magicLinkLabel": "Enlace mágico",
+      "magicLinkHint": "Comparte este enlace con el cliente. Iniciará sesión automáticamente.",
+      "copied": "Enlace copiado"
+    },
     "viewToggle": {
       "sessions": "Sesiones",
       "projects": "Proyectos"

@@ -197,6 +197,24 @@
       "error": "Failed to combine sessions",
       "defaultCombinedSuffix": "combined"
     },
+    "prepareTrial": {
+      "button": "Prepare Trial",
+      "title": "Prepare Client Trial",
+      "description": "Select sessions and enter the client's email. They'll receive a magic link to explore the sessions instantly.",
+      "email": "Client Email",
+      "emailPlaceholder": "client@example.com",
+      "sessionsLabel": "Sessions to transfer ({count} selected)",
+      "outputsBadge": "{count, plural, one {# output} other {# outputs}}",
+      "prepare": "Prepare & Get Link",
+      "cancel": "Cancel",
+      "done": "Done",
+      "success": "Trial prepared for {email}",
+      "error": "Failed to prepare trial",
+      "transferred": "{count, plural, one {# session} other {# sessions}} transferred to {email}",
+      "magicLinkLabel": "Magic Link",
+      "magicLinkHint": "Share this link with the client. It will log them in automatically.",
+      "copied": "Link copied"
+    },
     "viewToggle": {
       "sessions": "Sessions",
       "projects": "Projects"

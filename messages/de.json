@@ -197,6 +197,24 @@
       "error": "Sitzungen konnten nicht kombiniert werden",
       "defaultCombinedSuffix": "kombiniert"
     },
+    "prepareTrial": {
+      "button": "Trial vorbereiten",
+      "title": "Kunden-Trial vorbereiten",
+      "description": "Sitzungen auswählen und E-Mail-Adresse des Kunden eingeben. Der Kunde erhält einen Magic-Link zum sofortigen Zugang.",
+      "email": "E-Mail des Kunden",
+      "emailPlaceholder": "kunde@beispiel.de",
+      "sessionsLabel": "Zu übertragende Sitzungen ({count} ausgewählt)",
+      "outputsBadge": "{count, plural, one {# Bericht} other {# Berichte}}",
+      "prepare": "Vorbereiten & Link erstellen",
+      "cancel": "Abbrechen",
+      "done": "Fertig",
+      "success": "Trial für {email} vorbereitet",
+      "error": "Trial konnte nicht vorbereitet werden",
+      "transferred": "{count, plural, one {# Sitzung} other {# Sitzungen}} an {email} übertragen",
+      "magicLinkLabel": "Magic-Link",
+      "magicLinkHint": "Teile diesen Link mit dem Kunden. Er wird automatisch eingeloggt.",
+      "copied": "Link kopiert"
+    },
     "viewToggle": {
       "sessions": "Sitzungen",
       "projects": "Projekte"
