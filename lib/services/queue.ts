@@ -53,7 +53,7 @@ export async function enqueueAsyncJob(input: {
 
   if (!error && data) return data as AsyncJobRow
 
-  // Unique idempotency conflict: return existing job.
+  // Unique idempotency conflict: check existing job state.
   const message = String(error?.message || '')
   if (input.idempotencyKey && message.toLowerCase().includes('duplicate key')) {
     const { data: existing, error: existingError } = await supabase
@@ -64,7 +64,25 @@ export async function enqueueAsyncJob(input: {
     if (existingError || !existing) {
       throw existingError || new Error('Failed to fetch existing async job')
     }
-    return existing as AsyncJobRow
+
+    // Only deduplicate against in-flight jobs. If the previous job already
+    // finished (completed/failed), the user explicitly wants to re-run it
+    // (e.g. output was deleted and they want to regenerate).
+    if (existing.status === 'queued' || existing.status === 'running' || existing.status === 'retryable') {
+      return existing as AsyncJobRow
+    }
+
+    // Remove the stale job and insert a fresh one.
+    await supabase.from('async_jobs').delete().eq('id', existing.id)
+    const { data: retryData, error: retryError } = await supabase
+      .from('async_jobs')
+      .insert(insertPayload)
+      .select('*')
+      .single()
+    if (retryError || !retryData) {
+      throw retryError || new Error('Failed to re-enqueue async job')
+    }
+    return retryData as AsyncJobRow
   }
 
   throw error || new Error('Failed to enqueue async job')
