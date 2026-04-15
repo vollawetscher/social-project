@@ -15,18 +15,31 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('sessionId')
 
+    let isAdmin = false
+    if (sessionId) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      isAdmin = profile?.role === 'admin'
+    }
+
     let query = supabase
       .from('outputs')
       .select(`
         *,
         sessions!inner(internal_case_id)
       `)
-      .eq('created_by', user.id)
       .order('created_at', { ascending: false })
 
-    // Filter by session if provided
     if (sessionId) {
       query = query.eq('session_id', sessionId)
+      if (!isAdmin) {
+        query = query.eq('created_by', user.id)
+      }
+    } else {
+      query = query.eq('created_by', user.id)
     }
 
     const { data: outputs, error } = await query
