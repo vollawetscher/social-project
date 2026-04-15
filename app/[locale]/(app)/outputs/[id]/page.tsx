@@ -54,7 +54,7 @@ import { cn } from "@/lib/utils"
 import { exportOutput, isPdfExportSupportedLanguage } from "@/lib/utils/output-export"
 import type { Output } from "@/lib/types-v0"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
-import { useAuth } from "@/lib/hooks/useAuth"
+import { useAuth } from "@/lib/auth/AuthProvider"
 
 function extractOutputHeadline(content: string): string | undefined {
   if (!content?.trim()) return undefined
