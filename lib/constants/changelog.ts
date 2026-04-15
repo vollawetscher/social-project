@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.31.1',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.31.1',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Output Cost Tracking',
+        description: 'Each generated output now shows its AI cost, so you can see exactly what each document costs to produce. Existing outputs are backfilled automatically.',
+      },
+    ],
+  },
+  {
     version: '1.31.0',
     date: 'March 17, 2026',
     entries: [

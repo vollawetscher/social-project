@@ -24,7 +24,7 @@ export default function VerifyPage() {
 
     supabase.auth
       .verifyOtp({ token_hash: tokenHash, type })
-      .then(({ error: verifyError }) => {
+      .then(({ error: verifyError }: { error: { message: string } | null }) => {
         if (verifyError) {
           console.error("[Verify] OTP verification failed:", verifyError)
           setError(verifyError.message)

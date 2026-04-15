@@ -475,7 +475,8 @@
     "publiclyShared": "Compartido publicamente - Caduca en 3 dias",
     "tone": "Tono",
     "generatedWithFormat": "Generado en formato {format}",
-    "includesTimestampCitations": "Incluye citas con marcas de tiempo"
+    "includesTimestampCitations": "Incluye citas con marcas de tiempo",
+    "cost": "Coste IA"
   },
   "generateModal": {
     "title": "Generar Informe",

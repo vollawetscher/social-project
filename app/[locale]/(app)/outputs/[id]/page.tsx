@@ -54,6 +54,7 @@ import { cn } from "@/lib/utils"
 import { exportOutput, isPdfExportSupportedLanguage } from "@/lib/utils/output-export"
 import type { Output } from "@/lib/types-v0"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
+import { useAuth } from "@/lib/hooks/useAuth"
 
 function extractOutputHeadline(content: string): string | undefined {
   if (!content?.trim()) return undefined
@@ -110,6 +111,8 @@ export default function OutputDetailPage() {
   const outputId = params.id as string
   const t = useTranslations('outputDetail')
   const tc = useTranslations('common')
+  const { profile } = useAuth()
+  const isAdmin = (profile as any)?.role === 'admin'
 
   const [output, setOutput] = useState<Output | null>(null)
   const [loading, setLoading] = useState(true)
@@ -655,6 +658,15 @@ export default function OutputDetailPage() {
                 <p className="font-medium">{formatDate(output.createdAt)}</p>
               </div>
             </div>
+            {isAdmin && output.costUsd != null && (
+              <div className="flex items-start gap-2">
+                <Sparkles className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-xs text-muted-foreground">{t('cost')}</p>
+                  <p className="font-medium">${output.costUsd < 0.01 ? output.costUsd.toFixed(4) : output.costUsd.toFixed(2)}</p>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

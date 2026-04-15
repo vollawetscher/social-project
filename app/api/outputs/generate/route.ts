@@ -18,6 +18,12 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+function computeOutputCostUsd(inputTokens: number, outputTokens: number): number {
+  const inputRate = Number(process.env.LLM_INPUT_TOKEN_COST_USD) || 0.000003   // $3 / 1M tokens
+  const outputRate = Number(process.env.LLM_OUTPUT_TOKEN_COST_USD) || 0.000015  // $15 / 1M tokens
+  return inputTokens * inputRate + outputTokens * outputRate
+}
+
 function sanitizeGeneratedEmailText(input: string): string {
   let text = input || ''
   // Remove fenced code blocks markers.
@@ -519,6 +525,10 @@ Please generate the requested output following all requirements and guidelines.`
       created_by: userId,
     })
     
+    const costUsd = (usage?.input_tokens || usage?.output_tokens)
+      ? computeOutputCostUsd(usage.input_tokens ?? 0, usage.output_tokens ?? 0)
+      : null
+
     const { data: output, error: insertError } = await supabase
       .from('outputs')
       .insert({
@@ -536,6 +546,7 @@ Please generate the requested output following all requirements and guidelines.`
         do_instructions: config.doInstructions || '',
         dont_instructions: config.dontInstructions || '',
         created_by: userId,
+        cost_usd: costUsd,
       })
       .select()
       .single()

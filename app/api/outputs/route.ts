@@ -52,6 +52,7 @@ export async function GET(request: Request) {
       createdAt: o.created_at,
       transcriptVersionHash: o.transcript_version_hash || '',
       citeTimestamps: o.cite_timestamps || false,
+      costUsd: o.cost_usd != null ? Number(o.cost_usd) : null,
     }))
 
     return NextResponse.json(formattedOutputs)
@@ -141,6 +142,7 @@ export async function POST(request: Request) {
       createdAt: output.created_at,
       transcriptVersionHash: output.transcript_version_hash || '',
       citeTimestamps: output.cite_timestamps || false,
+      costUsd: output.cost_usd != null ? Number(output.cost_usd) : null,
     }
 
     return NextResponse.json(formattedOutput, { status: 201 })

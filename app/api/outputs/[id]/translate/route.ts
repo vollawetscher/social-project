@@ -8,6 +8,12 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+function computeOutputCostUsd(inputTokens: number, outputTokens: number): number {
+  const inputRate = Number(process.env.LLM_INPUT_TOKEN_COST_USD) || 0.000003
+  const outputRate = Number(process.env.LLM_OUTPUT_TOKEN_COST_USD) || 0.000015
+  return inputTokens * inputRate + outputTokens * outputRate
+}
+
 const languageNames: Record<string, string> = {
   en: 'English',
   de: 'German',
@@ -103,6 +109,10 @@ Critical rules:
       )
     }
 
+    const costUsd = (usage?.input_tokens || usage?.output_tokens)
+      ? computeOutputCostUsd(usage.input_tokens ?? 0, usage.output_tokens ?? 0)
+      : null
+
     // Create new output with translated content (same session, template, metadata; different language)
     const { data: newOutput, error: insertError } = await supabase
       .from('outputs')
@@ -119,6 +129,7 @@ Critical rules:
         transcript_version_hash: output.transcript_version_hash,
         cite_timestamps: output.cite_timestamps ?? false,
         created_by: user.id,
+        cost_usd: costUsd,
       })
       .select()
       .single()
@@ -155,6 +166,7 @@ Critical rules:
       createdAt: newOutput.created_at,
       transcriptVersionHash: newOutput.transcript_version_hash || '',
       citeTimestamps: newOutput.cite_timestamps ?? false,
+      costUsd: newOutput.cost_usd != null ? Number(newOutput.cost_usd) : null,
     })
   } catch (error) {
     console.error('[Translate] Error:', error)

@@ -1779,6 +1779,12 @@ export default function SessionDetailPage() {
                                 </span>
                               </>
                             )}
+                            {isAdmin && output.costUsd != null && (
+                              <>
+                                <span>•</span>
+                                <span>${output.costUsd < 0.01 ? output.costUsd.toFixed(4) : output.costUsd.toFixed(2)}</span>
+                              </>
+                            )}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
@@ -2270,6 +2276,12 @@ export default function SessionDetailPage() {
                                 <span className="flex items-center gap-1">
                                   {output.language === 'en' ? 'English' : output.language === 'de' ? 'German' : output.language}
                                 </span>
+                              </>
+                            )}
+                            {isAdmin && output.costUsd != null && (
+                              <>
+                                <span>•</span>
+                                <span>${output.costUsd < 0.01 ? output.costUsd.toFixed(4) : output.costUsd.toFixed(2)}</span>
                               </>
                             )}
                           </p>

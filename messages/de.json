@@ -480,7 +480,8 @@
     "publiclyShared": "Oeffentlich geteilt - laeuft in 3 Tagen ab",
     "tone": "Ton",
     "generatedWithFormat": "Erstellt im Format {format}",
-    "includesTimestampCitations": "Enthaelt Zeitstempel-Zitate"
+    "includesTimestampCitations": "Enthaelt Zeitstempel-Zitate",
+    "cost": "KI-Kosten"
   },
   "generateModal": {
     "title": "Bericht generieren",

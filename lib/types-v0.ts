@@ -217,6 +217,7 @@ export interface Output {
   createdAt: string
   transcriptVersionHash: string
   citeTimestamps: boolean
+  costUsd?: number | null
   isPublic?: boolean
   shareToken?: string | null
   viewCount?: number

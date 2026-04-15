@@ -480,7 +480,8 @@
     "publiclyShared": "Publicly shared - Expires in 3 days",
     "tone": "Tone",
     "generatedWithFormat": "Generated with {format} format",
-    "includesTimestampCitations": "Includes timestamp citations"
+    "includesTimestampCitations": "Includes timestamp citations",
+    "cost": "AI Cost"
   },
   "generateModal": {
     "title": "Generate Output",
