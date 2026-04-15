@@ -115,9 +115,13 @@ export async function POST(
     // Trigger transcription via internal API
     const origin = new URL(request.url).origin
     try {
+      const transcribeHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+      const internalSecret = process.env.INTERNAL_API_SECRET
+      if (internalSecret) transcribeHeaders['x-internal-secret'] = internalSecret
+
       const transcribeRes = await fetch(`${origin}/api/sessions/${sessionId}/transcribe`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: transcribeHeaders,
       })
       if (!transcribeRes.ok) {
         console.warn('[Voicemail] Transcribe trigger returned non-OK:', transcribeRes.status)

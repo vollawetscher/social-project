@@ -1097,6 +1097,8 @@
     "outputsWaitingForAnalysis": "KI-Analyse läuft — Berichte sind verfügbar, sobald die Analyse abgeschlossen ist.",
     "outputsNeedAnalysis": "Berichte erfordern zuerst eine KI-Analyse. Gehe zum Transkript, um zu starten.",
     "noOutputsYet": "Noch keine Berichte. Nutze die Vorschläge unten oder erstelle ein eigenes Dokument.",
+    "curatedReadyGoOutputs": "Deine Sitzung ist bereit. Gehe zu Berichte, um dein erstes Dokument zu erstellen.",
+    "curatedNoOutputsYet": "Wähle einen der vorgeschlagenen Berichte und erstelle ihn — erlebe die KI mit deinen eigenen Daten.",
     "goTo": "Zu {tab}",
     "transcript": "Transkript",
     "context": "Kontext",

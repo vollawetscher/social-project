@@ -223,7 +223,8 @@ export default function SessionDetailPage() {
     Boolean(session?.audioUrl) ||
     Boolean(session?.hasAudioFile) ||
     (sessionFiles?.length || 0) > 0
-  const canShowTranscriptReparseControls = !hasAudioInSession
+  const isCurated = Boolean(session?.curated)
+  const canShowTranscriptReparseControls = !hasAudioInSession && !isCurated
 
   const reparseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'speaker_timestamp_lines', 'plain_txt', 'raw_text']
   const reparseModeLabel: Record<TranscriptParseStrategy, string> = {
@@ -1421,6 +1422,7 @@ export default function SessionDetailPage() {
               analyzing={analyzing}
               hasOutputs={outputs.length > 0}
               onSwitchTab={setActiveTab}
+              curated={isCurated}
             />
             {canShowTranscriptReparseControls && (
               <div className="mb-2 flex items-center gap-2">
@@ -1461,6 +1463,7 @@ export default function SessionDetailPage() {
                   analyzing={analyzing}
                   hasOutputs={outputs.length > 0}
                   onSwitchTab={setActiveTab}
+                  curated={isCurated}
                 />
                 {/* In-context AI analysis indicator */}
                 {analyzing && (
@@ -1686,6 +1689,7 @@ export default function SessionDetailPage() {
                 analyzing={analyzing}
                 hasOutputs={outputs.length > 0}
                 onSwitchTab={setActiveTab}
+                curated={isCurated}
               />
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
@@ -1897,8 +1901,9 @@ export default function SessionDetailPage() {
                 analyzing={analyzing}
                 hasOutputs={outputs.length > 0}
                 onSwitchTab={setActiveTab}
+                curated={isCurated}
               />
-              {renderCleanupPanel()}
+              {!isCurated && renderCleanupPanel()}
               {canShowTranscriptReparseControls && (
                 <div className="mb-2 flex items-center gap-2">
                   <Button
@@ -1948,6 +1953,7 @@ export default function SessionDetailPage() {
                   analyzing={analyzing}
                   hasOutputs={outputs.length > 0}
                   onSwitchTab={setActiveTab}
+                  curated={isCurated}
                 />
                 {/* In-context AI analysis indicator */}
                 {analyzing && (
@@ -2176,6 +2182,7 @@ export default function SessionDetailPage() {
                 analyzing={analyzing}
                 hasOutputs={outputs.length > 0}
                 onSwitchTab={setActiveTab}
+                curated={isCurated}
               />
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (

@@ -1090,6 +1090,8 @@
     "outputsWaitingForAnalysis": "El análisis de IA está en curso — las salidas estarán disponibles cuando se complete el análisis.",
     "outputsNeedAnalysis": "Las salidas requieren primero un análisis de IA. Ve a Transcripción para comenzar.",
     "noOutputsYet": "Aún no hay salidas. Usa las sugerencias de abajo o genera un documento personalizado.",
+    "curatedReadyGoOutputs": "Tu sesión está lista. Ve a Salidas para generar tu primer documento.",
+    "curatedNoOutputsYet": "Elige una de las salidas sugeridas y genérala — descubre la IA con tus propios datos.",
     "goTo": "Ir a {tab}",
     "transcript": "Transcripción",
     "context": "Contexto",

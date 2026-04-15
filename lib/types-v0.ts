@@ -133,6 +133,7 @@ export interface Session {
   wordCount?: number | null // Word count for text-only imports; null for audio sessions
   caseId?: string | null // Project/case this session belongs to
   caseTitle?: string | null // Project/case display title (denormalized for list rendering)
+  curated?: boolean // True when session was prepared as a curated trial import — hides destructive controls
 }
 
 export interface ParticipantInfo {

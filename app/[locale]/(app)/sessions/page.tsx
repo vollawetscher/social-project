@@ -33,6 +33,9 @@ import {
   FolderOpen,
   FolderPlus,
   Loader2,
+  Gift,
+  Copy,
+  CheckCircle2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -75,6 +78,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
 import { PastePreviewSheet } from "@/components/upload/PastePreviewSheet"
@@ -439,6 +443,13 @@ export default function SessionsPage() {
   const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [deleting, setDeleting] = useState(false)
 
+  // Prepare client trial dialog state
+  const [showPrepareTrialDialog, setShowPrepareTrialDialog] = useState(false)
+  const [trialEmail, setTrialEmail] = useState('')
+  const [trialSelectedIds, setTrialSelectedIds] = useState<Set<string>>(new Set())
+  const [preparingTrial, setPreparingTrial] = useState(false)
+  const [trialResult, setTrialResult] = useState<{ magicLink: string; count: number } | null>(null)
+
   const selectedSessionId = useMemo(() => {
     const match = pathname.match(/\/sessions\/([^/]+)/)
     return match?.[1] ?? null
@@ -554,6 +565,36 @@ export default function SessionsPage() {
     setAdminView(checked)
     updateUrlParams({ allUsers: checked ? '1' : null })
   }, [updateUrlParams])
+
+  const handlePrepareTrial = async () => {
+    if (!trialEmail || trialSelectedIds.size === 0) return
+    setPreparingTrial(true)
+    try {
+      const res = await fetch('/api/admin/prepare-trial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trialEmail, sessionIds: Array.from(trialSelectedIds) }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed')
+      setTrialResult({ magicLink: data.magicLink, count: data.sessionsTransferred })
+      toast.success(`Trial prepared for ${trialEmail}`)
+      fetchSessions()
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to prepare trial')
+    } finally {
+      setPreparingTrial(false)
+    }
+  }
+
+  const toggleTrialSession = (id: string) => {
+    setTrialSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (!pastePreviewOpen || pastePreviewTemplates.length > 0) return
@@ -2255,6 +2296,20 @@ export default function SessionsPage() {
                 <Label htmlFor="admin-view" className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
                   {t('allUsers')}
                 </Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => {
+                    setTrialEmail('')
+                    setTrialSelectedIds(new Set())
+                    setTrialResult(null)
+                    setShowPrepareTrialDialog(true)
+                  }}
+                >
+                  <Gift className="h-3.5 w-3.5" />
+                  Prepare Trial
+                </Button>
               </div>
             )}
           </div>
@@ -2883,6 +2938,114 @@ export default function SessionsPage() {
                   : tc('delete')}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Prepare Client Trial Dialog */}
+      <Dialog open={showPrepareTrialDialog} onOpenChange={setShowPrepareTrialDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-4 w-4" />
+              Prepare Client Trial
+            </DialogTitle>
+            <DialogDescription>
+              Select sessions and enter the client&apos;s email. They&apos;ll receive a magic link to explore the sessions instantly.
+            </DialogDescription>
+          </DialogHeader>
+
+          {trialResult ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+                {trialResult.count} session{trialResult.count !== 1 ? 's' : ''} transferred to {trialEmail}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Magic Link</label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={trialResult.magicLink}
+                    className="text-xs font-mono"
+                    onClick={e => (e.target as HTMLInputElement).select()}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(trialResult.magicLink)
+                      toast.success('Link copied')
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Share this link with the client. It will log them in automatically.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPrepareTrialDialog(false)}>
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Client Email</label>
+                <Input
+                  type="email"
+                  placeholder="client@example.com"
+                  value={trialEmail}
+                  onChange={e => setTrialEmail(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Sessions to transfer ({trialSelectedIds.size} selected)
+                </label>
+                <div className="max-h-60 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                  {(sessions || []).filter(s => s.status === 'ready').map(s => (
+                    <label
+                      key={s.id}
+                      className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
+                      <Checkbox
+                        checked={trialSelectedIds.has(s.id)}
+                        onCheckedChange={() => toggleTrialSession(s.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm truncate block">{s.filename}</span>
+                        {s.recordingType && (
+                          <span className="text-xs text-muted-foreground">{s.recordingType}</span>
+                        )}
+                      </div>
+                      {s.outputCount != null && s.outputCount > 0 && (
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          {s.outputCount} output{s.outputCount !== 1 ? 's' : ''}
+                        </Badge>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowPrepareTrialDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePrepareTrial}
+                  disabled={preparingTrial || !trialEmail || trialSelectedIds.size === 0}
+                >
+                  {preparingTrial && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                  Prepare & Get Link
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

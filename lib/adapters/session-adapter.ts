@@ -196,6 +196,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     wordCount: (dbSession as any).word_count ?? null,
     caseId: (dbSession as any).case_id ?? null,
     caseTitle: (dbSession as any).case?.title ?? null,
+    curated: Boolean((dbSession as any).curated),
   }
 }
 

@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.31.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.31.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Client Trial Onboarding',
+        description: 'Prepare a hands-on trial for clients in one click. Select sessions, enter their email, and share a magic link — they log in instantly and explore your curated sessions with full AI output generation.',
+      },
+    ],
+  },
+  {
     version: '1.30.0',
     date: 'March 17, 2026',
     entries: [

@@ -12,6 +12,7 @@ interface SessionGuidanceBannerProps {
   analyzing: boolean
   hasOutputs: boolean
   onSwitchTab: (tab: string) => void
+  curated?: boolean
 }
 
 type GuidanceVariant = "info" | "success" | "subtle"
@@ -28,7 +29,8 @@ function resolveGuidance(
   sessionStatus: string | undefined,
   hasAnalysis: boolean,
   analyzing: boolean,
-  hasOutputs: boolean
+  hasOutputs: boolean,
+  curated?: boolean
 ): GuidanceConfig | null {
   if (activeTab === "transcript") {
     if (sessionStatus === "transcribing" || sessionStatus === "uploading" || sessionStatus === "recording") {
@@ -36,6 +38,9 @@ function resolveGuidance(
     }
     if (sessionStatus === "ready" && analyzing) {
       return { key: "analysisRunning", variant: "subtle", loading: true }
+    }
+    if (curated && hasAnalysis && !hasOutputs) {
+      return { key: "curatedReadyGoOutputs", variant: "success", targetTab: "outputs" }
     }
     if (sessionStatus === "ready" && hasAnalysis && !hasOutputs) {
       return { key: "analysisReadyGoOutputs", variant: "success", targetTab: "outputs" }
@@ -70,6 +75,9 @@ function resolveGuidance(
     if (!hasAnalysis && !hasOutputs) {
       return { key: "outputsNeedAnalysis", variant: "info", targetTab: "transcript" }
     }
+    if (!hasOutputs && hasAnalysis && curated) {
+      return { key: "curatedNoOutputsYet", variant: "success" }
+    }
     if (!hasOutputs && hasAnalysis) {
       return { key: "noOutputsYet", variant: "info" }
     }
@@ -91,11 +99,12 @@ export function SessionGuidanceBanner({
   analyzing,
   hasOutputs,
   onSwitchTab,
+  curated,
 }: SessionGuidanceBannerProps) {
   const t = useTranslations("sessionGuidance")
   const [dismissed, setDismissed] = useState<string | null>(null)
 
-  const guidance = resolveGuidance(activeTab, sessionStatus, hasAnalysis, analyzing, hasOutputs)
+  const guidance = resolveGuidance(activeTab, sessionStatus, hasAnalysis, analyzing, hasOutputs, curated)
 
   if (!guidance || dismissed === guidance.key) return null
 

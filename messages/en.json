@@ -1098,6 +1098,8 @@
     "outputsWaitingForAnalysis": "AI analysis is running — outputs will be available once analysis completes.",
     "outputsNeedAnalysis": "Outputs require AI analysis first. Go to Transcript to start.",
     "noOutputsYet": "No outputs yet. Use the suggestions below or generate a custom document.",
+    "curatedReadyGoOutputs": "Your session is ready to go. Head to Outputs to generate your first document.",
+    "curatedNoOutputsYet": "Pick one of the suggested outputs below and generate it — see the AI in action with your own data.",
     "goTo": "Go to {tab}",
     "transcript": "Transcript",
     "context": "Context",
