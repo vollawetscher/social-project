@@ -36,12 +36,14 @@ export async function GET(
 
     const reachability = await getCalleeReachability(supabase, profile.id)
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ownerId: profile.id,
       displayName: profile.display_name || 'Host',
       slug: profile.meeting_slug,
       reachability: reachability.state,
     })
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
+    return response
   } catch (error: any) {
     console.error('[Meet] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

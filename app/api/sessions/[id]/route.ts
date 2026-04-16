@@ -244,6 +244,13 @@ export async function DELETE(
       }
     }
 
+    // Cancel any in-flight async jobs for this session
+    await serviceDb
+      .from('async_jobs')
+      .update({ status: 'failed', last_error: 'Session deleted', completed_at: new Date().toISOString() })
+      .eq('payload->>sessionId', params.id)
+      .in('status', ['queued', 'running', 'retryable'])
+
     const { data: deleted, error } = await db
       .from('sessions')
       .delete()

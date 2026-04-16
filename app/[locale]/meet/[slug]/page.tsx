@@ -114,7 +114,7 @@ export default function MeetPage() {
   useEffect(() => {
     async function resolveSlug() {
       try {
-        const res = await fetch(`/api/meet/${encodeURIComponent(slug)}`)
+        const res = await fetch(`/api/meet/${encodeURIComponent(slug)}`, { cache: 'no-store' })
         if (res.status === 404) {
           setPhase("not_found")
           return
@@ -142,6 +142,21 @@ export default function MeetPage() {
 
     if (slug) resolveSlug()
   }, [slug, user?.id])
+
+  // Re-check reachability every 10s while in lobby so the UI updates
+  // if the owner comes online (or goes offline) after the page loaded.
+  useEffect(() => {
+    if (phase !== "lobby" || !slug) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/meet/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data: OwnerInfo = await res.json()
+        setOwnerInfo((prev) => prev ? { ...prev, reachability: data.reachability } : prev)
+      } catch { /* ignore polling errors */ }
+    }, 10_000)
+    return () => clearInterval(interval)
+  }, [phase, slug])
 
   // Cleanup media resources on unmount
   useEffect(() => {
