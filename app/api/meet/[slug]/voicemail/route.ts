@@ -158,7 +158,6 @@ function inferExtension(mimeType: string): string {
 
 function normalizeAudioMime(mimeType: string): string {
   const mime = (mimeType || '').toLowerCase().split(';')[0].trim()
-  if (mime === 'audio/webm') return 'audio/ogg'
   if (mime.startsWith('audio/') || mime === 'application/ogg') return mime
   return 'audio/ogg'
 }

@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth/AuthProvider"
 import { CallSetup } from "@/components/call/CallSetup"
 import { CallRoom } from "@/components/call/CallRoom"
 import { CallEndedSignup } from "@/components/call/CallEndedSignup"
-import { Loader2, Video, User as UserIcon, Mic, Square, Send, CheckCircle2, RotateCcw, PhoneOff } from "lucide-react"
+import { Loader2, Video, User as UserIcon, Mic, Square, Send, CheckCircle2, RotateCcw, PhoneOff, Play, Pause } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -17,6 +17,60 @@ import { detectSupportedAudioFormat } from "@/lib/utils/audio-format-detector"
 
 const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || ""
 const MAX_RECORDING_SECONDS = 120
+
+function VoicemailPreview({ blob, durationSeconds }: { blob: Blob; durationSeconds: number }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const urlRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    urlRef.current = URL.createObjectURL(blob)
+    return () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current) }
+  }, [blob])
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    const onTime = () => setCurrentTime(audio.currentTime)
+    const onEnded = () => { setPlaying(false); setCurrentTime(0) }
+    audio.addEventListener('timeupdate', onTime)
+    audio.addEventListener('ended', onEnded)
+    return () => { audio.removeEventListener('timeupdate', onTime); audio.removeEventListener('ended', onEnded) }
+  }, [])
+
+  const toggle = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    if (playing) { audio.pause(); setPlaying(false) }
+    else { audio.play(); setPlaying(true) }
+  }
+
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60)
+    const sec = Math.floor(s % 60)
+    return `${m}:${sec.toString().padStart(2, '0')}`
+  }
+
+  const progress = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
+
+  return (
+    <div className="flex items-center gap-3 w-full max-w-xs bg-secondary rounded-full px-4 py-2">
+      <audio ref={audioRef} src={urlRef.current || undefined} preload="auto" />
+      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full" onClick={toggle}>
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </Button>
+      <div className="flex-1 min-w-0">
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
+        </div>
+      </div>
+      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+        {fmt(playing || currentTime > 0 ? currentTime : durationSeconds)}
+      </span>
+    </div>
+  )
+}
 
 type Phase = "loading" | "lobby" | "setup" | "joining" | "consent" | "active" | "ended" | "error" | "not_found" | "voicemail" | "voicemail_sent"
 
@@ -214,8 +268,14 @@ export default function MeetPage() {
     if (!vmBlob || !slug) return
     setVmSending(true)
     try {
+      const blobMime = (vmBlob.type || 'audio/ogg').split(';')[0].trim()
+      const extMap: Record<string, string> = {
+        'audio/ogg': 'ogg', 'audio/mp4': 'mp4', 'audio/mpeg': 'mp3',
+        'audio/wav': 'wav', 'audio/webm': 'webm', 'audio/aac': 'aac',
+      }
+      const ext = extMap[blobMime] || 'ogg'
       const formData = new FormData()
-      formData.append('file', vmBlob, `voicemail.ogg`)
+      formData.append('file', vmBlob, `voicemail.${ext}`)
       formData.append('visitorName', visitorName.trim() || 'Guest')
       if (visitorEmail.trim()) formData.append('visitorEmail', visitorEmail.trim())
 
@@ -351,12 +411,8 @@ export default function MeetPage() {
                 </Button>
               ) : (
                 <div className="flex flex-col items-center gap-3 w-full">
-                  {/* Audio preview */}
-                  <audio
-                    controls
-                    src={URL.createObjectURL(vmBlob)}
-                    className="w-full max-w-xs"
-                  />
+                  {/* Audio preview — custom controls to avoid Infinity:NaN:NaN from missing duration headers */}
+                  <VoicemailPreview blob={vmBlob} durationSeconds={vmSeconds} />
                   <div className="flex gap-3">
                     <Button variant="outline" onClick={resetVoicemail} disabled={vmSending}>
                       <RotateCcw className="h-4 w-4 mr-2" />

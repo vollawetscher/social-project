@@ -2299,7 +2299,7 @@ export default function SessionsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 text-xs gap-1"
+                  className="h-7 text-xs gap-1 hidden md:inline-flex"
                   onClick={() => {
                     setTrialEmail('')
                     setTrialSelectedIds(new Set())

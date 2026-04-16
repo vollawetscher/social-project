@@ -10,6 +10,61 @@ import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/ser
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { alignTranscripts } from '@/lib/services/transcript-aligner'
 import { prependVoiceSample } from '@/lib/services/voice-sample-prepend'
+import { execFile, execSync } from 'child_process'
+import { writeFile, unlink, mkdtemp, readFile, rmdir } from 'fs/promises'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { promisify } from 'util'
+
+const execFileAsync = promisify(execFile)
+
+function findFfmpeg(): string | null {
+  for (const cmd of ['which ffmpeg', 'command -v ffmpeg']) {
+    try {
+      const result = execSync(cmd, { encoding: 'utf8', timeout: 5000, stdio: ['pipe', 'pipe', 'ignore'] }).trim()
+      if (result) return result
+    } catch { /* not found */ }
+  }
+  for (const p of ['/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg']) {
+    try {
+      execSync(`"${p}" -version`, { stdio: 'ignore', timeout: 5000 })
+      return p
+    } catch { /* not found */ }
+  }
+  try {
+    const staticPath = require('ffmpeg-static') as string
+    if (staticPath) return staticPath
+  } catch { /* not available */ }
+  return null
+}
+
+async function convertWebmToOgg(webmBuffer: Buffer): Promise<Buffer | null> {
+  const ffmpeg = findFfmpeg()
+  if (!ffmpeg) {
+    console.error('[Transcribe] No ffmpeg binary found — cannot convert WebM')
+    return null
+  }
+  const dir = await mkdtemp(join(tmpdir(), 'webm-convert-'))
+  const inFile = join(dir, 'input.webm')
+  const outFile = join(dir, 'output.ogg')
+  try {
+    await writeFile(inFile, webmBuffer)
+    await execFileAsync(ffmpeg, [
+      '-nostdin', '-loglevel', 'warning',
+      '-i', inFile,
+      '-vn', '-c:a', 'libopus', '-b:a', '48k',
+      outFile,
+    ], { timeout: 60_000 })
+    return await readFile(outFile)
+  } catch (err) {
+    console.error('[Transcribe] ffmpeg WebM→OGG conversion failed:', err)
+    return null
+  } finally {
+    await unlink(inFile).catch(() => {})
+    await unlink(outFile).catch(() => {})
+    await rmdir(dir).catch(() => {})
+  }
+}
 
 function normalizeVocabCandidate(raw: string): string | null {
   const value = String(raw || '')
@@ -502,6 +557,30 @@ async function processTranscriptionJob(sessionId: string) {
 
       let audioBuffer = Buffer.from(await audioData.arrayBuffer())
       console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)
+
+      // Detect WebM masquerading as OGG (common on Android Chrome).
+      // WebM starts with EBML header 0x1A45DFA3; real OGG starts with "OggS".
+      const isActuallyWebm = audioBuffer.length >= 4
+        && audioBuffer[0] === 0x1A && audioBuffer[1] === 0x45
+        && audioBuffer[2] === 0xDF && audioBuffer[3] === 0xA3
+      if (isActuallyWebm && file.mime_type !== 'audio/webm') {
+        console.warn('[Transcribe] File claims', file.mime_type, 'but magic bytes indicate WebM — converting via ffmpeg')
+        const converted = await convertWebmToOgg(audioBuffer)
+        if (converted) {
+          audioBuffer = converted
+          file.mime_type = 'audio/ogg'
+          console.log('[Transcribe] WebM→OGG conversion succeeded, new size:', audioBuffer.length)
+          await logPipelineEvent({
+            sessionId,
+            userId: (sessionRow as any)?.user_id || null,
+            stage: 'transcribe',
+            event: 'webm_to_ogg_converted',
+            metadata: { originalMime: file.mime_type, newSize: audioBuffer.length },
+          }, supabase)
+        } else {
+          console.error('[Transcribe] WebM→OGG conversion failed, proceeding with original bytes')
+        }
+      }
 
       let voiceSamplePrepended = false
       let effectiveVoiceSampleDurationMs = 0
