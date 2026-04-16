@@ -93,6 +93,40 @@ export async function POST(request: Request) {
 
   for (const session of stuckSessions || []) {
     try {
+      // Skip sessions that have an active job — they're still processing.
+      if (session.pending_job_id) {
+        console.log(`[Stale Cleanup] Skipping session ${session.id} — has pending job ${session.pending_job_id}`)
+        continue
+      }
+
+      // Skip sessions with a recent file upload (e.g. long calls where recording
+      // is uploaded minutes after session creation).
+      const recentFileCutoff = new Date(Date.now() - STALE_SESSION_MINUTES * 60 * 1000).toISOString()
+      const { data: recentFiles } = await supabase
+        .from('files')
+        .select('id')
+        .eq('session_id', session.id)
+        .gte('created_at', recentFileCutoff)
+        .limit(1)
+
+      if (recentFiles && recentFiles.length > 0) {
+        console.log(`[Stale Cleanup] Skipping session ${session.id} — has recent file upload`)
+        continue
+      }
+
+      // Skip sessions with active async jobs (transcribe/analyze in progress).
+      const { data: activeJobs } = await supabase
+        .from('async_jobs')
+        .select('id')
+        .eq('payload->>sessionId', session.id)
+        .in('status', ['queued', 'running', 'retryable'])
+        .limit(1)
+
+      if (activeJobs && activeJobs.length > 0) {
+        console.log(`[Stale Cleanup] Skipping session ${session.id} — has active async job`)
+        continue
+      }
+
       await supabase
         .from('sessions')
         .update({
