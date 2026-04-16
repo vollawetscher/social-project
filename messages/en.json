@@ -395,7 +395,8 @@
       "saveFailed": "Failed to save cleanup",
       "suggestionApplied": "Suggestion applied: {from} -> {to}",
       "correctionAdded": "Correction added: {from} -> {to}"
-    }
+    },
+    "words": "words"
   },
   "outputs": {
     "title": "Outputs",
@@ -481,7 +482,8 @@
     "tone": "Tone",
     "generatedWithFormat": "Generated with {format} format",
     "includesTimestampCitations": "Includes timestamp citations",
-    "cost": "AI Cost"
+    "cost": "AI Cost",
+    "wordCount": "Word Count"
   },
   "generateModal": {
     "title": "Generate Output",

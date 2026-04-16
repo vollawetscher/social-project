@@ -342,6 +342,14 @@ export async function POST(request: Request) {
     const isEmailOutput = config.format === 'email' || template?.output_format === 'email_text'
     const persistedFormat = isEmailOutput ? 'email' : config.format
 
+    const lengthPref = config.lengthPreference || 'medium'
+    const lengthInstructionMap: Record<string, string> = {
+      short: 'Keep the output SHORT and concise. Focus only on the most important points, key decisions, and critical action items. Omit minor details, filler, and elaboration. Aim for roughly one-third the length of a comprehensive report. A busy reader should be able to absorb this in under 2 minutes.',
+      medium: 'Use professional judgment. The output length should be proportionate to the substance, complexity, and stakes of the conversation — not to the transcript length. A routine 15-minute internal call does not warrant a 9-page report. Aim for the length a competent professional would write for this specific audience and purpose. Prefer concise and actionable over exhaustive.',
+      long: 'Provide a COMPREHENSIVE and detailed output. Cover all topics discussed, nuances, context, and supporting details. Include thorough explanations, background where relevant, and capture the full breadth of the conversation. Do not skip minor points — completeness is more important than brevity here.',
+    }
+    const lengthInstruction = lengthInstructionMap[lengthPref] || lengthInstructionMap.medium
+
     let systemPrompt = `You are a professional report writer specializing in creating high-quality, accurate summaries and reports from conversation transcripts.
 
 Your task is to generate ${formatMap[persistedFormat] || 'a report'} from the following conversation.
@@ -354,7 +362,7 @@ Key requirements:
 - Include a clear "Date/Time" line near the top of the output using the provided session start date/time value.
 - Do NOT use the current date/time when session timing is provided; use the provided session timing context instead.
 - Do NOT use any emojis or emoticons anywhere in the output.
-- **Length**: Use professional judgment. The output length should be proportionate to the substance, complexity, and stakes of the conversation — not to the transcript length. A routine 15-minute internal call does not warrant a 9-page report. Aim for the length a competent professional would write for this specific audience and purpose. Prefer concise and actionable over exhaustive.
+- **Length**: ${lengthInstruction}
 ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific moments' : ''}`
 
     if (isEmailOutput) {

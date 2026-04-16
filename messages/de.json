@@ -395,7 +395,8 @@
       "saveFailed": "Bereinigung konnte nicht gespeichert werden",
       "suggestionApplied": "Vorschlag angewendet: {from} -> {to}",
       "correctionAdded": "Korrektur hinzugefuegt: {from} -> {to}"
-    }
+    },
+    "words": "Wörter"
   },
   "outputs": {
     "title": "Berichte",
@@ -481,7 +482,8 @@
     "tone": "Ton",
     "generatedWithFormat": "Erstellt im Format {format}",
     "includesTimestampCitations": "Enthaelt Zeitstempel-Zitate",
-    "cost": "KI-Kosten"
+    "cost": "KI-Kosten",
+    "wordCount": "Wortanzahl"
   },
   "generateModal": {
     "title": "Bericht generieren",

@@ -43,6 +43,13 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const isAdmin = callerProfile?.role === 'admin'
+
     const body = await request.json()
     const { targetLanguage = 'en' } = body
 
@@ -166,7 +173,7 @@ Critical rules:
       createdAt: newOutput.created_at,
       transcriptVersionHash: newOutput.transcript_version_hash || '',
       citeTimestamps: newOutput.cite_timestamps ?? false,
-      costUsd: newOutput.cost_usd != null ? Number(newOutput.cost_usd) : null,
+      ...(isAdmin && newOutput.cost_usd != null ? { costUsd: Number(newOutput.cost_usd) } : {}),
     })
   } catch (error) {
     console.error('[Translate] Error:', error)

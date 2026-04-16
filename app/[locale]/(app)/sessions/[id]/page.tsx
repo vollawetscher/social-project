@@ -1757,6 +1757,7 @@ export default function SessionDetailPage() {
                   </div>
                   {outputs.map((output) => {
                     const outputDisplayName = getOutputDisplayName(output.templateName)
+                    const wordCount = output.content ? output.content.trim().split(/\s+/).length : 0
                     return (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
@@ -1777,6 +1778,12 @@ export default function SessionDetailPage() {
                                 <span className="flex items-center gap-1">
                                   {output.language === 'en' ? 'English' : output.language === 'de' ? 'German' : output.language}
                                 </span>
+                              </>
+                            )}
+                            {wordCount > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{wordCount.toLocaleString()} {t('words')}</span>
                               </>
                             )}
                             {isAdmin && output.costUsd != null && (
@@ -1845,7 +1852,7 @@ export default function SessionDetailPage() {
                             asChild
                             title={tOutputs('open')}
                           >
-                            <Link href={`/outputs/${output.id}?from=${encodeURIComponent(`/sessions/${sessionId}`)}`}>
+                            <Link href={`/outputs/${output.id}?from=${encodeURIComponent(`/sessions/${sessionId}?tab=outputs`)}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
                           </Button>
@@ -2256,6 +2263,7 @@ export default function SessionDetailPage() {
                   </div>
                   {outputs.map((output) => {
                     const outputDisplayName = getOutputDisplayName(output.templateName)
+                    const wordCount = output.content ? output.content.trim().split(/\s+/).length : 0
                     return (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
                       <div className="flex items-start justify-between mb-2">
@@ -2276,6 +2284,12 @@ export default function SessionDetailPage() {
                                 <span className="flex items-center gap-1">
                                   {output.language === 'en' ? 'English' : output.language === 'de' ? 'German' : output.language}
                                 </span>
+                              </>
+                            )}
+                            {wordCount > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{wordCount.toLocaleString()} {t('words')}</span>
                               </>
                             )}
                             {isAdmin && output.costUsd != null && (
@@ -2344,7 +2358,7 @@ export default function SessionDetailPage() {
                             asChild
                             title={tOutputs('open')}
                           >
-                            <Link href={`/outputs/${output.id}?from=${encodeURIComponent(`/sessions/${sessionId}`)}`}>
+                            <Link href={`/outputs/${output.id}?from=${encodeURIComponent(`/sessions/${sessionId}?tab=outputs`)}`}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Link>
                           </Button>

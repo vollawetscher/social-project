@@ -393,7 +393,8 @@
       "saveFailed": "No se pudo guardar la limpieza",
       "suggestionApplied": "Sugerencia aplicada: {from} -> {to}",
       "correctionAdded": "Correccion agregada: {from} -> {to}"
-    }
+    },
+    "words": "palabras"
   },
   "outputs": {
     "title": "Informes",
@@ -476,7 +477,8 @@
     "tone": "Tono",
     "generatedWithFormat": "Generado en formato {format}",
     "includesTimestampCitations": "Incluye citas con marcas de tiempo",
-    "cost": "Coste IA"
+    "cost": "Coste IA",
+    "wordCount": "Palabras"
   },
   "generateModal": {
     "title": "Generar Informe",

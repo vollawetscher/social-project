@@ -28,6 +28,7 @@ import {
   Trash2,
   Loader2,
   Globe,
+  Type,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -658,6 +659,15 @@ export default function OutputDetailPage() {
                 <p className="font-medium">{formatDate(output.createdAt)}</p>
               </div>
             </div>
+            {output.content && (
+              <div className="flex items-start gap-2">
+                <Type className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-xs text-muted-foreground">{t('wordCount')}</p>
+                  <p className="font-medium">{output.content.trim().split(/\s+/).length.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
             {isAdmin && output.costUsd != null && (
               <div className="flex items-start gap-2">
                 <Sparkles className="h-4 w-4 text-muted-foreground mt-0.5" />

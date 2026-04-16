@@ -15,15 +15,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const sessionId = searchParams.get('sessionId')
 
-    let isAdmin = false
-    if (sessionId) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      isAdmin = profile?.role === 'admin'
-    }
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const isAdmin = profile?.role === 'admin'
 
     let query = supabase
       .from('outputs')
@@ -65,7 +62,7 @@ export async function GET(request: Request) {
       createdAt: o.created_at,
       transcriptVersionHash: o.transcript_version_hash || '',
       citeTimestamps: o.cite_timestamps || false,
-      costUsd: o.cost_usd != null ? Number(o.cost_usd) : null,
+      ...(isAdmin && o.cost_usd != null ? { costUsd: Number(o.cost_usd) } : {}),
     }))
 
     return NextResponse.json(formattedOutputs)
@@ -83,6 +80,13 @@ export async function POST(request: Request) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const callerIsAdmin = callerProfile?.role === 'admin'
 
     const body = await request.json()
     const { 
@@ -155,7 +159,7 @@ export async function POST(request: Request) {
       createdAt: output.created_at,
       transcriptVersionHash: output.transcript_version_hash || '',
       citeTimestamps: output.cite_timestamps || false,
-      costUsd: output.cost_usd != null ? Number(output.cost_usd) : null,
+      ...(callerIsAdmin && output.cost_usd != null ? { costUsd: Number(output.cost_usd) } : {}),
     }
 
     return NextResponse.json(formattedOutput, { status: 201 })
