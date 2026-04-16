@@ -113,13 +113,13 @@ export async function POST(
       .eq('id', sessionId)
 
     // Trigger transcription via internal API
-    const origin = new URL(request.url).origin
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin
     try {
       const transcribeHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
       const internalSecret = process.env.INTERNAL_API_SECRET
       if (internalSecret) transcribeHeaders['x-internal-secret'] = internalSecret
 
-      const transcribeRes = await fetch(`${origin}/api/sessions/${sessionId}/transcribe`, {
+      const transcribeRes = await fetch(`${baseUrl}/api/sessions/${sessionId}/transcribe`, {
         method: 'POST',
         headers: transcribeHeaders,
       })
