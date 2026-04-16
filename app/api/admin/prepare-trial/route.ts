@@ -94,11 +94,27 @@ export async function POST(request: Request) {
         )
     }
 
+    // Only transfer sessions the admin actually owns (prevent accidentally
+    // stealing another user's sessions when admin view is enabled).
+    const { data: ownedSessions } = await adminSupabase
+      .from('sessions')
+      .select('id')
+      .in('id', sessionIds)
+      .eq('user_id', user.id)
+
+    const ownedIds = (ownedSessions || []).map((s: { id: string }) => s.id)
+    if (ownedIds.length === 0) {
+      return NextResponse.json(
+        { error: 'None of the selected sessions belong to you' },
+        { status: 400 }
+      )
+    }
+
     // Transfer sessions to client & mark as curated
     const { error: transferError } = await adminSupabase
       .from('sessions')
       .update({ user_id: clientUserId, curated: true })
-      .in('id', sessionIds)
+      .in('id', ownedIds)
 
     if (transferError) {
       console.error('[PrepareTrial] Session transfer failed:', transferError)
@@ -112,7 +128,8 @@ export async function POST(request: Request) {
       success: true,
       clientUserId,
       magicLink,
-      sessionsTransferred: sessionIds.length,
+      sessionsTransferred: ownedIds.length,
+      sessionsSkipped: sessionIds.length - ownedIds.length,
       isExistingUser,
     })
   } catch (error: any) {
