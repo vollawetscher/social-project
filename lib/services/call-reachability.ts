@@ -65,21 +65,14 @@ export async function getCalleeReachability(
     }
   }
 
-  // Last heartbeat was "background" — the user explicitly left the app.
-  // Since we stop heartbeating when backgrounded, a recent background
-  // heartbeat means the user just left; treat as offline.
-  if (appState === 'background') {
-    return {
-      state: 'probably_offline',
-      reason: 'Callee app was backgrounded.',
-      lastHeartbeatAt,
-      appState,
-    }
-  }
-
+  // Recent heartbeat but backgrounded — the user switched tabs or locked
+  // their screen. They may still be reachable (e.g. hear a notification)
+  // so treat as inconclusive rather than offline.
   return {
     state: 'unknown',
-    reason: 'Callee presence is recent but inconclusive.',
+    reason: appState === 'background'
+      ? 'Callee app was recently backgrounded.'
+      : 'Callee presence is recent but inconclusive.',
     lastHeartbeatAt,
     appState,
   }
