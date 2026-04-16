@@ -448,20 +448,6 @@ async function processTranscriptionJob(sessionId: string) {
         .eq('session_id', sessionId)
     }
 
-    // Speechmatics does NOT support WebM/Opus - supported: wav, mp3, aac, ogg, mpeg, amr, m4a, mp4, flac
-    const webmFiles = files.filter(f => 
-      f.mime_type === 'audio/webm' || f.mime_type?.startsWith('audio/webm')
-    )
-    if (webmFiles.length > 0) {
-      const msg = 'WebM format cannot be transcribed. Please convert to MP3 or MP4 first (e.g. cloudconvert.com), or record on iPhone Safari which uses MP4.'
-      console.error('[Transcribe] WebM rejected:', webmFiles.map(f => f.storage_path))
-      await supabase
-        .from('sessions')
-        .update({ status: 'error', last_error: msg })
-        .eq('id', sessionId)
-      return
-    }
-
     // Process each file
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
@@ -558,13 +544,17 @@ async function processTranscriptionJob(sessionId: string) {
       let audioBuffer = Buffer.from(await audioData.arrayBuffer())
       console.log('[Transcribe] Audio buffer created, size:', audioBuffer.length)
 
-      // Detect WebM masquerading as OGG (common on Android Chrome).
-      // WebM starts with EBML header 0x1A45DFA3; real OGG starts with "OggS".
-      const isActuallyWebm = audioBuffer.length >= 4
+      // Speechmatics doesn't support WebM. Convert to OGG/Opus via ffmpeg.
+      // Detect WebM either by mime type or magic bytes (Android Chrome often
+      // records WebM but claims audio/ogg).
+      const isWebmByMime = file.mime_type === 'audio/webm' || file.mime_type?.startsWith('audio/webm')
+      const isWebmByMagic = audioBuffer.length >= 4
         && audioBuffer[0] === 0x1A && audioBuffer[1] === 0x45
         && audioBuffer[2] === 0xDF && audioBuffer[3] === 0xA3
-      if (isActuallyWebm && file.mime_type !== 'audio/webm') {
-        console.warn('[Transcribe] File claims', file.mime_type, 'but magic bytes indicate WebM — converting via ffmpeg')
+      if (isWebmByMime || isWebmByMagic) {
+        const reason = isWebmByMime ? `mime_type=${file.mime_type}` : `magic bytes (claimed ${file.mime_type})`
+        console.warn(`[Transcribe] WebM detected (${reason}) — converting to OGG via ffmpeg`)
+        const originalMime = file.mime_type
         const converted = await convertWebmToOgg(audioBuffer)
         if (converted) {
           audioBuffer = converted
@@ -575,10 +565,16 @@ async function processTranscriptionJob(sessionId: string) {
             userId: (sessionRow as any)?.user_id || null,
             stage: 'transcribe',
             event: 'webm_to_ogg_converted',
-            metadata: { originalMime: file.mime_type, newSize: audioBuffer.length },
+            metadata: { originalMime, newSize: audioBuffer.length },
           }, supabase)
         } else {
-          console.error('[Transcribe] WebM→OGG conversion failed, proceeding with original bytes')
+          const msg = 'Audio format (WebM) could not be converted. Please upload as MP3 or MP4.'
+          console.error('[Transcribe] WebM→OGG conversion failed')
+          await supabase
+            .from('sessions')
+            .update({ status: 'error', last_error: msg })
+            .eq('id', sessionId)
+          return
         }
       }
 

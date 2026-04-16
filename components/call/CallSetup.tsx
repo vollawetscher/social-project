@@ -19,6 +19,37 @@ const BG_CHOICES: Array<{ value: VideoBackgroundChoice; image?: string; labelKey
   { value: "conference", image: "/backgrounds/conference.jpg", labelKey: "backgroundConference" },
 ]
 
+function simplifyMobileCameras(cameras: MediaDeviceInfo[]): MediaDeviceInfo[] {
+  if (cameras.length <= 2) return cameras
+
+  const front: MediaDeviceInfo[] = []
+  const back: MediaDeviceInfo[] = []
+  const other: MediaDeviceInfo[] = []
+
+  for (const cam of cameras) {
+    const label = (cam.label || '').toLowerCase()
+    if (label.includes('front') || label.includes('facetime')) {
+      front.push(cam)
+    } else if (label.includes('back') || label.includes('rear')) {
+      back.push(cam)
+    } else {
+      other.push(cam)
+    }
+  }
+
+  // If we couldn't classify by label, return all (desktop with multiple webcams)
+  if (front.length === 0 && back.length === 0) return cameras
+
+  const simplified: MediaDeviceInfo[] = []
+  if (front.length > 0) simplified.push(front[0])
+  // Prefer the widest/default back camera (usually the first listed)
+  if (back.length > 0) simplified.push(back[0])
+  // Include any unclassified cameras (e.g. external webcams on iPad)
+  simplified.push(...other)
+
+  return simplified
+}
+
 interface CallSetupProps {
   mode: "audio" | "video"
   isAuthenticated: boolean
@@ -63,12 +94,12 @@ export function CallSetup({
 
   const displayName = isAuthenticated ? (userName || "User") : guestName
 
-  // Attach the media stream to the video element after it renders
+  // Attach the media stream to the video element whenever camera state or stream changes
   useEffect(() => {
     if (isCameraReady && videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current
     }
-  }, [isCameraReady])
+  }, [isCameraReady, selectedVideoInput])
 
   useEffect(() => {
     checkPermissions()
@@ -85,42 +116,69 @@ export function CallSetup({
     try {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
       }
-      const constraints: MediaStreamConstraints = {
-        audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
-        video: mode === "video"
-          ? (videoDeviceId ? { deviceId: { exact: videoDeviceId } } : true)
-          : false,
-      }
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
-      streamRef.current = stream
+      setMicError(null)
 
-      setIsMicReady(true)
-      if (mode === "video") {
-        setIsCameraReady(true)
-        // srcObject is set via useEffect once the video element renders
+      // On mobile, acquire audio and video separately so a camera
+      // switch failure doesn't kill the microphone stream.
+      let audioStream: MediaStream | null = null
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: audioDeviceId ? { deviceId: { ideal: audioDeviceId } } : true,
+          video: false,
+        })
+      } catch (audioErr: any) {
+        console.error("[CallSetup] Audio permission error:", audioErr)
+        setIsMicReady(false)
+        setMicError(audioErr.message || t('couldNotAccessMic'))
       }
+
+      let videoStream: MediaStream | null = null
+      if (mode === "video") {
+        try {
+          videoStream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: videoDeviceId ? { deviceId: { ideal: videoDeviceId } } : true,
+          })
+          setIsCameraReady(true)
+        } catch (videoErr: any) {
+          console.error("[CallSetup] Camera error:", videoErr)
+          setIsCameraReady(false)
+        }
+      }
+
+      // Combine tracks into a single stream
+      const combined = new MediaStream()
+      audioStream?.getAudioTracks().forEach((t) => combined.addTrack(t))
+      videoStream?.getVideoTracks().forEach((t) => combined.addTrack(t))
+      streamRef.current = combined
+
+      if (audioStream) setIsMicReady(true)
 
       const devices = await navigator.mediaDevices.enumerateDevices()
       const mics = devices.filter((d) => d.kind === "audioinput")
-      const cams = devices.filter((d) => d.kind === "videoinput")
+      const allCams = devices.filter((d) => d.kind === "videoinput")
       setAudioInputs(mics)
+      // iOS exposes every lens + virtual combo (6+ back cameras).
+      // Simplify to one front + one back by picking the first of each group.
+      const cams = simplifyMobileCameras(allCams)
       setVideoInputs(cams)
 
       const savedAudio = window.localStorage.getItem(AUDIO_INPUT_KEY) || ""
       const savedVideo = window.localStorage.getItem(VIDEO_INPUT_KEY) || ""
-      const activeAudio = (stream.getAudioTracks()[0]?.getSettings()?.deviceId as string | undefined) || ""
-      const activeVideo = (stream.getVideoTracks()[0]?.getSettings()?.deviceId as string | undefined) || ""
+      const activeAudio = (combined.getAudioTracks()[0]?.getSettings()?.deviceId as string | undefined) || ""
+      const activeVideo = (combined.getVideoTracks()[0]?.getSettings()?.deviceId as string | undefined) || ""
       setSelectedAudioInput((savedAudio && mics.some((m) => m.deviceId === savedAudio)) ? savedAudio : activeAudio)
       setSelectedVideoInput((savedVideo && cams.some((c) => c.deviceId === savedVideo)) ? savedVideo : activeVideo)
 
       if (levelRafRef.current) cancelAnimationFrame(levelRafRef.current)
       if (audioContextRef.current) await audioContextRef.current.close().catch(() => {})
-      const audioTrack = stream.getAudioTracks()[0]
+      const audioTrack = combined.getAudioTracks()[0]
       if (audioTrack) {
-        const audioStream = new MediaStream([audioTrack])
+        const audioTrackStream = new MediaStream([audioTrack])
         const ctx = new AudioContext()
-        const source = ctx.createMediaStreamSource(audioStream)
+        const source = ctx.createMediaStreamSource(audioTrackStream)
         const analyser = ctx.createAnalyser()
         analyser.fftSize = 256
         source.connect(analyser)
@@ -137,6 +195,8 @@ export function CallSetup({
     } catch (err: any) {
       console.error("[CallSetup] Permission error:", err)
       setMicError(err.message || t('couldNotAccessMic'))
+      setIsMicReady(false)
+      setIsCameraReady(false)
     }
   }
 
