@@ -3007,7 +3007,7 @@ export default function SessionsPage() {
                   {t('prepareTrial.sessionsLabel', { count: trialSelectedIds.size })}
                 </label>
                 <div className="overflow-y-auto rounded-md border border-border divide-y divide-border min-h-0">
-                  {(sessions || []).filter(s => s.status === 'ready').map(s => (
+                  {(sessions || []).filter(s => s.status === 'ready' && (!s.ownerId || s.ownerId === user?.id)).map(s => (
                     <label
                       key={s.id}
                       className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
