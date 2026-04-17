@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.32.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.32.0',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Reversible Transcript Cleanup',
+        description: 'You can now undo transcript cleanup. Removing a speaker rename, un-merging speakers, or deleting a word correction now actually persists. A new "Reset cleanup" button clears all cleanup at once and restores the original transcript. The raw transcript is and was always preserved.',
+      },
+    ],
+  },
+  {
     version: '1.31.1',
     date: 'March 17, 2026',
     entries: [

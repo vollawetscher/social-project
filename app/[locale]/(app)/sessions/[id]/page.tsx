@@ -217,6 +217,7 @@ export default function SessionDetailPage() {
   const [newWordFrom, setNewWordFrom] = useState('')
   const [newWordTo, setNewWordTo] = useState('')
   const [savingCleanup, setSavingCleanup] = useState(false)
+  const [resettingCleanup, setResettingCleanup] = useState(false)
   const [cleanupPanelOpen, setCleanupPanelOpen] = useState(false)
   const tPastePreview = useTranslations('pastePreview')
   const hasAudioInSession =
@@ -470,6 +471,51 @@ export default function SessionDetailPage() {
       setSavingCleanup(false)
     }
   }, [cleanupSuggestions, session, sessionId, speakerMergeMap, speakerNameMap, t, wordCorrectionsDraft])
+
+  const handleResetCleanup = useCallback(async () => {
+    if (!session) return
+    if (!confirm(t('cleanup.resetConfirm'))) return
+    setResettingCleanup(true)
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/corrections`, {
+        method: 'DELETE',
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error || t('cleanup.resetFailed'))
+
+      setSpeakerNameMap({})
+      setSpeakerMergeMap({})
+      setWordCorrectionsDraft({})
+
+      try {
+        const sessionRes = await fetch(`/api/sessions/${sessionId}`)
+        if (sessionRes.ok) {
+          const sessionData = await sessionRes.json()
+          const transcriptRes = await fetch(`/api/sessions/${sessionId}/transcript`)
+          const transcriptData = transcriptRes.ok ? await transcriptRes.json() : null
+          const v0Session = toV0Session(sessionData, {
+            filename: sessionData.internal_case_id,
+            transcript: transcriptData,
+            files: sessionData.files,
+          })
+          setSession(v0Session)
+        }
+      } catch {
+        setSession((prev) => prev ? {
+          ...prev,
+          transcriptCorrections: data.corrections || {},
+        } : prev)
+      }
+
+      await loadCleanupSuggestions()
+      toast.success(t('cleanup.resetSuccess'))
+    } catch (error) {
+      console.error('[Cleanup] Reset failed:', error)
+      toast.error(error instanceof Error ? error.message : t('cleanup.resetFailed'))
+    } finally {
+      setResettingCleanup(false)
+    }
+  }, [loadCleanupSuggestions, session, sessionId, t])
 
   const handleSpeakerChange = useCallback(async (segmentIndex: number, newSpeaker: string) => {
     if (!session) return
@@ -1186,8 +1232,22 @@ export default function SessionDetailPage() {
         )}
       </div>
 
-      <div className="sticky bottom-0 bg-card pt-2 flex justify-end">
-        <Button size="sm" onClick={() => void handleSaveCleanup()} disabled={savingCleanup}>
+      <div className="sticky bottom-0 bg-card pt-2 flex justify-between gap-2">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-destructive hover:text-destructive"
+          onClick={() => void handleResetCleanup()}
+          disabled={resettingCleanup || savingCleanup}
+        >
+          {resettingCleanup ? (
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          {t('cleanup.resetCleanup')}
+        </Button>
+        <Button size="sm" onClick={() => void handleSaveCleanup()} disabled={savingCleanup || resettingCleanup}>
           {savingCleanup ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
           {t('cleanup.applyCleanup')}
         </Button>

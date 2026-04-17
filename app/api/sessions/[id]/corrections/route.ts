@@ -108,35 +108,23 @@ export async function POST(
         ? corrections.accepted_suggestions.map((v) => String(v))
         : []
 
-      const mergedSpeakerNameMap = {
-        ...(existingCorrections.speaker_name_map || {}),
-        ...incomingSpeakerNameMap,
-      }
-      const mergedSpeakerMergeMap = {
-        ...(existingCorrections.speaker_merge_map || {}),
-        ...incomingSpeakerMergeMap,
-      }
-      const mergedWordCorrections = {
-        ...(existingCorrections.word_corrections || {}),
-        ...incomingWordCorrections,
-      }
-      const mergedAcceptedSuggestions = Array.from(
-        new Set([...(existingCorrections.accepted_suggestions || []), ...incomingAccepted])
-      )
-
-      const mergeValidation = validateSpeakerMergeMap(mergedSpeakerMergeMap)
+      // Replace (not merge) maps on bulk cleanup. The UI preloads existing corrections
+      // into its draft state, so the incoming draft represents the intended final state.
+      // Merging would make removals (un-merging speakers, deleting word corrections)
+      // impossible and thus cleanup effectively irreversible.
+      const mergeValidation = validateSpeakerMergeMap(incomingSpeakerMergeMap)
       if (!mergeValidation.valid) {
         return NextResponse.json({ error: mergeValidation.error || 'Invalid speaker merge map' }, { status: 400 })
       }
 
       updatedCorrections = {
         ...existingCorrections,
-        speaker_name_map: mergedSpeakerNameMap,
-        speaker_merge_map: mergedSpeakerMergeMap,
-        word_corrections: mergedWordCorrections,
-        accepted_suggestions: mergedAcceptedSuggestions,
+        speaker_name_map: incomingSpeakerNameMap,
+        speaker_merge_map: incomingSpeakerMergeMap,
+        word_corrections: incomingWordCorrections,
+        accepted_suggestions: incomingAccepted,
         // Keep legacy compatibility for existing UI/output paths.
-        name_corrections: mergedSpeakerNameMap,
+        name_corrections: incomingSpeakerNameMap,
       }
     } else {
       updatedCorrections = {
@@ -228,6 +216,79 @@ export async function POST(
     return NextResponse.json({ 
       error: 'Failed to save corrections',
       message: error?.message 
+    }, { status: 500 })
+  }
+}
+
+// DELETE endpoint to reset transcript cleanup (speaker names, merges, word corrections,
+// accepted suggestions, and segment overrides). Raw transcript data is not touched.
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    await requireSessionAccess(params.id, user.id)
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const isAdmin = profile?.role === 'admin'
+    const db = isAdmin ? createServiceRoleClient() : supabase
+
+    const sessionQuery = db.from('sessions').select('transcript_corrections').eq('id', params.id)
+    const { data: session, error: fetchError } = isAdmin
+      ? await sessionQuery.single()
+      : await sessionQuery.eq('user_id', user.id).single()
+
+    if (fetchError || !session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    }
+
+    const existingCorrections = (session.transcript_corrections || {}) as Record<string, any>
+
+    // Strip cleanup-related keys, preserving any other fields (e.g. pii_redactions).
+    const preserved: Record<string, any> = { ...existingCorrections }
+    delete preserved.speaker_name_map
+    delete preserved.speaker_merge_map
+    delete preserved.word_corrections
+    delete preserved.accepted_suggestions
+    delete preserved.segment_speaker_overrides
+    delete preserved.name_corrections
+
+    const updateQuery = db
+      .from('sessions')
+      .update({ transcript_corrections: preserved })
+      .eq('id', params.id)
+    const { error: updateError } = isAdmin
+      ? await updateQuery
+      : await updateQuery.eq('user_id', user.id)
+
+    if (updateError) {
+      console.error('[Corrections API] Reset error:', updateError)
+      return NextResponse.json({
+        error: 'Failed to reset cleanup',
+        details: updateError.message,
+      }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      corrections: preserved,
+    })
+  } catch (error: any) {
+    console.error('[Corrections API] Reset error:', error)
+    return NextResponse.json({
+      error: 'Failed to reset cleanup',
+      message: error?.message,
     }, { status: 500 })
   }
 }
