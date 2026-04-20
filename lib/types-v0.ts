@@ -124,6 +124,7 @@ export interface Session {
   ownerId?: string // Session owner user_id (for hand-off visibility)
   lastError?: string // Transcription or processing error message
   isFromCall?: boolean // True when this session was forked from a caller's session (callee claim)
+  isSharedWithMe?: boolean // True when the caller is a collaborator on this session (not the owner)
   consentLogs?: Array<{ participant_name: string; participant_identity: string; granted: boolean; created_at: string }>
   uploadSizeBytes?: number
   textUploadSizeBytes?: number

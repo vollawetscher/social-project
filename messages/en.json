@@ -141,6 +141,7 @@
     "outputCount": "{count, plural, one {# Output} other {# Outputs}}",
     "fromCall": "From a call",
     "sharedSession": "Shared",
+    "sharedWithMe": "Shared with you",
     "source": {
       "call": "Call",
       "quickRecord": "Notissima Rec",
@@ -200,17 +201,17 @@
     "prepareTrial": {
       "button": "Prepare Trial",
       "title": "Prepare Client Trial",
-      "description": "Select sessions and enter the client's email. They'll receive a magic link to explore the sessions instantly.",
+      "description": "Select sessions and enter the client's email. They'll receive a magic link and be added as a collaborator — you keep ownership and full access.",
       "email": "Client Email",
       "emailPlaceholder": "client@example.com",
-      "sessionsLabel": "Sessions to transfer ({count} selected)",
+      "sessionsLabel": "Sessions to share ({count} selected)",
       "outputsBadge": "{count, plural, one {# output} other {# outputs}}",
       "prepare": "Prepare & Get Link",
       "cancel": "Cancel",
       "done": "Done",
       "success": "Trial prepared for {email}",
       "error": "Failed to prepare trial",
-      "transferred": "{count, plural, one {# session} other {# sessions}} transferred to {email}",
+      "transferred": "{count, plural, one {# session} other {# sessions}} shared with {email}",
       "magicLinkLabel": "Magic Link",
       "magicLinkHint": "Share this link with the client. It will log them in automatically.",
       "copied": "Link copied"
@@ -342,6 +343,22 @@
         "activatesFromSecondSession": "Trajectory analysis activates from session 2"
       }
     }
+  },
+  "sessionAccess": {
+    "title": "Session Access",
+    "description": "People you share this session with. They can read the transcript, generate outputs, and edit the cleanup.",
+    "button": "Share",
+    "emailPlaceholder": "colleague@example.com",
+    "add": "Add",
+    "addFailed": "Failed to share session",
+    "addedSuccess": "Shared with {email}",
+    "loadFailed": "Failed to load collaborators",
+    "empty": "No one else has access yet.",
+    "revoke": "Revoke access",
+    "removeConfirm": "Revoke {name}'s access to this session?",
+    "removeFailed": "Failed to revoke access",
+    "removedSuccess": "Access revoked",
+    "trialBadge": "Trial"
   },
   "sessionDetail": {
     "transcript": "Transcript",

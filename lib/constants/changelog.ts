@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.33.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.33.0',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Shared Sessions',
+        description: 'Share a session with a colleague or client while keeping ownership. Collaborators can read the transcript, generate outputs, and work on cleanup — and you can still see everything, help them when they get stuck, and revoke access at any time. Prepare Trial now uses this model instead of handing ownership away.',
+      },
+    ],
+  },
+  {
     version: '1.32.1',
     date: 'March 17, 2026',
     entries: [

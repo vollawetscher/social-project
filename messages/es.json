@@ -141,6 +141,7 @@
     "outputCount": "{count, plural, one {# Informe} other {# Informes}}",
     "fromCall": "De una llamada",
     "sharedSession": "Compartida",
+    "sharedWithMe": "Compartida contigo",
     "source": {
       "call": "Llamada",
       "quickRecord": "Notissima Rec",
@@ -200,17 +201,17 @@
     "prepareTrial": {
       "button": "Preparar prueba",
       "title": "Preparar prueba para cliente",
-      "description": "Selecciona sesiones e introduce el email del cliente. Recibirá un enlace mágico para explorar las sesiones al instante.",
+      "description": "Selecciona sesiones e introduce el email del cliente. Será añadido como colaborador y recibirá un enlace mágico — tú conservas la propiedad y el acceso completo.",
       "email": "Email del cliente",
       "emailPlaceholder": "cliente@ejemplo.com",
-      "sessionsLabel": "Sesiones a transferir ({count} seleccionadas)",
+      "sessionsLabel": "Sesiones a compartir ({count} seleccionadas)",
       "outputsBadge": "{count, plural, one {# salida} other {# salidas}}",
       "prepare": "Preparar y obtener enlace",
       "cancel": "Cancelar",
       "done": "Hecho",
       "success": "Prueba preparada para {email}",
       "error": "No se pudo preparar la prueba",
-      "transferred": "{count, plural, one {# sesión transferida} other {# sesiones transferidas}} a {email}",
+      "transferred": "{count, plural, one {# sesión compartida} other {# sesiones compartidas}} con {email}",
       "magicLinkLabel": "Enlace mágico",
       "magicLinkHint": "Comparte este enlace con el cliente. Iniciará sesión automáticamente.",
       "copied": "Enlace copiado"
@@ -342,6 +343,22 @@
         "activatesFromSecondSession": "El análisis de trayectoria se activa desde la sesión 2"
       }
     }
+  },
+  "sessionAccess": {
+    "title": "Acceso a la sesión",
+    "description": "Personas con las que compartes esta sesión. Pueden leer la transcripción, generar informes y editar la limpieza.",
+    "button": "Compartir",
+    "emailPlaceholder": "colega@ejemplo.com",
+    "add": "Añadir",
+    "addFailed": "No se pudo compartir la sesión",
+    "addedSuccess": "Compartida con {email}",
+    "loadFailed": "No se pudieron cargar los colaboradores",
+    "empty": "Todavía nadie más tiene acceso.",
+    "revoke": "Revocar acceso",
+    "removeConfirm": "¿Revocar el acceso de {name} a esta sesión?",
+    "removeFailed": "No se pudo revocar el acceso",
+    "removedSuccess": "Acceso revocado",
+    "trialBadge": "Prueba"
   },
   "sessionDetail": {
     "transcript": "Transcripción",

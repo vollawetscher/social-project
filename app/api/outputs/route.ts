@@ -31,12 +31,41 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (sessionId) {
+      // RLS already limits visibility to outputs on accessible sessions
+      // (owner, collaborator, admin). No per-user filter needed.
       query = query.eq('session_id', sessionId)
-      if (!isAdmin) {
-        query = query.eq('created_by', user.id)
-      }
     } else {
-      query = query.eq('created_by', user.id)
+      // List outputs on any session the caller can access (owner or
+      // collaborator). Collaborators must see outputs they didn't create too.
+      // Admins see the same scope here — their cross-user admin lens lives
+      // on the dedicated admin endpoints.
+      const { data: ownedSessions } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('user_id', user.id)
+
+      let sharedSessionIds: string[] = []
+      try {
+        const { data: sharedRows } = await supabase
+          .from('session_collaborators')
+          .select('session_id')
+          .eq('user_id', user.id)
+        sharedSessionIds = (sharedRows || [])
+          .map((r: any) => r.session_id)
+          .filter(Boolean) as string[]
+      } catch {
+        sharedSessionIds = []
+      }
+
+      const accessibleSessionIds = Array.from(new Set([
+        ...(ownedSessions || []).map((s: any) => s.id),
+        ...sharedSessionIds,
+      ])).filter(Boolean) as string[]
+
+      if (accessibleSessionIds.length === 0) {
+        return NextResponse.json([])
+      }
+      query = query.in('session_id', accessibleSessionIds)
     }
 
     const { data: outputs, error } = await query

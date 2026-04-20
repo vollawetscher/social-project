@@ -141,6 +141,7 @@
     "outputCount": "{count, plural, one {# Bericht} other {# Berichte}}",
     "fromCall": "Aus einem Anruf",
     "sharedSession": "Geteilt",
+    "sharedWithMe": "Mit dir geteilt",
     "source": {
       "call": "Anruf",
       "quickRecord": "Notissima Rec",
@@ -200,17 +201,17 @@
     "prepareTrial": {
       "button": "Trial vorbereiten",
       "title": "Kunden-Trial vorbereiten",
-      "description": "Sitzungen auswählen und E-Mail-Adresse des Kunden eingeben. Der Kunde erhält einen Magic-Link zum sofortigen Zugang.",
+      "description": "Sitzungen auswählen und E-Mail-Adresse des Kunden eingeben. Der Kunde wird als Mitbearbeiter hinzugefügt und erhält einen Magic-Link — du behältst Besitz und vollen Zugriff.",
       "email": "E-Mail des Kunden",
       "emailPlaceholder": "kunde@beispiel.de",
-      "sessionsLabel": "Zu übertragende Sitzungen ({count} ausgewählt)",
+      "sessionsLabel": "Zu teilende Sitzungen ({count} ausgewählt)",
       "outputsBadge": "{count, plural, one {# Bericht} other {# Berichte}}",
       "prepare": "Vorbereiten & Link erstellen",
       "cancel": "Abbrechen",
       "done": "Fertig",
       "success": "Trial für {email} vorbereitet",
       "error": "Trial konnte nicht vorbereitet werden",
-      "transferred": "{count, plural, one {# Sitzung} other {# Sitzungen}} an {email} übertragen",
+      "transferred": "{count, plural, one {# Sitzung} other {# Sitzungen}} mit {email} geteilt",
       "magicLinkLabel": "Magic-Link",
       "magicLinkHint": "Teile diesen Link mit dem Kunden. Er wird automatisch eingeloggt.",
       "copied": "Link kopiert"
@@ -342,6 +343,22 @@
         "activatesFromSecondSession": "Die Trajektorienanalyse startet ab Sitzung 2"
       }
     }
+  },
+  "sessionAccess": {
+    "title": "Sitzungszugriff",
+    "description": "Personen, mit denen du diese Sitzung teilst. Sie können Transkript lesen, Berichte erzeugen und die Bereinigung bearbeiten.",
+    "button": "Teilen",
+    "emailPlaceholder": "kollege@beispiel.de",
+    "add": "Hinzufügen",
+    "addFailed": "Sitzung konnte nicht geteilt werden",
+    "addedSuccess": "Mit {email} geteilt",
+    "loadFailed": "Mitbearbeiter konnten nicht geladen werden",
+    "empty": "Noch niemand anderes hat Zugriff.",
+    "revoke": "Zugriff entziehen",
+    "removeConfirm": "Zugriff von {name} auf diese Sitzung entziehen?",
+    "removeFailed": "Zugriff konnte nicht entzogen werden",
+    "removedSuccess": "Zugriff entzogen",
+    "trialBadge": "Trial"
   },
   "sessionDetail": {
     "transcript": "Transkript",

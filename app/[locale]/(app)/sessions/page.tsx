@@ -36,6 +36,7 @@ import {
   Gift,
   Copy,
   CheckCircle2,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -577,7 +578,7 @@ export default function SessionsPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
-      setTrialResult({ magicLink: data.magicLink, count: data.sessionsTransferred })
+      setTrialResult({ magicLink: data.magicLink, count: data.sessionsShared ?? data.sessionsTransferred ?? 0 })
       toast.success(t('prepareTrial.success', { email: trialEmail }))
       fetchSessions()
     } catch (err: any) {
@@ -2423,6 +2424,12 @@ export default function SessionsPage() {
                             {t('fromCall')}
                           </Badge>
                         )}
+                        {session.isSharedWithMe && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-info/10 text-info border-info/30">
+                            <Users className="h-3 w-3 mr-1" />
+                            {t('sharedWithMe')}
+                          </Badge>
+                        )}
                         {session.piiRedactionEnabled && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                             <Shield className="h-3 w-3 mr-1" />
@@ -2564,6 +2571,12 @@ export default function SessionsPage() {
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-primary/10 text-primary border-primary/30">
                                 <Video className="h-3 w-3 mr-1" />
                                 {t('fromCall')}
+                              </Badge>
+                            )}
+                            {session.isSharedWithMe && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-info/10 text-info border-info/30">
+                                <Users className="h-3 w-3 mr-1" />
+                                {t('sharedWithMe')}
                               </Badge>
                             )}
                             {session.piiRedactionEnabled && (

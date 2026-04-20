@@ -69,6 +69,23 @@ export async function GET(request: Request) {
         .map((c: any) => c.callee_session_id)
         .filter(Boolean) as string[]
 
+      // Sessions shared with this user via session_collaborators.
+      // Swallow schema-not-yet-migrated errors so older environments keep working.
+      let sharedSessionIds: string[] = []
+      try {
+        const { data: shareLinks } = await supabase
+          .from('session_collaborators')
+          .select('session_id')
+          .eq('user_id', user.id)
+        sharedSessionIds = (shareLinks || [])
+          .map((r: any) => r.session_id)
+          .filter(Boolean) as string[]
+      } catch {
+        sharedSessionIds = []
+      }
+
+      const extraSessionIds = Array.from(new Set([...calleeSessionIds, ...sharedSessionIds]))
+
       const runUserSessionsQuery = async (excludeMerged: boolean) => {
         let query = supabase
           .from('sessions')
@@ -79,8 +96,8 @@ export async function GET(request: Request) {
           query = query.is('merged_into_session_id', null)
         }
 
-        if (calleeSessionIds.length > 0) {
-          query = query.or(`user_id.eq.${user.id},id.in.(${calleeSessionIds.join(',')})`)
+        if (extraSessionIds.length > 0) {
+          query = query.or(`user_id.eq.${user.id},id.in.(${extraSessionIds.join(',')})`)
         } else {
           query = query.eq('user_id', user.id)
         }
@@ -104,11 +121,13 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: error.message, details: error }, { status: 500 })
       }
 
-      // Tag callee sessions so the UI can show a "From a call" badge
+      // Tag callee sessions + shared sessions so the UI can show badges.
       const calleeSessionIdSet = new Set(calleeSessionIds)
+      const sharedSessionIdSet = new Set(sharedSessionIds)
       sessions = (data || []).map((s: any) => ({
         ...s,
         is_from_call: calleeSessionIdSet.has(s.id),
+        is_shared_with_me: sharedSessionIdSet.has(s.id) && s.user_id !== user.id,
       }))
     }
 

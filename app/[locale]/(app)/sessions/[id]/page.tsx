@@ -24,6 +24,7 @@ import {
   Sparkles,
   LayoutTemplate,
   UserRoundPlus,
+  Users,
   Mic,
   ShieldCheck,
   MessageSquare,
@@ -57,6 +58,7 @@ import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
 import { GenerateOutputModal } from "@/components/generate-output-modal"
 import { AudioPlayer } from "@/components/audio/AudioPlayer"
+import { SessionAccessDialog } from "@/components/session-access-dialog"
 import { toast } from "sonner"
 import {
   getRecordingTypeSuggestions,
@@ -165,6 +167,7 @@ export default function SessionDetailPage() {
   const backHref = fromProjectId ? `/projects/${fromProjectId}` : '/sessions'
   const t = useTranslations('sessionDetail')
   const tCommon = useTranslations('common')
+  const tAccess = useTranslations('sessionAccess')
   const tOutputs = useTranslations('outputs')
   const tErrors = useTranslations('errors')
   const tLabels = useTranslations('labels')
@@ -206,6 +209,7 @@ export default function SessionDetailPage() {
   const [handOffOpen, setHandOffOpen] = useState(false)
   const [handOffEmail, setHandOffEmail] = useState('')
   const [handOffLoading, setHandOffLoading] = useState(false)
+  const [accessDialogOpen, setAccessDialogOpen] = useState(false)
   const [sessionFiles, setSessionFiles] = useState<any[]>([])
   const [reparseModeIndex, setReparseModeIndex] = useState(0)
   const [reparsingTranscript, setReparsingTranscript] = useState(false)
@@ -1311,18 +1315,29 @@ export default function SessionDetailPage() {
               hasTranscript: !!session.transcript?.length,
             }}
           />
-          {/* Hand off session - only when owner */}
+          {/* Share access / Hand off - owner only */}
           {session.ownerId === user?.id && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setHandOffOpen(true)}
-              className="gap-1.5"
-            >
-              <UserRoundPlus className="h-4 w-4" />
-              {/* TODO: i18n - "Hand off" needs a new key */}
-              <span className="hidden sm:inline">Hand off</span>
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAccessDialogOpen(true)}
+                className="gap-1.5"
+              >
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">{tAccess('button')}</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHandOffOpen(true)}
+                className="gap-1.5"
+              >
+                <UserRoundPlus className="h-4 w-4" />
+                {/* TODO: i18n - "Hand off" needs a new key */}
+                <span className="hidden sm:inline">Hand off</span>
+              </Button>
+            </>
           )}
           {/* Context panel toggle - floating sheet, transcript stays full width */}
           <Button
@@ -1388,6 +1403,13 @@ export default function SessionDetailPage() {
           </div>
         )
       })()}
+
+      {/* Share access dialog */}
+      <SessionAccessDialog
+        sessionId={sessionId}
+        open={accessDialogOpen}
+        onOpenChange={setAccessDialogOpen}
+      />
 
       {/* Hand off dialog */}
       <Dialog open={handOffOpen} onOpenChange={setHandOffOpen}>

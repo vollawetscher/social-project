@@ -43,7 +43,14 @@ export async function requireSessionOwnership(sessionId: string, userId: string)
   }
 }
 
-/** Same as requireSessionOwnership but allows admins to access any session. */
+/**
+ * Grants access to a session for:
+ *   - the session owner (sessions.user_id === userId)
+ *   - any user in session_collaborators for this session
+ *   - admins (profiles.role === 'admin')
+ *
+ * Throws 'Session not found' or 'Forbidden' — `handleAuthError` maps both.
+ */
 export async function requireSessionAccess(sessionId: string, userId: string): Promise<void> {
   const supabase = await createClient()
 
@@ -57,29 +64,34 @@ export async function requireSessionAccess(sessionId: string, userId: string): P
     throw new Error('Session not found')
   }
 
-  // RLS may hide the session from non-owners; if null, check if user is admin and verify session exists
-  if (!session) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single()
-
-    if (profile?.role === 'admin') {
-      const { createServiceRoleClient } = await import('@/lib/supabase/server')
-      const serviceClient = createServiceRoleClient()
-      const { data: adminSession } = await serviceClient
-        .from('sessions')
-        .select('id')
-        .eq('id', sessionId)
-        .maybeSingle()
-
-      if (adminSession) return
-    }
-    throw new Error('Session not found')
+  if (session) {
+    if (session.user_id === userId) return
+    // If RLS returned the row for a non-owner it must be because the caller is
+    // a collaborator (the "Collaborators can read shared sessions" policy).
+    return
   }
 
-  if (session.user_id === userId) return
+  // RLS hid the row from the caller. Two paths can still grant access:
+  //   1. The user is a collaborator but the collaborator SELECT policy hasn't
+  //      propagated (defensive service-role check).
+  //   2. The user is an admin.
+  const serviceClient = createServiceRoleClient()
+
+  const { data: collaboratorRow } = await serviceClient
+    .from('session_collaborators')
+    .select('session_id')
+    .eq('session_id', sessionId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (collaboratorRow) {
+    const { data: adminSession } = await serviceClient
+      .from('sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .maybeSingle()
+    if (adminSession) return
+  }
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -87,9 +99,17 @@ export async function requireSessionAccess(sessionId: string, userId: string): P
     .eq('id', userId)
     .single()
 
-  if (profile?.role === 'admin') return
+  if (profile?.role === 'admin') {
+    const { data: adminSession } = await serviceClient
+      .from('sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .maybeSingle()
+    if (adminSession) return
+    throw new Error('Session not found')
+  }
 
-  throw new Error('Forbidden')
+  throw new Error('Session not found')
 }
 
 export function handleAuthError(error: Error): { status: number; message: string } {

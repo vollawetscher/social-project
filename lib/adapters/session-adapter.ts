@@ -187,6 +187,7 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     ownerId: (dbSession as any).user_id, // For hand-off: show control when owner
     lastError: (dbSession as any).last_error, // Transcription/processing error
     isFromCall: (dbSession as any).is_from_call || false, // Callee's forked session from a call
+    isSharedWithMe: Boolean((dbSession as any).is_shared_with_me), // Session is shared with caller (they are a collaborator, not owner)
     consentLogs: (dbSession as any).consent_logs || [],
     uploadSizeBytes: Number((dbSession as any).upload_size_bytes || 0),
     textUploadSizeBytes: Number((dbSession as any).text_upload_size_bytes || 0),

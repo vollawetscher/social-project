@@ -94,8 +94,7 @@ export async function POST(request: Request) {
         )
     }
 
-    // Only transfer sessions the admin actually owns (prevent accidentally
-    // stealing another user's sessions when admin view is enabled).
+    // Only share sessions the admin actually owns.
     const { data: ownedSessions } = await adminSupabase
       .from('sessions')
       .select('id')
@@ -110,16 +109,42 @@ export async function POST(request: Request) {
       )
     }
 
-    // Transfer sessions to client & mark as curated
-    const { error: transferError } = await adminSupabase
+    if (clientUserId === user.id) {
+      return NextResponse.json(
+        { error: 'Cannot share a session with yourself' },
+        { status: 400 }
+      )
+    }
+
+    // Mark sessions as curated (hides destructive controls in the trial view)
+    const { error: curateError } = await adminSupabase
       .from('sessions')
-      .update({ user_id: clientUserId, curated: true })
+      .update({ curated: true })
       .in('id', ownedIds)
 
-    if (transferError) {
-      console.error('[PrepareTrial] Session transfer failed:', transferError)
+    if (curateError) {
+      console.error('[PrepareTrial] Failed to mark sessions as curated:', curateError)
+      // Non-fatal — proceed with share insert
+    }
+
+    // Share sessions with the client as collaborators. Ownership is retained
+    // by the admin so they keep full access and can support the client.
+    const shareRows = ownedIds.map((sessionId) => ({
+      session_id: sessionId,
+      user_id: clientUserId,
+      role: 'collaborator',
+      added_by: user.id,
+      source: 'trial',
+    }))
+
+    const { error: shareError } = await adminSupabase
+      .from('session_collaborators')
+      .upsert(shareRows, { onConflict: 'session_id,user_id', ignoreDuplicates: false })
+
+    if (shareError) {
+      console.error('[PrepareTrial] Failed to create collaborator rows:', shareError)
       return NextResponse.json(
-        { error: 'Failed to transfer sessions' },
+        { error: 'Failed to share sessions' },
         { status: 500 }
       )
     }
@@ -128,7 +153,7 @@ export async function POST(request: Request) {
       success: true,
       clientUserId,
       magicLink,
-      sessionsTransferred: ownedIds.length,
+      sessionsShared: ownedIds.length,
       sessionsSkipped: sessionIds.length - ownedIds.length,
       isExistingUser,
     })
