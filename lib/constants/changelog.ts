@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.32.1',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.32.1',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Trial Magic Link Sign-In',
+        description: 'Fixed the Prepare Trial magic link that was leaving invitees stuck on a "Signing you in…" screen. Verification now happens server-side so the session is established reliably before redirecting into the app.',
+      },
+    ],
+  },
+  {
     version: '1.32.0',
     date: 'March 17, 2026',
     entries: [
