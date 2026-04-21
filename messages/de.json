@@ -1616,6 +1616,13 @@
     "wordCorrectionsSaved": "Wortkorrekturen gespeichert",
     "wordCorrectionsFailed": "Wortkorrekturen konnten nicht gespeichert werden"
   },
+  "ownerClarification": {
+    "heading": "Kurze Rückfrage, bevor wir Vorschläge anpassen",
+    "subheading": "So erstellen wir Ergebnisse, die dir dienen – nicht der Gegenseite.",
+    "freeTextPlaceholder": "Beschreibe deine Rolle in eigenen Worten…",
+    "save": "Speichern",
+    "dismiss": "Überspringen"
+  },
   "labels": {
     "perspectives": {
       "party_a": "Du / Deine Seite",

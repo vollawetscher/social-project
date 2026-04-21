@@ -1604,6 +1604,13 @@
     "wordCorrectionsSaved": "Correcciones de palabras guardadas",
     "wordCorrectionsFailed": "No se pudieron guardar las correcciones"
   },
+  "ownerClarification": {
+    "heading": "Una consulta rápida antes de adaptar las sugerencias",
+    "subheading": "Esto nos ayuda a generar resultados que te sirvan a ti, no a la otra parte.",
+    "freeTextPlaceholder": "Describe tu rol con tus propias palabras…",
+    "save": "Guardar",
+    "dismiss": "Omitir"
+  },
   "labels": {
     "perspectives": {
       "party_a": "Tú / Tu parte",

@@ -198,6 +198,8 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     caseId: (dbSession as any).case_id ?? null,
     caseTitle: (dbSession as any).case?.title ?? null,
     curated: Boolean((dbSession as any).curated),
+    ownerContext: ((dbSession as any).owner_context as V0Session['ownerContext']) ?? null,
+    pendingClarification: ((dbSession as any).pending_clarification as V0Session['pendingClarification']) ?? null,
   }
 }
 

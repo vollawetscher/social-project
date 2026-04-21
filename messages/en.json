@@ -1617,6 +1617,13 @@
     "wordCorrectionsSaved": "Word corrections saved",
     "wordCorrectionsFailed": "Failed to save word corrections"
   },
+  "ownerClarification": {
+    "heading": "Quick check before we tailor suggestions",
+    "subheading": "This helps us generate outputs that serve you, not the other party.",
+    "freeTextPlaceholder": "Describe your role in your own words…",
+    "save": "Save",
+    "dismiss": "Skip"
+  },
   "labels": {
     "perspectives": {
       "party_a": "You / Your Side",

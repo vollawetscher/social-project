@@ -734,6 +734,38 @@ export async function POST(
     })
     const outputLangName = LANG_NAMES[outputLangCode] || outputLangCode
 
+    // Owner context: did the user already answer a "who are you in this
+    // conversation?" clarification? If so, feed it into the prompt so the
+    // analyzer tailors suggestions to the owner's interests and does not
+    // re-ask.
+    const existingOwnerContext = ((session as any)?.owner_context || null) as
+      | {
+          role?: string
+          speakerId?: string | null
+          goal?: string | null
+          counterpartyRole?: string | null
+          source?: string
+        }
+      | null
+    const ownerContextBlock = existingOwnerContext
+      ? `OWNER CONTEXT (already known — use this to frame suggestions, do not ask again):
+${JSON.stringify(existingOwnerContext)}
+
+Tailor the 3 suggested outputs to serve the OWNER (role: ${existingOwnerContext.role || 'unknown'}) — their post-conversation needs, not the counterparty's. Perspective should default to the owner's viewpoint where appropriate.`
+      : `OWNER CONTEXT ASSESSMENT (required):
+
+The recording was made by the session owner ("${userName || 'the user'}"). Before producing suggestions, assess whether you can confidently infer:
+  - Which transcript speaker is the owner (speakerId) — or "not in the recording"
+  - The owner's role in this conversation (e.g. applicant, interviewer, customer, service provider, patient, doctor, consultant, client, teacher, student, coach, therapist, mediator, caller, recipient, etc.)
+  - The owner's likely goal
+  - The counterparty's role
+
+If confidence is HIGH (>= 0.75): set ownerAssessment.needsClarification = false and fill ownerAssessment.context with your inference. Tailor the 3 suggestedOutputFormats to serve the OWNER, not the counterparty (e.g. for an applicant post-interview: follow-up thank-you email, personal retrospective / coaching notes, negotiation prep — NOT interviewer's candidate evaluation report).
+
+If confidence is LOW: set ownerAssessment.needsClarification = true and emit a SINGLE transcript-grounded question plus 2-4 concrete options. Ground the options in actual speaker labels and conversation content. Include suggestedContext on each option so the UI can persist it on click. Still emit 3 suggestedOutputFormats with a neutral/observer default — they will be regenerated after the user answers.
+
+Prefer asking when in doubt. A 2-second click is cheaper than a misframed 3-page report.`
+
     // Call Claude to analyze with enhanced context extraction
     console.log('[Analyze API] Calling Claude API for enhanced analysis...')
     const analysisBudget = await resolveTokenBudget({
@@ -790,6 +822,8 @@ export async function POST(
    The recording/session was made by "${userName || 'unknown user'}". Use speaker names from the transcript as-is; they have already been resolved.
 6. **Transcription Consent**: At the START of the conversation, was consent to record/transcribe mentioned? The initiator (caller/recorder) implicitly consents. Look for: "This call may be recorded", "Do you consent?", "Okay to record?", affirmative replies. Extract: discussed (boolean), participantsConsented (array of speaker IDs who consented, e.g. ["S1","S2"]), summary (one-line description of how consent was obtained, or null if not discussed).
 7. **Spoken Commands**: Detect voice commands directed at "Notissima" (the assistant). Use FUZZY matching—transcription/ASR often misspells proper nouns. Match variations such as: Notissima, Notisima, Notissma, Natissima, Notessima; with or without punctuation (Notissima:, Notissima,); after "Hey", "Ok", "So" etc. If a phrase looks like a command to an assistant (create X, send link, summarize) and the wake word is phonetically similar to Notissima, treat it as a match. Extract the exact phrase as spoken in transcript, speaker, and brief intent summary.
+8a. **Owner context assessment**: ${ownerContextBlock}
+
 8. **Suggested Output Formats**: Based on the conversation type and domain, suggest exactly 3 different output formats that would be useful. Examples:
    - Sales call: meeting minutes, internal sales call analysis (what worked, what was missed, buying signals), short team update
    - Legal: deposition summary, client status memo, billing timeline notes
@@ -862,8 +896,50 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
     {"title": "${outputLangCode !== 'en' ? `<title in ${outputLangName}>` : '...'}", "description": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "generationInstructions": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "audience": "internal", "perspective": "observer"},
     {"title": "${outputLangCode !== 'en' ? `<title in ${outputLangName}>` : '...'}", "description": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "generationInstructions": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "audience": "external", "perspective": "reader_facing"},
     {"title": "${outputLangCode !== 'en' ? `<title in ${outputLangName}>` : '...'}", "description": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "generationInstructions": "${outputLangCode !== 'en' ? `<in ${outputLangName}>` : '...'}", "audience": "executive", "perspective": "observer"}
-  ]
+  ],
+  "ownerAssessment": {
+    "needsClarification": false,
+    "context": {
+      "role": "applicant",
+      "speakerId": "S1",
+      "goal": "pass the job interview and receive an offer",
+      "counterpartyRole": "interviewer",
+      "confidence": 0.85
+    },
+    "clarification": null
+  }
 }
+
+**ownerAssessment schema** (required — pick ONE branch):
+
+Branch A (confident inference — set needsClarification=false):
+  "ownerAssessment": {
+    "needsClarification": false,
+    "context": {
+      "role": "<owner's role, short noun, in ${outputLangName} or English>",
+      "speakerId": "<S1|S2|... or null if owner is not in recording>",
+      "goal": "<one short sentence, in ${outputLangName}>",
+      "counterpartyRole": "<short noun>",
+      "confidence": <0..1>
+    },
+    "clarification": null
+  }
+
+Branch B (low confidence — ASK):
+  "ownerAssessment": {
+    "needsClarification": true,
+    "context": null,
+    "clarification": {
+      "question": "<ONE short, transcript-grounded question in ${outputLangName}>",
+      "options": [
+        {"id": "applicant", "label": "<label in ${outputLangName}, reference the speaker>", "suggestedContext": {"role": "applicant", "speakerId": "S1", "counterpartyRole": "interviewer"}},
+        {"id": "interviewer", "label": "<label in ${outputLangName}>", "suggestedContext": {"role": "interviewer", "speakerId": "S2", "counterpartyRole": "applicant"}},
+        {"id": "observer", "label": "<label meaning 'I am not in the recording'>", "suggestedContext": {"role": "observer", "speakerId": null}}
+      ],
+      "allowFreeText": true
+    }
+  }
+
 
 **CRITICAL Instructions for Participant Identification:**
 - Speaker names in the transcript may already be resolved to real names (e.g., "Patrick" instead of "S1"). Use them as-is in participants.
@@ -995,6 +1071,60 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
             }
           })
       : []
+    // Owner-context assessment from Claude. If existing owner_context is
+    // already set, we keep it (user has answered) and ignore re-assessment.
+    // Otherwise: persist either an inferred owner_context (high confidence)
+    // or a pending_clarification (low confidence) for the UI to resolve.
+    let nextOwnerContext: Record<string, any> | null = existingOwnerContext
+    let nextPendingClarification: Record<string, any> | null = null
+    const ownerAssessment = (analysis as any)?.ownerAssessment
+    if (!existingOwnerContext && ownerAssessment && typeof ownerAssessment === 'object') {
+      const needsClarification = Boolean(ownerAssessment.needsClarification)
+      if (needsClarification && ownerAssessment.clarification && typeof ownerAssessment.clarification === 'object') {
+        const clarification = ownerAssessment.clarification as Record<string, any>
+        const rawOptions = Array.isArray(clarification.options) ? clarification.options : []
+        const options = rawOptions
+          .map((opt: any) => {
+            if (!opt || typeof opt !== 'object') return null
+            const id = String(opt.id || '').trim()
+            const label = String(opt.label || '').trim()
+            if (!id || !label) return null
+            return {
+              id,
+              label,
+              suggestedContext:
+                opt.suggestedContext && typeof opt.suggestedContext === 'object'
+                  ? opt.suggestedContext
+                  : null,
+            }
+          })
+          .filter(Boolean)
+        const question = String(clarification.question || '').trim()
+        if (question && options.length >= 2) {
+          nextPendingClarification = {
+            question,
+            options,
+            allowFreeText: clarification.allowFreeText !== false,
+            createdAt: new Date().toISOString(),
+          }
+        }
+      } else if (ownerAssessment.context && typeof ownerAssessment.context === 'object') {
+        const ctx = ownerAssessment.context as Record<string, any>
+        const role = String(ctx.role || '').trim()
+        if (role) {
+          nextOwnerContext = {
+            role,
+            speakerId: ctx.speakerId ? String(ctx.speakerId) : null,
+            goal: ctx.goal ? String(ctx.goal) : null,
+            counterpartyRole: ctx.counterpartyRole ? String(ctx.counterpartyRole) : null,
+            confidence: typeof ctx.confidence === 'number' ? ctx.confidence : null,
+            source: 'inferred',
+            updatedAt: new Date().toISOString(),
+          }
+        }
+      }
+    }
+
     const sessionUpdate: Record<string, any> = {
       recording_type: finalRecordingType,
       recording_type_confidence: finalRecordingTypeConfidence,
@@ -1003,6 +1133,8 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
       suggested_output_formats: suggestedFormats,
       transcript_corrections: mergedTranscriptCorrections,
       speechmatics_summary: canonicalSummary,
+      owner_context: nextOwnerContext,
+      pending_clarification: nextPendingClarification,
     }
     // Claude detects the transcript language authoritatively — always trust it over heuristics.
     const claudeDetectedLang = normalizeLanguageCode(analysis.detectedLanguage)
@@ -1187,6 +1319,8 @@ Respond with ONLY raw JSON (no markdown fences, no backticks, no explanation). U
       extractedContext: mergedExtractedContext,
       suggestedOutputFormats: suggestedFormats,
       autoGeneration: autoGeneratedOutput,
+      ownerContext: nextOwnerContext,
+      pendingClarification: nextPendingClarification,
     })
   } catch (error: any) {
     console.error('[Analyze API] Error:', error)

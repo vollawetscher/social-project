@@ -74,6 +74,7 @@ import { BugReporter } from "@/components/error/BugReporter"
 import type { TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
 import { SessionGuidanceBanner } from "@/components/session/SessionGuidanceBanner"
 import { SessionProgressGuide } from "@/components/session/SessionProgressGuide"
+import { OwnerContextClarification } from "@/components/sessions/OwnerContextClarification"
 
 function normalizeWordCorrections(raw: unknown): Record<string, string> {
   if (Array.isArray(raw)) {
@@ -1773,6 +1774,31 @@ export default function SessionDetailPage() {
                 onSwitchTab={setActiveTab}
                 curated={isCurated}
               />
+              {/* LLM-emitted clarification about the user's role */}
+              {session?.pendingClarification ? (
+                <OwnerContextClarification
+                  sessionId={sessionId}
+                  clarification={session.pendingClarification}
+                  onResolved={(ctx) => {
+                    setSession((prev) => prev ? { ...prev, ownerContext: ctx, pendingClarification: null } : prev)
+                    // Background re-analyze will refresh suggestions; poll a few times to pick them up.
+                    ;[4000, 9000, 15000].forEach((delay) => {
+                      setTimeout(async () => {
+                        try {
+                          const [s, tr] = await Promise.all([
+                            fetch(`/api/sessions/${sessionId}`).then(r => r.ok ? r.json() : null),
+                            fetch(`/api/sessions/${sessionId}/transcript`).then(r => r.ok ? r.json() : null),
+                          ])
+                          if (s) {
+                            setSession(toV0Session(s, { filename: s.internal_case_id, transcript: tr, files: s.files }))
+                          }
+                        } catch { /* ignore */ }
+                      }, delay)
+                    })
+                  }}
+                  onDismiss={() => setSession((prev) => prev ? { ...prev, pendingClarification: null, ownerContext: { source: 'dismissed' as const } } : prev)}
+                />
+              ) : null}
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">
@@ -2279,6 +2305,31 @@ export default function SessionDetailPage() {
                 onSwitchTab={setActiveTab}
                 curated={isCurated}
               />
+              {/* LLM-emitted clarification about the user's role */}
+              {session?.pendingClarification ? (
+                <OwnerContextClarification
+                  sessionId={sessionId}
+                  clarification={session.pendingClarification}
+                  onResolved={(ctx) => {
+                    setSession((prev) => prev ? { ...prev, ownerContext: ctx, pendingClarification: null } : prev)
+                    // Background re-analyze will refresh suggestions; poll a few times to pick them up.
+                    ;[4000, 9000, 15000].forEach((delay) => {
+                      setTimeout(async () => {
+                        try {
+                          const [s, tr] = await Promise.all([
+                            fetch(`/api/sessions/${sessionId}`).then(r => r.ok ? r.json() : null),
+                            fetch(`/api/sessions/${sessionId}/transcript`).then(r => r.ok ? r.json() : null),
+                          ])
+                          if (s) {
+                            setSession(toV0Session(s, { filename: s.internal_case_id, transcript: tr, files: s.files }))
+                          }
+                        } catch { /* ignore */ }
+                      }, delay)
+                    })
+                  }}
+                  onDismiss={() => setSession((prev) => prev ? { ...prev, pendingClarification: null, ownerContext: { source: 'dismissed' as const } } : prev)}
+                />
+              ) : null}
               {/* Suggested for this session */}
               {session?.suggestedOutputFormats && session.suggestedOutputFormats.length > 0 && (
                 <div className="space-y-3">

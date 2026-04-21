@@ -261,7 +261,25 @@ export async function POST(request: Request) {
       reader_facing: 'addressing the reader directly'
     }
 
-    const speakerName = config.perspectiveSpeakerName
+    const ownerContext = ((session as any)?.owner_context || null) as
+      | {
+          role?: string
+          speakerId?: string | null
+          goal?: string | null
+          counterpartyRole?: string | null
+          source?: string
+        }
+      | null
+
+    // If the caller didn't pick a perspective speaker, but we know which
+    // transcript speaker the session owner is, fall back to their name so
+    // first-person outputs are written from the owner's point of view by
+    // default.
+    const nameCorrections = (((session as any)?.transcript_corrections || {}) as any).name_corrections || {}
+    const ownerSpeakerName = ownerContext?.speakerId
+      ? (nameCorrections[ownerContext.speakerId] || ownerContext.speakerId)
+      : null
+    const speakerName = config.perspectiveSpeakerName || ownerSpeakerName || undefined
     let perspectiveInstruction: string
     if (config.perspective === 'reader_facing') {
       perspectiveInstruction = 'addressing the reader directly (second person — use "you" and "your" when referring to the person this document is intended for)'
@@ -369,6 +387,17 @@ ${config.citeTimestamps ? '- Include timestamps where relevant to cite specific 
       systemPrompt += `\n- Output format rule (strict): return plain text only.
 - Do NOT use markdown tags, markdown headings, bullet markers, numbering markers, code fences, or JSON.
 - Return one copy/paste-ready email body block.`
+    }
+
+    if (ownerContext && (ownerContext.role || ownerContext.speakerId)) {
+      const parts: string[] = []
+      if (ownerContext.role) parts.push(`role=${ownerContext.role}`)
+      if (ownerContext.speakerId) parts.push(`speaker=${ownerContext.speakerId}${ownerSpeakerName && ownerSpeakerName !== ownerContext.speakerId ? ` (${ownerSpeakerName})` : ''}`)
+      if (ownerContext.counterpartyRole) parts.push(`counterparty=${ownerContext.counterpartyRole}`)
+      if (ownerContext.goal) parts.push(`goal=${ownerContext.goal}`)
+      systemPrompt += `\n\nOwner context (the session belongs to this person — tailor the document to serve THEIR interests, not the counterparty's): ${parts.join('; ')}.
+- When summarising, framing, or suggesting actions, optimise for the owner's point of view and their post-conversation needs.
+- Do not write an evaluative report ABOUT the owner as if for the counterparty (e.g. do not write an interviewer's candidate evaluation when the owner is the applicant).`
     }
 
     if (template) {

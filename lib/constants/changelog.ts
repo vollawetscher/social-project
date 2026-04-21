@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.0',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.0',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Smarter Suggestions — AI Asks When Unsure About Your Role',
+        description: 'Suggested outputs and reports are now tailored to serve you, not the other party. When it is not obvious from the transcript whether you are, say, the applicant or the interviewer, the app will ask a single quick question and then regenerate suggestions from your point of view. If your role is clear, nothing extra is asked.',
+      },
+    ],
+  },
+  {
     version: '1.33.0',
     date: 'March 17, 2026',
     entries: [

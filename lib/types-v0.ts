@@ -135,6 +135,31 @@ export interface Session {
   caseId?: string | null // Project/case this session belongs to
   caseTitle?: string | null // Project/case display title (denormalized for list rendering)
   curated?: boolean // True when session was prepared as a curated trial import — hides destructive controls
+  ownerContext?: OwnerContext | null // Structured context about the session owner's role in the conversation
+  pendingClarification?: PendingClarification | null // LLM-emitted question to disambiguate owner role
+}
+
+export interface OwnerContext {
+  role?: string // e.g. 'applicant', 'interviewer', 'patient', 'consultant' — omitted when source is 'dismissed'
+  speakerId?: string | null // Transcript speaker label (S1, S2, ...) the owner corresponds to, or null if not in recording
+  goal?: string | null // One-line goal summary
+  counterpartyRole?: string | null
+  confidence?: number | null
+  source?: 'user' | 'inferred' | 'dismissed'
+  updatedAt?: string
+}
+
+export interface ClarificationOption {
+  id: string
+  label: string
+  suggestedContext?: Partial<OwnerContext> | null
+}
+
+export interface PendingClarification {
+  question: string
+  options: ClarificationOption[]
+  allowFreeText: boolean
+  createdAt?: string
 }
 
 export interface ParticipantInfo {
