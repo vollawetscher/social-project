@@ -32,8 +32,20 @@ Follow this sequence for any non-trivial work:
 
 3. **Final decision** — Present the complete picture and let the user decide what and how to implement. Don't rush to code.
 
+## Discussion Style
+
+Discuss features like a colleague, not a survey. Never use the AskQuestion tool to present multiple-choice quizzes. Instead:
+
+- **State your recommendation** with reasoning, then ask what the user thinks
+- **Raise concerns** as open questions in plain text, not as labeled options A/B/C
+- **One topic at a time** — don't bundle 3 questions into one message
+
+The user wants real back-and-forth discussion before implementation, not to pick from a menu.
+
 ## Anti-Patterns to Avoid
 
+- Presenting multiple-choice quizzes instead of making a recommendation
+- Asking 3+ questions at once — ask one, or better, just decide
 - Tunnel-visioning on the specific case that triggered a bug instead of assessing the full surface area
 - Proposing quick fixes before understanding whether the problem is systemic
 - Rushing from problem identification to implementation without thorough planning
