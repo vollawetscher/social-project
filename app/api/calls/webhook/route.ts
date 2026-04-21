@@ -273,11 +273,24 @@ export async function POST(request: Request) {
         if (call.session_id && hasEgress && !wasNeverActive) {
           // Egress is still flushing to S3 — set session to 'uploading'.
           // egress_ended webhook will transition to 'transcribing'.
-          await supabase
+          // Guard: only downgrade from recording/created; never overwrite a later
+          // pipeline state (transcribing/summarizing/done/error). Webhooks can be
+          // redelivered, and a late room_finished retry after egress_ended would
+          // otherwise regress status and desync the UI (list shows "Uploading"
+          // while async_jobs is already running "session_transcribe").
+          const { data: updatedRows, error: updateErr } = await supabase
             .from('sessions')
             .update({ status: 'uploading' })
             .eq('id', call.session_id)
-          console.log('[LiveKit Webhook] Session set to uploading (egress pending):', call.session_id)
+            .in('status', ['created', 'recording', 'uploading'])
+            .select('id')
+          if (updateErr) {
+            console.error('[LiveKit Webhook] Failed to set session uploading:', updateErr.message)
+          } else if ((updatedRows?.length || 0) === 0) {
+            console.log('[LiveKit Webhook] Skipped uploading downgrade (session past uploading):', call.session_id)
+          } else {
+            console.log('[LiveKit Webhook] Session set to uploading (egress pending):', call.session_id)
+          }
         }
 
         // Sessions are now created only when recording starts (participant_joined),
@@ -438,10 +451,15 @@ export async function POST(request: Request) {
                 hasTrackBFile,
                 sessionId: call.session_id,
               })
+              // Guard: same monotonic-pipeline protection as room_finished.
+              // Avoid clobbering a later 'transcribing'/'summarizing'/'done' state if
+              // this egress_ended is redelivered after the other track already
+              // transitioned the session forward.
               await supabase
                 .from('sessions')
                 .update({ status: 'uploading' })
                 .eq('id', call.session_id)
+                .in('status', ['created', 'recording', 'uploading'])
               break
             }
           }

@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.1',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.1',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Incoming Ringtone Stops When Call Connects',
+        description: 'The incoming-call ringtone now stops the moment you join the call, instead of occasionally continuing after the video has already connected.',
+      },
+      {
+        version: '1.34.1',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Consistent Session Status',
+        description: 'Fixed a rare case where the sessions list showed "Uploading" while the session was already being transcribed. The list, detail page, and notifications now stay in sync.',
+      },
+    ],
+  },
+  {
     version: '1.34.0',
     date: 'March 17, 2026',
     entries: [

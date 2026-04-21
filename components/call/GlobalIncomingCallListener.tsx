@@ -115,7 +115,23 @@ export function GlobalIncomingCallListener() {
   useEffect(() => { incomingInviteRef.current = incomingInvite }, [incomingInvite])
 
   const onCallsPage = pathname?.endsWith("/calls")
-  useIncomingRingtone(Boolean(incomingInvite) && !joining)
+  // True whenever the user is inside a call room route (e.g. `/en/call/abc123`).
+  // We must silence the incoming ringtone immediately when we land here —
+  // regardless of whether the Supabase Realtime update clearing the invite has
+  // arrived yet, or whether accept was triggered from another surface (the
+  // `/calls` page) that doesn't go through this listener's `acceptInvite`.
+  const inCallRoom = Boolean(pathname && /\/call\/[^/]+/.test(pathname))
+
+  useIncomingRingtone(Boolean(incomingInvite) && !joining && !inCallRoom)
+
+  // Once we're on a call room route, proactively clear any lingering invite so
+  // the missed-timer effect is torn down and the dialog doesn't remain open if
+  // the user navigates back.
+  useEffect(() => {
+    if (inCallRoom && incomingInviteRef.current) {
+      setIncomingInvite(null)
+    }
+  }, [inCallRoom])
 
   useEffect(() => {
     if (!user?.id) return
