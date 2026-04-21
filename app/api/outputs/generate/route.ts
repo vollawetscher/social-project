@@ -274,8 +274,7 @@ export async function POST(request: Request) {
     // If the caller didn't pick a perspective speaker, but we know which
     // transcript speaker the session owner is, fall back to their name so
     // first-person outputs are written from the owner's point of view by
-    // default.
-    const nameCorrections = (((session as any)?.transcript_corrections || {}) as any).name_corrections || {}
+    // default. Reuse the speaker name map computed above.
     const ownerSpeakerName = ownerContext?.speakerId
       ? (nameCorrections[ownerContext.speakerId] || ownerContext.speakerId)
       : null
