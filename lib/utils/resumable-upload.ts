@@ -144,8 +144,9 @@ export async function uploadToStorage(
     return session.access_token
   }
 
-  // Prime the token so we fail fast if the user isn't signed in.
-  const initialToken = await getAccessToken()
+  // Prime the token so we fail fast if the user isn't signed in. We do NOT
+  // pass it via the static `headers` option: see onBeforeRequest below.
+  await getAccessToken()
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) throw new Error('Supabase URL not configured')
@@ -158,8 +159,13 @@ export async function uploadToStorage(
     const upload = new tus.Upload(file, {
       endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
       retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000, 60000],
+      // IMPORTANT: do NOT include `authorization` here. XHR's setRequestHeader
+      // appends duplicate values when the same header is set twice on one
+      // request, and the second write comes from onBeforeRequest below. The
+      // resulting "authorization: Bearer X, Bearer X" made Supabase reject
+      // the request with "Invalid Compact JWS". onBeforeRequest is now the
+      // sole setter of the auth header.
       headers: {
-        authorization: `Bearer ${initialToken}`,
         'x-upsert': 'true',
       },
       // Send POST with X-HTTP-Method-Override: PATCH instead of raw PATCH.
