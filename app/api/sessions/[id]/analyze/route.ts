@@ -1012,6 +1012,28 @@ Branch B (low confidence — ASK):
       finalRecordingTypeConfidence = 0.95
     }
 
+    // Trust the linked call's call_type over the LLM's transcript-based guess.
+    // `calls.call_type` is authoritative metadata (PSTN direction, web meeting),
+    // whereas the LLM routinely flips call_inbound ↔ call_outbound based on who
+    // speaks first, greetings, etc. Only apply when the LLM still has the
+    // recording classified as a call; other overrides above (voice_message,
+    // ai_agent_conversation → meeting) take precedence.
+    if (linkedCall?.call_type && (finalRecordingType === 'call_inbound' || finalRecordingType === 'call_outbound')) {
+      const directionFromCall: 'call_inbound' | 'call_outbound' | null =
+        linkedCall.call_type === 'pstn_outbound'
+          ? 'call_outbound'
+          : linkedCall.call_type === 'pstn_inbound'
+            ? 'call_inbound'
+            : null
+      if (directionFromCall && directionFromCall !== finalRecordingType) {
+        console.log(
+          `[Analyze API] Overriding ${finalRecordingType} → ${directionFromCall} from linked call.call_type=${linkedCall.call_type}`
+        )
+        finalRecordingType = directionFromCall
+        finalRecordingTypeConfidence = 1.0
+      }
+    }
+
     const existingExtractedContext = ((session as any)?.ai_extracted_context || {}) as Record<string, any>
     const existingCorrections = ((session as any)?.transcript_corrections || {}) as Record<string, any>
     const existingNameCorrections = (existingCorrections.name_corrections || {}) as Record<string, string>

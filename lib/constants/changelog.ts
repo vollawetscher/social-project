@@ -31,6 +31,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Consistent Session Status',
         description: 'Fixed a rare case where the sessions list showed "Uploading" while the session was already being transcribed. The list, detail page, and notifications now stay in sync.',
       },
+      {
+        version: '1.34.1',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Correct Incoming / Outgoing Call Labels',
+        description: 'Call sessions are now labeled using the actual call direction (inbound or outbound) instead of the AI\u2019s transcript guess. If you manually correct a session\u2019s type, that choice is always respected.',
+      },
+      {
+        version: '1.34.1',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'More Reliable Large-File Uploads',
+        description: 'Long audio uploads are more resilient to flaky networks: smaller chunks, longer retry window, automatic session refresh during upload, and clearer error messages when something goes wrong.',
+      },
     ],
   },
   {

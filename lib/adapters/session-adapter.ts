@@ -175,8 +175,10 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
       || undefined,
     domain: deriveDomain(dbSession),
     domains: (dbSession as any).suggested_domains || [], // 2-layer domain structure
-    recordingType: (dbSession as any).recording_type,
-    recordingTypeConfidence: (dbSession as any).recording_type_confidence,
+    recordingType: (dbSession as any).user_recording_type || (dbSession as any).recording_type,
+    recordingTypeConfidence: (dbSession as any).user_recording_type
+      ? 1.0
+      : (dbSession as any).recording_type_confidence,
     outputCount: (dbSession as any).output_count || 0, // Number of generated outputs
     extractedContext, // Normalized AI-extracted rich context
     transcriptCorrections: corrections, // Alias system
