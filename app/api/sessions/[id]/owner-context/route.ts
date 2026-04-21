@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { enqueueAsyncJob, linkJobToSession, triggerAsyncWorker } from '@/lib/services/queue'
 
 /**
  * POST /api/sessions/[id]/owner-context
@@ -81,27 +82,39 @@ export async function POST(
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // Re-run analyze asynchronously so suggestions reflect the new context.
-    // Forward caller auth so the re-run runs as the same user.
-    const baseUrl = new URL(request.url).origin
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    const auth = request.headers.get('Authorization')
-    const cookie = request.headers.get('Cookie')
-    if (auth) headers.Authorization = auth
-    if (cookie) headers.Cookie = cookie
+    // Re-run analyze via the async job queue so suggestions reflect the
+    // new owner context. Self-fetching over HTTP doesn't work in Railway's
+    // container network, so we enqueue a job the worker will pick up.
+    // We delete any existing analyze job for this session first, otherwise
+    // the idempotency key dedupes and the worker never runs.
+    let reanalyzeJobId: string | null = null
+    try {
+      const svc = createServiceRoleClient()
+      await svc
+        .from('async_jobs')
+        .delete()
+        .eq('idempotency_key', `session_analyze:${params.id}`)
 
-    fetch(`${baseUrl}/api/sessions/${params.id}/analyze`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ force: true }),
-    }).catch((err) => {
-      console.error('[OwnerContext] Re-analyze trigger failed:', err)
-    })
+      const job = await enqueueAsyncJob({
+        userId: user.id,
+        jobType: 'session_analyze',
+        payload: { sessionId: params.id },
+        idempotencyKey: `session_analyze:${params.id}`,
+        maxAttempts: 5,
+      })
+      await linkJobToSession(job.id, params.id)
+      triggerAsyncWorker()
+      reanalyzeJobId = job.id
+      console.log('[OwnerContext] Re-analyze job enqueued:', job.id)
+    } catch (err) {
+      console.error('[OwnerContext] Failed to enqueue re-analyze:', err)
+    }
 
     return NextResponse.json({
       success: true,
       ownerContext: nextOwnerContext,
-      reanalyzeTriggered: true,
+      reanalyzeTriggered: Boolean(reanalyzeJobId),
+      jobId: reanalyzeJobId,
     })
   } catch (error: any) {
     const handled = handleAuthError(error)
