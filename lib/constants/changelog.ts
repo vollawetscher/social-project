@@ -45,6 +45,20 @@ export const changelog: ChangelogVersion[] = [
         title: 'Large Audio Uploads Work on More Networks',
         description: 'Uploads of large recordings were silently failing on some Safari + proxy / VPN / corporate network combinations. The upload path now also works where those setups blocked the underlying request method, plus smaller chunks, longer retries, mid-upload session refresh, and clearer error messages.',
       },
+      {
+        version: '1.34.1',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Correct Source Label for Audio Uploads',
+        description: 'Audio uploads are now correctly labeled as "Uploaded audio" in the sessions list, even when the upload did not complete. Previously such sessions could show up as "Pasted text".',
+      },
+      {
+        version: '1.34.1',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'No Retry Button When There Is Nothing to Retry',
+        description: 'On failed sessions where no audio was ever attached (for example when the upload itself failed), we no longer show a Retry button that would have nothing to transcribe.',
+      },
     ],
   },
   {

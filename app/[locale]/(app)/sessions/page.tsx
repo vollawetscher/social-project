@@ -145,7 +145,7 @@ function getSessionOriginKind(session: Session): SessionOriginKind {
   const hint = session.inputHint
   if (hint === 'phone_call' || hint === 'video_call') return "call"
   if (hint === 'quick_record' || hint === 'voice_note') return "quick_record"
-  if (hint === 'meeting' || hint === 'presentation' || hint === 'trade_show') return "audio_upload"
+  if (hint === 'audio_upload' || hint === 'meeting' || hint === 'presentation' || hint === 'trade_show') return "audio_upload"
 
   // Fallback for sessions without input_hint (AI-detected recording type)
   if (session.recordingType === 'call_inbound' || session.recordingType === 'call_outbound'
@@ -1086,6 +1086,12 @@ export default function SessionsPage() {
       ? (files[0].name.replace(/\.[^/.]+$/, '') || `Upload ${timestamp}`)
       : `Session ${timestamp} (${files.length} files)`
 
+    // Always tag audio uploads with a hint so the origin badge stays correct
+    // even if the upload fails before any `files` row is created (otherwise the
+    // session would fall through to the "Pasted text" fallback in
+    // getSessionOriginKind). A user-selected subject hint takes precedence.
+    const resolvedInputHint = inputHint || 'audio_upload'
+
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
       .insert({
@@ -1093,7 +1099,7 @@ export default function SessionsPage() {
         user_id: user.id,
         status: 'uploading',
         language: uploadLanguage || 'auto',
-        ...(inputHint && { input_hint: inputHint }),
+        input_hint: resolvedInputHint,
         user_is_speaker: userIsSpeaker,
       })
       .select()
