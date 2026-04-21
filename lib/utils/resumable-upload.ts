@@ -13,6 +13,11 @@ const CHUNK_SIZE = 2 * 1024 * 1024
 interface UploadOptions {
   contentType: string
   onProgress?: (fraction: number) => void
+  // Optional context used only for diagnostic logging when the upload fails.
+  diagnostics?: {
+    sessionId?: string | null
+    originalFilename?: string | null
+  }
 }
 
 function humanizeTusError(error: Error | any): Error {
@@ -38,6 +43,75 @@ function humanizeTusError(error: Error | any): Error {
     )
   }
   return error instanceof Error ? error : new Error(raw || 'Upload failed')
+}
+
+// Best-effort diagnostic log of a failed TUS upload to /api/error-logs. This
+// helps us debug cases like Safari + corporate proxies silently dropping PATCH
+// requests (failure mode: many HEADs, zero PATCHes, "response code: n/a").
+async function logTusDiagnostics(params: {
+  error: any
+  file: File
+  bucket: string
+  path: string
+  uploadUrl: string | null
+  bytesUploaded: number
+  retryAttempt: number
+  sessionId?: string | null
+  originalFilename?: string | null
+}): Promise<void> {
+  try {
+    const { error, file, bucket, path, uploadUrl, bytesUploaded, retryAttempt, sessionId, originalFilename } = params
+    const rawMessage = String(error?.message || error || '')
+    const originalResponse = (error as any)?.originalResponse
+    const responseStatus =
+      typeof originalResponse?.getStatus === 'function' ? originalResponse.getStatus() : null
+    const responseBody =
+      typeof originalResponse?.getBody === 'function' ? originalResponse.getBody() : null
+
+    const metadata: Record<string, any> = {
+      stage: 'resumable_upload',
+      bucket,
+      storagePath: path,
+      uploadUrl,
+      tusMessage: rawMessage.slice(0, 2000),
+      responseStatus,
+      responseBody: typeof responseBody === 'string' ? responseBody.slice(0, 500) : null,
+      fileSize: file.size,
+      fileType: file.type || null,
+      originalFilename: originalFilename || file.name || null,
+      bytesUploaded,
+      retryAttempt,
+      chunkSize: CHUNK_SIZE,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      online: typeof navigator !== 'undefined' && 'onLine' in navigator ? navigator.onLine : null,
+      connection:
+        typeof navigator !== 'undefined' && (navigator as any).connection
+          ? {
+              effectiveType: (navigator as any).connection.effectiveType || null,
+              downlink: (navigator as any).connection.downlink || null,
+              rtt: (navigator as any).connection.rtt || null,
+              saveData: (navigator as any).connection.saveData || null,
+            }
+          : null,
+      pathname: typeof window !== 'undefined' ? window.location.pathname : null,
+    }
+
+    await fetch('/api/error-logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        errorType: 'upload_error',
+        severity: 'error',
+        message: `TUS resumable upload failed: ${rawMessage.slice(0, 500)}`,
+        sessionId: sessionId || null,
+        metadata,
+      }),
+    }).catch(() => {
+      // swallow — logging is best-effort
+    })
+  } catch {
+    // swallow — logging is best-effort
+  }
 }
 
 /**
@@ -76,18 +150,26 @@ export async function uploadToStorage(
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) throw new Error('Supabase URL not configured')
 
+  let lastBytesUploaded = 0
+  let lastRetryAttempt = 0
+  let resolvedUploadUrl: string | null = null
+
   return new Promise<void>((resolve, reject) => {
     const upload = new tus.Upload(file, {
       endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
-      // Longer, more generous backoff so transient network blips during long
-      // uploads don't surface as hard failures to the user.
       retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000, 60000],
       headers: {
         authorization: `Bearer ${initialToken}`,
-        // Allow resuming over a previously-created object when the TUS
-        // fingerprint was lost (e.g. hard refresh) so the user can just retry.
         'x-upsert': 'true',
       },
+      // Send POST with X-HTTP-Method-Override: PATCH instead of raw PATCH.
+      // Required workaround for environments (certain Safari + proxy combos,
+      // some corporate firewalls/VPNs) where the PATCH verb is blocked at the
+      // network layer. Observed symptom before this: many successful HEAD
+      // requests but zero PATCH requests ever reaching Supabase, with the
+      // client reporting "response code: n/a, caused by XHR progress event".
+      // Supabase's TUS server accepts either verb.
+      overridePatchMethod: true,
       // Keep creation request minimal; some environments reject create-with-upload.
       uploadDataDuringCreation: false,
       removeFingerprintOnSuccess: true,
@@ -98,8 +180,6 @@ export async function uploadToStorage(
         cacheControl: '3600',
       },
       chunkSize: CHUNK_SIZE,
-      // Refresh the auth header before every HTTP request so long uploads
-      // survive access_token rotation (default Supabase session ~1h).
       onBeforeRequest: async (req: any) => {
         try {
           const token = await getAccessToken()
@@ -111,9 +191,8 @@ export async function uploadToStorage(
           // a subsequent 401 will surface via humanizeTusError.
         }
       },
-      // Retry network errors (status 0 / n/a) and 5xx; give up on auth/size/conflict
-      // so we don't burn retries on unfixable conditions.
       onShouldRetry: (err: any, retryAttempt: number, options: any) => {
+        lastRetryAttempt = retryAttempt
         const statusRaw = err?.originalResponse?.getStatus?.()
         const status = typeof statusRaw === 'number' ? statusRaw : 0
         if (status === 401 || status === 403) return false
@@ -122,9 +201,24 @@ export async function uploadToStorage(
         return retryAttempt < (options?.retryDelays?.length ?? 0)
       },
       onError: (error) => {
+        // Fire-and-forget diagnostic log so the next time this happens we
+        // have the full context (browser, chunk size, connection state,
+        // HTTP status from TUS, upload URL).
+        logTusDiagnostics({
+          error,
+          file,
+          bucket,
+          path,
+          uploadUrl: resolvedUploadUrl,
+          bytesUploaded: lastBytesUploaded,
+          retryAttempt: lastRetryAttempt,
+          sessionId: opts.diagnostics?.sessionId,
+          originalFilename: opts.diagnostics?.originalFilename,
+        })
         reject(humanizeTusError(error))
       },
       onProgress: (bytesUploaded, bytesTotal) => {
+        lastBytesUploaded = bytesUploaded
         opts.onProgress?.(bytesUploaded / bytesTotal)
       },
       onSuccess: () => resolve(),
@@ -135,6 +229,18 @@ export async function uploadToStorage(
       .then((prev) => {
         if (prev.length) upload.resumeFromPreviousUpload(prev[0])
         upload.start()
+        // tus-js-client exposes the upload URL asynchronously once the POST
+        // create has succeeded. Capture it for diagnostics.
+        const captureUrl = () => {
+          try {
+            resolvedUploadUrl = (upload as any).url || null
+          } catch {
+            resolvedUploadUrl = null
+          }
+        }
+        setTimeout(captureUrl, 1000)
+        setTimeout(captureUrl, 5000)
+        setTimeout(captureUrl, 15000)
       })
       .catch(() => upload.start())
   })

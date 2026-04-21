@@ -133,6 +133,10 @@ export default function UploadRecordingsPage() {
       try {
         await uploadToStorage(supabase, 'rohbericht-audio', storagePath, file, {
           contentType: storageContentType,
+          diagnostics: {
+            sessionId: session.id,
+            originalFilename: file.name,
+          },
         })
       } catch (storageError: any) {
         const sizeMB = Math.round(file.size / 1024 / 1024)

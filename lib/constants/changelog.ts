@@ -41,9 +41,9 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.34.1',
         date: 'March 17, 2026',
-        category: 'improvement',
-        title: 'More Reliable Large-File Uploads',
-        description: 'Long audio uploads are more resilient to flaky networks: smaller chunks, longer retry window, automatic session refresh during upload, and clearer error messages when something goes wrong.',
+        category: 'fix',
+        title: 'Large Audio Uploads Work on More Networks',
+        description: 'Uploads of large recordings were silently failing on some Safari + proxy / VPN / corporate network combinations. The upload path now also works where those setups blocked the underlying request method, plus smaller chunks, longer retries, mid-upload session refresh, and clearer error messages.',
       },
     ],
   },

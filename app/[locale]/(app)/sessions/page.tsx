@@ -1118,6 +1118,10 @@ export default function SessionsPage() {
         try {
           await uploadToStorage(supabase, 'rohbericht-audio', fileName, file, {
             contentType: storageContentType,
+            diagnostics: {
+              sessionId: session.id,
+              originalFilename: file.name,
+            },
           })
         } catch (uploadError: any) {
           const errMsg = `Failed to upload ${file.name}: ${uploadError.message}`
