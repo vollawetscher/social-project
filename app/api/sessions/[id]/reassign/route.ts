@@ -75,7 +75,52 @@ export async function POST(
       )
     }
 
-    return NextResponse.json({ success: true, session: updated })
+    // Transfer ownership of session-scoped artifacts to the new owner so the
+    // hand-off is clean. Without this, rows like `outputs` stay attached to
+    // the previous owner and the new owner — despite being the session owner —
+    // cannot delete / share / update them because those endpoints gate on
+    // `created_by = auth.uid()`. Audit tables (`pipeline_events`,
+    // `error_logs`) intentionally keep their historical `user_id`.
+    const warnings: string[] = []
+
+    const { error: outputsError } = await adminSupabase
+      .from('outputs')
+      .update({ created_by: targetProfile.id })
+      .eq('session_id', params.id)
+
+    if (outputsError) {
+      console.error('[Reassign] Failed to transfer outputs ownership:', outputsError)
+      warnings.push('Some outputs could not be reassigned')
+    }
+
+    const { error: callsError } = await adminSupabase
+      .from('calls')
+      .update({ user_id: targetProfile.id })
+      .eq('session_id', params.id)
+
+    if (callsError) {
+      console.error('[Reassign] Failed to transfer calls ownership:', callsError)
+      warnings.push('Some calls could not be reassigned')
+    }
+
+    // If the new owner was previously a collaborator on this session, that
+    // row is now redundant (owner > collaborator). Remove it to avoid a
+    // stale "shared with me" entry for them.
+    const { error: collabError } = await adminSupabase
+      .from('session_collaborators')
+      .delete()
+      .eq('session_id', params.id)
+      .eq('user_id', targetProfile.id)
+
+    if (collabError) {
+      console.error('[Reassign] Failed to clean up collaborator row:', collabError)
+    }
+
+    return NextResponse.json({
+      success: true,
+      session: updated,
+      ...(warnings.length > 0 ? { warnings } : {}),
+    })
   } catch (error: any) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)

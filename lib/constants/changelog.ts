@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.5',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.5',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Clean Hand‑Off When Transferring a Session',
+        description: 'When you transfer a session to another user, its generated outputs and call records now move with it. The new owner can fully manage everything that belongs to the session — open, edit, share, or delete — without anything getting stuck with the previous owner.',
+      },
+    ],
+  },
+  {
     version: '1.34.4',
     date: 'March 17, 2026',
     entries: [
