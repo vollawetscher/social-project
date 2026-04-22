@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.3',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.3',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Re‑uploading the Same File After a Failure',
+        description: 'If a large audio upload failed and you picked the same file again, the new session could get stuck on "Uploading" because the browser reused the old upload target. Re‑trying now always starts a clean upload tied to the new session.',
+      },
+    ],
+  },
+  {
     version: '1.34.2',
     date: 'March 17, 2026',
     entries: [

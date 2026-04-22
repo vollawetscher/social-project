@@ -159,6 +159,37 @@ export async function uploadToStorage(
     const upload = new tus.Upload(file, {
       endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
       retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000, 60000],
+      // Scope the resumable-upload fingerprint to the exact target object path.
+      //
+      // The default tus-js-client fingerprint is keyed on
+      //   (file.name, file.type, file.size, file.lastModified, endpoint)
+      // — it does NOT include our target storage path. That caused a nasty
+      // cross-session bug: when a user re-picked the same file after a failed
+      // upload (which created a new `sessions` row with a new `storage_path`),
+      // `findPreviousUploads()` returned the *old* upload URL from IndexedDB
+      // and `resumeFromPreviousUpload()` pointed the chunks at the old path.
+      // The new session then stayed in `status=uploading` forever because its
+      // expected file never existed in storage.
+      //
+      // Including `objectName` (our session-specific storage path) in the
+      // fingerprint means each new session gets a fresh cache entry and
+      // creates a fresh tus upload, while genuine same-session resumes (same
+      // file, same path) still benefit from resuming across tab reloads /
+      // network blips.
+      fingerprint: (f, options) =>
+        Promise.resolve(
+          [
+            'tus',
+            f.name,
+            f.type,
+            f.size,
+            f.lastModified,
+            options?.endpoint,
+            (options?.metadata as Record<string, string> | undefined)?.objectName,
+          ]
+            .map((v) => String(v ?? ''))
+            .join('-')
+        ),
       // IMPORTANT: do NOT include `authorization` here. XHR's setRequestHeader
       // appends duplicate values when the same header is set twice on one
       // request, and the second write comes from onBeforeRequest below. The
