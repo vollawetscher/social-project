@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.2',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.2',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Large Audio Uploads Restored',
+        description: 'A recent change accidentally broke uploads of audio files larger than about 40 MB for all users. Large uploads now work again, and benefit from the more resilient chunking, retry, and error‑reporting improvements added earlier.',
+      },
+    ],
+  },
+  {
     version: '1.34.1',
     date: 'March 17, 2026',
     entries: [
@@ -41,9 +54,9 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.34.1',
         date: 'March 17, 2026',
-        category: 'fix',
-        title: 'Large Audio Uploads Work on More Networks',
-        description: 'Uploads of large recordings were silently failing on some Safari + proxy / VPN / corporate network combinations. The upload path now also works where those setups blocked the underlying request method, plus smaller chunks, longer retries, mid-upload session refresh, and clearer error messages.',
+        category: 'improvement',
+        title: 'More Resilient Large Audio Uploads',
+        description: 'Large audio uploads now use smaller chunks, longer retries, refresh the session mid‑upload, and show clearer error messages when something does go wrong.',
       },
       {
         version: '1.34.1',

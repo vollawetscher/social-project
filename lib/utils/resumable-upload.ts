@@ -168,14 +168,15 @@ export async function uploadToStorage(
       headers: {
         'x-upsert': 'true',
       },
-      // Send POST with X-HTTP-Method-Override: PATCH instead of raw PATCH.
-      // Required workaround for environments (certain Safari + proxy combos,
-      // some corporate firewalls/VPNs) where the PATCH verb is blocked at the
-      // network layer. Observed symptom before this: many successful HEAD
-      // requests but zero PATCH requests ever reaching Supabase, with the
-      // client reporting "response code: n/a, caused by XHR progress event".
-      // Supabase's TUS server accepts either verb.
-      overridePatchMethod: true,
+      // IMPORTANT: do NOT enable `overridePatchMethod`.
+      // We tried it briefly to work around a single user whose network
+      // (mobile hotspot at the time) dropped the PATCH verb. Supabase's
+      // TUS server does NOT honor `X-HTTP-Method-Override: PATCH` for chunk
+      // uploads — it treats the POST as a CREATE and rejects every chunk
+      // with HTTP 400 "Upload-Length or Upload-Defer-Length header required",
+      // breaking all resumable uploads (>= 40 MB) for every user and every
+      // browser. Evidence: storage logs showing POST 400 on every chunk URL
+      // from both Chrome 146 and Safari 26.2. Keep real PATCH.
       // Keep creation request minimal; some environments reject create-with-upload.
       uploadDataDuringCreation: false,
       removeFingerprintOnSuccess: true,
