@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.4',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.4',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Collaborators Can Open Shared Outputs',
+        description: 'When someone shared a session with you, opening one of its generated outputs used to fail with "Output not found". Shared outputs now open correctly for everyone who has access to the session.',
+      },
+    ],
+  },
+  {
     version: '1.34.3',
     date: 'March 17, 2026',
     entries: [

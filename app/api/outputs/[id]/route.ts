@@ -14,7 +14,20 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch output with session info
+    // Fetch output with session info.
+    //
+    // Access is enforced by RLS on `outputs`:
+    //   - "Users can read outputs on accessible sessions"
+    //     → owner + session_collaborators entries
+    //   - "Admins can view all outputs"
+    //   - "Anyone can view publicly shared outputs" (via share_token, used by
+    //     the public /api/share/[token] endpoint with service role)
+    //
+    // Do NOT add a `.eq('created_by', user.id)` filter here — that broke the
+    // "open shared session's output" flow for collaborators: the session
+    // owner creates the output, so its created_by is the owner, and any
+    // collaborator opening /outputs/<id> was getting 404 "Output not found"
+    // even though RLS would have allowed them to read it.
     const { data: output, error } = await supabase
       .from('outputs')
       .select(`
@@ -23,8 +36,7 @@ export async function GET(
         templates(name)
       `)
       .eq('id', params.id)
-      .eq('created_by', user.id)
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Error fetching output:', error)
