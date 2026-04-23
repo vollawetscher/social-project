@@ -18,6 +18,7 @@ import {
   Globe,
   Trash2,
   Loader2,
+  Download,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,8 +43,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
 import type { Output } from "@/lib/types-v0"
+import {
+  buildOutputDownloadBasename,
+  exportOutput,
+  isPdfExportSupportedLanguage,
+} from "@/lib/utils/output-export"
 
 function formatDate(dateString: string, locale: string): string {
   return new Date(dateString).toLocaleDateString(locale, {
@@ -231,6 +243,24 @@ export default function OutputsPage() {
       toast.error(error instanceof Error ? error.message : t('deleteFailed'))
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleDownload = async (
+    output: Output,
+    format: 'md' | 'pdf' | 'docx' | 'gdoc'
+  ) => {
+    if (format === 'pdf' && !isPdfExportSupportedLanguage(output.language)) {
+      toast.error('PDF export is not available for this output language. Use DOCX instead.')
+      return
+    }
+    try {
+      const name = buildOutputDownloadBasename(output.templateName, output.createdAt)
+      await exportOutput(output.content, name, format)
+      toast.success(tc('download'))
+    } catch (error) {
+      console.error('Download failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Download failed')
     }
   }
 
@@ -433,6 +463,27 @@ export default function OutputsPage() {
                       )}
                       <span className="hidden sm:inline">{t('addToTemplates')}</span>
                     </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1.5"
+                          title={tc('download')}
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="hidden sm:inline">{tc('download')}</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleDownload(output, 'md')}>MD</DropdownMenuItem>
+                        {isPdfExportSupportedLanguage(output.language) && (
+                          <DropdownMenuItem onClick={() => handleDownload(output, 'pdf')}>PDF</DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => handleDownload(output, 'docx')}>DOCX</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload(output, 'gdoc')}>Google Docs</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button variant="ghost" size="sm" className="gap-1.5" asChild title={t('open')}>
                       <Link href={`/outputs/${output.id}`}>
                         <ExternalLink className="h-4 w-4" />

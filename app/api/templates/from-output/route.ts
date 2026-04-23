@@ -17,11 +17,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'outputId is required' }, { status: 400 })
     }
 
+    // Rely on RLS for access control instead of a hard `created_by = user.id`
+    // filter. The previous filter blocked two legitimate cases:
+    //   1. Collaborators of a shared session trying to save one of its
+    //      outputs as their own template.
+    //   2. New owners of a transferred session, when the output's
+    //      `created_by` still points to the previous owner.
+    // The template itself is still created under `created_by: user.id` below
+    // so each user ends up with their own template — we only relax *read*
+    // access to the source output.
     const { data: output, error: outputError } = await supabase
       .from('outputs')
       .select('*')
       .eq('id', outputId)
-      .eq('created_by', user.id)
       .single()
 
     if (outputError || !output) {

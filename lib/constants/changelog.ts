@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.7',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.7',
+        date: 'March 17, 2026',
+        category: 'feature',
+        title: 'Download Outputs Directly From the List',
+        description: 'The Outputs page now has a download button on every row — no need to open an output first. You can pick MD, PDF, DOCX, or Google Docs just like on the detail view.',
+      },
+      {
+        version: '1.34.7',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Save Shared Outputs as Templates',
+        description: 'When someone shared a session with you or handed it over, saving one of its outputs as a template used to fail with "Output not found". Collaborators and new owners can now turn shared outputs into their own reusable templates.',
+      },
+    ],
+  },
+  {
     version: '1.34.6',
     date: 'March 17, 2026',
     entries: [
