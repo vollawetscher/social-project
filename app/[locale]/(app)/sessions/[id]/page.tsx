@@ -1960,6 +1960,9 @@ export default function SessionDetailPage() {
                               <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'docx').then(() => toast.success(tCommon('download'))); }}>
                                 DOCX
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'gdoc').then(() => toast.success(tCommon('download'))); }}>
+                                Google Docs
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                           <Button
@@ -2495,6 +2498,9 @@ export default function SessionDetailPage() {
                               )}
                               <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'docx').then(() => toast.success(tCommon('download'))); }}>
                                 DOCX
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'gdoc').then(() => toast.success(tCommon('download'))); }}>
+                                Google Docs
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

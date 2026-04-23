@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.9',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.9',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Google Docs Download in the Session View',
+        description: 'The download menu in the session\'s Outputs tab now offers Google Docs alongside MD, PDF, and DOCX — identical to the output detail page, the outputs list, and shared links. All four places now offer the exact same download options.',
+      },
+    ],
+  },
+  {
     version: '1.34.8',
     date: 'March 17, 2026',
     entries: [
