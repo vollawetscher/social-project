@@ -21,6 +21,57 @@ export function isPdfExportSupportedLanguage(language?: string | null): boolean 
   return true
 }
 
+// Produce a filesystem-safe, ASCII-only slug for a template / output name.
+//
+// - Transliterates German umlauts explicitly (ö → oe, ü → ue, ä → ae, ß → ss)
+//   so downstream NFKD stripping does not turn them into the wrong letter
+//   (ö → o). Other Latin diacritics are removed via NFKD.
+// - Replaces runs of non-alphanumeric characters with a single `-`. This
+//   collapses sequences like " - " (space-dash-space) in template names
+//   ("Lörrach Voice Agent - 2") to a single dash instead of the previous
+//   `---`.
+// - Caps length so we don't hit OS filename limits with very long templates.
+function slugifyTemplateName(input: string): string {
+  const translit = String(input || '')
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  return translit
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+}
+
+// Canonical base name for output downloads across the app.
+//
+// All download entry points (outputs detail page, session detail page,
+// public share page) route through this so the resulting filename is
+// identical regardless of where the user clicks. Format:
+//
+//   <slug>-YYYY-MM-DD
+//
+// We use a human-readable date instead of a millisecond timestamp so the
+// file is easier to recognize in the user's Downloads folder. Duplicate
+// suffixes like ` (1)`, ` (2)` are added by the browser itself when the
+// same file is downloaded multiple times in a day.
+export function buildOutputDownloadBasename(
+  templateName: string | null | undefined,
+  createdAt: string | number | Date | null | undefined
+): string {
+  const slug = slugifyTemplateName(String(templateName || '')) || 'output'
+  const date = (() => {
+    if (createdAt) {
+      const d = new Date(createdAt as any)
+      if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10)
+    }
+    return new Date().toISOString().slice(0, 10)
+  })()
+  return `${slug}-${date}`
+}
+
 type Block =
   | { type: 'heading'; depth: 1 | 2 | 3 | 4 | 5 | 6; children: Inline[] }
   | { type: 'paragraph'; children: Inline[] }

@@ -52,7 +52,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { exportOutput, isPdfExportSupportedLanguage } from "@/lib/utils/output-export"
+import { exportOutput, isPdfExportSupportedLanguage, buildOutputDownloadBasename } from "@/lib/utils/output-export"
 import type { Output } from "@/lib/types-v0"
 import { participantRoleLabels, audienceLabels } from "@/lib/mock/data"
 import { useAuth } from "@/lib/auth/AuthProvider"
@@ -350,7 +350,7 @@ export default function OutputDetailPage() {
       toast.error('PDF export is not available for this output language. Use DOCX instead.')
       return
     }
-    const name = `${output.templateName.replace(/\s+/g, '-').toLowerCase()}-${new Date(output.createdAt).getTime()}`
+    const name = buildOutputDownloadBasename(output.templateName, output.createdAt)
     await exportOutput(output.content, name, format)
     toast.success(t('downloaded'))
   }

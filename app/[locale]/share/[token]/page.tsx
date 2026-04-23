@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { exportOutput, isPdfExportSupportedLanguage } from "@/lib/utils/output-export"
+import { exportOutput, isPdfExportSupportedLanguage, buildOutputDownloadBasename } from "@/lib/utils/output-export"
 
 interface SharedOutput {
   id: string
@@ -177,7 +177,8 @@ export default function SharedOutputPage() {
       toast.error('PDF export is not available for this output language. Use DOCX instead.')
       return
     }
-    await exportOutput(output.content, output.templateName, format)
+    const name = buildOutputDownloadBasename(output.templateName, output.createdAt)
+    await exportOutput(output.content, name, format)
     toast.success('Downloaded output')
   }
 

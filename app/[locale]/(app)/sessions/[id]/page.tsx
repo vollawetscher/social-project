@@ -53,7 +53,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { exportOutput, isPdfExportSupportedLanguage } from "@/lib/utils/output-export"
+import { exportOutput, isPdfExportSupportedLanguage, buildOutputDownloadBasename } from "@/lib/utils/output-export"
 import { TranscriptViewer } from "@/components/transcript-viewer-v0"
 import { SessionSetupPanel } from "@/components/session-setup-panel"
 import { GenerateOutputModal } from "@/components/generate-output-modal"
@@ -1869,6 +1869,7 @@ export default function SessionDetailPage() {
                   </div>
                   {outputs.map((output) => {
                     const outputDisplayName = getOutputDisplayName(output.templateName)
+                    const downloadBasename = buildOutputDownloadBasename(output.templateName, output.createdAt)
                     const wordCount = output.content ? output.content.trim().split(/\s+/).length : 0
                     return (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
@@ -1944,15 +1945,15 @@ export default function SessionDetailPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'md').then(() => toast.success(tCommon('download'))); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'md').then(() => toast.success(tCommon('download'))); }}>
                                 MD
                               </DropdownMenuItem>
                               {isPdfExportSupportedLanguage(output.language) && (
-                                <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'pdf').then(() => toast.success(tCommon('download'))); }}>
+                                <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'pdf').then(() => toast.success(tCommon('download'))); }}>
                                   PDF
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'docx').then(() => toast.success(tCommon('download'))); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'docx').then(() => toast.success(tCommon('download'))); }}>
                                 DOCX
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -2400,6 +2401,7 @@ export default function SessionDetailPage() {
                   </div>
                   {outputs.map((output) => {
                     const outputDisplayName = getOutputDisplayName(output.templateName)
+                    const downloadBasename = buildOutputDownloadBasename(output.templateName, output.createdAt)
                     const wordCount = output.content ? output.content.trim().split(/\s+/).length : 0
                     return (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
@@ -2475,15 +2477,15 @@ export default function SessionDetailPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'md').then(() => toast.success(tCommon('download'))); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'md').then(() => toast.success(tCommon('download'))); }}>
                                 MD
                               </DropdownMenuItem>
                               {isPdfExportSupportedLanguage(output.language) && (
-                                <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'pdf').then(() => toast.success(tCommon('download'))); }}>
+                                <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'pdf').then(() => toast.success(tCommon('download'))); }}>
                                   PDF
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem onClick={() => { exportOutput(output.content, outputDisplayName, 'docx').then(() => toast.success(tCommon('download'))); }}>
+                              <DropdownMenuItem onClick={() => { exportOutput(output.content, downloadBasename, 'docx').then(() => toast.success(tCommon('download'))); }}>
                                 DOCX
                               </DropdownMenuItem>
                             </DropdownMenuContent>

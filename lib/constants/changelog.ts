@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.6',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.6',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Consistent Filenames for Downloaded Outputs',
+        description: 'Downloads from the output page, the session page, and shared links now use the same filename format: the output name plus the date (for example, meeting-notes-2026-03-17.pdf). Umlauts and special characters are converted to safe ASCII, so filenames look clean and match no matter which browser or page you download from.',
+      },
+    ],
+  },
+  {
     version: '1.34.5',
     date: 'March 17, 2026',
     entries: [
