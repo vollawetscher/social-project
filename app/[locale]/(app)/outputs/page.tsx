@@ -255,7 +255,11 @@ export default function OutputsPage() {
       return
     }
     try {
-      const name = buildOutputDownloadBasename(output.templateName, output.createdAt)
+      const name = buildOutputDownloadBasename(
+        output.templateName,
+        output.createdAt,
+        output.sessionFilename
+      )
       await exportOutput(output.content, name, format)
       toast.success(tc('download'))
     } catch (error) {

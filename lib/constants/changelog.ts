@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.8',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.8',
+        date: 'March 17, 2026',
+        category: 'improvement',
+        title: 'Session Name in Download Filenames',
+        description: 'Downloaded outputs now carry the session name in the filename too (for example, loerrach-followup-internes-meeting-protokoll-2026-04-23.pdf). This keeps files from different sessions distinguishable in your Downloads folder, even when they share the same template. Audio extensions like .m4a or .mp3 are stripped so the name stays readable.',
+      },
+    ],
+  },
+  {
     version: '1.34.7',
     date: 'March 17, 2026',
     entries: [

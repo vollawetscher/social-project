@@ -1869,7 +1869,11 @@ export default function SessionDetailPage() {
                   </div>
                   {outputs.map((output) => {
                     const outputDisplayName = getOutputDisplayName(output.templateName)
-                    const downloadBasename = buildOutputDownloadBasename(output.templateName, output.createdAt)
+                    const downloadBasename = buildOutputDownloadBasename(
+                      output.templateName,
+                      output.createdAt,
+                      session.filename
+                    )
                     const wordCount = output.content ? output.content.trim().split(/\s+/).length : 0
                     return (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">
@@ -2401,7 +2405,11 @@ export default function SessionDetailPage() {
                   </div>
                   {outputs.map((output) => {
                     const outputDisplayName = getOutputDisplayName(output.templateName)
-                    const downloadBasename = buildOutputDownloadBasename(output.templateName, output.createdAt)
+                    const downloadBasename = buildOutputDownloadBasename(
+                      output.templateName,
+                      output.createdAt,
+                      session.filename
+                    )
                     const wordCount = output.content ? output.content.trim().split(/\s+/).length : 0
                     return (
                     <div key={output.id} className="p-4 border border-border rounded-lg hover:border-muted-foreground/50 transition-colors group">

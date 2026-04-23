@@ -177,7 +177,11 @@ export default function SharedOutputPage() {
       toast.error('PDF export is not available for this output language. Use DOCX instead.')
       return
     }
-    const name = buildOutputDownloadBasename(output.templateName, output.createdAt)
+    const name = buildOutputDownloadBasename(
+      output.templateName,
+      output.createdAt,
+      output.sessionFilename
+    )
     await exportOutput(output.content, name, format)
     toast.success('Downloaded output')
   }

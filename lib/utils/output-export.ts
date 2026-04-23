@@ -21,17 +21,17 @@ export function isPdfExportSupportedLanguage(language?: string | null): boolean 
   return true
 }
 
-// Produce a filesystem-safe, ASCII-only slug for a template / output name.
+// Produce a filesystem-safe, ASCII-only slug.
 //
 // - Transliterates German umlauts explicitly (ö → oe, ü → ue, ä → ae, ß → ss)
 //   so downstream NFKD stripping does not turn them into the wrong letter
 //   (ö → o). Other Latin diacritics are removed via NFKD.
 // - Replaces runs of non-alphanumeric characters with a single `-`. This
-//   collapses sequences like " - " (space-dash-space) in template names
-//   ("Lörrach Voice Agent - 2") to a single dash instead of the previous
-//   `---`.
-// - Caps length so we don't hit OS filename limits with very long templates.
-function slugifyTemplateName(input: string): string {
+//   collapses sequences like " - " (space-dash-space) and strips file
+//   extensions such as ".m4a" that may appear in session filenames.
+// - Caps length per segment so a very long session name can't swallow the
+//   template part of the filename.
+function slugify(input: string, maxLen: number): string {
   const translit = String(input || '')
     .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
     .replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue')
@@ -42,26 +42,41 @@ function slugifyTemplateName(input: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
+    .slice(0, maxLen)
+    .replace(/-+$/g, '')
 }
 
 // Canonical base name for output downloads across the app.
 //
-// All download entry points (outputs detail page, session detail page,
-// public share page) route through this so the resulting filename is
-// identical regardless of where the user clicks. Format:
+// All download entry points (outputs list, outputs detail page, session
+// detail page, public share page) route through this so the resulting
+// filename is identical regardless of where the user clicks. Format:
 //
-//   <slug>-YYYY-MM-DD
+//   <session-slug>-<template-slug>-YYYY-MM-DD
+//
+// Session slug is prepended when available so outputs generated from
+// different sessions with the same template remain distinguishable in the
+// user's Downloads folder (otherwise every "Meeting Protokoll" run would
+// collapse to meeting-protokoll-DATE and rely on the browser's ` (1)`
+// suffix).
 //
 // We use a human-readable date instead of a millisecond timestamp so the
-// file is easier to recognize in the user's Downloads folder. Duplicate
-// suffixes like ` (1)`, ` (2)` are added by the browser itself when the
-// same file is downloaded multiple times in a day.
+// file is easier to recognize. Duplicate suffixes are still added by the
+// browser when the exact same file is downloaded twice in one day.
+// Common media / document extensions to strip from session filenames so a
+// session like "Gemeinde Finsing.m4a" doesn't produce a download named
+// "gemeinde-finsing-m4a-...". Everything else is left alone.
+const SESSION_FILE_EXT_RE = /\.(mp3|m4a|wav|aac|ogg|flac|webm|opus|mp4|mov|avi|mkv|txt|md|pdf|docx|doc|rtf|vtt|srt)$/i
+
 export function buildOutputDownloadBasename(
   templateName: string | null | undefined,
-  createdAt: string | number | Date | null | undefined
+  createdAt: string | number | Date | null | undefined,
+  sessionName?: string | null | undefined
 ): string {
-  const slug = slugifyTemplateName(String(templateName || '')) || 'output'
+  const templateSlug = slugify(String(templateName || ''), 50) || 'output'
+  const cleanedSessionName = String(sessionName || '').replace(SESSION_FILE_EXT_RE, '')
+  const sessionSlug = slugify(cleanedSessionName, 50)
+
   const date = (() => {
     if (createdAt) {
       const d = new Date(createdAt as any)
@@ -69,7 +84,10 @@ export function buildOutputDownloadBasename(
     }
     return new Date().toISOString().slice(0, 10)
   })()
-  return `${slug}-${date}`
+
+  return sessionSlug
+    ? `${sessionSlug}-${templateSlug}-${date}`
+    : `${templateSlug}-${date}`
 }
 
 type Block =
