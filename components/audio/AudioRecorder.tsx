@@ -16,6 +16,79 @@ interface AudioRecorderProps {
   onRecordingComplete: (blob: Blob, duration: number) => void
 }
 
+// Measure the real duration of a recorded audio blob.
+//
+// Why this exists: the `MediaRecorder` wall-clock timer (Date.now() diff)
+// is not a reliable measure of how much audio was actually captured. If
+// the tab is suspended (backgrounded on iOS/Android, screen lock, OS
+// energy saver) or the input stream drops (bluetooth mic disconnect),
+// the wall-clock keeps ticking while no new chunks are recorded. We saw
+// sessions with a 22 s audio blob being recorded as 654 s long.
+//
+// This helper loads the blob into a hidden <audio> element and reads the
+// `duration` property once metadata is decoded. For some container
+// formats (most notably WebM/Matroska produced by MediaRecorder), the
+// duration is reported as Infinity until we seek past the end — the
+// `currentTime = Number.MAX_SAFE_INTEGER` trick forces the browser to
+// compute the real duration from the actual packets.
+async function measureBlobDuration(blob: Blob): Promise<number | null> {
+  return new Promise<number | null>((resolve) => {
+    if (!blob || blob.size === 0) {
+      resolve(null)
+      return
+    }
+
+    const url = URL.createObjectURL(blob)
+    const audio = document.createElement('audio')
+    let settled = false
+
+    const finalize = (value: number | null) => {
+      if (settled) return
+      settled = true
+      audio.src = ''
+      URL.revokeObjectURL(url)
+      resolve(value)
+    }
+
+    const timeout = setTimeout(() => finalize(null), 5000)
+
+    const accept = (raw: number) => {
+      clearTimeout(timeout)
+      if (!Number.isFinite(raw) || raw <= 0) {
+        finalize(null)
+      } else {
+        finalize(Math.max(1, Math.round(raw)))
+      }
+    }
+
+    audio.preload = 'metadata'
+    audio.onerror = () => {
+      clearTimeout(timeout)
+      finalize(null)
+    }
+    audio.onloadedmetadata = () => {
+      if (audio.duration === Infinity) {
+        // WebM/Matroska workaround: seek past the end to force the
+        // browser to scan the full stream and recompute the duration.
+        const onTimeUpdate = () => {
+          audio.ontimeupdate = null
+          audio.currentTime = 0
+          accept(audio.duration)
+        }
+        audio.ontimeupdate = onTimeUpdate
+        try {
+          audio.currentTime = Number.MAX_SAFE_INTEGER
+        } catch {
+          accept(audio.duration)
+        }
+      } else {
+        accept(audio.duration)
+      }
+    }
+    audio.src = url
+  })
+}
+
 export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
   const t = useTranslations('recorder')
   const [isRecording, setIsRecording] = useState(false)
@@ -535,30 +608,63 @@ export function AudioRecorder({ onRecordingComplete }: AudioRecorderProps) {
         await new Promise(resolve => setTimeout(resolve, 200))
         
         const blob = new Blob(chunksRef.current, { type: recordedMimeTypeRef.current })
-        const finalDuration = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
-        
+        const timerDuration = Math.floor((Date.now() - startTimeRef.current - totalPausedTimeRef.current) / 1000)
+
+        // Prefer the actual duration decoded from the blob over the
+        // wall-clock timer. The timer keeps running during tab suspends,
+        // screen locks and bluetooth disconnects even when no audio is
+        // being captured, which produces wildly inflated durations (see
+        // measureBlobDuration docstring).
+        const blobDuration = await measureBlobDuration(blob)
+        const finalDuration = blobDuration ?? timerDuration
+
         console.log('[AudioRecorder] Recording stopped:', {
           blobSize: blob.size,
           blobType: blob.type,
           chunks: chunksRef.current.length,
-          timerDuration: finalDuration
+          timerDuration,
+          blobDuration,
+          finalDuration,
         })
-        
-        // Validate recording completeness
-        const minExpectedSize = finalDuration * 8000 // ~8KB per second minimum
-        if (blob.size < minExpectedSize && finalDuration > 0) {
-          console.error('[AudioRecorder] Recording appears incomplete!', {
-            timerDuration: finalDuration,
-            blobSize: blob.size,
-            minExpectedSize,
-            chunks: chunksRef.current.length
+
+        // Mismatch check: if the timer says we recorded much longer than
+        // the audio file actually contains, the tab was almost certainly
+        // suspended mid-recording. Warn the user so they know the file
+        // may be truncated.
+        if (
+          blobDuration !== null &&
+          timerDuration > 0 &&
+          timerDuration - blobDuration >= 30 &&
+          blobDuration < timerDuration * 0.5
+        ) {
+          console.warn('[AudioRecorder] Audio shorter than timer — likely tab suspension or capture drop', {
+            timerDuration,
+            blobDuration,
           })
           playErrorAlert()
-          toast.error(`⚠️ Warning: Recording may be incomplete (${finalDuration}s recorded, but only ${Math.round(blob.size / 1024)}KB data)`, {
-            duration: 10000,
-          })
+          toast.error(
+            `⚠️ Recording looks incomplete. Captured audio is ${blobDuration}s, but the timer ran for ${timerDuration}s. The tab may have been suspended.`,
+            { duration: 10000 }
+          )
+        } else {
+          // Fallback size check (kept for the rare case we couldn't decode
+          // duration from the blob at all).
+          const minExpectedSize = timerDuration * 8000
+          if (blobDuration === null && blob.size < minExpectedSize && timerDuration > 0) {
+            console.error('[AudioRecorder] Recording appears incomplete (size check):', {
+              timerDuration,
+              blobSize: blob.size,
+              minExpectedSize,
+              chunks: chunksRef.current.length,
+            })
+            playErrorAlert()
+            toast.error(
+              `⚠️ Warning: Recording may be incomplete (${timerDuration}s recorded, but only ${Math.round(blob.size / 1024)}KB data)`,
+              { duration: 10000 }
+            )
+          }
         }
-        
+
         const url = URL.createObjectURL(blob)
         setAudioURL(url)
 

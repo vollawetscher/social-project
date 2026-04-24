@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.10',
+    date: 'March 17, 2026',
+    entries: [
+      {
+        version: '1.34.10',
+        date: 'March 17, 2026',
+        category: 'fix',
+        title: 'Accurate Duration for Quick Recordings',
+        description: 'Recordings made in the browser now report the true length of the captured audio instead of the wall-clock time between Start and Stop. Previously, if the tab was suspended in the background (screen lock, another app, bluetooth mic disconnect), the timer kept ticking while no audio was being captured — so a 22-second clip could show up as 10 minutes in the sessions list. The app now reads the real duration from the saved audio file and warns you when the timer and the audio disagree.',
+      },
+    ],
+  },
+  {
     version: '1.34.9',
     date: 'March 17, 2026',
     entries: [
