@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.34.11',
+    date: 'April 26, 2026',
+    entries: [
+      {
+        version: '1.34.11',
+        date: 'April 26, 2026',
+        category: 'fix',
+        title: 'Failed Uploads No Longer Stuck on "Uploading"',
+        description: 'Sessions whose upload never made it off the device used to sit in the list as "Uploading" indefinitely. They are now automatically marked as failed after 10 minutes so it is clear the upload did not succeed and the session can be retried or deleted.',
+      },
+    ],
+  },
+  {
     version: '1.34.10',
     date: 'March 17, 2026',
     entries: [

@@ -76,13 +76,23 @@ export async function POST(request: Request) {
     }
   }
 
-  // --- Phase 2: Clean up sessions stuck in uploading/recording ---
+  // --- Phase 2: Clean up sessions stuck in created/uploading/recording ---
+  //
+  // 'created' is included because the UI surfaces it as "uploading" (see
+  // mapStatus in lib/adapters/session-adapter.ts). When a client-side upload
+  // dies before the session ever transitions to 'uploading' (e.g. a browser
+  // tab is closed mid-TUS, or — as observed on old iPad Safari — the upload
+  // path silently fails), the row otherwise stays "uploading" in the UI
+  // forever. The guards below make sure we don't sweep legitimately-young
+  // sessions: in-flight call sessions, callee-pending sessions, sessions with
+  // a pending job, sessions with a recent file write, or sessions tied to a
+  // currently active call.
   const sessionCutoff = new Date(Date.now() - STALE_SESSION_MINUTES * 60 * 1000).toISOString()
 
   const { data: stuckSessions, error: sessError } = await supabase
     .from('sessions')
-    .select('id, status, created_at, pending_job_id')
-    .in('status', ['uploading', 'recording'])
+    .select('id, status, created_at, pending_job_id, is_callee_pending')
+    .in('status', ['created', 'uploading', 'recording'])
     .lt('created_at', sessionCutoff)
 
   if (sessError) {
@@ -93,6 +103,12 @@ export async function POST(request: Request) {
 
   for (const session of stuckSessions || []) {
     try {
+      // Skip caller-side sessions still waiting for the callee to upload.
+      if ((session as any).is_callee_pending) {
+        console.log(`[Stale Cleanup] Skipping session ${session.id} — is_callee_pending`)
+        continue
+      }
+
       // Skip sessions that have an active job — they're still processing.
       if (session.pending_job_id) {
         console.log(`[Stale Cleanup] Skipping session ${session.id} — has pending job ${session.pending_job_id}`)
@@ -124,6 +140,22 @@ export async function POST(request: Request) {
 
       if (activeJobs && activeJobs.length > 0) {
         console.log(`[Stale Cleanup] Skipping session ${session.id} — has active async job`)
+        continue
+      }
+
+      // Skip sessions tied to a call that is still active. These can sit in
+      // 'created' for a long time before recording starts (e.g. scheduled
+      // meetings, room created but participants not joined yet).
+      const liveCallStatuses = ['waiting', 'invited', 'active', 'connected', 'recording']
+      const { data: linkedCalls } = await supabase
+        .from('calls')
+        .select('id')
+        .or(`session_id.eq.${session.id},callee_session_id.eq.${session.id}`)
+        .in('status', liveCallStatuses)
+        .limit(1)
+
+      if (linkedCalls && linkedCalls.length > 0) {
+        console.log(`[Stale Cleanup] Skipping session ${session.id} — linked to active call`)
         continue
       }
 
