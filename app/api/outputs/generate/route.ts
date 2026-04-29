@@ -56,6 +56,73 @@ function resolveMergedSpeakerId(speakerId: string, mergeMap: Record<string, stri
   return current || String(speakerId || '').trim()
 }
 
+function normalizeCorrectionMap(value: unknown): Record<string, string> {
+  if (!value) return {}
+  if (Array.isArray(value)) {
+    const map: Record<string, string> = {}
+    for (const item of value) {
+      if (!item || typeof item !== 'object') continue
+      const original = String((item as any).original ?? (item as any).from ?? '').trim()
+      const corrected = String((item as any).corrected ?? (item as any).to ?? '').trim()
+      if (original && corrected) map[original] = corrected
+    }
+    return map
+  }
+  if (typeof value !== 'object') return {}
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .map(([from, to]) => [String(from).trim(), String(to ?? '').trim()])
+      .filter(([from, to]) => from && to)
+  )
+}
+
+function buildSpeakerAttributedTranscript(
+  transcript: any,
+  corrections: Record<string, any>
+): { transcriptText: string; speakers: string[] } {
+  const segments = Array.isArray(transcript.raw_json) ? transcript.raw_json : []
+  const speakerNameMap = {
+    ...normalizeCorrectionMap(corrections.speaker_name_map),
+    ...normalizeCorrectionMap(corrections.name_corrections),
+  }
+  const speakerMergeMap = normalizeCorrectionMap(corrections.speaker_merge_map)
+  const textCorrections = {
+    ...normalizeCorrectionMap(corrections.pii_redactions),
+    ...normalizeCorrectionMap(corrections.word_corrections),
+  }
+
+  if (segments.length === 0) {
+    const fallbackText = transcript.raw_text || transcript.redacted_text || ''
+    return {
+      transcriptText: applyTranscriptCorrections(fallbackText, textCorrections),
+      speakers: [],
+    }
+  }
+
+  const speakers: string[] = []
+  const speakerSet = new Set<string>()
+  const lines = segments
+    .map((segment: any) => {
+      const rawSpeaker = String(segment.speaker || 'Speaker').trim()
+      const mergedSpeaker = resolveMergedSpeakerId(rawSpeaker, speakerMergeMap)
+      const displaySpeaker = speakerNameMap[mergedSpeaker] || speakerNameMap[rawSpeaker] || mergedSpeaker
+      const text = applyTranscriptCorrections(String(segment.text || '').trim(), textCorrections)
+
+      if (displaySpeaker && !speakerSet.has(displaySpeaker)) {
+        speakerSet.add(displaySpeaker)
+        speakers.push(displaySpeaker)
+      }
+
+      return text ? `${displaySpeaker}: ${text}` : ''
+    })
+    .filter(Boolean)
+
+  return {
+    transcriptText: lines.join('\n'),
+    speakers,
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const internalSecret = request.headers.get('x-internal-secret')
@@ -218,33 +285,18 @@ export async function POST(request: Request) {
       template = templateData
     }
 
-    // Build the generation prompt - apply corrections so output reflects fixed transcript
-    let transcriptText = transcript.raw_text || transcript.redacted_text || ''
+    // Build a speaker-attributed prompt from transcript segments so cleanup
+    // mappings affect both display names and who said what in generated outputs.
     const corrections = (session as any).transcript_corrections || {}
-    const allCorrections: Record<string, string> = {
-      ...(corrections.name_corrections || {}),
-      ...(corrections.pii_redactions || {}),
-      ...(corrections.word_corrections || {}),
-    }
-    if (Object.keys(allCorrections).length > 0) {
-      transcriptText = applyTranscriptCorrections(transcriptText, allCorrections)
-    }
+    const attributedTranscript = buildSpeakerAttributedTranscript(transcript, corrections)
+    const transcriptText = attributedTranscript.transcriptText
     console.log('[Generate Output] Transcript text length:', transcriptText.length)
     
-    // Extract speakers from raw_json segments (apply name corrections)
-    const segments = Array.isArray(transcript.raw_json) ? (transcript.raw_json as any[]) : []
-    const nameCorrections = corrections.speaker_name_map || corrections.name_corrections || {}
-    const speakerMergeMap = corrections.speaker_merge_map || {}
-    const uniqueSpeakers = Array.from(
-      new Set(
-        segments
-          .map((s: any) => {
-            const mergedSpeaker = resolveMergedSpeakerId(s.speaker, speakerMergeMap)
-            return nameCorrections[mergedSpeaker] || nameCorrections[s.speaker] || mergedSpeaker
-          })
-          .filter(Boolean)
-      )
-    )
+    const nameCorrections = {
+      ...normalizeCorrectionMap(corrections.speaker_name_map),
+      ...normalizeCorrectionMap(corrections.name_corrections),
+    }
+    const uniqueSpeakers = attributedTranscript.speakers
     
     let speakersText = ''
     if (uniqueSpeakers.length > 0) {

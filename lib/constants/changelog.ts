@@ -31,6 +31,13 @@ export const changelog: ChangelogVersion[] = [
         title: 'Faster Retries for Failed Transcriptions',
         description: 'When a transcription job needs to retry due to a temporary error, it no longer re-processes the entire audio from scratch. Previously completed work is preserved, making retries much faster and reducing unnecessary processing.',
       },
+      {
+        version: '1.35.0',
+        date: 'April 29, 2026',
+        category: 'fix',
+        title: 'Transcript Cleanup Applied to Outputs',
+        description: 'Speaker cleanup now carries through to generated outputs with clear speaker-by-speaker attribution, so reports reflect the corrected conversation instead of just listing corrected names.',
+      },
     ],
   },
   {

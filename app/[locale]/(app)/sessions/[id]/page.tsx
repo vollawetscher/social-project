@@ -1134,6 +1134,11 @@ export default function SessionDetailPage() {
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">{t('cleanup.speakers')} ({speakerIds.length})</p>
           <div className="space-y-2">
+            <div className="hidden sm:grid grid-cols-3 gap-2 text-[11px] font-medium text-muted-foreground">
+              <span>{t('cleanup.currentLabel')}</span>
+              <span>{t('cleanup.displayAs')}</span>
+              <span>{t('cleanup.mergeWith')}</span>
+            </div>
             {speakerIds.map((speakerId) => (
               <div key={speakerId} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
                 <Badge variant="outline" className="w-fit">{speakerId}</Badge>
