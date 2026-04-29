@@ -207,6 +207,51 @@ function inferTrackKindFromStoragePath(path: string | null | undefined): 'a' | '
 }
 
 /**
+ * Cross-validate voice-sample speaker mapping against transcript content.
+ * Checks early segments for name-addressing patterns (e.g., "Sundar, how are you?").
+ * A person who addresses someone by name is NOT that person — they're the OTHER speaker.
+ * Returns true if the primed speaker label is assigned to the wrong person.
+ */
+function detectSpeakerInversion(
+  segments: { speaker: string; text: string; start_ms: number }[],
+  primedLabel: string,
+  userName: string,
+  otherName: string,
+): boolean {
+  const userFirst = userName.split(/\s+/)[0].toLowerCase()
+  const otherFirst = otherName.split(/\s+/)[0].toLowerCase()
+
+  if (userFirst.length < 3 || otherFirst.length < 3) return false
+  if (userFirst === otherFirst) return false
+
+  const earlySegments = segments
+    .filter(s => s.start_ms < 60_000)
+    .slice(0, 20)
+
+  for (const seg of earlySegments) {
+    const textLower = seg.text.toLowerCase()
+    const mentionsOther = textLower.includes(otherFirst)
+    const mentionsUser = textLower.includes(userFirst)
+
+    if (mentionsOther && !mentionsUser) {
+      if (seg.speaker === primedLabel) {
+        return false
+      }
+      return true
+    }
+
+    if (mentionsUser && !mentionsOther) {
+      if (seg.speaker !== primedLabel) {
+        return false
+      }
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
  * After the caller's session is transcribed, copy the transcript to any pending
  * callee session that was claimed before transcription completed.
  *
@@ -453,16 +498,25 @@ async function processTranscriptionJob(sessionId: string) {
       const file = files[i]
       console.log(`[Transcribe] Processing file ${i + 1}/${files.length}: ${file.storage_path} (${file.file_purpose})`)
 
-      // Delete any existing transcript for this file so retry doesn't silently skip
+      // Skip re-transcription if a transcript already exists for this file.
+      // Prevents redundant Speechmatics calls when the job retries due to
+      // post-processing failures or HTTP timeouts.
       const { data: existingTranscript } = await supabase
         .from('transcripts')
         .select('id')
         .eq('file_id', file.id)
         .maybeSingle()
 
-      if (existingTranscript) {
-        console.log(`[Transcribe] Deleting existing transcript for file ${file.id} before retry`)
-        await supabase.from('transcripts').delete().eq('id', existingTranscript.id)
+      if (existingTranscript?.id) {
+        console.log(`[Transcribe] Transcript already exists for file ${file.id}, skipping re-transcription`)
+        await logPipelineEvent({
+          sessionId,
+          userId: (sessionRow as any)?.user_id || null,
+          stage: 'transcribe',
+          event: 'file_transcription_skipped',
+          metadata: { fileId: file.id, reason: 'transcript_already_exists' },
+        }, supabase)
+        continue
       }
 
       console.log('[Transcribe] Downloading audio file from storage:', file.storage_path)
@@ -696,15 +750,38 @@ async function processTranscriptionJob(sessionId: string) {
 
       if (voiceSamplePrepended && effectiveVoiceSampleDurationMs > 0 && transcript.segments.length > 0) {
         const primedSpeaker = transcript.primedSpeaker || null
+        let inverted = false
+        let otherParticipantName: string | null = null
         if (primedSpeaker && voiceSampleUserName) {
+          otherParticipantName = linkedCall?.contact_name
+            || participantNames.find(n => n !== voiceSampleUserName)
+            || null
+
+          const allLabels = Array.from(new Set(transcript.segments.map(s => s.speaker)))
+          const otherLabels = allLabels.filter(l => l !== primedSpeaker)
+
+          if (otherParticipantName && otherLabels.length === 1) {
+            inverted = detectSpeakerInversion(
+              transcript.segments,
+              primedSpeaker,
+              voiceSampleUserName,
+              otherParticipantName,
+            )
+          }
+
+          const userLabel = inverted ? (otherLabels[0] || primedSpeaker) : primedSpeaker
+          const contactLabel = inverted ? primedSpeaker : (otherLabels.length === 1 ? otherLabels[0] : null)
+
           for (const seg of transcript.segments) {
-            if (seg.speaker === primedSpeaker) {
+            if (seg.speaker === userLabel) {
               seg.speaker = voiceSampleUserName
+            } else if (contactLabel && otherParticipantName && seg.speaker === contactLabel) {
+              seg.speaker = otherParticipantName
             }
           }
           transcript.fullText = transcript.segments.map((s) => s.text).join(' ')
         }
-        console.log('[Transcribe] Voice sample stripped at word level, offset:', effectiveVoiceSampleDurationMs, 'ms, primed speaker:', primedSpeaker, '→', voiceSampleUserName)
+        console.log('[Transcribe] Voice sample speaker resolution — offset:', effectiveVoiceSampleDurationMs, 'ms, primed:', primedSpeaker, '→', voiceSampleUserName, inverted ? '(INVERTED — swapped based on content analysis)' : '', otherParticipantName ? `other: ${otherParticipantName}` : '')
         await logPipelineEvent({
           sessionId,
           userId: (sessionRow as any)?.user_id || null,
@@ -713,6 +790,8 @@ async function processTranscriptionJob(sessionId: string) {
           metadata: {
             primedSpeaker,
             userName: voiceSampleUserName,
+            otherParticipantName,
+            inverted,
             offsetMs: effectiveVoiceSampleDurationMs,
             segmentsAfterOffset: transcript.segments.length,
           },

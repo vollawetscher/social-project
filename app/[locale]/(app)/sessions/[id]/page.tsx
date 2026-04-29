@@ -1128,7 +1128,8 @@ export default function SessionDetailPage() {
       </div>
 
       {!cleanupPanelOpen ? null : (
-        <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+        <div className="flex flex-col max-h-[60vh]">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
       {speakerIds.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">{t('cleanup.speakers')} ({speakerIds.length})</p>
@@ -1236,8 +1237,9 @@ export default function SessionDetailPage() {
           </div>
         )}
       </div>
+          </div>
 
-      <div className="sticky bottom-0 bg-card pt-2 flex justify-between gap-2">
+          <div className="shrink-0 border-t border-border pt-2 mt-2 flex justify-between gap-2">
         <Button
           size="sm"
           variant="ghost"
@@ -1256,7 +1258,7 @@ export default function SessionDetailPage() {
           {savingCleanup ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
           {t('cleanup.applyCleanup')}
         </Button>
-      </div>
+          </div>
         </div>
       )}
     </div>

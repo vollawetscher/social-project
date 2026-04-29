@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.35.0',
+    date: 'April 29, 2026',
+    entries: [
+      {
+        version: '1.35.0',
+        date: 'April 29, 2026',
+        category: 'fix',
+        title: 'Speaker Names Corrected in Call Transcripts',
+        description: 'Fixed an issue where speaker names could be swapped in call transcripts (e.g., your words attributed to the other person). The system now cross-checks the first few lines of conversation to verify names are assigned to the right speaker.',
+      },
+      {
+        version: '1.35.0',
+        date: 'April 29, 2026',
+        category: 'fix',
+        title: 'Faster Retries for Failed Transcriptions',
+        description: 'When a transcription job needs to retry due to a temporary error, it no longer re-processes the entire audio from scratch. Previously completed work is preserved, making retries much faster and reducing unnecessary processing.',
+      },
+    ],
+  },
+  {
     version: '1.34.11',
     date: 'April 26, 2026',
     entries: [
