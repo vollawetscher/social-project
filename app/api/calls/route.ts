@@ -260,6 +260,7 @@ export async function POST(request: Request) {
       displayName,
       invited: isInvite,
       calleeReachability,
+      isInitiator: true,
     })
   } catch (error: any) {
     console.error('[Calls] Error creating call:', error)

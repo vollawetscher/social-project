@@ -56,7 +56,10 @@ export function ActiveCallBanner() {
 
   const handleRejoin = () => {
     if (!activeCall) return
-    router.push(`/call/${activeCall.roomName}?callId=${activeCall.id}`)
+    // /api/calls/active only returns calls where the current user is the
+    // originator (call.user_id), so a rejoin from this banner is always the
+    // initiator's perspective.
+    router.push(`/call/${activeCall.roomName}?callId=${activeCall.id}&init=1`)
   }
 
   const handleEnd = async () => {

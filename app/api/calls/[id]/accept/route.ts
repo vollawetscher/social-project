@@ -78,6 +78,7 @@ export async function POST(
       mode: call.call_mode || 'video',
       token,
       displayName,
+      isInitiator: false,
     })
   } catch (error) {
     if (error instanceof Error) {

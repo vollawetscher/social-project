@@ -14,6 +14,33 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.0',
+    date: 'April 30, 2026',
+    entries: [
+      {
+        version: '1.36.0',
+        date: 'April 30, 2026',
+        category: 'fix',
+        title: 'Calling Tone No Longer Plays For Callees',
+        description: 'When you accept an incoming video call — whether from a personal meeting link, a sent invite, or a scheduled meeting — you no longer hear the German "calling…" tone. That tone was meant for the caller waiting for you to pick up, never for the person who just answered.',
+      },
+      {
+        version: '1.36.0',
+        date: 'April 30, 2026',
+        category: 'improvement',
+        title: 'Soft "Joined" Tone When the Other Person Picks Up',
+        description: 'A short, gentle ping plays the moment both sides are connected in a video call. The caller knows the other person joined, and the callee gets a clear "you\'re in" cue.',
+      },
+      {
+        version: '1.36.0',
+        date: 'April 30, 2026',
+        category: 'fix',
+        title: 'Calling Tone Stops When the Call Is Declined Or Missed',
+        description: 'If the person you\'re calling declines or misses the call, the calling tone now stops immediately instead of continuing while the system catches up.',
+      },
+    ],
+  },
+  {
     version: '1.35.0',
     date: 'April 29, 2026',
     entries: [

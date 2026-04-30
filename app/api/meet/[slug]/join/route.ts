@@ -146,6 +146,9 @@ export async function POST(
       token,
       sessionId,
       ownerName: owner.display_name || 'Host',
+      // The owner is the host of their personal meeting room; visitors who
+      // arrive via the PML are calling them, so the visitor is the initiator.
+      isInitiator: !isOwner,
     })
   } catch (error: any) {
     console.error('[Meet] Error joining meeting:', error)

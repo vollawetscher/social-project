@@ -99,6 +99,7 @@ export default function MeetPage() {
   const [callId, setCallId] = useState<string | null>(null)
   const [roomName, setRoomName] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [isInitiator, setIsInitiator] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
   // Voicemail recording state
@@ -194,6 +195,10 @@ export default function MeetPage() {
       setCallId(data.callId)
       setRoomName(data.roomName)
       setToken(data.token)
+      // The visitor (non-owner) is the one calling the room owner — they hear
+      // the calling tone while the owner picks up. The owner joining their own
+      // room is the host and never plays the outbound tone.
+      setIsInitiator(typeof data.isInitiator === "boolean" ? data.isInitiator : !isOwner)
 
       if (!user) {
         setPhase("consent")
@@ -651,7 +656,7 @@ export default function MeetPage() {
       callType="web"
       pstnTranscriptionMode="batch"
       displayName={visitorName || user?.user_metadata?.full_name || user?.email?.split("@")[0]}
-      isInitiator={false}
+      isInitiator={isInitiator}
       onLeave={handleLeave}
     />
   )

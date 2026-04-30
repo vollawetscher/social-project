@@ -225,7 +225,7 @@ export function GlobalIncomingCallListener() {
         throw new Error(data.error || "Failed to accept call")
       }
       setIncomingInvite(null)
-      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${data.mode || "video"}`)
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${data.mode || "video"}&init=0`)
     } catch {
       // Keep listener resilient; user can retry from calls page.
     } finally {

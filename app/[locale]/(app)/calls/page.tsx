@@ -348,7 +348,7 @@ export default function CallsPage() {
       }
       const data = await res.json()
       setIncomingInvite(null)
-      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${data.mode || "video"}`)
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${data.mode || "video"}&init=0`)
     } catch (err: any) {
       toast.error(err?.message || "Failed to accept call")
     }
@@ -396,7 +396,7 @@ export default function CallsPage() {
         throw new Error(data.error || `Failed to create call (${res.status})`)
       }
       const data = await res.json()
-      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}`)
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}&init=1`)
     } catch (err: any) {
       console.error("[Calls] Failed to create call:", err)
       setError(err.message || "Failed to create call")
@@ -508,7 +508,7 @@ export default function CallsPage() {
       if (!res.ok) {
         throw new Error(data?.error || t('joinScheduledFailed'))
       }
-      router.push(`/call/${call.room_name}?callId=${call.id}&token=${encodeURIComponent(data.token)}&mode=${call.call_mode || "video"}`)
+      router.push(`/call/${call.room_name}?callId=${call.id}&token=${encodeURIComponent(data.token)}&mode=${call.call_mode || "video"}&init=${data.isInitiator ? "1" : "0"}`)
     } catch (err: any) {
       toast.error(err?.message || t('joinScheduledFailed'))
     }
@@ -600,7 +600,7 @@ export default function CallsPage() {
 
       setPendingCallMode(null)
       const ringParams = `&ringPhone=${encodeURIComponent(cleaned)}&ringCallerName=${encodeURIComponent(data.displayName || "Someone")}${ringContactName ? `&ringContactName=${encodeURIComponent(ringContactName)}` : ""}`
-      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=video${ringParams}`)
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=video&init=1${ringParams}`)
     } catch (err: any) {
       console.error("[Calls] Failed to create Ring+SMS call:", err)
       setError(err.message || "Failed to create call")
@@ -655,7 +655,7 @@ export default function CallsPage() {
         } else if (reachability?.state === "unknown") {
           toast.info("Callee availability is unknown. Invite sent.")
         }
-        router.push(`/call/${inviteData.roomName}?callId=${inviteData.callId}&token=${encodeURIComponent(inviteData.token)}&mode=${inAppMode}`)
+        router.push(`/call/${inviteData.roomName}?callId=${inviteData.callId}&token=${encodeURIComponent(inviteData.token)}&mode=${inAppMode}&init=1`)
         return
       }
 
@@ -685,7 +685,7 @@ export default function CallsPage() {
       }
 
       const transcriptionMode = mode === "audio" ? voicePstnTranscriptionMode : "batch"
-      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}&callType=pstn_outbound&phone=${encodeURIComponent(normalized)}&transcriptionMode=${encodeURIComponent(transcriptionMode)}`)
+      router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}&callType=pstn_outbound&phone=${encodeURIComponent(normalized)}&transcriptionMode=${encodeURIComponent(transcriptionMode)}&init=1`)
     } catch (err: any) {
       console.error("[Calls] Failed to create PSTN call:", err)
       setError(err.message || "Failed to create call")

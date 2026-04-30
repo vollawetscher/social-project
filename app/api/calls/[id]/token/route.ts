@@ -149,7 +149,13 @@ export async function POST(
 
     const token = await createRoomToken(call.room_name, identity, displayName)
 
-    return NextResponse.json({ token })
+    // The "initiator" is the host who originally created the call (call.user_id).
+    // Anyone else joining via this endpoint — guests opening a copied link,
+    // scheduled-meeting recipients, in-app callees — is not the initiator and
+    // should therefore not hear the outbound calling tone.
+    const isInitiator = Boolean(user && user.id === call.user_id)
+
+    return NextResponse.json({ token, isInitiator })
   } catch (error: any) {
     console.error('[Calls Token] Error:', error)
     return NextResponse.json({ error: 'Failed to generate token' }, { status: 500 })

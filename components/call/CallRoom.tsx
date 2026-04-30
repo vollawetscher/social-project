@@ -774,16 +774,55 @@ function CallRoomInner({
     }
   }, [isConnected, remoteParticipantsKey])
 
-  // Play ringtone for outbound calls while waiting for callee.
-  // Start ringing as soon as we're connecting OR connected with no remote participant.
-  // The minimum play duration (2.5 s) ensures the caller hears at least one ring
-  // even when the callee joins almost instantly (< 4 s pickup).
-  const shouldRing =
+  // Outbound ringtone — only the call's initiator hears it. The callee/host
+  // accepting an invite has nothing to ring for; they just joined a room.
+  // We also bail out as soon as the call has been declined / missed / ended
+  // remotely, even if LiveKit hasn't disconnected yet.
+  // The minimum play duration (2.5 s) ensures the caller hears at least one
+  // ring even when the callee joins almost instantly (< 4 s pickup).
+  const shouldRing = Boolean(
+    isInitiator &&
     (callType === "pstn_outbound" || callType === "web") &&
     !calleeLeft &&
+    !remoteCallEnded &&
     !remoteEverConnected.current &&
     (callStatus === "ringing" || callStatus === "connecting")
+  )
   useRingtone(shouldRing)
+
+  // One-shot "you're connected" ping the moment both sides are first present
+  // together. Replaces the abrupt silence on the initiator side when the
+  // callee picks up, and gives the callee positive feedback that they joined
+  // a room with someone in it. PSTN-outbound is excluded — the PSTN remote
+  // doesn't have a "joined" event we can hook into the same way, and the
+  // initiator already gets clear audio of the callee.
+  const entryPingFiredRef = useRef(false)
+  useEffect(() => {
+    if (entryPingFiredRef.current) return
+    if (callType === "pstn_outbound") return
+    if (!isConnected || !hasRemote) return
+    entryPingFiredRef.current = true
+    try {
+      const ctx = new AudioContext()
+      const now = ctx.currentTime
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "sine"
+      osc.frequency.value = 880
+      gain.gain.setValueAtTime(0, now)
+      gain.gain.linearRampToValueAtTime(0.07, now + 0.02)
+      gain.gain.setValueAtTime(0.07, now + 0.12)
+      gain.gain.linearRampToValueAtTime(0, now + 0.14)
+      osc.start(now)
+      osc.stop(now + 0.14)
+      // Close the context shortly after the tone finishes to release resources.
+      setTimeout(() => { ctx.close().catch(() => {}) }, 250)
+    } catch {
+      // Best-effort UX cue; ignore audio context failures.
+    }
+  }, [isConnected, hasRemote, callType])
 
   // Trigger Ring+SMS once room is connected
   useEffect(() => {

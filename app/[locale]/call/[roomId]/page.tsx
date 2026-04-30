@@ -32,6 +32,11 @@ export default function CallRoomPage() {
   const ringPhoneParam = searchParams?.get("ringPhone") || null
   const ringCallerNameParam = searchParams?.get("ringCallerName") || null
   const ringContactNameParam = searchParams?.get("ringContactName") || null
+  // `init=1` is set by navigators that already know the user is the initiator
+  // (call creation, scheduled-call rejoin from the banner). For navigators that
+  // don't yet know — link recipients hitting the setup page — `isInitiator`
+  // gets refined later from the token endpoint response.
+  const initParam = searchParams?.get("init") === "1"
 
   const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "consent" | "active" | "ended" | "error">("loading")
   const [callId, setCallId] = useState<string | null>(callIdParam)
@@ -43,6 +48,7 @@ export default function CallRoomPage() {
   const [joinDisplayName, setJoinDisplayName] = useState<string>("Guest")
   const [participantIdentity, setParticipantIdentity] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isInitiator, setIsInitiator] = useState<boolean>(initParam)
 
   useEffect(() => {
     if (authLoading) return
@@ -134,6 +140,11 @@ export default function CallRoomPage() {
 
       const data = await res.json()
       setToken(data.token)
+      // The token endpoint is the authoritative source for initiator status
+      // when the user arrives without a pre-issued token in the URL.
+      if (typeof data.isInitiator === "boolean") {
+        setIsInitiator(data.isInitiator)
+      }
 
       // Non-initiators must explicitly confirm consent before joining.
       // This applies to both audio and video joins in the browser.
@@ -290,7 +301,7 @@ export default function CallRoomPage() {
       contactName={contactName}
       contactPhone={phoneParam || undefined}
       displayName={user?.user_metadata?.full_name || user?.email?.split("@")[0]}
-      isInitiator={!!tokenParam}
+      isInitiator={isInitiator}
       onLeave={handleLeave}
       ringSmsParams={ringPhoneParam ? {
         phoneNumber: ringPhoneParam,
