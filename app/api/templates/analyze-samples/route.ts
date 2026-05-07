@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse-fork'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -141,6 +142,7 @@ Respond ONLY with valid JSON in this exact format:
           role: 'user',
           content: analysisPrompt,
         },
+        JSON_PREFILL,
       ],
     })
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
@@ -150,7 +152,8 @@ Respond ONLY with valid JSON in this exact format:
       })
     }
 
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const rawResponseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const responseText = withJsonPrefill(rawResponseText)
     console.log('[Template Analysis] Claude response:', responseText.substring(0, 500))
 
     // Parse JSON response

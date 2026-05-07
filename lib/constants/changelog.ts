@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.1',
+    date: 'May 7, 2026',
+    entries: [
+      {
+        version: '1.36.1',
+        date: 'May 7, 2026',
+        category: 'fix',
+        title: 'More Reliable Analysis for German Audio',
+        description: 'Fixed an issue where some audio uploads — most often longer recordings in German — could fail at the analysis step with a generic "processing failed" error. Gave the AI more room to produce a complete analysis so these sessions now succeed on the first try.',
+      },
+    ],
+  },
+  {
     version: '1.36.0',
     date: 'April 30, 2026',
     entries: [

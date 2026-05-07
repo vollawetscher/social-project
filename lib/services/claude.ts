@@ -9,6 +9,7 @@ import {
 } from '@/lib/types/database'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
 
 export interface ClaudeConfig {
   apiKey: string
@@ -136,14 +137,18 @@ If information is not available, omit the field.`
         model: 'claude-sonnet-4-5-20250929',
         max_tokens: 2048,
         temperature: 0.1,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'user', content: prompt },
+          JSON_PREFILL,
+        ],
       })
       this.trackUsage(message, 'claude/analyze-context')
 
-      const responseText = message.content
+      const rawText = message.content
         .filter((block) => block.type === 'text')
         .map((block) => ('text' in block ? block.text : ''))
         .join('\n')
+      const responseText = withJsonPrefill(rawText)
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
@@ -411,14 +416,18 @@ Respond ONLY with a JSON object in this format:
         model: 'claude-sonnet-4-5-20250929',
         max_tokens: 500,
         temperature: 0.2,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'user', content: prompt },
+          JSON_PREFILL,
+        ],
       })
       this.trackUsage(message, 'claude/detect-domain')
 
-      const responseText = message.content
+      const rawText = message.content
         .filter((block) => block.type === 'text')
         .map((block) => (block as Anthropic.TextBlock).text)
         .join('\n')
+      const responseText = withJsonPrefill(rawText)
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
@@ -462,7 +471,10 @@ Respond ONLY with a JSON object in this format:
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 16384,
       temperature: 0.3,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'user', content: prompt },
+        JSON_PREFILL,
+      ],
     })
     this.trackUsage(message, 'claude/generate-report')
 
@@ -470,10 +482,11 @@ Respond ONLY with a JSON object in this format:
       console.warn('[generateReport] Response was truncated (hit max_tokens). Report may be incomplete.')
     }
 
-    const responseText = message.content
+    const rawText = message.content
       .filter((block) => block.type === 'text')
       .map((block) => (block as Anthropic.TextBlock).text)
       .join('\n')
+    const responseText = withJsonPrefill(rawText)
 
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
@@ -511,6 +524,7 @@ Respond ONLY with a JSON object in this format:
             role: 'user',
             content: prompt,
           },
+          JSON_PREFILL,
         ],
       })
       this.trackUsage(message, 'claude/generate-gespraechsbericht')
@@ -519,10 +533,11 @@ Respond ONLY with a JSON object in this format:
         console.warn('[generateGespraechsbericht] Response was truncated (hit max_tokens). Report may be incomplete.')
       }
 
-      const responseText = message.content
+      const rawText = message.content
         .filter((block) => block.type === 'text')
         .map((block) => (block as Anthropic.TextBlock).text)
         .join('\n')
+      const responseText = withJsonPrefill(rawText)
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {

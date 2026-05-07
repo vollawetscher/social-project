@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -53,6 +54,7 @@ The user's rough instructions: "${description || '(none provided, infer from the
 Return ONLY a valid JSON object with exactly these two keys, nothing else:
 {"instructions": "...", "description": "..."}`,
         },
+        JSON_PREFILL,
       ],
     })
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
@@ -64,12 +66,13 @@ Return ONLY a valid JSON object with exactly these two keys, nothing else:
 
     const rawText =
       message.content[0].type === 'text' ? message.content[0].text.trim() : ''
+    const responseText = withJsonPrefill(rawText)
 
     let enhancedInstructions = ''
     let generatedDescription = ''
 
     try {
-      const parsed = JSON.parse(rawText)
+      const parsed = JSON.parse(responseText)
       enhancedInstructions = (parsed.instructions || '').trim()
       generatedDescription = (parsed.description || '').substring(0, 250).trim()
     } catch {

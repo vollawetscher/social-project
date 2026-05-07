@@ -49,7 +49,7 @@ const LENGTH_MULTIPLIER: Record<OutputLengthPreference, number> = {
 
 const DEFAULT_BUDGETS: Record<TokenBudgetTask, BudgetDefaults> = {
   session_analyze: {
-    minTokens: 2500,
+    minTokens: 3500,
     maxTokens: 4096,
     scalingFactor: 1.1,
   },

@@ -4,6 +4,7 @@ import { buildPulsePrompt } from '@/lib/services/pulse/buildPulsePrompt'
 import type { ProjectPulse, PulseSessionInput, ParticipantEntry, DecisionEntry } from '@/lib/types/pulse'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { normalizeLanguageCode } from '@/lib/utils/language'
+import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -281,7 +282,10 @@ export async function runPulseUpdateJob(input: {
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-5-20250929',
     max_tokens: 2000,
-    messages: [{ role: 'user', content: user }],
+    messages: [
+      { role: 'user', content: user },
+      JSON_PREFILL,
+    ],
     system,
   })
   const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
@@ -295,7 +299,7 @@ export async function runPulseUpdateJob(input: {
     .filter((block) => block.type === 'text')
     .map((block) => ('text' in block ? block.text : ''))
     .join('\n')
-  const parsed = parseClaudeJson(text)
+  const parsed = parseClaudeJson(withJsonPrefill(text))
   const fallbackIntent = buildFallbackIntent({
     sessionPurpose: sessionInput.purpose,
     caseTitle: (caseRow as any)?.title,

@@ -9,6 +9,7 @@ import { resolveTokenBudget } from '@/lib/services/token-budget'
 import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/services/queue'
 import { createNotification } from '@/lib/services/notification-service'
 import { normalizeLanguageCode, resolveOutputLanguageCode, LANG_NAMES } from '@/lib/utils/language'
+import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -60,7 +61,14 @@ function extractBalancedJsonObject(input: string): string | null {
 
 function repairTruncatedJson(text: string): string | null {
   let s = text.trim()
-  if (!s.startsWith('{')) return null
+  s = s.replace(/^`{3,}\s*(?:json)?\s*\n?/i, '').replace(/\n?`{3,}\s*$/i, '').trim()
+  if (s.startsWith('{')) {
+    // already starts with object body
+  } else {
+    const objStart = s.indexOf('{')
+    if (objStart < 0) return null
+    s = s.slice(objStart)
+  }
 
   let inStr = false
   let escaped = false
@@ -963,7 +971,8 @@ Branch B (low confidence — ASK):
 - Add "sessionSummary" as 2-5 concise bullets in **${outputLangName}**, focused on what happened, decisions, and next actions.
 - For wordCorrections: only flag high-confidence corrections (names, places, technical terms that ASR clearly misspelled). Empty array if none.
 - For speakerMerges: only suggest if clearly fewer actual speakers than labels. Empty array if none.`
-        }
+        },
+        JSON_PREFILL,
       ]
     })
     console.log('[Analyze API] Claude responded successfully')
@@ -977,10 +986,36 @@ Branch B (low confidence — ASK):
       })
     }
 
-    // Parse Claude's response
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    // Parse Claude's response — re-attach the prefilled `{` before parsing.
+    const rawResponseText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const responseText = withJsonPrefill(rawResponseText)
     console.log('[Analyze API] Claude response:', responseText.substring(0, 200))
-    const analysis = parseAnalysisResponseText(responseText)
+    let analysis: Record<string, any>
+    try {
+      analysis = parseAnalysisResponseText(responseText)
+    } catch (parseError: any) {
+      const head = responseText.slice(0, 400)
+      const tail = responseText.length > 800 ? responseText.slice(-400) : ''
+      await logPipelineEvent({
+        sessionId: params.id,
+        caseId: (session as any)?.case_id || null,
+        userId,
+        stage: 'analyze',
+        event: 'parse_failed',
+        severity: 'critical',
+        metadata: {
+          message: String(parseError?.message || 'parse failed'),
+          stopReason: (message as { stop_reason?: string | null }).stop_reason ?? null,
+          outputTokens: usage?.output_tokens ?? null,
+          inputTokens: usage?.input_tokens ?? null,
+          maxTokens: analysisBudget.maxTokens,
+          responseLength: responseText.length,
+          responseHead: head,
+          responseTail: tail,
+        },
+      }, supabase)
+      throw parseError
+    }
     console.log('[Analyze API] Parsed analysis:', JSON.stringify(analysis).substring(0, 300))
     console.log('[Analyze API] AI identified participants:', JSON.stringify(analysis.extractedContext?.participants, null, 2))
 

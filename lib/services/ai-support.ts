@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createErrorLogger } from './error-logger'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { recordAiTokens } from './usage-tracker'
+import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -89,6 +90,7 @@ Focus on:
 4. Actionable recommendations
 5. Long-term prevention strategies`,
         },
+        JSON_PREFILL,
       ],
     })
     const caseUsage = (aiResponse as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
@@ -168,6 +170,7 @@ Provide concise analysis in JSON format:
   "preventionStrategies": ["Prevention 1", "Prevention 2"]
 }`,
         },
+        JSON_PREFILL,
       ],
     })
     const sessionUsage = (aiResponse as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
@@ -333,8 +336,9 @@ Provide 2-3 paragraphs analyzing:
     recommendations: string[]
     preventionStrategies: string[]
   } {
-    const content =
+    const rawContent =
       response.content[0].type === 'text' ? response.content[0].text : ''
+    const content = withJsonPrefill(rawContent)
 
     try {
       // Try to extract JSON from response

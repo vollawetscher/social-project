@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -281,6 +282,7 @@ Constraints:
 - correctionPlaceholder: a short, realistic example correction a person in THIS specific role might give — e.g. for a lawyer it might be "Not litigation — mostly M&A and corporate advisory", for a doctor "Not hospital setting — private outpatient clinic". It should help them understand what kind of refinement is useful.
 - No markdown, no explanation, JSON only.`,
         },
+        JSON_PREFILL,
       ],
     })
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
@@ -291,7 +293,8 @@ Constraints:
       })
     }
 
-    const raw = message.content[0]?.type === 'text' ? message.content[0].text : ''
+    const rawContent = message.content[0]?.type === 'text' ? message.content[0].text : ''
+    const raw = withJsonPrefill(rawContent)
 
     // Check for not-relevant gate response first
     try {

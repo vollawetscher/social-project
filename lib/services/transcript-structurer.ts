@@ -5,6 +5,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { logError } from '@/lib/services/error-logger'
 import type { TranscriptContentKind, TranscriptDetectedType } from '@/lib/utils/transcript-type-detection'
+import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
 
 export interface StructuredSegment {
   start_ms: number
@@ -83,6 +84,7 @@ export async function structureTranscript(
             role: 'user',
             content: `${STRUCTURE_PROMPT}\n\nLanguage hint: ${language}\n\nRaw content:\n\n${truncated}`,
           },
+          JSON_PREFILL,
         ],
       }),
       new Promise<never>((_, reject) =>
@@ -106,13 +108,14 @@ export async function structureTranscript(
     throw err
   }
 
-  const text =
+  const rawClaudeText =
     response.content?.[0]?.type === 'text'
       ? (response.content[0] as { text: string }).text
       : ''
-  if (!text.trim()) {
+  if (!rawClaudeText.trim()) {
     throw new Error('AI structuring returned empty response')
   }
+  const text = withJsonPrefill(rawClaudeText)
 
   // Extract JSON from response (prefer object payload, fallback to array-only legacy payload)
   const cleaned = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim()
