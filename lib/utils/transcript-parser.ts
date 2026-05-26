@@ -322,11 +322,16 @@ function parseChatFormat(content: string): ParseResult | null {
  * Parse timestamped speaker-line format: [M:SS] S1: text or [MM:SS] Speaker 1: text
  * Common in Notissima exports and similar transcript tools.
  */
+const TIMESTAMPED_SPEAKER_LINE_RE = new RegExp(
+  `^\\[(\\d{1,2}):(\\d{2})(?::(\\d{2}))?\\]\\s*(${STRICT_SPEAKER_LABEL}|S\\d+|Speaker\\s*\\d+|Speaker_\\d+|SPEAKER_\\d+)\\s*:\\s*(.+)$`,
+  'iu'
+)
+
 function parseTimestampedSpeakerLines(content: string): ParseResult | null {
   const lines = content.trim().split(/\r?\n/).filter(l => l.trim().length > 0)
   if (lines.length < 2) return null
 
-  const linePattern = /^\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]\s*([A-ZÄÖÜ][\p{L}\p{N}.'’\- ]{1,80}|S\d+|Speaker\s*\d+|Speaker_\d+|SPEAKER_\d+)\s*:\s*(.+)$/iu
+  const linePattern = TIMESTAMPED_SPEAKER_LINE_RE
   const matched: { startMs: number; speaker: string; text: string }[] = []
   let misses = 0
 

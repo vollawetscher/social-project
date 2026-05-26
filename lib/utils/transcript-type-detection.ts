@@ -40,7 +40,7 @@ const SPEAKER_TIMESTAMP_LINE_RE =
   /^\s*(?:Sprecher\s*\d+|Speaker\s*\d+|S\d+)\s+\d{1,2}:\d{2}\s+\S+/i
 
 const SQUARE_TS_SPEAKER_RE =
-  /^\s*\[\d{1,2}:\d{2}(?::\d{2})?\]\s*[A-Z][A-Za-z0-9.'’\- ]{0,70}:\s+\S+/i
+  /^\s*\[\d{1,2}:\d{2}(?::\d{2})?\]\s*[A-Z][A-Za-z0-9.'’\- ]*(?:\s*\([^)]{1,120}\))?\s*:\s+\S+/i
 
 const INLINE_TS_RE = /\b\d{1,2}:\d{2}(?::\d{2})?\b/
 const SUBTITLE_ARROW_RE = /-->/

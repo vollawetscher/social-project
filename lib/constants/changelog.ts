@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.2',
+    date: 'May 26, 2026',
+    entries: [
+      {
+        version: '1.36.2',
+        date: 'May 26, 2026',
+        category: 'fix',
+        title: 'Transcript Import With Speaker Status Labels',
+        description: 'Pasted or uploaded transcripts with speaker status tags — like "Chris (Unverified)" — are now recognized correctly, with timestamps and speaker names preserved instead of merged into garbled text.',
+      },
+    ],
+  },
+  {
     version: '1.36.1',
     date: 'May 7, 2026',
     entries: [
