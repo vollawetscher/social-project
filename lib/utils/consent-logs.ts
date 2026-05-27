@@ -33,7 +33,7 @@ export function normalizeConsentLogsForDisplay(
     }
   }
 
-  let result = [...byIdentity.values()]
+  let result = Array.from(byIdentity.values())
 
   const guestByName = new Map<string, ConsentLogRow[]>()
   for (const log of result) {
@@ -44,13 +44,13 @@ export function normalizeConsentLogsForDisplay(
     group.push(log)
     guestByName.set(nameKey, group)
   }
-  for (const group of guestByName.values()) {
-    if (group.length <= 1) continue
+  Array.from(guestByName.values()).forEach((group) => {
+    if (group.length <= 1) return
     const keep = group.sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     )[0]
     result = result.filter((log) => !group.includes(log) || log === keep)
-  }
+  })
 
   const callUserId = options?.callUserId
   const hostDisplayName = options?.hostDisplayName?.trim()
