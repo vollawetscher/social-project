@@ -17,23 +17,22 @@ export interface CallNoteTimingContext {
 
 export function parseTimedCallNotes(value: unknown): TimedCallNote[] {
   if (!Array.isArray(value)) return []
-  return value
-    .map((entry) => {
-      if (!entry || typeof entry !== 'object') return null
-      const text = String((entry as TimedCallNote).text || '').trim()
-      const start_ms = Number((entry as TimedCallNote).start_ms)
-      if (!text || !Number.isFinite(start_ms) || start_ms < 0) return null
-      return {
-        id: String((entry as TimedCallNote).id || ''),
-        text,
-        start_ms: Math.round(start_ms),
-        author_name: (entry as TimedCallNote).author_name
-          ? String((entry as TimedCallNote).author_name)
-          : undefined,
-        created_at: String((entry as TimedCallNote).created_at || new Date().toISOString()),
-      } satisfies TimedCallNote
-    })
-    .filter((entry): entry is TimedCallNote => Boolean(entry && entry.id))
+  return value.flatMap((entry): TimedCallNote[] => {
+    if (!entry || typeof entry !== 'object') return []
+    const text = String((entry as TimedCallNote).text || '').trim()
+    const start_ms = Number((entry as TimedCallNote).start_ms)
+    const id = String((entry as TimedCallNote).id || '').trim()
+    if (!text || !id || !Number.isFinite(start_ms) || start_ms < 0) return []
+    return [{
+      id,
+      text,
+      start_ms: Math.round(start_ms),
+      author_name: (entry as TimedCallNote).author_name
+        ? String((entry as TimedCallNote).author_name)
+        : undefined,
+      created_at: String((entry as TimedCallNote).created_at || new Date().toISOString()),
+    }]
+  })
 }
 
 function noteSegmentDurationMs(text: string): number {
