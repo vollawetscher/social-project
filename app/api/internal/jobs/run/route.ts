@@ -73,6 +73,7 @@ async function processSessionAnalyzeJob(request: Request, job: AsyncJobRow): Pro
     throw new Error('INTERNAL_API_SECRET is not configured')
   }
 
+  const force = payload.force === true
   const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/analyze`, {
     method: 'POST',
     headers: {
@@ -80,7 +81,9 @@ async function processSessionAnalyzeJob(request: Request, job: AsyncJobRow): Pro
       'x-internal-secret': secret,
       'x-internal-user-id': job.user_id,
       'x-queue-worker': '1',
+      ...(force ? { 'x-analyze-force': '1' } : {}),
     },
+    body: JSON.stringify({ force }),
   })
 
   const data = await response.json().catch(() => ({}))

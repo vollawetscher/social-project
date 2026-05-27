@@ -73,11 +73,11 @@ export async function POST(request: Request) {
 
     const { data: dueCalls, error: dueCallsError } = await supabase
       .from('calls')
-      .select('id, user_id, callee_user_id, room_name, contact_name, scheduled_for, guest_invite_email, guest_reminder_email_sent_at, initiator_reminder_sms_sent_at')
+      .select('id, user_id, callee_user_id, room_name, contact_name, scheduled_for, scheduled_timezone, guest_invite_email, guest_reminder_email_sent_at, initiator_reminder_sms_sent_at')
       .in('status', ['scheduled', 'invited', 'waiting'])
       .not('user_id', 'is', null)
       .not('room_name', 'is', null)
-      .gte('scheduled_for', new Date(now - leadMinutes * 60 * 1000).toISOString())
+      .gt('scheduled_for', new Date(now).toISOString())
       .lte('scheduled_for', new Date(windowEnd).toISOString())
       .order('scheduled_for', { ascending: true })
       .limit(200)
@@ -132,7 +132,8 @@ export async function POST(request: Request) {
       ) {
         const joinUrl = `${baseUrl}/call/${call.room_name}?callId=${call.id}`
         const initiatorTimezone = call.user_id ? (timezoneByUserId.get(call.user_id) ?? null) : null
-        const startsAt = toDisplayTime(String(call.scheduled_for), initiatorLocale, initiatorTimezone)
+        const displayTimezone = call.scheduled_timezone || initiatorTimezone
+        const startsAt = toDisplayTime(String(call.scheduled_for), initiatorLocale, displayTimezone)
 
         const sms = await sendInitiatorReminderSMS(initiatorPhone, joinUrl, startsAt, initiatorLocale)
         recordSmsUsage(supabase, call.user_id || null, {
@@ -176,7 +177,8 @@ export async function POST(request: Request) {
       const startsAtIso = String(call.scheduled_for)
       const initiatorTimezone = call.user_id ? (timezoneByUserId.get(call.user_id) ?? null) : null
       const locale = inferLocaleFromPhone(call.user_id ? (phoneByUserId.get(call.user_id) ?? '') : '')
-      const startsAt = toDisplayTime(startsAtIso, locale, initiatorTimezone)
+      const guestTimezone = call.scheduled_timezone || initiatorTimezone
+      const startsAt = toDisplayTime(startsAtIso, locale, guestTimezone)
 
       const callTitle = call.contact_name?.trim() || null
       const subject = callTitle

@@ -22,6 +22,7 @@ import {
   X,
   Loader2,
   Sparkles,
+  RefreshCw,
   LayoutTemplate,
   UserRoundPlus,
   Users,
@@ -714,6 +715,68 @@ export default function SessionDetailPage() {
     }
   }
 
+  const handleForceReanalyze = async () => {
+    if (!confirm(t('reanalyzeConfirm'))) return
+    if (analyzeBusyRef.current) return
+    analyzeBusyRef.current = true
+    setAnalyzing(true)
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: true }),
+      })
+
+      if (response.status === 403) {
+        toast.error(t('reanalyzeForbidden'))
+        return
+      }
+
+      if (response.status === 202) {
+        toast.info(t('reanalyzeProgress'), { id: 'analyze-progress', duration: 30000 })
+        const pollDelays = [3000, 5000, 8000, 12000, 18000, 25000]
+        for (const delay of pollDelays) {
+          await new Promise(r => setTimeout(r, delay))
+          try {
+            const poll = await fetch(`/api/sessions/${sessionId}/analyze`, { method: 'POST' })
+            if (poll.ok) {
+              const data = await poll.json()
+              toast.dismiss('analyze-progress')
+              toast.success(t('reanalyzeComplete'), { duration: 3000 })
+              setAnalysis(data)
+              setSession(prev => prev ? {
+                ...prev,
+                recordingType: data.recordingType,
+                recordingTypeConfidence: data.recordingTypeConfidence,
+                domains: data.domains,
+                extractedContext: data.extractedContext || {},
+                suggestedOutputFormats: data.suggestedOutputFormats || [],
+              } : null)
+              window.location.reload()
+              return
+            }
+            if (poll.status !== 202) break
+          } catch { /* network error, try next */ }
+        }
+        toast.dismiss('analyze-progress')
+        toast.info(t('reanalyzeStillRunning'))
+      } else if (response.ok) {
+        toast.success(t('reanalyzeComplete'), { duration: 3000 })
+        window.location.reload()
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.error || t('reanalyzeFailed'))
+      }
+    } catch (error) {
+      console.error('[Force re-analyze] Error:', error)
+      toast.error(t('reanalyzeFailed'))
+    } finally {
+      analyzeBusyRef.current = false
+      setAnalyzing(false)
+    }
+  }
+
   // Fetch real session data
   useEffect(() => {
     async function fetchSession() {
@@ -1350,6 +1413,23 @@ export default function SessionDetailPage() {
                 <span className="hidden sm:inline">Hand off</span>
               </Button>
             </>
+          )}
+          {isAdmin && session.transcript?.length > 0 && session.status === 'ready' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleForceReanalyze}
+              disabled={analyzing}
+              className="gap-1.5"
+              title={t('reanalyze')}
+            >
+              {analyzing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">{t('reanalyze')}</span>
+            </Button>
           )}
           {/* Context panel toggle - floating sheet, transcript stays full width */}
           <Button

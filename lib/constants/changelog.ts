@@ -14,6 +14,58 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.9',
+    date: 'May 27, 2026',
+    entries: [
+      {
+        version: '1.36.9',
+        date: 'May 27, 2026',
+        category: 'feature',
+        title: 'Admin Re-analyze Sessions',
+        description: 'Admins can re-run AI analysis on any session to refresh speaker labels, context, and suggestions — useful when analysis logic improves or speakers were misidentified.',
+      },
+    ],
+  },
+  {
+    version: '1.36.8',
+    date: 'May 27, 2026',
+    entries: [
+      {
+        version: '1.36.8',
+        date: 'May 27, 2026',
+        category: 'fix',
+        title: 'Correct Speaker Names on Meeting Link Calls',
+        description: 'When someone calls you through your personal meeting link, transcripts now correctly identify you as the host and your caller as the guest — instead of swapping who said what based on who spoke first.',
+      },
+    ],
+  },
+  {
+    version: '1.36.7',
+    date: 'May 27, 2026',
+    entries: [
+      {
+        version: '1.36.7',
+        date: 'May 27, 2026',
+        category: 'fix',
+        title: 'Notes on Personal Meeting Link Calls',
+        description: 'When someone calls you through your personal meeting link, you can now take timestamped in-call notes — the same as when you start a call yourself.',
+      },
+    ],
+  },
+  {
+    version: '1.36.6',
+    date: 'May 27, 2026',
+    entries: [
+      {
+        version: '1.36.6',
+        date: 'May 27, 2026',
+        category: 'fix',
+        title: 'Scheduled Call Times Fixed',
+        description: 'Rescheduled and reminder emails now show the correct local time, past dates can no longer be selected, and expired scheduled calls disappear from your upcoming list when their planned duration ends.',
+      },
+    ],
+  },
+  {
     version: '1.36.5',
     date: 'May 27, 2026',
     entries: [

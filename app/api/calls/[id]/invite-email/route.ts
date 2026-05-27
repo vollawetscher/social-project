@@ -6,6 +6,7 @@ import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-emai
 import { logError } from '@/lib/services/error-logger'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
 import { buildInviteIcs } from '@/lib/utils/invite-ics'
+import { formatScheduledCallTime } from '@/lib/utils/scheduled-call'
 
 export async function POST(
   request: Request,
@@ -25,7 +26,7 @@ export async function POST(
 
     const { data: call, error: callError } = await supabase
       .from('calls')
-      .select('id, user_id, room_name, scheduled_for, scheduled_duration_min, contact_name')
+      .select('id, user_id, room_name, scheduled_for, scheduled_duration_min, scheduled_timezone, contact_name')
       .eq('id', callId)
       .single()
 
@@ -39,12 +40,19 @@ export async function POST(
       return NextResponse.json({ error: 'Call is not scheduled' }, { status: 400 })
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('timezone')
+      .eq('id', user.id)
+      .single()
+
     const joinUrl = `${getAppBaseUrl()}/call/${call.room_name}?callId=${call.id}`
     const startAt = new Date(call.scheduled_for)
     const durationMin = Number(call.scheduled_duration_min || 30)
     const endAtIso = new Date(startAt.getTime() + durationMin * 60 * 1000).toISOString()
     const title = call.contact_name?.trim() || 'Notissima scheduled video call'
-    const when = startAt.toLocaleString()
+    const tz = call.scheduled_timezone || profile?.timezone || 'UTC'
+    const when = formatScheduledCallTime(call.scheduled_for, tz)
     const html = `<p>You are invited to a scheduled Notissima video call.</p><p><strong>When:</strong> ${when}</p><p><strong>Duration:</strong> ${durationMin} min</p><p><a href="${joinUrl}">Join call</a></p>`
     const textBody = [
       'You are invited to a scheduled Notissima video call.',

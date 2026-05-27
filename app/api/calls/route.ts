@@ -56,6 +56,9 @@ export async function POST(request: Request) {
       if (Number.isNaN(parsedSchedule.getTime())) {
         return NextResponse.json({ error: 'Invalid scheduledFor datetime' }, { status: 400 })
       }
+      if (parsedSchedule.getTime() <= Date.now()) {
+        return NextResponse.json({ error: 'Scheduled time must be in the future' }, { status: 400 })
+      }
       scheduledForIso = parsedSchedule.toISOString()
       const combinedInviteEmails = Array.from(new Set([
         ...(Array.isArray(inviteEmails) ? inviteEmails : []),

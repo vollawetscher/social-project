@@ -215,6 +215,14 @@ type SpeakerResolution = {
   reason: string
 }
 
+/** Personal meeting link: host (session owner) identity is always known. */
+type MeetingLinkContext = {
+  hostUserId: string
+  hostName: string
+  guestName: string | null
+  participantAIdentity: string | null
+}
+
 const normalizeHumanName = (name: string | null | undefined): string =>
   String(name || '')
     .trim()
@@ -248,8 +256,8 @@ function addressMatchesName(text: string, name: string): boolean {
   const t = normalizeForMatch(text)
   const escaped = fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const addressPatterns = new RegExp(
-    `\\b(hey|hi|hallo|hello|guten tag|moin|servus|gr[uü][sß]|how are you|wie geht)\\b[\\s,]*${escaped}\\b` +
-    `|\\b${escaped}[\\s,]+(are you|bist du|sind sie|h[oö]rst du|kannst du)`
+    `\\b(hey|hi|hallo|hello|guten tag|moin|servus|gr[uü][sß]|how are you|wie geht|bye|thanks|thank you|danke|ciao|cheers|okay|ok)\\b[\\s,]*${escaped}\\b` +
+    `|\\b${escaped}[\\s,]+(are you|bist du|sind sie|h[oö]rst du|kannst du|how are you)`
   )
   return addressPatterns.test(t)
 }
@@ -285,6 +293,43 @@ function aggregateSpeakers(
   return bySpeaker
 }
 
+function resolveMeetingLinkSpeakers(
+  majorA: SpeakerAgg,
+  majorB: SpeakerAgg,
+  majorByStart: SpeakerAgg[],
+  ml: MeetingLinkContext,
+): { hostSpeaker: string; guestSpeaker: string; reason: string } | null {
+  const host = normalizeHumanName(ml.hostName)
+  const guest = normalizeHumanName(ml.guestName)
+  if (!host || !guest) return null
+
+  for (const sp of [majorA, majorB]) {
+    const otherSp = sp === majorA ? majorB : majorA
+    const allText = sp.texts.join(' ')
+    if (addressMatchesName(allText, guest) || speakerMatchesName(allText, host)) {
+      return { hostSpeaker: sp.speaker, guestSpeaker: otherSp.speaker, reason: 'pml_content_hint' }
+    }
+    if (speakerMatchesName(allText, guest)) {
+      return { hostSpeaker: otherSp.speaker, guestSpeaker: sp.speaker, reason: 'pml_content_hint' }
+    }
+  }
+
+  const guestCalledIn = ml.participantAIdentity != null && ml.participantAIdentity !== ml.hostUserId
+  if (guestCalledIn) {
+    return {
+      hostSpeaker: majorByStart[1].speaker,
+      guestSpeaker: majorByStart[0].speaker,
+      reason: 'pml_guest_called_first',
+    }
+  }
+
+  return {
+    hostSpeaker: majorByStart[0].speaker,
+    guestSpeaker: majorByStart[1].speaker,
+    reason: 'pml_host_waiting_first',
+  }
+}
+
 function buildSpeakerResolution(params: {
   segments: Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>
   callType?: string | null
@@ -292,6 +337,7 @@ function buildSpeakerResolution(params: {
   sessionUserId?: string | null
   initiatorName?: string | null
   otherParticipantName?: string | null
+  meetingLinkContext?: MeetingLinkContext | null
 }): SpeakerResolution | null {
   const bySpeaker = aggregateSpeakers(params.segments)
   const ranked = Array.from(bySpeaker.values())
@@ -345,6 +391,17 @@ function buildSpeakerResolution(params: {
 
   let reason = 'transcript_hints'
   if (!initiatorSpeaker && !otherSpeaker) {
+    const pml = params.meetingLinkContext
+      ? resolveMeetingLinkSpeakers(majorA, majorB, majorByStart, params.meetingLinkContext)
+      : null
+    if (pml) {
+      initiatorSpeaker = pml.hostSpeaker
+      otherSpeaker = pml.guestSpeaker
+      reason = pml.reason
+    }
+  }
+
+  if (!initiatorSpeaker && !otherSpeaker) {
     const isPstn = (params.callType || '').includes('pstn')
     if (isPstn) {
       otherSpeaker = majorByStart[0].speaker
@@ -383,9 +440,18 @@ function buildSpeakerResolution(params: {
     { name: otherLabel, role: null, isUser: !userIsInitiator },
   ]
 
+  const isMeetingLinkHost =
+    !!params.meetingLinkContext &&
+    params.sessionUserId === params.meetingLinkContext.hostUserId
+
   const participantParts: string[] = []
-  participantParts.push(`${initiatorLabel} (${userIsInitiator ? 'You, session owner' : 'other participant'})`)
-  participantParts.push(`${otherLabel} (${!userIsInitiator ? 'You, session owner' : 'other participant'})`)
+  if (isMeetingLinkHost) {
+    participantParts.push(`${initiatorLabel} (You, meeting link host / session owner)`)
+    participantParts.push(`${otherLabel} (Guest who called your link)`)
+  } else {
+    participantParts.push(`${initiatorLabel} (${userIsInitiator ? 'You, session owner' : 'other participant'})`)
+    participantParts.push(`${otherLabel} (${!userIsInitiator ? 'You, session owner' : 'other participant'})`)
+  }
 
   for (const sp of additionalSpeakers) {
     const label = sp.speaker
@@ -444,9 +510,32 @@ export async function POST(
 
     const isWorkerSync = request.headers.get('x-queue-worker') === '1'
 
+    let force = request.headers.get('x-analyze-force') === '1'
+    if (!force) {
+      try {
+        const body = await request.json()
+        force = body?.force === true
+      } catch {
+        // empty body is fine for normal analyze requests
+      }
+    }
+
+    // Admin-only: force re-analyze bypasses cached analysis
+    if (force && !isInternalCall && !isWorkerSync) {
+      const { data: adminProfile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single()
+      if (adminProfile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
+
     // Quick cache check: if already analyzed, return cached data without heavy processing
-    if (!isWorkerSync) {
+    if (!isWorkerSync && !force) {
       const cacheClient = isInternalCall ? createServiceRoleClient() : supabase
+      const svcClient = createServiceRoleClient()
       const { data: cachedSession } = await cacheClient
         .from('sessions')
         .select('recording_type, recording_type_confidence, suggested_domains, ai_extracted_context, suggested_output_formats, context_locked, user_recording_type, user_domains, transcript_corrections')
@@ -455,6 +544,20 @@ export async function POST(
 
       const alreadyCached = cachedSession?.recording_type && cachedSession?.suggested_domains && cachedSession?.ai_extracted_context
       if (alreadyCached) {
+        const { data: pendingJob } = await svcClient
+          .from('async_jobs')
+          .select('id')
+          .eq('idempotency_key', `session_analyze:${params.id}`)
+          .in('status', ['pending', 'running'])
+          .maybeSingle()
+        if (pendingJob) {
+          console.log('[Analyze API] Analysis in progress, returning 202')
+          return NextResponse.json(
+            { queued: true, jobId: pendingJob.id },
+            { status: 202 }
+          )
+        }
+
         console.log('[Analyze API] Returning cached analysis (quick path)')
         return NextResponse.json({
           recordingType: cachedSession.user_recording_type || cachedSession.recording_type,
@@ -470,7 +573,6 @@ export async function POST(
       // Not cached — enqueue for async processing
       if (!isInternalCall) {
         // Clear any old completed job so a fresh analysis can be enqueued
-        const svcClient = createServiceRoleClient()
         await svcClient
           .from('async_jobs')
           .delete()
@@ -492,6 +594,30 @@ export async function POST(
           { status: 202 }
         )
       }
+    }
+
+    // Admin force re-analyze: enqueue a fresh job that bypasses cached analysis
+    if (!isWorkerSync && force && !isInternalCall) {
+      const svcClient = createServiceRoleClient()
+      await svcClient
+        .from('async_jobs')
+        .delete()
+        .eq('idempotency_key', `session_analyze:${params.id}`)
+
+      const job = await enqueueAsyncJob({
+        userId,
+        jobType: 'session_analyze',
+        payload: { sessionId: params.id, force: true },
+        idempotencyKey: `session_analyze:${params.id}`,
+        maxAttempts: 5,
+      })
+      await linkJobToSession(job.id, params.id)
+      triggerAsyncWorker()
+      console.log('[Analyze API] Force re-analyze enqueued, jobId:', job.id)
+      return NextResponse.json(
+        { queued: true, jobId: job.id, force: true },
+        { status: 202 }
+      )
     }
 
     // Fetch user profile for name comparison (and admin check for session fetch)
@@ -577,7 +703,7 @@ export async function POST(
     const segments = allSegments
     const { data: linkedCall } = await sessionClient
       .from('calls')
-      .select('id, user_id, callee_user_id, call_type, contact_name, phone_number, session_id, callee_session_id')
+      .select('id, user_id, callee_user_id, call_type, contact_name, phone_number, session_id, callee_session_id, room_name, participant_a_identity')
       .or(`session_id.eq.${params.id},callee_session_id.eq.${params.id}`)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -633,6 +759,21 @@ export async function POST(
         ? (calleeProfile?.display_name || linkedCall?.contact_name || linkedCall?.phone_number || consentOtherName || null)
         : userName
 
+    const meetingLinkHostName =
+      linkedCall?.user_id === userId
+        ? linkedInitiatorName
+        : (callOwnerName?.display_name || null)
+    const meetingLinkGuestName = linkedCall?.contact_name || consentOtherName || null
+    const meetingLinkContext: MeetingLinkContext | null =
+      linkedCall?.room_name?.startsWith('meet-') && linkedCall?.user_id && meetingLinkHostName
+        ? {
+            hostUserId: linkedCall.user_id,
+            hostName: meetingLinkHostName,
+            guestName: meetingLinkGuestName,
+            participantAIdentity: linkedCall.participant_a_identity || null,
+          }
+        : null
+
     const speakerResolution = buildSpeakerResolution({
       segments: segments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
       callType: linkedCall?.call_type,
@@ -640,6 +781,7 @@ export async function POST(
       sessionUserId: userId,
       initiatorName: linkedInitiatorName,
       otherParticipantName: linkedOtherName,
+      meetingLinkContext,
     })
     if (speakerResolution) {
       console.log('[Analyze API] Speaker resolution:', speakerResolution.reason, JSON.stringify(speakerResolution.nameMap))
@@ -667,7 +809,7 @@ export async function POST(
     // Check if already analyzed (skip re-analysis unless user wants to correct)
     const alreadyAnalyzed = session.recording_type && session.suggested_domains && session.ai_extracted_context
     
-    if (session.context_locked || alreadyAnalyzed) {
+    if (!force && (session.context_locked || alreadyAnalyzed)) {
       console.log('[Analyze API] Using cached analysis (locked or already analyzed)')
       await logPipelineEvent({
         sessionId: params.id,

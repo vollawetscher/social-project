@@ -251,6 +251,7 @@ function CallRoomInner({
   const [showNotes, setShowNotes] = useState(false)
   const [draftNote, setDraftNote] = useState("")
   const [timedNotes, setTimedNotes] = useState<TimedCallNote[]>([])
+  const [canAddCallNotes, setCanAddCallNotes] = useState(false)
   const [addingNote, setAddingNote] = useState(false)
   const [viewMode, setViewMode] = useState<"simple" | "transcript">("simple")
   const [liveTranscriptArmed, setLiveTranscriptArmed] = useState(false)
@@ -580,6 +581,9 @@ function CallRoomInner({
         if (Array.isArray(data?.notes)) {
           setTimedNotes(data.notes as TimedCallNote[])
         }
+        if (typeof data?.canAddNotes === "boolean") {
+          setCanAddCallNotes(data.canAddNotes)
+        }
       } catch {
         // best effort
       }
@@ -590,7 +594,7 @@ function CallRoomInner({
   }, [callId])
 
   const handleAddNote = useCallback(async () => {
-    if (!callId || !isInitiator || !draftNote.trim() || addingNote) return
+    if (!callId || !canAddCallNotes || !draftNote.trim() || addingNote) return
     setAddingNote(true)
     try {
       const res = await fetch(`/api/calls/${callId}/call-notes`, {
@@ -614,7 +618,7 @@ function CallRoomInner({
     } finally {
       setAddingNote(false)
     }
-  }, [addingNote, callId, draftNote, isInitiator, t])
+  }, [addingNote, callId, canAddCallNotes, draftNote, t])
 
   useEffect(() => {
     let cancelled = false
@@ -1838,7 +1842,7 @@ function CallRoomInner({
               notes={timedNotes}
               onAddNote={handleAddNote}
               adding={addingNote}
-              canAdd={isInitiator}
+              canAdd={canAddCallNotes}
             />
 
             {/* Controls */}
@@ -2181,7 +2185,7 @@ function CallRoomInner({
           notes={timedNotes}
           onAddNote={handleAddNote}
           adding={addingNote}
-          canAdd={isInitiator}
+          canAdd={canAddCallNotes}
           dark
         />
 

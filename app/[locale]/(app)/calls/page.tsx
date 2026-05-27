@@ -45,6 +45,7 @@ import { DialPad } from "@/components/call/DialPad"
 import { toast } from "sonner"
 import type { Call, CallMode } from "@/lib/types/call"
 import type { PstnTranscriptionMode } from "@/lib/types/call"
+import { scheduledCallEndMs, toDatetimeLocalInputValue } from "@/lib/utils/scheduled-call"
 
 const PSTN_TRANSCRIPTION_MODE_STORAGE_KEY = "notissima.pstn.transcriptionMode"
 
@@ -411,6 +412,10 @@ export default function CallsPage() {
     const date = new Date(scheduleAtLocal)
     if (Number.isNaN(date.getTime())) {
       toast.error(t('scheduleInvalidDate'))
+      return
+    }
+    if (date.getTime() <= Date.now()) {
+      toast.error(t('schedulePastDate'))
       return
     }
 
@@ -881,10 +886,18 @@ export default function CallsPage() {
   const upcomingScheduledCalls = useMemo(() => {
     const now = Date.now()
     return calls
-      .filter((c) => c.status === "scheduled" && c.scheduled_for && new Date(c.scheduled_for).getTime() > now - (60 * 60 * 1000))
+      .filter((c) => {
+        if (c.status !== "scheduled" || !c.scheduled_for) return false
+        return scheduledCallEndMs(c.scheduled_for, c.scheduled_duration_min) > now
+      })
       .sort((a, b) => new Date(a.scheduled_for || 0).getTime() - new Date(b.scheduled_for || 0).getTime())
       .slice(0, 5)
   }, [calls])
+
+  const scheduleMinDatetimeLocal = useMemo(
+    () => toDatetimeLocalInputValue(new Date()),
+    [scheduleDialogOpen]
+  )
 
   useEffect(() => {
     const now = Date.now()
@@ -1114,6 +1127,7 @@ export default function CallsPage() {
             <Input
               type="datetime-local"
               value={scheduleAtLocal}
+              min={scheduleMinDatetimeLocal}
               onChange={(e) => setScheduleAtLocal(e.target.value)}
             />
             <div className="space-y-1">

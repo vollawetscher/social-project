@@ -30,7 +30,10 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    return NextResponse.json({ notes: parseTimedCallNotes(call.timed_call_notes) })
+    return NextResponse.json({
+      notes: parseTimedCallNotes(call.timed_call_notes),
+      canAddNotes: call.user_id === user.id,
+    })
   } catch (error) {
     if (error instanceof Error) {
       const authError = handleAuthError(error)
@@ -68,7 +71,7 @@ export async function POST(
     }
 
     if (call.user_id !== user.id) {
-      return NextResponse.json({ error: 'Only the call initiator can add notes' }, { status: 403 })
+      return NextResponse.json({ error: 'Only the call host can add notes' }, { status: 403 })
     }
 
     if (!call.started_at) {
