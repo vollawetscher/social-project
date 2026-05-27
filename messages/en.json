@@ -556,7 +556,8 @@
     "createTemplateFromConfig": "Create a template from this configuration",
     "reset": "Reset",
     "generateSuccessTemplate": "Output generated and saved as template!",
-    "generateSuccessOutput": "Output generated! View it in the Outputs tab."
+    "generateSuccessOutput": "Output generated! View it in the Outputs tab.",
+    "generateQueued": "Generating \"{templateName}\"…"
   },
   "templates": {
     "title": "Templates",
@@ -1301,7 +1302,12 @@
     "sayCommand": "Say <keyword>\"Notissima:\"</keyword> followed by a command",
     "ending": "Ending…",
     "stopRecordingEnd": "Stop Recording & End",
-    "addCallNotes": "Add call notes...",
+    "addCallNotes": "Write a note...",
+    "addNote": "Add note",
+    "addingNote": "Adding…",
+    "noteAdded": "Note saved — it will appear in the transcript at this moment",
+    "noteAddFailed": "Could not save note",
+    "closeNotes": "Close notes",
     "transcriptInSessions": "Transcript will be available in Sessions",
     "you": "You",
     "participantSharing": "{name} is sharing",

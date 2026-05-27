@@ -44,6 +44,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { CallControls } from "@/components/call/CallControls"
+import { CallNotesPanel } from "@/components/call/CallNotesPanel"
+import type { TimedCallNote } from "@/lib/services/merge-call-notes"
 import type { CallMode, LayoutMode } from "@/lib/types/call"
 import type { PstnTranscriptionMode } from "@/lib/types/call"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
@@ -247,7 +249,9 @@ function CallRoomInner({
   const [layout, setLayout] = useState<LayoutMode>("gallery")
   const [showTranscript, setShowTranscript] = useState(false)
   const [showNotes, setShowNotes] = useState(false)
-  const [notes, setNotes] = useState("")
+  const [draftNote, setDraftNote] = useState("")
+  const [timedNotes, setTimedNotes] = useState<TimedCallNote[]>([])
+  const [addingNote, setAddingNote] = useState(false)
   const [viewMode, setViewMode] = useState<"simple" | "transcript">("simple")
   const [liveTranscriptArmed, setLiveTranscriptArmed] = useState(false)
   // Post-call notes state
@@ -296,8 +300,6 @@ function CallRoomInner({
   const backgroundProcessorRef = useRef<BackgroundProcessorWrapper | null>(null)
   const backgroundSupportWarnedRef = useRef(false)
   const profilePreferencesRef = useRef<Record<string, any>>({})
-  const notesSyncSkipRef = useRef(false)
-  const notesRef = useRef("")
   const speechmaticsServicesRef = useRef<Record<string, SpeechmaticsRealtimeService>>({})
   const speechmaticsTracksRef = useRef<Record<string, MediaStreamTrack | null>>({})
   const liveFinalBufferRef = useRef<Record<string, string>>({})
@@ -504,10 +506,9 @@ function CallRoomInner({
         if (consentState) {
           setPstnConsentState(consentState)
         }
-        const sharedNotes = payload.new?.shared_notes
-        if (typeof sharedNotes === "string" && sharedNotes !== notesRef.current) {
-          notesSyncSkipRef.current = true
-          setNotes(sharedNotes)
+        const timedNotesPayload = payload.new?.timed_call_notes
+        if (Array.isArray(timedNotesPayload)) {
+          setTimedNotes(timedNotesPayload as TimedCallNote[])
         }
         const status = payload.new?.status as "ended" | "missed" | "declined" | "error" | undefined
         if (status && ["ended", "missed", "declined", "error"].includes(status)) {
@@ -568,21 +569,17 @@ function CallRoomInner({
   }, [hasRemote, isInitiator, callId, localParticipant.identity])
 
   useEffect(() => {
-    notesRef.current = notes
-  }, [notes])
-
-  useEffect(() => {
     if (!callId) return
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch(`/api/calls/${callId}/shared-notes`)
+        const res = await fetch(`/api/calls/${callId}/call-notes`)
         if (!res.ok) return
         const data = await res.json()
         if (cancelled) return
-        const serverNotes = typeof data?.notes === "string" ? data.notes : ""
-        notesSyncSkipRef.current = true
-        setNotes(serverNotes)
+        if (Array.isArray(data?.notes)) {
+          setTimedNotes(data.notes as TimedCallNote[])
+        }
       } catch {
         // best effort
       }
@@ -592,21 +589,32 @@ function CallRoomInner({
     }
   }, [callId])
 
-  useEffect(() => {
-    if (!callId) return
-    if (notesSyncSkipRef.current) {
-      notesSyncSkipRef.current = false
-      return
-    }
-    const timer = setTimeout(() => {
-      fetch(`/api/calls/${callId}/shared-notes`, {
-        method: "PATCH",
+  const handleAddNote = useCallback(async () => {
+    if (!callId || !isInitiator || !draftNote.trim() || addingNote) return
+    setAddingNote(true)
+    try {
+      const res = await fetch(`/api/calls/${callId}/call-notes`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes }),
-      }).catch(() => {})
-    }, 350)
-    return () => clearTimeout(timer)
-  }, [callId, notes])
+        body: JSON.stringify({ text: draftNote.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to add note")
+      }
+      if (Array.isArray(data?.notes)) {
+        setTimedNotes(data.notes as TimedCallNote[])
+      } else if (data?.note) {
+        setTimedNotes((prev) => [...prev, data.note as TimedCallNote])
+      }
+      setDraftNote("")
+      toast.success(t("noteAdded"))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("noteAddFailed"))
+    } finally {
+      setAddingNote(false)
+    }
+  }, [addingNote, callId, draftNote, isInitiator, t])
 
   useEffect(() => {
     let cancelled = false
@@ -776,8 +784,8 @@ function CallRoomInner({
 
   // Outbound ringtone — only the call's initiator hears it. The callee/host
   // accepting an invite has nothing to ring for; they just joined a room.
-  // We also bail out as soon as the call has been declined / missed / ended
-  // remotely, even if LiveKit hasn't disconnected yet.
+  // We also bail out as soon as the call has been declined / missed /
+  // ended remotely, even if LiveKit hasn't disconnected yet.
   // The minimum play duration (2.5 s) ensures the caller hears at least one
   // ring even when the callee joins almost instantly (< 4 s pickup).
   const shouldRing = Boolean(
@@ -1292,20 +1300,9 @@ function CallRoomInner({
 
   const saveNotesAndEnd = useCallback(async () => {
     setSavingNotes(true)
-    if (callId && notes.trim()) {
-      try {
-        await fetch(`/api/calls/${callId}/notes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes }),
-        })
-      } catch {
-        // Best-effort
-      }
-    }
     setSavingNotes(false)
     endCall()
-  }, [callId, notes, endCall])
+  }, [endCall])
 
   const toggleMute = useCallback(() => {
     localParticipant.setMicrophoneEnabled(isMuted)
@@ -1833,22 +1830,16 @@ function CallRoomInner({
         ) : (
           <>
             {/* Notes Panel (in-call) */}
-            {showNotes && (
-              <div className="border-t px-4 py-3 shrink-0 border-border bg-card">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-muted-foreground">{t("notes")}</span>
-                  <button onClick={() => setShowNotes(false)}>
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder={t("addCallNotes")}
-                  className="w-full h-20 text-sm rounded-lg p-2 resize-none focus:outline-none focus:ring-1 bg-secondary text-foreground placeholder:text-muted-foreground focus:ring-primary"
-                />
-              </div>
-            )}
+            <CallNotesPanel
+              open={showNotes}
+              onClose={() => setShowNotes(false)}
+              draftNote={draftNote}
+              onDraftChange={setDraftNote}
+              notes={timedNotes}
+              onAddNote={handleAddNote}
+              adding={addingNote}
+              canAdd={isInitiator}
+            />
 
             {/* Controls */}
             {callStatus !== "ended" ? (
@@ -2186,23 +2177,20 @@ function CallRoomInner({
           </div>
         )}
 
-        {/* Transcript Overlay */}
-        {showTranscript && (
-          <div className="absolute inset-x-0 bottom-0 top-1/3 bg-gradient-to-t from-black/90 via-black/70 to-transparent z-20 flex flex-col">
-            <div className="flex items-center justify-between px-4 pt-8 pb-2">
-              <span className="text-xs font-medium text-white/60">{t("transcript")}</span>
-              <button onClick={() => setShowTranscript(false)}>
-                <X className="h-4 w-4 text-white/40" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 pb-2">
-              <p className="text-sm text-white/80 text-center py-8">
-                {t("transcriptAfterCall")}
-              </p>
-            </div>
-          </div>
-        )}
       </div>
+
+        {/* Notes panel */}
+        <CallNotesPanel
+          open={showNotes}
+          onClose={() => setShowNotes(false)}
+          draftNote={draftNote}
+          onDraftChange={setDraftNote}
+          notes={timedNotes}
+          onAddNote={handleAddNote}
+          adding={addingNote}
+          canAdd={isInitiator}
+          dark
+        />
 
       {/* Controls */}
       <CallControls
@@ -2216,18 +2204,14 @@ function CallRoomInner({
         isScreenSharing={isScreenSharing}
         canScreenShare={canScreenShare}
         showNotes={showNotes}
-        showTranscript={showTranscript}
+        showTranscript={false}
         onToggleMute={toggleMute}
         onToggleCamera={toggleCamera}
         onToggleSpeaker={toggleSpeaker}
         onToggleHold={toggleHold}
         onToggleScreenShare={toggleScreenShare}
         onToggleNotes={() => setShowNotes(!showNotes)}
-        onToggleTranscript={() => {
-          const next = !showTranscript
-          setShowTranscript(next)
-          if (next && liveTranscriptEnabled) setLiveTranscriptArmed(true)
-        }}
+        onToggleTranscript={() => {}}
         onSwitchCamera={switchCamera}
         canSwitchCamera={canSwitchCamera}
         onEndCall={endCall}

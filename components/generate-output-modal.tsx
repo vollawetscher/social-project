@@ -351,26 +351,44 @@ export function GenerateOutputModal({
       }
       
       const data = await response.json()
-      const finalData = data?.queued && data?.jobId
-        ? await waitForJobCompletion(data.jobId)
-        : data
-      
-      // Success! Refresh outputs list and close modal
+      const templateName = templates.find((tpl) => tpl.id === selectedTemplate)?.name || 'Custom Output'
+
+      if (data?.queued && data?.jobId) {
+        onOpenChange(false)
+        toast.info(t('generateQueued', { templateName }), { duration: 3000 })
+        await Promise.resolve(onSuccess?.())
+
+        waitForJobCompletion(data.jobId)
+          .then((finalData) => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('notissima:outputs-updated'))
+            }
+            void Promise.resolve(onSuccess?.())
+            toast.success(
+              finalData?.createdTemplateId
+                ? t('generateSuccessTemplate')
+                : t('generateSuccessOutput')
+            )
+          })
+          .catch((error) => {
+            console.error('Error generating output:', error)
+            toast.error(t('generateFailed') + ': ' + (error instanceof Error ? error.message : String(error)))
+          })
+        return
+      }
+
+      // Sync fallback (queue unavailable) — result is already in the response.
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('notissima:outputs-updated'))
       }
       await Promise.resolve(onSuccess?.())
       onOpenChange(false)
-      
+
       toast.success(
-        finalData.createdTemplateId
+        data.createdTemplateId
           ? t('generateSuccessTemplate')
           : t('generateSuccessOutput')
       )
-      
-      // Optional: Navigate to outputs page
-      // window.location.href = '/outputs'
-      
     } catch (error) {
       console.error('Error generating output:', error)
       toast.error(t('generateFailed') + ': ' + (error as Error).message)

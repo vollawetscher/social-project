@@ -112,10 +112,10 @@ export function CallControls({
           />
         )}
         <ControlButton
-          icon={MessageSquareText}
-          label={t('transcript')}
-          active={showTranscript}
-          onClick={onToggleTranscript}
+          icon={StickyNote}
+          label={t('notes')}
+          active={showNotes}
+          onClick={onToggleNotes}
           dark
         />
         <button onClick={onEndCall} className="flex flex-col items-center gap-1">

@@ -556,7 +556,8 @@
     "createTemplateFromConfig": "Vorlage aus dieser Konfiguration erstellen",
     "reset": "Zurücksetzen",
     "generateSuccessTemplate": "Bericht generiert und als Vorlage gespeichert!",
-    "generateSuccessOutput": "Bericht generiert! Ansehen im Berichte-Tab."
+    "generateSuccessOutput": "Bericht generiert! Ansehen im Berichte-Tab.",
+    "generateQueued": "\"{templateName}\" wird generiert…"
   },
   "templates": {
     "title": "Vorlagen",
@@ -1300,7 +1301,12 @@
     "sayCommand": "Sagen Sie <keyword>\"Notissima:\"</keyword> gefolgt von einem Befehl",
     "ending": "Wird beendet…",
     "stopRecordingEnd": "Aufnahme stoppen & beenden",
-    "addCallNotes": "Anrufnotizen hinzufügen...",
+    "addCallNotes": "Notiz eingeben...",
+    "addNote": "Notiz hinzufügen",
+    "addingNote": "Wird gespeichert…",
+    "noteAdded": "Notiz gespeichert — erscheint im Transkript zu diesem Zeitpunkt",
+    "noteAddFailed": "Notiz konnte nicht gespeichert werden",
+    "closeNotes": "Notizen schließen",
     "transcriptInSessions": "Das Transkript ist unter Sitzungen verfügbar",
     "you": "Sie",
     "participantSharing": "{name} teilt den Bildschirm",

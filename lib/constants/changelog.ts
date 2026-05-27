@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.4',
+    date: 'May 26, 2026',
+    entries: [
+      {
+        version: '1.36.4',
+        date: 'May 26, 2026',
+        category: 'feature',
+        title: 'Timestamped Notes During Video Calls',
+        description: 'Take notes while on a video call — each note is stamped to the moment you add it and inserted into the post-call transcript in the right place. Tap Add note to save and start the next one.',
+      },
+    ],
+  },
+  {
+    version: '1.36.3',
+    date: 'May 26, 2026',
+    entries: [
+      {
+        version: '1.36.3',
+        date: 'May 26, 2026',
+        category: 'improvement',
+        title: 'Generate Output Runs in the Background',
+        description: 'When you generate an output from the modal, the dialog closes right away and generation continues in the background — the same non-blocking experience as one-click suggested outputs.',
+      },
+    ],
+  },
+  {
     version: '1.36.2',
     date: 'May 26, 2026',
     entries: [

@@ -9,6 +9,9 @@ import { createErrorLogger } from '@/lib/services/error-logger'
 import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/services/queue'
 import { logPipelineEvent } from '@/lib/services/pipeline-logger'
 import { alignTranscripts } from '@/lib/services/transcript-aligner'
+import {
+  applyTimedCallNotesToSessionTranscripts,
+} from '@/lib/services/merge-call-notes'
 import { prependVoiceSample } from '@/lib/services/voice-sample-prepend'
 import { execFile, execSync } from 'child_process'
 import { writeFile, unlink, mkdtemp, readFile, rmdir } from 'fs/promises'
@@ -363,7 +366,7 @@ async function processTranscriptionJob(sessionId: string) {
     }, supabase)
     const { data: linkedCall } = await supabase
       .from('calls')
-      .select('id, user_id, callee_user_id, contact_name, session_id, callee_session_id, call_type, pstn_transcription_mode, room_created_at_ms, track_a_started_at_ns, track_b_started_at_ns, started_at, ended_at')
+      .select('id, user_id, callee_user_id, contact_name, session_id, callee_session_id, call_type, pstn_transcription_mode, room_created_at_ms, track_a_started_at_ns, track_b_started_at_ns, started_at, ended_at, timed_call_notes')
       .or(`session_id.eq.${sessionId},callee_session_id.eq.${sessionId}`)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -924,6 +927,15 @@ async function processTranscriptionJob(sessionId: string) {
         }
       }
       console.log('[Transcribe] Dual-track merge and save completed')
+    }
+
+    if (linkedCall) {
+      try {
+        await applyTimedCallNotesToSessionTranscripts(supabase, sessionId, linkedCall, dualTrackTranscription)
+        console.log('[Transcribe] Timed call notes merged into transcript(s)')
+      } catch (noteMergeError) {
+        console.error('[Transcribe] Failed to merge timed call notes:', noteMergeError)
+      }
     }
 
     console.log('[Transcribe] All files processed successfully')

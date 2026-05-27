@@ -551,7 +551,8 @@
     "createTemplateFromConfig": "Crear una plantilla a partir de esta configuración",
     "reset": "Restablecer",
     "generateSuccessTemplate": "¡Informe generado y guardado como plantilla!",
-    "generateSuccessOutput": "¡Informe generado! Consúltalo en la pestaña Informes."
+    "generateSuccessOutput": "¡Informe generado! Consúltalo en la pestaña Informes.",
+    "generateQueued": "Generando \"{templateName}\"…"
   },
   "templates": {
     "title": "Plantillas",
@@ -1293,7 +1294,12 @@
     "sayCommand": "Diga <keyword>\"Notissima:\"</keyword> seguido de un comando",
     "ending": "Finalizando…",
     "stopRecordingEnd": "Detener grabación y finalizar",
-    "addCallNotes": "Agregar notas de llamada...",
+    "addCallNotes": "Escribir una nota...",
+    "addNote": "Agregar nota",
+    "addingNote": "Guardando…",
+    "noteAdded": "Nota guardada — aparecerá en la transcripción en este momento",
+    "noteAddFailed": "No se pudo guardar la nota",
+    "closeNotes": "Cerrar notas",
     "transcriptInSessions": "La transcripción estará disponible en Sesiones",
     "you": "Tú",
     "participantSharing": "{name} está compartiendo",
