@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.5',
+    date: 'May 27, 2026',
+    entries: [
+      {
+        version: '1.36.5',
+        date: 'May 27, 2026',
+        category: 'improvement',
+        title: 'Full-Width Video Calls on Desktop',
+        description: 'Video calls now use the full browser window on desktop — participant tiles sit side by side, and shared screens expand to fill the available space with camera previews floating in the corner.',
+      },
+    ],
+  },
+  {
     version: '1.36.4',
     date: 'May 26, 2026',
     entries: [

@@ -1891,8 +1891,8 @@ function CallRoomInner({
   const isFocusLayout = layout === "focus"
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-[#111] items-center">
-      <div className="flex flex-col w-full max-w-3xl h-full">
+    <div className="flex flex-col h-[100dvh] bg-[#111]">
+      <div className="flex flex-col w-full h-full">
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-2.5 z-10 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -2028,29 +2028,26 @@ function CallRoomInner({
           </div>
         )}
         {activeScreenShare ? (
-          /* Screen share layout: shared screen takes main area, camera tiles in corner */
-          <div className="h-full p-2 flex flex-col">
-            <div className="flex-1 min-h-0 flex items-center justify-center">
-              <div className="w-full h-full rounded-xl overflow-hidden bg-[#1a1a1a] relative">
-                <VideoTrack
-                  trackRef={activeScreenShare}
-                  className="absolute inset-0 w-full h-full object-contain"
-                />
-                <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
-                  <span className="text-xs text-white font-medium">
-                    {activeScreenShare.participant.sid === localParticipant.sid
-                      ? t("youAreSharing")
-                      : t("participantSharing", { name: activeScreenShare.participant.name || activeScreenShare.participant.identity })}
-                  </span>
-                </div>
+          /* Screen share layout: shared screen fills viewport, camera tiles as PiP on desktop */
+          <div className="h-full p-2 relative">
+            <div className="absolute inset-2 rounded-xl overflow-hidden bg-[#1a1a1a]">
+              <VideoTrack
+                trackRef={activeScreenShare}
+                className="absolute inset-0 w-full h-full object-contain"
+              />
+              <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
+                <span className="text-xs text-white font-medium">
+                  {activeScreenShare.participant.sid === localParticipant.sid
+                    ? t("youAreSharing")
+                    : t("participantSharing", { name: activeScreenShare.participant.name || activeScreenShare.participant.identity })}
+                </span>
               </div>
             </div>
-            {/* Small camera tiles below screen share */}
-            <div className="flex gap-2 mt-2 h-24 shrink-0">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-4 flex gap-2 h-24 md:h-auto md:flex-col z-10">
               {remoteParticipants.map((rp) => {
                 const remoteCamera = cameraTracks.find(t => t.participant.sid === rp.sid)
                 return (
-                  <div key={rp.sid} className="w-32 h-full">
+                  <div key={rp.sid} className="w-32 md:w-40 h-full md:h-28 rounded-xl overflow-hidden border border-white/20 shadow-2xl">
                     <LiveParticipantTile
                       name={rp.name || rp.identity}
                       isMuted={!rp.isMicrophoneEnabled}
@@ -2060,7 +2057,7 @@ function CallRoomInner({
                   </div>
                 )
               })}
-              <div className="w-32 h-full">
+              <div className="w-32 md:w-40 h-full md:h-28 rounded-xl overflow-hidden border border-white/20 shadow-2xl">
                 <LiveParticipantTile
                   name={t("you")}
                   isMuted={isMuted}
@@ -2122,57 +2119,53 @@ function CallRoomInner({
             </div>
           </div>
         ) : (
-          /* Gallery layout: side by side */
-          <div className="h-full p-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-center md:overflow-hidden">
-            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
-              <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
-                {remoteParticipants.length > 0 ? (
-                  <div className={cn(
-                    "h-full gap-2",
-                    remoteParticipants.length > 1 ? "grid grid-cols-2" : ""
-                  )}>
-                    {remoteParticipants.map((rp) => {
-                      const remoteCamera = cameraTracks.find(t => t.participant.sid === rp.sid)
-                      return (
-                        <LiveParticipantTile
-                          key={rp.sid}
-                          name={rp.name || rp.identity}
-                          isMuted={!rp.isMicrophoneEnabled}
-                          hasVideo={rp.isCameraEnabled}
-                          videoTrack={remoteCamera}
-                        />
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="h-full rounded-xl bg-[#1a1a1a] flex flex-col items-center justify-center">
-                    <Avatar className="h-14 w-14 mb-3">
-                      <AvatarFallback className="bg-white/10 text-white text-lg">
-                        {contactInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <p className="text-sm text-white/50 mb-4">{t("waitingForOther")}</p>
-                    <button
-                      onClick={copyInviteLink}
-                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 transition-colors"
-                    >
-                      {linkCopied ? <Check className="h-4 w-4 text-primary-foreground" /> : <Link2 className="h-4 w-4 text-primary-foreground" />}
-                      <span className="text-sm font-medium text-primary-foreground">{linkCopied ? tc("copied") : t("copyInviteLink")}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+          /* Gallery layout: stacked on mobile, side-by-side filling viewport on desktop */
+          <div className="h-full p-2 flex flex-col gap-2 md:flex-row md:overflow-hidden">
+            <div className="flex-1 min-h-0 md:min-w-0">
+              {remoteParticipants.length > 0 ? (
+                <div className={cn(
+                  "h-full gap-2",
+                  remoteParticipants.length > 1 ? "grid grid-cols-2" : ""
+                )}>
+                  {remoteParticipants.map((rp) => {
+                    const remoteCamera = cameraTracks.find(t => t.participant.sid === rp.sid)
+                    return (
+                      <LiveParticipantTile
+                        key={rp.sid}
+                        name={rp.name || rp.identity}
+                        isMuted={!rp.isMicrophoneEnabled}
+                        hasVideo={rp.isCameraEnabled}
+                        videoTrack={remoteCamera}
+                      />
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="h-full rounded-xl bg-[#1a1a1a] flex flex-col items-center justify-center">
+                  <Avatar className="h-14 w-14 mb-3">
+                    <AvatarFallback className="bg-white/10 text-white text-lg">
+                      {contactInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="text-sm text-white/50 mb-4">{t("waitingForOther")}</p>
+                  <button
+                    onClick={copyInviteLink}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 transition-colors"
+                  >
+                    {linkCopied ? <Check className="h-4 w-4 text-primary-foreground" /> : <Link2 className="h-4 w-4 text-primary-foreground" />}
+                    <span className="text-sm font-medium text-primary-foreground">{linkCopied ? tc("copied") : t("copyInviteLink")}</span>
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="flex-1 min-h-0 flex items-center justify-center md:flex-1 md:h-full md:max-w-[50%] md:overflow-hidden">
-              <div className="w-full h-full md:h-full md:max-w-full md:aspect-[3/4] md:mx-auto">
-                <LiveParticipantTile
-                  name={t("you")}
-                  isMuted={isMuted}
-                  hasVideo={isCameraOn}
-                  videoTrack={cameraTracks.find(tr => tr.participant.sid === localParticipant.sid)}
-                  isLocal
-                />
-              </div>
+            <div className="flex-1 min-h-0 md:min-w-0">
+              <LiveParticipantTile
+                name={t("you")}
+                isMuted={isMuted}
+                hasVideo={isCameraOn}
+                videoTrack={cameraTracks.find(tr => tr.participant.sid === localParticipant.sid)}
+                isLocal
+              />
             </div>
           </div>
         )}
