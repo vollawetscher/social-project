@@ -10,6 +10,11 @@ import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/ser
 import { createNotification } from '@/lib/services/notification-service'
 import { normalizeLanguageCode, resolveOutputLanguageCode, LANG_NAMES } from '@/lib/utils/language'
 import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import {
+  formatCallNoteTranscriptLine,
+  getCallNoteAuthor,
+  isCallNoteSegment,
+} from '@/lib/services/merge-call-notes'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -701,6 +706,7 @@ export async function POST(
 
     // Sample from start, 25%, 50%, 75%, end to avoid misleading analysis of long transcripts
     const segments = allSegments
+    const speechSegments = segments.filter((seg) => !isCallNoteSegment(seg))
     const { data: linkedCall } = await sessionClient
       .from('calls')
       .select('id, user_id, callee_user_id, call_type, contact_name, phone_number, session_id, callee_session_id, room_name, participant_a_identity')
@@ -775,7 +781,7 @@ export async function POST(
         : null
 
     const speakerResolution = buildSpeakerResolution({
-      segments: segments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
+      segments: speechSegments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
       callType: linkedCall?.call_type,
       callUserId: linkedCall?.user_id,
       sessionUserId: userId,
@@ -789,6 +795,9 @@ export async function POST(
 
     const speakerNameMap = speakerResolution?.nameMap ?? {}
     const formatSegment = (seg: any) => {
+      if (isCallNoteSegment(seg)) {
+        return formatCallNoteTranscriptLine(getCallNoteAuthor(seg), seg.text)
+      }
       const raw = seg.speaker || 'S1'
       return `${speakerNameMap[raw] || raw}: ${seg.text}`
     }
@@ -988,6 +997,8 @@ Prefer asking when in doubt. A 2-second click is cheaper than a misframed 3-page
 **CRITICAL GLOBAL LANGUAGE RULE**: ALL user-facing text fields MUST be written in **${outputLangName}** — NOT in English (unless ${outputLangName} IS English). This applies to: sessionSummary, extractedContext.purpose, extractedContext.topics, extractedContext.agenda, extractedContext.decisions, extractedContext.actionItems (task field), extractedContext.mood, extractedContext.outcome, domain descriptions, and ALL suggestedOutputFormats fields (title, description, generationInstructions). Only participant names, roles, and technical identifiers should remain in their original language. Violating this rule by writing English text when the output language is ${outputLangName} is a critical error.
 9. **Transcript Corrections**: If you notice obvious transcription errors (ASR misspellings of proper nouns, technical terms, place names), suggest corrections. Also, if the transcript has more than 2 speaker labels but the conversation is clearly between only 2 speakers, suggest speaker merges (e.g. "S3" should be merged into "S1").
 10. **Detected Language**: Return the ISO 639-1 language code of the primary language SPOKEN in the transcript (e.g., "en", "de", "fr"). This is the language of the conversation itself, NOT the output language you are writing in.
+
+Lines prefixed with "[In-call note · typed by …]" are NOT spoken dialogue — they are text notes typed by the session owner during the call. Do not attribute them to transcript speakers or treat them as things said aloud.
 
 Transcript sample:
 ${sample}

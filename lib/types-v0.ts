@@ -76,6 +76,9 @@ export interface TranscriptSegment {
   endTime: number
   text: string
   isPiiRedacted?: boolean
+  /** Typed in-call note from the session owner — not spoken audio. */
+  isCallNote?: boolean
+  noteAuthorName?: string
 }
 
 export interface DomainDetection {

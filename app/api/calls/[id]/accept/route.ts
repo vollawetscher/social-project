@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createServiceRoleClient, createClient } from '@/lib/supabase/server'
 import { createRoomToken } from '@/lib/services/livekit'
+import { logImplicitPersonalLinkHostConsent } from '@/lib/services/call-consent'
 
 /**
  * POST /api/calls/[id]/accept
@@ -70,6 +71,21 @@ export async function POST(
       .eq('id', user.id)
       .maybeSingle()
     const displayName = profile?.display_name || profile?.email || 'User'
+
+    if (isPersonalMeeting && user.id === call.user_id) {
+      const { data: freshCall } = await db
+        .from('calls')
+        .select('accepted_at')
+        .eq('id', call.id)
+        .maybeSingle()
+
+      await logImplicitPersonalLinkHostConsent(db, {
+        callId: call.id,
+        hostUserId: user.id,
+        hostDisplayName: displayName,
+        grantedAt: freshCall?.accepted_at || new Date().toISOString(),
+      })
+    }
 
     const token = await createRoomToken(call.room_name, user.id, displayName)
     return NextResponse.json({

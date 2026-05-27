@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createRoom, createRoomToken, generateRoomName } from '@/lib/services/livekit'
+import { logImplicitPersonalLinkHostConsent } from '@/lib/services/call-consent'
 
 /**
  * POST /api/meet/[slug]/join - Join a personal meeting room.
@@ -58,6 +59,14 @@ export async function POST(
       callId = existingCall.id
       roomName = existingCall.room_name
       sessionId = existingCall.session_id
+
+      if (isOwner && ['invited', 'active'].includes(existingCall.status)) {
+        await logImplicitPersonalLinkHostConsent(supabase, {
+          callId,
+          hostUserId: owner.id,
+          hostDisplayName: owner.display_name || 'Host',
+        })
+      }
 
       if (!isOwner) {
         await supabase
@@ -146,6 +155,7 @@ export async function POST(
       token,
       sessionId,
       ownerName: owner.display_name || 'Host',
+      participantIdentity: tokenIdentity,
       // The owner is the host of their personal meeting room; visitors who
       // arrive via the PML are calling them, so the visitor is the initiator.
       isInitiator: !isOwner,

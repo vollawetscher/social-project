@@ -99,6 +99,7 @@ export default function MeetPage() {
   const [callId, setCallId] = useState<string | null>(null)
   const [roomName, setRoomName] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [participantIdentity, setParticipantIdentity] = useState<string | null>(null)
   const [isInitiator, setIsInitiator] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -195,6 +196,9 @@ export default function MeetPage() {
       setCallId(data.callId)
       setRoomName(data.roomName)
       setToken(data.token)
+      if (typeof data.participantIdentity === 'string') {
+        setParticipantIdentity(data.participantIdentity)
+      }
       // The visitor (non-owner) is the one calling the room owner — they hear
       // the calling tone while the owner picks up. The owner joining their own
       // room is the host and never plays the outbound tone.
@@ -606,7 +610,7 @@ export default function MeetPage() {
           body: JSON.stringify({
             granted,
             participantName: visitorName,
-            participantIdentity: `guest-${Date.now()}`,
+            participantIdentity: participantIdentity || `guest-${Date.now()}`,
           }),
         }).catch(() => {})
       }

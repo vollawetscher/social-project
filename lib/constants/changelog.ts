@@ -14,6 +14,32 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.11',
+    date: 'May 27, 2026',
+    entries: [
+      {
+        version: '1.36.11',
+        date: 'May 27, 2026',
+        category: 'improvement',
+        title: 'In-Call Notes Look Like Notes',
+        description: 'Notes you type during a call now appear clearly as written entries from you — not as spoken dialogue in the transcript.',
+      },
+    ],
+  },
+  {
+    version: '1.36.10',
+    date: 'May 27, 2026',
+    entries: [
+      {
+        version: '1.36.10',
+        date: 'May 27, 2026',
+        category: 'fix',
+        title: 'Consent Shown Correctly on Calls',
+        description: 'On personal meeting link calls, your consent is recorded when you accept the call as a registered user. Guests still confirm explicitly. Sessions no longer show duplicate guest entries.',
+      },
+    ],
+  },
+  {
     version: '1.36.9',
     date: 'May 27, 2026',
     entries: [

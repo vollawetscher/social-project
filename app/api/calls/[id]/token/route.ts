@@ -155,7 +155,7 @@ export async function POST(
     // should therefore not hear the outbound calling tone.
     const isInitiator = Boolean(user && user.id === call.user_id)
 
-    return NextResponse.json({ token, isInitiator })
+    return NextResponse.json({ token, isInitiator, participantIdentity: identity })
   } catch (error: any) {
     console.error('[Calls Token] Error:', error)
     return NextResponse.json({ error: 'Failed to generate token' }, { status: 500 })

@@ -452,11 +452,27 @@ function CallRoomInner({
     }
   }, [isConnected])
 
-  // Auto-log initiator consent on connect
+  // Log transcription consent once per participant when they connect.
   useEffect(() => {
-    if (isInitiator && isConnected && callId && !consentLoggedRef.current) {
-      consentLoggedRef.current = true
-      fetch(`/api/calls/${callId}/consent`, {
+    if (!isConnected || !callId || consentLoggedRef.current) return
+    consentLoggedRef.current = true
+
+    const logConsent = async () => {
+      try {
+        const check = await fetch(`/api/calls/${callId}/consent`)
+        if (check.ok) {
+          const data = await check.json()
+          const alreadyLogged = (data.consents || []).some(
+            (c: { participant_identity?: string }) =>
+              c.participant_identity === localParticipant.identity
+          )
+          if (alreadyLogged) return
+        }
+      } catch {
+        // best effort — still attempt to log below
+      }
+
+      await fetch(`/api/calls/${callId}/consent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -466,7 +482,9 @@ function CallRoomInner({
         }),
       }).catch(() => {})
     }
-  }, [isInitiator, isConnected, callId, displayName, localParticipant.identity])
+
+    void logConsent()
+  }, [isConnected, callId, displayName, localParticipant.identity])
 
   // Realtime consent + call lifecycle updates.
   useEffect(() => {

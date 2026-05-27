@@ -2,6 +2,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { enqueuePulseUpdate, shouldEnqueuePulseForCaseChange } from '@/lib/services/pulse/enqueue-pulse-update'
+import { normalizeConsentLogsForDisplay } from '@/lib/utils/consent-logs'
 
 export async function GET(
   request: Request,
@@ -55,7 +56,7 @@ export async function GET(
     let linkedCallDurationSec: number | null = null
     const { data: linkedCall } = await db
       .from('calls')
-      .select('id, started_at, ended_at')
+      .select('id, user_id, room_name, started_at, ended_at, accepted_at')
       .or(`session_id.eq.${params.id},callee_session_id.eq.${params.id}`)
       .maybeSingle()
 
@@ -71,7 +72,23 @@ export async function GET(
         .select('participant_name, participant_identity, granted, created_at')
         .eq('call_id', linkedCall.id)
         .order('created_at', { ascending: true })
-      consentLogs = consents || []
+
+      let hostDisplayName: string | null = null
+      if (linkedCall.user_id) {
+        const { data: hostProfile } = await db
+          .from('profiles')
+          .select('display_name')
+          .eq('id', linkedCall.user_id)
+          .maybeSingle()
+        hostDisplayName = hostProfile?.display_name || null
+      }
+
+      consentLogs = normalizeConsentLogsForDisplay(consents || [], {
+        callUserId: linkedCall.user_id,
+        hostDisplayName,
+        callAcceptedAt: linkedCall.accepted_at,
+        isPersonalMeetingLink: linkedCall.room_name?.startsWith('meet-') ?? false,
+      })
     }
 
     const normalizedDurationSec =

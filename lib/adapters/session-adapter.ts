@@ -5,6 +5,11 @@
 import { Session as DbSession, SessionStatus as DbStatus } from '@/lib/types/database'
 import { Session as V0Session, SessionStatus as V0Status } from '@/lib/types-v0'
 import type { Domain } from '@/lib/types-v0'
+import {
+  CALL_NOTE_SPEAKER_ID,
+  getCallNoteAuthor,
+  isCallNoteSegment,
+} from '@/lib/services/merge-call-notes'
 
 const PRIMARY_TO_DOMAIN: Record<string, Domain> = {
   medical: 'medical',
@@ -218,6 +223,7 @@ function extractSpeakers(
   const order: string[] = []
 
   transcriptSegments.forEach((segment: any) => {
+    if (isCallNoteSegment(segment)) return
     const rawSpeaker = String(segment.speaker || '').trim()
     if (!rawSpeaker) return
     const mergedSpeaker = resolveMergedSpeakerId(rawSpeaker, speakerMergeMap)
@@ -245,17 +251,27 @@ function transformTranscriptSegments(
   speakerMergeMap: Record<string, string>,
   speakerNameMap: Record<string, string>
 ): any[] {
-  return dbSegments.map((segment: any, index: number) => ({
-    // Keep stable segment ids but normalize speaker labels for display.
-    id: `seg_${index}`,
-    speakerId: resolveMergedSpeakerId(segment.speaker || 'unknown', speakerMergeMap),
-    speakerName: speakerNameMap[resolveMergedSpeakerId(segment.speaker || 'unknown', speakerMergeMap)]
-      || resolveMergedSpeakerId(segment.speaker || 'unknown', speakerMergeMap),
-    startTime: (segment.start_ms || 0) / 1000, // Convert milliseconds to seconds
-    endTime: (segment.end_ms || 0) / 1000, // Convert milliseconds to seconds
-    text: segment.text || '',
-    isPiiRedacted: false,
-  }))
+  return dbSegments.map((segment: any, index: number) => {
+    const isNote = isCallNoteSegment(segment)
+    const noteAuthor = getCallNoteAuthor(segment)
+    const mergedSpeakerId = isNote
+      ? CALL_NOTE_SPEAKER_ID
+      : resolveMergedSpeakerId(segment.speaker || 'unknown', speakerMergeMap)
+
+    return {
+      id: `seg_${index}`,
+      speakerId: mergedSpeakerId,
+      speakerName: isNote
+        ? (noteAuthor || 'Session owner')
+        : (speakerNameMap[mergedSpeakerId] || mergedSpeakerId),
+      startTime: (segment.start_ms || 0) / 1000,
+      endTime: (segment.end_ms || 0) / 1000,
+      text: segment.text || '',
+      isPiiRedacted: false,
+      isCallNote: isNote,
+      noteAuthorName: noteAuthor,
+    }
+  })
 }
 
 /**

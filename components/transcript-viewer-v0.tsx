@@ -8,7 +8,8 @@ import type { TranscriptSegment, TranscriptCorrections } from '@/lib/types-v0'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
-import { Check, Pencil } from 'lucide-react'
+import { Check, Pencil, StickyNote } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface TranscriptViewerProps {
   segments: TranscriptSegment[]
@@ -157,6 +158,8 @@ function SpeakerBadge({
 }
 
 export function TranscriptViewer({ segments, currentTime = 0, onSeek, corrections, onTogglePlayback, isPlaying = false, onSpeakerChange }: TranscriptViewerProps) {
+  const t = useTranslations('sessionDetail')
+
   if (!segments || segments.length === 0) {
     return (
       <div className="flex items-center justify-center h-full p-8">
@@ -236,9 +239,13 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
     return { display, original: segment.speakerName, isOverridden }
   }
 
-  // Build unique speaker list from resolved names
+  // Build unique speaker list from resolved names (speech only — not in-call notes)
+  const speechSegments = segments.filter((segment) => !segment.isCallNote)
   const speakers = Array.from(
-    new Set(segments.map((s, i) => resolveSegmentSpeaker(s, i).display))
+    new Set(speechSegments.map((s, i) => {
+      const originalIndex = segments.indexOf(s)
+      return resolveSegmentSpeaker(s, originalIndex).display
+    }))
   )
   const getSpeakerColor = (speaker: string) => {
     const index = speakers.indexOf(speaker)
@@ -311,6 +318,48 @@ export function TranscriptViewer({ segments, currentTime = 0, onSeek, correction
                 onSeek(segment.startTime)
               }
             } : undefined
+
+            if (segment.isCallNote) {
+              const author = segment.noteAuthorName || correctedSpeaker || t('sessionOwner')
+              return (
+                <div
+                  key={index}
+                  className={cn(
+                    "flex gap-3 -mx-2 px-3 py-3 rounded-lg border border-dashed border-amber-500/35 bg-amber-500/5",
+                    isActive && "ring-1 ring-amber-500/40",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "text-xs text-muted-foreground font-mono pt-0.5 min-w-[60px] shrink-0 tabular-nums",
+                      onSeek && "cursor-pointer hover:text-primary transition-colors"
+                    )}
+                    onClick={handleSeekOrToggle}
+                    role={onSeek ? "button" : undefined}
+                    tabIndex={onSeek ? 0 : undefined}
+                  >
+                    {formatTimestamp(segment.startTime)}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge
+                        variant="outline"
+                        className="text-xs font-medium bg-amber-500/10 text-amber-800 border-amber-500/30 dark:text-amber-200"
+                      >
+                        <StickyNote className="h-3 w-3 mr-1" />
+                        {t('inCallNote')}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {t('inCallNoteTypedBy', { author })}
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                      {hasCorrections ? correctedText : segment.text}
+                    </p>
+                  </div>
+                </div>
+              )
+            }
 
             return (
               <div 

@@ -20,12 +20,28 @@ export async function POST(
 
     const db = createServiceRoleClient()
 
+    if (participantIdentity) {
+      const { data: existing } = await db
+        .from('consent_logs')
+        .select('id')
+        .eq('call_id', callId)
+        .eq('participant_identity', participantIdentity)
+        .maybeSingle()
+      if (existing) {
+        return NextResponse.json({ success: true, duplicate: true })
+      }
+    }
+
     const { error } = await db.from('consent_logs').insert({
       call_id: callId,
       participant_name: participantName || '',
       participant_identity: participantIdentity || '',
       granted,
     })
+
+    if (error?.code === '23505') {
+      return NextResponse.json({ success: true, duplicate: true })
+    }
 
     if (error) {
       console.error('[Consent] Failed to log consent:', error)

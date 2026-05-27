@@ -1,5 +1,7 @@
 import type { TranscriptSegment } from '@/lib/types/database'
 
+export const CALL_NOTE_SPEAKER_ID = '__in_call_note__'
+
 export interface TimedCallNote {
   id: string
   text: string
@@ -33,6 +35,35 @@ export function parseTimedCallNotes(value: unknown): TimedCallNote[] {
       created_at: String((entry as TimedCallNote).created_at || new Date().toISOString()),
     }]
   })
+}
+
+/** True for merged in-call notes (current and legacy speaker labels). */
+export function isCallNoteSegment(segment: {
+  is_call_note?: boolean
+  speaker?: string
+}): boolean {
+  if (segment?.is_call_note) return true
+  const speaker = String(segment?.speaker || '')
+  return speaker === CALL_NOTE_SPEAKER_ID || /^Note(\s|\(|$)/i.test(speaker)
+}
+
+export function getCallNoteAuthor(segment: {
+  author_name?: string
+  speaker?: string
+}): string | undefined {
+  if (segment?.author_name?.trim()) return segment.author_name.trim()
+  const speaker = String(segment?.speaker || '')
+  const parenMatch = speaker.match(/^Note\s*\(([^)]+)\)$/i)
+  if (parenMatch?.[1]) return parenMatch[1].trim()
+  return undefined
+}
+
+export function formatCallNoteTranscriptLine(
+  authorName: string | undefined,
+  text: string
+): string {
+  const by = authorName?.trim() || 'session owner'
+  return `[In-call note · typed by ${by}] ${text}`
 }
 
 function noteSegmentDurationMs(text: string): number {
@@ -70,26 +101,27 @@ export function mergeTimedNotesIntoSegments(
   if (!notes.length) return segments
 
   const timeline = opts.timeline || 'recording'
-  const baseLabel = opts.speakerLabel || 'Note'
-  const speechSegments = segments.filter((seg) => !(seg as { is_call_note?: boolean }).is_call_note)
+  const speechSegments = segments.filter((seg) => !isCallNoteSegment(seg as { is_call_note?: boolean; speaker?: string }))
 
   const noteSegments: TranscriptSegment[] = notes.map((note) => {
     const start_ms = resolveNoteStartMs(note, opts.timing, timeline)
     const duration = noteSegmentDurationMs(note.text)
-    const speaker = note.author_name ? `${baseLabel} (${note.author_name})` : baseLabel
     return {
       start_ms,
       end_ms: start_ms + duration,
-      speaker,
+      speaker: CALL_NOTE_SPEAKER_ID,
       text: note.text,
       is_call_note: true,
-    } as TranscriptSegment & { is_call_note: boolean }
+      author_name: note.author_name,
+    } as TranscriptSegment & { is_call_note: boolean; author_name?: string }
   })
 
   const merged = [...speechSegments, ...noteSegments].sort((a, b) => {
     if (a.start_ms !== b.start_ms) return a.start_ms - b.start_ms
-    if ((a as { is_call_note?: boolean }).is_call_note && !(b as { is_call_note?: boolean }).is_call_note) return 1
-    if (!(a as { is_call_note?: boolean }).is_call_note && (b as { is_call_note?: boolean }).is_call_note) return -1
+    if (isCallNoteSegment(a as { is_call_note?: boolean; speaker?: string }) &&
+        !isCallNoteSegment(b as { is_call_note?: boolean; speaker?: string })) return 1
+    if (!isCallNoteSegment(a as { is_call_note?: boolean; speaker?: string }) &&
+        isCallNoteSegment(b as { is_call_note?: boolean; speaker?: string })) return -1
     return 0
   })
 
@@ -98,7 +130,15 @@ export function mergeTimedNotesIntoSegments(
 
 export function segmentsToTranscriptText(segments: TranscriptSegment[]): string {
   return segments
-    .map((seg) => `${seg.speaker}: ${seg.text}`)
+    .map((seg) => {
+      if (isCallNoteSegment(seg as { is_call_note?: boolean; speaker?: string; author_name?: string })) {
+        return formatCallNoteTranscriptLine(
+          getCallNoteAuthor(seg as { author_name?: string; speaker?: string }),
+          seg.text
+        )
+      }
+      return `${seg.speaker}: ${seg.text}`
+    })
     .join('\n')
 }
 

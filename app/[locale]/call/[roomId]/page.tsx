@@ -140,6 +140,9 @@ export default function CallRoomPage() {
 
       const data = await res.json()
       setToken(data.token)
+      if (typeof data.participantIdentity === 'string') {
+        setParticipantIdentity(data.participantIdentity)
+      }
       // The token endpoint is the authoritative source for initiator status
       // when the user arrives without a pre-issued token in the URL.
       if (typeof data.isInitiator === "boolean") {
