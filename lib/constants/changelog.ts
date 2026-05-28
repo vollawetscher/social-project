@@ -14,6 +14,39 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.13',
+    date: 'May 28, 2026',
+    entries: [
+      {
+        version: '1.36.13',
+        date: 'May 28, 2026',
+        category: 'improvement',
+        title: 'Softer Waiting Music on Calls',
+        description: 'While you wait for someone to join a video or voice call, you now hear gentle hold music instead of a repeating ring tone — whether you arrived first or second.',
+      },
+      {
+        version: '1.36.13',
+        date: 'May 28, 2026',
+        category: 'fix',
+        title: 'Scheduled Calls Wait for Both People',
+        description: 'Recordings for scheduled and invited calls now start only once the host and guest are both in the room, so early arrivals no longer inflate session length.',
+      },
+    ],
+  },
+  {
+    version: '1.36.12',
+    date: 'May 28, 2026',
+    entries: [
+      {
+        version: '1.36.12',
+        date: 'May 28, 2026',
+        category: 'fix',
+        title: 'Calls Stay Connected When Switching Tabs',
+        description: 'Switching browser tabs during a call no longer drops you back to the join screen. If the connection briefly drops, Notissima reconnects automatically instead of reloading the page.',
+      },
+    ],
+  },
+  {
     version: '1.36.11',
     date: 'May 27, 2026',
     entries: [

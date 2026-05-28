@@ -51,6 +51,7 @@ import type { PstnTranscriptionMode } from "@/lib/types/call"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { formatDuration } from "@/lib/utils/date-formatters"
 import { SpeechmaticsRealtimeService, getSpeechmaticsRealtimeToken } from "@/lib/services/speechmatics-realtime"
+import { useCallWaitingMusic } from "@/components/call/useCallWaitingAudio"
 
 const RECONNECT_GRACE_MS = 30_000
 
@@ -204,7 +205,7 @@ export function CallRoom(props: CallRoomProps) {
       video={videoCaptureOptions}
     >
       <RoomAudioRenderer />
-      <CallRoomInner {...props} displayName={props.displayName} />
+      <CallRoomInner {...props} token={props.token} serverUrl={props.serverUrl} displayName={props.displayName} />
     </LiveKitRoom>
   )
 }
@@ -212,6 +213,8 @@ export function CallRoom(props: CallRoomProps) {
 function CallRoomInner({
   roomName,
   callId,
+  token,
+  serverUrl,
   mode,
   callType,
   pstnTranscriptionMode = "batch",
@@ -221,7 +224,7 @@ function CallRoomInner({
   isInitiator,
   onLeave,
   ringSmsParams,
-}: Omit<CallRoomProps, "token" | "serverUrl">) {
+}: CallRoomProps) {
   const router = useRouter()
   const t = useTranslations("callRoom")
   const tc = useTranslations("common")
@@ -293,7 +296,6 @@ function CallRoomInner({
   const [moderationLoading, setModerationLoading] = useState(false)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectTickRef = useRef<NodeJS.Timeout | null>(null)
   const endingCallRef = useRef(false)
   const wakeLockRef = useRef<any>(null)
@@ -309,18 +311,25 @@ function CallRoomInner({
 
   const isConnected = connectionState === ConnectionState.Connected
   const isConnecting = connectionState === ConnectionState.Connecting
+  const isReconnectingSdk = connectionState === ConnectionState.Reconnecting
   const isDisconnected = connectionState === ConnectionState.Disconnected
   const hasRemote = remoteParticipants.length > 0
   const hasRemoteAudio = remoteParticipants.some(p => p.isMicrophoneEnabled)
   const remoteReady = callType === "pstn_outbound" ? hasRemoteAudio : hasRemote
 
-  const callStatus = isDisconnected
-    ? "ended"
-    : isConnected && remoteReady
-      ? "connected"
-      : isConnected
-        ? "ringing"
-        : "connecting"
+  const isReconnecting =
+    isReconnectingSdk ||
+    (isDisconnected && reconnectDeadline !== null && !endingCallRef.current)
+
+  const callStatus = isReconnecting
+    ? "reconnecting"
+    : isDisconnected
+      ? "ended"
+      : isConnected && remoteReady
+        ? "connected"
+        : isConnected
+          ? "ringing"
+          : "connecting"
   const isMuted = !localParticipant.isMicrophoneEnabled
   const isLocalMicEnabled = localParticipant.isMicrophoneEnabled
   const isCameraOn = localParticipant.isCameraEnabled
@@ -421,10 +430,6 @@ function CallRoomInner({
   }, [isInitiator, callId, refreshModeration])
 
   const clearReconnectTimers = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
     if (reconnectTickRef.current) {
       clearInterval(reconnectTickRef.current)
       reconnectTickRef.current = null
@@ -804,21 +809,21 @@ function CallRoomInner({
     }
   }, [isConnected, remoteParticipantsKey])
 
-  // Outbound ringtone — only the call's initiator hears it. The callee/host
-  // accepting an invite has nothing to ring for; they just joined a room.
+  // Soft waiting audio while alone in the room. WebRTC: both host and guest hear it.
+  // PSTN outbound: only the caller hears the phone ring tone.
   // We also bail out as soon as the call has been declined / missed /
   // ended remotely, even if LiveKit hasn't disconnected yet.
   // The minimum play duration (2.5 s) ensures the caller hears at least one
   // ring even when the callee joins almost instantly (< 4 s pickup).
-  const shouldRing = Boolean(
-    isInitiator &&
-    (callType === "pstn_outbound" || callType === "web") &&
+  const shouldPlayWaitingAudio = Boolean(
+    (callType === "web" || isInitiator) &&
     !calleeLeft &&
     !remoteCallEnded &&
     !remoteEverConnected.current &&
     (callStatus === "ringing" || callStatus === "connecting")
   )
-  useRingtone(shouldRing)
+  useRingtone(callType === "pstn_outbound" && shouldPlayWaitingAudio)
+  useCallWaitingMusic(callType === "web" && shouldPlayWaitingAudio)
 
   // One-shot "you're connected" ping the moment both sides are first present
   // together. Replaces the abrupt silence on the initiator side when the
@@ -946,7 +951,7 @@ function CallRoomInner({
   }, [callId, isConnected, roomName, hasRemote])
 
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected || isReconnectingSdk) {
       clearReconnectTimers()
       setReconnectDeadline(null)
       setReconnectSecondsLeft(Math.floor(RECONNECT_GRACE_MS / 1000))
@@ -955,22 +960,27 @@ function CallRoomInner({
 
     if (!isDisconnected || endingCallRef.current) return
 
-    const deadline = Date.now() + RECONNECT_GRACE_MS
-    setReconnectDeadline(deadline)
-    setReconnectSecondsLeft(Math.floor(RECONNECT_GRACE_MS / 1000))
+    setReconnectDeadline(Date.now() + RECONNECT_GRACE_MS)
+    let remainingMs = RECONNECT_GRACE_MS
+    setReconnectSecondsLeft(Math.ceil(remainingMs / 1000))
 
     reconnectTickRef.current = setInterval(() => {
-      const leftMs = Math.max(0, deadline - Date.now())
-      setReconnectSecondsLeft(Math.ceil(leftMs / 1000))
+      // Pause the countdown while the tab is in the background — browsers
+      // suspend WebRTC there and the user shouldn't be ejected for switching tabs.
+      if (document.visibilityState === "visible") {
+        remainingMs -= 500
+      }
+      setReconnectSecondsLeft(Math.max(0, Math.ceil(remainingMs / 1000)))
+      if (remainingMs <= 0) {
+        clearReconnectTimers()
+        setReconnectDeadline(null)
+        if (onLeave) onLeave()
+        else router.push("/calls")
+      }
     }, 500)
 
-    reconnectTimeoutRef.current = setTimeout(() => {
-      if (onLeave) onLeave()
-      else router.push("/calls")
-    }, RECONNECT_GRACE_MS)
-
     return () => clearReconnectTimers()
-  }, [isConnected, isDisconnected, onLeave, router, clearReconnectTimers])
+  }, [isConnected, isDisconnected, isReconnectingSdk, onLeave, router, clearReconnectTimers])
 
   useEffect(() => {
     if (!remoteCallEnded || endingCallRef.current) return
@@ -1316,9 +1326,18 @@ function CallRoomInner({
     }
   }, [clearReconnectTimers, releaseWakeLock])
 
-  const retryConnection = useCallback(() => {
-    window.location.reload()
-  }, [])
+  const retryConnection = useCallback(async () => {
+    clearReconnectTimers()
+    setReconnectDeadline(null)
+    try {
+      if (room.state === ConnectionState.Disconnected) {
+        await room.connect(serverUrl, token)
+      }
+    } catch (err) {
+      console.error("[CallRoom] Manual reconnect failed:", err)
+      toast.error(t("callEndedUnexpectedly"))
+    }
+  }, [room, serverUrl, token, clearReconnectTimers, t])
 
   const saveNotesAndEnd = useCallback(async () => {
     setSavingNotes(true)
@@ -1523,6 +1542,7 @@ function CallRoomInner({
     connecting: t("connecting"),
     ringing: pstnConsentLabel || ringSmsLabel || t("waitingForOther"),
     connected: formatDuration(duration),
+    reconnecting: t("reconnecting", { seconds: reconnectSecondsLeft }),
     ended: t("callEnded"),
   }
 
@@ -1646,7 +1666,7 @@ function CallRoomInner({
 
         {/* Main Area */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          {isDisconnected && reconnectDeadline && !endingCallRef.current && (
+          {isReconnecting && !endingCallRef.current && (
             <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 rounded-md border border-warning/40 bg-warning/15 px-3 py-1.5 text-xs text-warning-foreground">
               {t("reconnecting", { seconds: reconnectSecondsLeft })}
               <button
@@ -2038,7 +2058,7 @@ function CallRoomInner({
 
       {/* Video Area */}
       <div className="flex-1 overflow-hidden relative">
-        {isDisconnected && reconnectDeadline && !endingCallRef.current && (
+        {isReconnecting && !endingCallRef.current && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 rounded-md border border-warning/40 bg-warning/15 px-3 py-1.5 text-xs text-warning-foreground">
             {t("reconnecting", { seconds: reconnectSecondsLeft })}
             <button

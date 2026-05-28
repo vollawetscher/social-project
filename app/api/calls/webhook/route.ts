@@ -5,6 +5,7 @@ import {
   startTrackEgressForParticipant,
   startTrackRealtimeEgressForParticipant,
   buildLiveRelayIngestUrl,
+  listParticipants,
 } from '@/lib/services/livekit'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
@@ -41,11 +42,24 @@ function inferTrackKindFromPath(path: string): 'a' | 'b' | null {
   return null
 }
 
+/** True when the call host (participant A) and at least one guest are in the LiveKit room. */
+async function callHasHostAndGuestInRoom(roomName: string, hostIdentity: string | null): Promise<boolean> {
+  if (!hostIdentity) return false
+  try {
+    const participants = await listParticipants(roomName)
+    const identities = participants.map((p) => p.identity).filter(Boolean) as string[]
+    return identities.includes(hostIdentity) && identities.some((id) => id !== hostIdentity)
+  } catch (err) {
+    console.error('[LiveKit Webhook] listParticipants failed:', roomName, err)
+    return false
+  }
+}
+
 /**
  * POST /api/calls/webhook - LiveKit webhook handler.
  * 
  * Events handled:
- * - participant_joined: Record participant B, mark active, start composite egress
+ * - participant_joined: Record guest, activate + start egress when host and guest are both present
  * - room_finished: Mark call ended
  * - egress_ended: Recording file is in Supabase Storage; create file record + trigger transcription
  */
@@ -68,14 +82,14 @@ export async function POST(request: Request) {
         let call: any = null
         const primaryQuery = await supabase
           .from('calls')
-          .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number, pstn_consent_state, pstn_transcription_mode')
+          .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, started_at, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number, pstn_consent_state, pstn_transcription_mode')
           .eq('room_name', roomName)
           .maybeSingle()
 
         if (primaryQuery.error && /pstn_consent_state|live_track_a_egress_id|live_track_b_egress_id|column .* does not exist/i.test(primaryQuery.error.message || '')) {
           const fallbackQuery = await supabase
             .from('calls')
-            .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number')
+            .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, started_at, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number')
             .eq('room_name', roomName)
             .maybeSingle()
           call = fallbackQuery.data
@@ -85,143 +99,151 @@ export async function POST(request: Request) {
 
         if (!call) break
 
-        // Participant B is:
-        //  - any non-A identity when participant_b_identity not yet set (web calls), OR
-        //  - the identity that matches the pre-set participant_b_identity (PSTN/SIP calls,
-        //    where the dial route sets participant_b_identity before the callee answers).
-        // We always need to detect and activate participant B.
-        // Egress-start logic is handled separately to avoid duplicate starts.
         const isParticipantB =
           identity !== call.participant_a_identity &&
           (!call.participant_b_identity || identity === call.participant_b_identity)
 
+        // Remember who joined as the guest, even if the host is not in the room yet.
         if (isParticipantB) {
-          await supabase
-            .from('calls')
-            .update({
-              participant_b_identity: identity,
-              status: 'active',
-              started_at: new Date().toISOString(),
-              accepted_at: call.status === 'invited' ? new Date().toISOString() : undefined,
-            })
-            .eq('id', call.id)
+          const guestUpdates: Record<string, unknown> = {}
+          if (call.participant_b_identity !== identity) {
+            guestUpdates.participant_b_identity = identity
+          }
+          if (call.status === 'invited') {
+            guestUpdates.accepted_at = new Date().toISOString()
+          }
+          if (Object.keys(guestUpdates).length > 0) {
+            await supabase.from('calls').update(guestUpdates).eq('id', call.id)
+            Object.assign(call, guestUpdates)
+          }
+        }
 
-          console.log('[LiveKit Webhook] Call activated:', call.id, 'participant B:', identity)
+        // Recording and started_at begin only when host (A) and guest are both present.
+        // This covers scheduled calls where the invitee arrives before the organizer.
+        const bothPresent = await callHasHostAndGuestInRoom(roomName, call.participant_a_identity)
+        if (!bothPresent) {
+          console.log('[LiveKit Webhook] Waiting for both participants:', call.id, 'latest join:', identity)
+          break
+        }
 
-          // Start recording now that both participants are present unless egress already exists.
-          const hasExistingEgress = Boolean(call.track_a_egress_id || call.track_b_egress_id)
-          const calleeDeclinedPstnConsent =
-            call.call_type === 'pstn_outbound' && call.pstn_consent_state === 'declined'
+        const activationUpdate: Record<string, unknown> = { status: 'active' }
+        if (!call.started_at) {
+          activationUpdate.started_at = new Date().toISOString()
+        }
+        await supabase.from('calls').update(activationUpdate).eq('id', call.id)
 
-          if (!hasExistingEgress && !calleeDeclinedPstnConsent) {
-            try {
-              // Create session now that both participants are connected.
-              // Deferred from call creation to avoid orphan sessions for missed/declined calls.
-              let sessionId = call.session_id as string | null
-              if (!sessionId) {
-                const callMode = (call as any).call_mode
-                const inputHint = call.call_type === 'pstn_outbound' ? 'phone_call' : callMode === 'video' ? 'video_call' : 'phone_call'
-                const sessionLabel = call.call_type === 'pstn_outbound' ? 'Call' : callMode === 'video' ? 'Video Call' : 'Voice Call'
-                const { data: newSession, error: sessionError } = await supabase
-                  .from('sessions')
-                  .insert({
-                    user_id: call.user_id,
-                    status: 'recording',
-                    context_note: '',
-                    internal_case_id: sessionLabel,
-                    duration_sec: 0,
-                    last_error: '',
-                    input_hint: inputHint,
-                    language: 'auto',
-                    user_is_speaker: true,
-                  })
-                  .select('id')
-                  .single()
-                if (sessionError || !newSession) {
-                  throw new Error(`Session creation failed: ${sessionError?.message || 'unknown'}`)
-                }
-                sessionId = newSession.id
-                await supabase.from('calls').update({ session_id: sessionId }).eq('id', call.id)
-                console.log('[LiveKit Webhook] Session created for call:', call.id, 'session:', sessionId)
-              }
+        console.log('[LiveKit Webhook] Call activated (both participants present):', call.id)
 
-              const useDualTrack =
-                call.call_type === 'pstn_outbound' &&
-                (call as any).pstn_transcription_mode === 'live' &&
-                !!call.participant_a_identity &&
-                !!(call.participant_b_identity || identity)
+        const hasExistingEgress = Boolean(call.track_a_egress_id || call.track_b_egress_id)
+        const calleeDeclinedPstnConsent =
+          call.call_type === 'pstn_outbound' && call.pstn_consent_state === 'declined'
 
-              if (useDualTrack) {
-                const participantAIdentity = call.participant_a_identity
-                const participantBIdentity = call.participant_b_identity || identity
-                const [egressA, egressB] = await Promise.all([
-                  startTrackEgressForParticipant(roomName, sessionId!, participantAIdentity, 'track_a'),
-                  startTrackEgressForParticipant(roomName, sessionId!, participantBIdentity, 'track_b'),
-                ])
-                let liveTrackAId: string | null = null
-                let liveTrackBId: string | null = null
-                const speakerB = call.contact_name || call.phone_number || 'Participant'
-                const relayUrlA = buildLiveRelayIngestUrl({
-                  callId: call.id,
-                  roomName,
-                  sourceKey: 'track_a',
-                  speakerLabel: 'You',
-                  language: 'de',
-                })
-                const relayUrlB = buildLiveRelayIngestUrl({
-                  callId: call.id,
-                  roomName,
-                  sourceKey: 'track_b',
-                  speakerLabel: speakerB,
-                  language: 'de',
-                })
-                if (relayUrlA && relayUrlB) {
-                  try {
-                    const [liveA, liveB] = await Promise.all([
-                      startTrackRealtimeEgressForParticipant(roomName, participantAIdentity, relayUrlA),
-                      startTrackRealtimeEgressForParticipant(roomName, participantBIdentity, relayUrlB),
-                    ])
-                    liveTrackAId = liveA.egressId || null
-                    liveTrackBId = liveB.egressId || null
-                    console.log('[LiveKit Webhook] Server relay egress started:', liveTrackAId, liveTrackBId)
-                  } catch (relayErr: any) {
-                    console.error('[LiveKit Webhook] Failed to start server relay egress:', relayErr?.message || relayErr)
-                  }
-                }
-                await supabase
-                  .from('calls')
-                  .update({
-                    track_a_egress_id: egressA.egressId,
-                    track_b_egress_id: egressB.egressId,
-                    live_track_a_egress_id: liveTrackAId,
-                    live_track_b_egress_id: liveTrackBId,
-                    track_a_started_at_ns: extractEgressStartedAtNs(egressA),
-                    track_b_started_at_ns: extractEgressStartedAtNs(egressB),
-                  })
-                  .eq('id', call.id)
-                console.log('[LiveKit Webhook] Dual track egress started:', egressA.egressId, egressB.egressId)
-              } else {
-                const egress = await startCompositeEgress(roomName, sessionId!)
-                await supabase
-                  .from('calls')
-                  .update({
-                    track_a_egress_id: egress.egressId,
-                    track_a_started_at_ns: extractEgressStartedAtNs(egress),
-                  })
-                  .eq('id', call.id)
-                console.log('[LiveKit Webhook] Composite egress started:', egress.egressId)
-              }
-              await supabase
+        if (!hasExistingEgress && !calleeDeclinedPstnConsent) {
+          try {
+            let sessionId = call.session_id as string | null
+            if (!sessionId) {
+              const callMode = (call as any).call_mode
+              const inputHint = call.call_type === 'pstn_outbound' ? 'phone_call' : callMode === 'video' ? 'video_call' : 'phone_call'
+              const sessionLabel = call.call_type === 'pstn_outbound' ? 'Call' : callMode === 'video' ? 'Video Call' : 'Voice Call'
+              const { data: newSession, error: sessionError } = await supabase
                 .from('sessions')
-                .update({ status: 'recording' })
-                .eq('id', sessionId)
-            } catch (err: any) {
-              console.error('[LiveKit Webhook] Failed to start egress:', err.message)
+                .insert({
+                  user_id: call.user_id,
+                  status: 'recording',
+                  context_note: '',
+                  internal_case_id: sessionLabel,
+                  duration_sec: 0,
+                  last_error: '',
+                  input_hint: inputHint,
+                  language: 'auto',
+                  user_is_speaker: true,
+                })
+                .select('id')
+                .single()
+              if (sessionError || !newSession) {
+                throw new Error(`Session creation failed: ${sessionError?.message || 'unknown'}`)
+              }
+              sessionId = newSession.id
+              await supabase.from('calls').update({ session_id: sessionId }).eq('id', call.id)
+              console.log('[LiveKit Webhook] Session created for call:', call.id, 'session:', sessionId)
+            }
+
+            const useDualTrack =
+              call.call_type === 'pstn_outbound' &&
+              (call as any).pstn_transcription_mode === 'live' &&
+              !!call.participant_a_identity &&
+              !!(call.participant_b_identity || identity)
+
+            if (useDualTrack) {
+              const participantAIdentity = call.participant_a_identity
+              const participantBIdentity = call.participant_b_identity || identity
+              const [egressA, egressB] = await Promise.all([
+                startTrackEgressForParticipant(roomName, sessionId!, participantAIdentity, 'track_a'),
+                startTrackEgressForParticipant(roomName, sessionId!, participantBIdentity, 'track_b'),
+              ])
+              let liveTrackAId: string | null = null
+              let liveTrackBId: string | null = null
+              const speakerB = call.contact_name || call.phone_number || 'Participant'
+              const relayUrlA = buildLiveRelayIngestUrl({
+                callId: call.id,
+                roomName,
+                sourceKey: 'track_a',
+                speakerLabel: 'You',
+                language: 'de',
+              })
+              const relayUrlB = buildLiveRelayIngestUrl({
+                callId: call.id,
+                roomName,
+                sourceKey: 'track_b',
+                speakerLabel: speakerB,
+                language: 'de',
+              })
+              if (relayUrlA && relayUrlB) {
+                try {
+                  const [liveA, liveB] = await Promise.all([
+                    startTrackRealtimeEgressForParticipant(roomName, participantAIdentity, relayUrlA),
+                    startTrackRealtimeEgressForParticipant(roomName, participantBIdentity, relayUrlB),
+                  ])
+                  liveTrackAId = liveA.egressId || null
+                  liveTrackBId = liveB.egressId || null
+                  console.log('[LiveKit Webhook] Server relay egress started:', liveTrackAId, liveTrackBId)
+                } catch (relayErr: any) {
+                  console.error('[LiveKit Webhook] Failed to start server relay egress:', relayErr?.message || relayErr)
+                }
+              }
               await supabase
                 .from('calls')
-                .update({ last_error: `Egress start failed: ${err.message}` })
+                .update({
+                  track_a_egress_id: egressA.egressId,
+                  track_b_egress_id: egressB.egressId,
+                  live_track_a_egress_id: liveTrackAId,
+                  live_track_b_egress_id: liveTrackBId,
+                  track_a_started_at_ns: extractEgressStartedAtNs(egressA),
+                  track_b_started_at_ns: extractEgressStartedAtNs(egressB),
+                })
                 .eq('id', call.id)
+              console.log('[LiveKit Webhook] Dual track egress started:', egressA.egressId, egressB.egressId)
+            } else {
+              const egress = await startCompositeEgress(roomName, sessionId!)
+              await supabase
+                .from('calls')
+                .update({
+                  track_a_egress_id: egress.egressId,
+                  track_a_started_at_ns: extractEgressStartedAtNs(egress),
+                })
+                .eq('id', call.id)
+              console.log('[LiveKit Webhook] Composite egress started:', egress.egressId)
             }
+            await supabase
+              .from('sessions')
+              .update({ status: 'recording' })
+              .eq('id', sessionId)
+          } catch (err: any) {
+            console.error('[LiveKit Webhook] Failed to start egress:', err.message)
+            await supabase
+              .from('calls')
+              .update({ last_error: `Egress start failed: ${err.message}` })
+              .eq('id', call.id)
           }
         }
         break

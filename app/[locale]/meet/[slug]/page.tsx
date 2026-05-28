@@ -14,9 +14,26 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { detectSupportedAudioFormat } from "@/lib/utils/audio-format-detector"
+import {
+  clearCallSession,
+  loadCallSession,
+  saveCallSession,
+  type StoredCallPhase,
+} from "@/lib/utils/call-session-storage"
 
 const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || ""
 const MAX_RECORDING_SECONDS = 120
+
+function meetStorageScope(slug: string) {
+  return `meet:${slug}`
+}
+
+function readMeetStoredSession(slug: string) {
+  if (typeof window === "undefined" || !slug) return null
+  const stored = loadCallSession(meetStorageScope(slug))
+  if (!stored) return null
+  return stored
+}
 
 function VoicemailPreview({ blob, durationSeconds }: { blob: Blob; durationSeconds: number }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -92,16 +109,29 @@ export default function MeetPage() {
 
   const slug = params?.slug as string
 
-  const [phase, setPhase] = useState<Phase>("loading")
+  const storedSessionRef = useRef<ReturnType<typeof readMeetStoredSession> | null>(null)
+  if (storedSessionRef.current === null) {
+    storedSessionRef.current = readMeetStoredSession(slug)
+  }
+  const storedSession = storedSessionRef.current
+
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (storedSession) return storedSession.phase === "consent" ? "consent" : "active"
+    return "loading"
+  })
   const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null)
   const [visitorName, setVisitorName] = useState("")
   const [visitorEmail, setVisitorEmail] = useState("")
-  const [callId, setCallId] = useState<string | null>(null)
-  const [roomName, setRoomName] = useState<string | null>(null)
-  const [token, setToken] = useState<string | null>(null)
-  const [participantIdentity, setParticipantIdentity] = useState<string | null>(null)
-  const [isInitiator, setIsInitiator] = useState<boolean>(false)
+  const [callId, setCallId] = useState<string | null>(() => storedSession?.callId ?? null)
+  const [roomName, setRoomName] = useState<string | null>(() => storedSession?.roomName ?? null)
+  const [token, setToken] = useState<string | null>(() => storedSession?.token ?? null)
+  const [participantIdentity, setParticipantIdentity] = useState<string | null>(
+    () => storedSession?.participantIdentity ?? null,
+  )
+  const [isInitiator, setIsInitiator] = useState<boolean>(() => storedSession?.isInitiator === true)
   const [error, setError] = useState<string | null>(null)
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
 
   // Voicemail recording state
   const [vmRecording, setVmRecording] = useState(false)
@@ -114,6 +144,10 @@ export default function MeetPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    if (phaseRef.current === "active" || phaseRef.current === "consent" || phaseRef.current === "joining") {
+      return
+    }
+
     async function resolveSlug() {
       try {
         const res = await fetch(`/api/meet/${encodeURIComponent(slug)}`, { cache: 'no-store' })
@@ -144,6 +178,18 @@ export default function MeetPage() {
 
     if (slug) resolveSlug()
   }, [slug, user?.id])
+
+  useEffect(() => {
+    if ((phase !== "active" && phase !== "consent") || !token || !callId || !roomName || !slug) return
+    saveCallSession(meetStorageScope(slug), {
+      token,
+      callId,
+      roomName,
+      phase: phase as StoredCallPhase,
+      isInitiator,
+      participantIdentity,
+    })
+  }, [phase, token, callId, roomName, slug, isInitiator, participantIdentity])
 
   // Re-check reachability every 10s while in lobby so the UI updates
   // if the owner comes online (or goes offline) after the page loaded.
@@ -216,6 +262,7 @@ export default function MeetPage() {
   }, [slug, visitorName, visitorEmail, user, ownerInfo?.ownerId])
 
   const handleLeave = useCallback(async () => {
+    if (slug) clearCallSession(meetStorageScope(slug))
     if (user) {
       if (callId) {
         try {
@@ -228,7 +275,7 @@ export default function MeetPage() {
     } else {
       setPhase("ended")
     }
-  }, [user, callId, router])
+  }, [user, callId, router, slug])
 
   const startVoicemailRecording = useCallback(async () => {
     try {

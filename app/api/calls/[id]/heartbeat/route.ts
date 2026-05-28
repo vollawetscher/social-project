@@ -24,7 +24,7 @@ export async function POST(
 
     const { data: call } = await supabase
       .from('calls')
-      .select('id, user_id, status, session_id, room_name, participant_b_identity, track_a_egress_id, track_b_egress_id, call_type')
+      .select('id, user_id, status, session_id, room_name, participant_b_identity, track_a_egress_id, track_b_egress_id, call_type, started_at')
       .eq('id', params.id)
       .or(`user_id.eq.${user.id},callee_user_id.eq.${user.id}`)
       .maybeSingle()
@@ -40,7 +40,9 @@ export async function POST(
     // the webhook missed the activation. Set to active + started_at.
     if (clientHasRemote && (call.status === 'waiting' || call.status === 'invited')) {
       updates.status = 'active'
-      updates.started_at = now
+      if (!call.started_at) {
+        updates.started_at = now
+      }
       console.log('[Heartbeat] Fallback activation — client has remote but call was', call.status, ':', call.id)
     }
 

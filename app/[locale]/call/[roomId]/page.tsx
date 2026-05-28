@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useParams, useSearchParams } from "next/navigation"
 import { useRouter } from "@/i18n/navigation"
@@ -12,8 +12,21 @@ import { CallEndedSignup } from "@/components/call/CallEndedSignup"
 import { Loader2 } from "lucide-react"
 import type { CallMode } from "@/lib/types/call"
 import type { PstnTranscriptionMode } from "@/lib/types/call"
+import {
+  clearCallSession,
+  loadCallSession,
+  saveCallSession,
+  type StoredCallPhase,
+} from "@/lib/utils/call-session-storage"
 
 const LIVEKIT_URL = process.env.NEXT_PUBLIC_LIVEKIT_URL || ""
+
+function readStoredSession(roomId: string) {
+  if (typeof window === "undefined" || !roomId) return null
+  const stored = loadCallSession(roomId)
+  if (!stored || stored.roomName !== roomId) return null
+  return stored
+}
 
 export default function CallRoomPage() {
   const tCallRoom = useTranslations('callRoom')
@@ -38,23 +51,44 @@ export default function CallRoomPage() {
   // gets refined later from the token endpoint response.
   const initParam = searchParams?.get("init") === "1"
 
-  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "consent" | "active" | "ended" | "error">("loading")
-  const [callId, setCallId] = useState<string | null>(callIdParam)
-  const [token, setToken] = useState<string | null>(tokenParam)
+  const storedSessionRef = useRef<ReturnType<typeof readStoredSession> | null>(null)
+  if (storedSessionRef.current === null) {
+    storedSessionRef.current = readStoredSession(roomId)
+  }
+  const storedSession = storedSessionRef.current
+
+  const [phase, setPhase] = useState<"loading" | "setup" | "incoming" | "joining" | "consent" | "active" | "ended" | "error">(() => {
+    if (tokenParam && callIdParam) return "active"
+    if (storedSession) return storedSession.phase === "consent" ? "consent" : "active"
+    return "loading"
+  })
+  const [callId, setCallId] = useState<string | null>(() => callIdParam ?? storedSession?.callId ?? null)
+  const [token, setToken] = useState<string | null>(() => tokenParam ?? storedSession?.token ?? null)
   const [callType, setCallType] = useState<"web" | "pstn_outbound">(callTypeParam)
   const [pstnTranscriptionMode, setPstnTranscriptionMode] = useState<PstnTranscriptionMode>(transcriptionModeParam)
   const [contactName, setContactName] = useState<string | undefined>()
   const [callerName, setCallerName] = useState<string>("Someone")
   const [joinDisplayName, setJoinDisplayName] = useState<string>("Guest")
-  const [participantIdentity, setParticipantIdentity] = useState<string | null>(null)
+  const [participantIdentity, setParticipantIdentity] = useState<string | null>(
+    () => storedSession?.participantIdentity ?? null,
+  )
   const [error, setError] = useState<string | null>(null)
-  const [isInitiator, setIsInitiator] = useState<boolean>(initParam)
+  const [isInitiator, setIsInitiator] = useState<boolean>(() => initParam || storedSession?.isInitiator === true)
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+
+  useEffect(() => {
+    if (!participantIdentity && !authLoading) {
+      setParticipantIdentity(user?.id || `guest-${Date.now()}`)
+    }
+  }, [authLoading, participantIdentity, user?.id])
 
   useEffect(() => {
     if (authLoading) return
 
-    if (!participantIdentity) {
-      setParticipantIdentity(user?.id || `guest-${Date.now()}`)
+    // Auth refresh re-runs this effect — never demote an active in-call session.
+    if (phaseRef.current === "active" || phaseRef.current === "consent" || phaseRef.current === "joining") {
+      return
     }
 
     if (tokenParam && callIdParam) {
@@ -64,9 +98,9 @@ export default function CallRoomPage() {
 
     // Resolve callId from room name when not in the URL (e.g., rejoin from banner)
     async function resolveAndContinue() {
-      let resolvedCallId = callIdParam
+      let resolvedCallId = callIdParam ?? storedSession?.callId ?? null
 
-      if (!resolvedCallId && user) {
+      if (!resolvedCallId && user?.id) {
         try {
           const res = await fetch(`/api/calls/active`)
           if (res.ok) {
@@ -81,7 +115,7 @@ export default function CallRoomPage() {
         }
       }
 
-      if (user) {
+      if (user?.id) {
         if (!resolvedCallId) {
           setError("This call has ended or is no longer available.")
           setPhase("error")
@@ -111,7 +145,19 @@ export default function CallRoomPage() {
     }
 
     resolveAndContinue()
-  }, [authLoading, callIdParam, tokenParam, user, participantIdentity, roomId])
+  }, [authLoading, callIdParam, tokenParam, user?.id, roomId])
+
+  useEffect(() => {
+    if ((phase !== "active" && phase !== "consent") || !token || !callId || !roomId) return
+    saveCallSession(roomId, {
+      token,
+      callId,
+      roomName: roomId,
+      phase: phase as StoredCallPhase,
+      isInitiator,
+      participantIdentity,
+    })
+  }, [phase, token, callId, roomId, isInitiator, participantIdentity])
 
   const handleJoin = useCallback(async (displayName: string) => {
     setPhase("joining")
@@ -160,6 +206,7 @@ export default function CallRoomPage() {
   }, [callId, token, tokenParam, user?.id, modeParam])
 
   const handleLeave = useCallback(async () => {
+    clearCallSession(roomId)
     if (user) {
       // If this authenticated user is the callee (no tokenParam = they didn't create the call),
       // auto-claim the call to fork a session for them.
@@ -175,7 +222,7 @@ export default function CallRoomPage() {
       // Guest: show sign-up screen to convert them into a trial user
       setPhase("ended")
     }
-  }, [user, tokenParam, callId, router])
+  }, [user, tokenParam, callId, router, roomId])
 
   if (phase === "loading" || authLoading) {
     return (
