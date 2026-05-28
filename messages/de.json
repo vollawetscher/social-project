@@ -1299,6 +1299,7 @@
     "call": "Anruf",
     "reconnecting": "Verbindung wird wiederhergestellt… {seconds}s",
     "retryNow": "Jetzt erneut versuchen",
+    "waitingMusicCredit": "Musik: „{track}“ von {artist}",
     "copyInviteLink": "Einladungslink kopieren",
     "linkCopied": "Link kopiert!",
     "recordingTranscribing": "Aufnahme & Transkription",

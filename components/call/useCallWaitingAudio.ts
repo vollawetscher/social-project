@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef } from "react"
 
-const WAITING_MUSIC_URL = "/audio/call-waiting.ogg"
+import { CALL_WAITING_MUSIC } from "@/lib/constants/call-waiting-music"
+
+const WAITING_MUSIC_URL = CALL_WAITING_MUSIC.filePath
 const TARGET_VOLUME = 0.28
 const FADE_MS = 600
 

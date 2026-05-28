@@ -52,6 +52,7 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/client"
 import { formatDuration } from "@/lib/utils/date-formatters"
 import { SpeechmaticsRealtimeService, getSpeechmaticsRealtimeToken } from "@/lib/services/speechmatics-realtime"
 import { useCallWaitingMusic } from "@/components/call/useCallWaitingAudio"
+import { CallWaitingMusicCredit } from "@/components/call/CallWaitingMusicCredit"
 
 const RECONNECT_GRACE_MS = 30_000
 
@@ -824,6 +825,8 @@ function CallRoomInner({
   )
   useRingtone(callType === "pstn_outbound" && shouldPlayWaitingAudio)
   useCallWaitingMusic(callType === "web" && shouldPlayWaitingAudio)
+  const showWaitingMusicCredit =
+    callType === "web" && (callStatus === "ringing" || callStatus === "connecting")
 
   // One-shot "you're connected" ping the moment both sides are first present
   // together. Replaces the abrupt silence on the initiator side when the
@@ -1714,6 +1717,9 @@ function CallRoomInner({
               )}>
                 {statusLabel[callStatus]}
               </p>
+              {showWaitingMusicCredit && (
+                <CallWaitingMusicCredit className="mt-2" />
+              )}
               {callStatus === "ringing" && ringSmsStatus && ringSmsStatus !== "failed" && ringSmsStatus !== "done" && (
                 <div className="flex items-center gap-2 mt-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -2140,6 +2146,9 @@ function CallRoomInner({
                     </AvatarFallback>
                   </Avatar>
                   <p className="text-sm text-white/50 mb-4">{t("waitingForOther")}</p>
+                  {showWaitingMusicCredit && (
+                    <CallWaitingMusicCredit variant="onDark" className="mb-4" />
+                  )}
                   <button
                     onClick={copyInviteLink}
                     className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 transition-colors"
@@ -2190,6 +2199,9 @@ function CallRoomInner({
                     </AvatarFallback>
                   </Avatar>
                   <p className="text-sm text-white/50 mb-4">{t("waitingForOther")}</p>
+                  {showWaitingMusicCredit && (
+                    <CallWaitingMusicCredit variant="onDark" className="mb-4" />
+                  )}
                   <button
                     onClick={copyInviteLink}
                     className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 transition-colors"

@@ -1300,6 +1300,7 @@
     "call": "Call",
     "reconnecting": "Reconnecting… {seconds}s",
     "retryNow": "Retry now",
+    "waitingMusicCredit": "Music: \"{track}\" by {artist}",
     "copyInviteLink": "Copy invite link",
     "linkCopied": "Link copied!",
     "recordingTranscribing": "Recording & Transcribing",

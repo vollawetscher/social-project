@@ -1292,6 +1292,7 @@
     "call": "Llamada",
     "reconnecting": "Reconectando… {seconds}s",
     "retryNow": "Reintentar ahora",
+    "waitingMusicCredit": "Música: «{track}» de {artist}",
     "copyInviteLink": "Copiar enlace de invitación",
     "linkCopied": "¡Enlace copiado!",
     "recordingTranscribing": "Grabando y transcribiendo",

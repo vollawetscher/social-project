@@ -1,0 +1,8 @@
+call-waiting.ogg
+
+Track:  Horizons (Loop)
+Artist: Corporate Music Zone — https://corporate-music-zone.bandcamp.com
+Source: Royalty-free via Free Stock Music — https://www.free-stock-music.com
+
+Used as in-call hold music (loop) in Notissima WebRTC calls.
+Credit is shown in the call UI while the track plays (see CallWaitingMusicCredit).
