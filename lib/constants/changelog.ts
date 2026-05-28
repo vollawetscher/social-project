@@ -20,6 +20,13 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.36.13',
         date: 'May 28, 2026',
+        category: 'fix',
+        title: 'Voice Messages Show the Right Names',
+        description: 'Voice messages left on your meeting link now show the visitor\'s name instead of S1, and greetings that mishear your name (for example "Herr Gruber" instead of "Kruppa") are corrected automatically.',
+      },
+      {
+        version: '1.36.13',
+        date: 'May 28, 2026',
         category: 'improvement',
         title: 'Softer Waiting Music on Calls',
         description: 'While you wait for someone to join a video or voice call, you now hear gentle hold music instead of a repeating ring tone — whether you arrived first or second.',

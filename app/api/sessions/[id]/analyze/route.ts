@@ -15,6 +15,7 @@ import {
   getCallNoteAuthor,
   isCallNoteSegment,
 } from '@/lib/services/merge-call-notes'
+import { resolveVoiceMessageContext } from '@/lib/utils/voice-message'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -212,6 +213,42 @@ function resolveSessionSummary(
 
 const asSegmentArray = (value: unknown): { start_ms?: number; end_ms?: number; [k: string]: any }[] =>
   Array.isArray(value) ? (value as { start_ms?: number; end_ms?: number; [k: string]: any }[]) : []
+
+function coerceWordCorrectionsMap(raw: unknown): Record<string, string> {
+  if (Array.isArray(raw)) {
+    const map: Record<string, string> = {}
+    for (const item of raw) {
+      if (item && typeof item === 'object' && 'original' in item && 'corrected' in item) {
+        map[String((item as Record<string, unknown>).original)] = String(
+          (item as Record<string, unknown>).corrected
+        )
+      }
+    }
+    return map
+  }
+  if (raw && typeof raw === 'object') {
+    const map: Record<string, string> = {}
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof v === 'string') map[k] = v
+    }
+    return map
+  }
+  return {}
+}
+
+function mergeWordCorrections(
+  existing: unknown,
+  deterministic: Record<string, string>,
+  aiItems: Array<{ original?: string; corrected?: string }>
+): Record<string, string> {
+  const fromAi: Record<string, string> = {}
+  for (const item of aiItems) {
+    const original = String(item?.original || '').trim()
+    const corrected = String(item?.corrected || '').trim()
+    if (original && corrected) fromAi[original] = corrected
+  }
+  return { ...coerceWordCorrectionsMap(existing), ...deterministic, ...fromAi }
+}
 
 type SpeakerResolution = {
   participants: Array<{ name: string; role: string | null; isUser: boolean }>
@@ -668,6 +705,9 @@ export async function POST(
     }, supabase)
     console.log('[Analyze API] Session found, transcripts count:', session.transcripts?.length || 0)
 
+    const inputHint = (session as any)?.input_hint as string | undefined
+    const isVoiceMessage = inputHint === 'voice_message'
+
     const sourceSignals = ((session as any)?.ai_extracted_context?.sourceSignals || null) as
       | { contentType?: string; authorRole?: string; isExternalInquiry?: boolean; confidence?: number }
       | null
@@ -780,7 +820,7 @@ export async function POST(
           }
         : null
 
-    const speakerResolution = buildSpeakerResolution({
+    let speakerResolution = buildSpeakerResolution({
       segments: speechSegments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
       callType: linkedCall?.call_type,
       callUserId: linkedCall?.user_id,
@@ -789,8 +829,25 @@ export async function POST(
       otherParticipantName: linkedOtherName,
       meetingLinkContext,
     })
+
+    const voiceMessageContext = isVoiceMessage
+      ? resolveVoiceMessageContext({
+          segments: speechSegments,
+          session: session as { context_note?: string | null; internal_case_id?: string | null },
+          userName,
+        })
+      : null
+    const voiceMessageAddresseeCorrections = voiceMessageContext?.addresseeCorrections ?? {}
+
+    if (voiceMessageContext?.speakerResolution) {
+      speakerResolution = voiceMessageContext.speakerResolution
+    }
+
     if (speakerResolution) {
       console.log('[Analyze API] Speaker resolution:', speakerResolution.reason, JSON.stringify(speakerResolution.nameMap))
+    }
+    if (Object.keys(voiceMessageAddresseeCorrections).length > 0) {
+      console.log('[Analyze API] Voice message addressee corrections:', voiceMessageAddresseeCorrections)
     }
 
     const speakerNameMap = speakerResolution?.nameMap ?? {}
@@ -839,9 +896,10 @@ export async function POST(
       let shouldPatch = false
 
       if (speakerResolution) {
-        const mergedNames = { ...existingNameCorrections, ...speakerResolution.nameMap }
-        const hasNewMapping = Object.keys(speakerResolution.nameMap).some(
-          (k) => existingNameCorrections[k] !== speakerResolution.nameMap[k]
+        const resolvedSpeakers = speakerResolution
+        const mergedNames = { ...existingNameCorrections, ...resolvedSpeakers.nameMap }
+        const hasNewMapping = Object.keys(resolvedSpeakers.nameMap).some(
+          (k) => existingNameCorrections[k] !== resolvedSpeakers.nameMap[k]
         )
         const contextParticipants = Array.isArray(normalizedContext.participants) ? normalizedContext.participants : []
         const hasUnresolvedSpeaker = contextParticipants.some((p: any) => typeof p?.name === 'string' && /^S\d+$/i.test(p.name))
@@ -853,12 +911,27 @@ export async function POST(
           }
           patchedContext = {
             ...normalizedContext,
-            participants: speakerResolution.participants,
+            participants: resolvedSpeakers.participants,
             speakerIdentification: {
               ...(normalizedContext.speakerIdentification || {}),
-              strategy: speakerResolution.reason,
+              strategy: resolvedSpeakers.reason,
               updatedAt: new Date().toISOString(),
             },
+          }
+        }
+      }
+
+      if (Object.keys(voiceMessageAddresseeCorrections).length > 0) {
+        const existingWordCorrections = coerceWordCorrectionsMap(existingCorrections.word_corrections)
+        const mergedWordCorrections = { ...existingWordCorrections, ...voiceMessageAddresseeCorrections }
+        const hasNewWordCorrection = Object.keys(voiceMessageAddresseeCorrections).some(
+          (k) => existingWordCorrections[k] !== voiceMessageAddresseeCorrections[k]
+        )
+        if (hasNewWordCorrection) {
+          shouldPatch = true
+          patchedCorrections = {
+            ...patchedCorrections,
+            word_corrections: mergedWordCorrections,
           }
         }
       }
@@ -976,7 +1049,7 @@ Prefer asking when in doubt. A 2-second click is cheaper than a misframed 3-page
    - Use free-form text - be specific and accurate
 
 3. **Rich Context** to help understand and document this session
-4. **User-Indicated Content Hint**: The user selected this before upload (use to guide recording type/domain if relevant): ${(session as { input_hint?: string }).input_hint || 'none'}${(session as { input_hint?: string }).input_hint === 'voice_message' ? '\n   NOTE: This is a VOICE MESSAGE left by a visitor on the user\'s meeting link while the user was unavailable. Treat it as a message TO the user, not a meeting. Extract: who left the message, what they want/need, urgency level, any callback contact info. The recording type should be "dictation". For suggested outputs, focus on: message summary, reply draft, action items.' : ''}
+4. **User-Indicated Content Hint**: The user selected this before upload (use to guide recording type/domain if relevant): ${inputHint || 'none'}${isVoiceMessage ? `\n   NOTE: This is a VOICE MESSAGE left by a visitor on the user's meeting link while the user was unavailable. Treat it as a message TO "${userName || 'the session owner'}", not a meeting. The visitor is the only speaker; "${userName || 'the session owner'}" is the recipient and is NOT speaking in this recording. Set isUser: false for the visitor/speaker and isUser: true only for the recipient if listed as a participant. If the opening salutation addresses someone by name (e.g. "Hallo, Herr …") and that name is NOT "${userName || 'the session owner'}", it is very likely an ASR mishearing of the recipient's name — suggest a high-confidence wordCorrection to the recipient's actual name. Extract: who left the message, what they want/need, urgency level, any callback contact info. The recording type should be "dictation". For suggested outputs, focus on: message summary, reply draft, action items.` : ''}
 4b. **Imported Text Source Signals** (heuristic): ${sourceSignals ? JSON.stringify(sourceSignals) : 'none'}
 5. **Known Participants** (pre-resolved from metadata — trust this data): ${knownParticipantBlock}
    The recording/session was made by "${userName || 'unknown user'}". Use speaker names from the transcript as-is; they have already been resolved.
@@ -1185,7 +1258,6 @@ Branch B (low confidence — ASK):
     // Prevent false "ai_agent_conversation" for known human calls.
     // When input_hint says video_call/phone_call, or the call has two real participants,
     // override to "meeting" since it's clearly a human-to-human conversation.
-    const inputHint = (session as any)?.input_hint as string | undefined
     const isKnownHumanCall =
       (inputHint === 'video_call' || inputHint === 'phone_call') ||
       (linkedCall?.call_type === 'web' && linkedCall?.callee_user_id)
@@ -1228,6 +1300,11 @@ Branch B (low confidence — ASK):
 
     const aiWordCorrections = Array.isArray(analysis.wordCorrections) ? analysis.wordCorrections : []
     const aiSpeakerMerges = Array.isArray(analysis.speakerMerges) ? analysis.speakerMerges : []
+    const mergedWordCorrections = mergeWordCorrections(
+      existingCorrections.word_corrections,
+      voiceMessageAddresseeCorrections,
+      aiWordCorrections
+    )
 
     const mergedExtractedContext = {
       ...analysis.extractedContext,
@@ -1253,7 +1330,7 @@ Branch B (low confidence — ASK):
             },
           }
         : {}),
-      ...(aiWordCorrections.length > 0 ? { word_corrections: aiWordCorrections } : {}),
+      ...(Object.keys(mergedWordCorrections).length > 0 ? { word_corrections: mergedWordCorrections } : {}),
       ...(aiSpeakerMerges.length > 0 ? { speaker_merges: aiSpeakerMerges } : {}),
     }
     const canonicalSummary = resolveSessionSummary(
