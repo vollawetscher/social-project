@@ -53,7 +53,9 @@ export async function POST(
       )
     }
 
-    // Lazily initialize room and session for scheduled calls on first join.
+    // Lazily initialize the LiveKit room for scheduled calls on first join.
+    // The recording webhook creates the session once both participants are present
+    // and egress starts, so unanswered scheduled calls do not leave failed sessions.
     if (call.status === 'scheduled' && !call.session_id) {
       try {
         await createRoom(call.room_name, {
@@ -70,31 +72,9 @@ export async function POST(
         }
       }
 
-      const sessionLabel = call.contact_name?.trim() || 'Scheduled Video Call'
-      const { data: session, error: sessionError } = await db
-        .from('sessions')
-        .insert({
-          user_id: call.user_id,
-          status: 'created',
-          context_note: '',
-          internal_case_id: sessionLabel,
-          duration_sec: 0,
-          last_error: '',
-          input_hint: 'video_call',
-          language: 'auto',
-        })
-        .select('id')
-        .single()
-
-      if (sessionError) {
-        console.error('[Calls Token] Failed to create session for scheduled call:', sessionError)
-        return NextResponse.json({ error: `Session creation failed: ${sessionError.message}` }, { status: 500 })
-      }
-
       await db
         .from('calls')
         .update({
-          session_id: session.id,
           status: call.callee_user_id ? 'invited' : 'waiting',
           room_created_at_ms: Date.now(),
           invited_at: call.callee_user_id ? new Date().toISOString() : null,

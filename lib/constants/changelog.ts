@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.15',
+    date: 'May 29, 2026',
+    entries: [
+      {
+        version: '1.36.15',
+        date: 'May 29, 2026',
+        category: 'fix',
+        title: 'Cleaner Scheduled Calls',
+        description: 'Scheduled video calls that end before recording starts no longer leave behind failed empty sessions in your session list.',
+      },
+    ],
+  },
+  {
     version: '1.36.14',
     date: 'May 29, 2026',
     entries: [
