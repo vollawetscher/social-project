@@ -113,9 +113,35 @@ export async function PATCH(
         retention_days: (current?.retention_days ?? 90) + extraDays,
       }
     } else {
-      // Generic update — strip any potentially dangerous fields
-      const { action: _a, ...safe } = body
-      updatePayload = safe
+      // Generic field update — restrict to a known allowlist of editable fields.
+      // Anything outside this set (e.g. user_id, pulse_*, retention_days) is
+      // ignored to prevent accidental tampering via the generic path.
+      const editableFields = [
+        'title',
+        'description',
+        'client_identifier',
+        'status',
+        'project_type',
+        'user_role',
+      ] as const
+      updatePayload = {}
+      for (const key of editableFields) {
+        if (Object.prototype.hasOwnProperty.call(fields, key)) {
+          const raw = (fields as Record<string, unknown>)[key]
+          if (key === 'project_type' || key === 'user_role') {
+            const trimmed = typeof raw === 'string' ? raw.trim() : ''
+            updatePayload[key] = trimmed || null
+          } else if (typeof raw === 'string') {
+            updatePayload[key] = raw
+          } else if (raw === null) {
+            updatePayload[key] = null
+          }
+        }
+      }
+
+      if (Object.keys(updatePayload).length === 0) {
+        return NextResponse.json({ error: 'No editable fields provided' }, { status: 400 })
+      }
     }
 
     const { data: updatedCase, error } = await supabase

@@ -40,6 +40,8 @@ export interface Case {
   retention_days: number
   last_output_at?: string | null
   scheduled_deletion_at?: string | null
+  project_type?: string | null
+  user_role?: string | null
 }
 
 export interface Session {

@@ -45,11 +45,14 @@ export async function POST(request: Request) {
     const supabase = await createClient()
     const body = await request.json()
 
-    const { title, client_identifier, description } = body
+    const { title, client_identifier, description, project_type, user_role } = body
 
     if (!title || title.trim() === '') {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
     }
+
+    const trimmedProjectType = typeof project_type === 'string' ? project_type.trim() : ''
+    const trimmedUserRole = typeof user_role === 'string' ? user_role.trim() : ''
 
     const { data: newCase, error } = await supabase
       .from('cases')
@@ -58,7 +61,9 @@ export async function POST(request: Request) {
         title: title.trim(),
         client_identifier: client_identifier?.trim() || '',
         description: description?.trim() || '',
-        status: 'active'
+        status: 'active',
+        project_type: trimmedProjectType || null,
+        user_role: trimmedUserRole || null,
       })
       .select()
       .single()

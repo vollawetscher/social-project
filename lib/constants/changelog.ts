@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.37.0',
+    date: 'May 29, 2026',
+    entries: [
+      {
+        version: '1.37.0',
+        date: 'May 29, 2026',
+        category: 'feature',
+        title: 'AI-Suggested Project Type and Role',
+        description: 'When you create a project from a session, the project type (e.g. "New Hire (employer side)", "Customer Rollout") and your role in it are now suggested by AI based on the conversation. Confirm with one click or edit before saving. Type and role appear as badges on the project page and can be changed any time.',
+      },
+    ],
+  },
+  {
     version: '1.36.15',
     date: 'May 29, 2026',
     entries: [

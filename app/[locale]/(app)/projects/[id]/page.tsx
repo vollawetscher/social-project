@@ -52,6 +52,8 @@ interface CaseData {
   status: 'active' | 'closed' | 'archived'
   created_at: string
   updated_at: string
+  project_type: string | null
+  user_role: string | null
   sessions: SessionRow[]
 }
 
@@ -176,6 +178,8 @@ export default function ProjectDetailPage() {
   const [editDescription, setEditDescription] = useState('')
   const [editClientId, setEditClientId] = useState('')
   const [editStatus, setEditStatus] = useState<CaseStatus>('active')
+  const [editProjectType, setEditProjectType] = useState('')
+  const [editUserRole, setEditUserRole] = useState('')
   const [saving, setSaving] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState('')
@@ -359,6 +363,8 @@ export default function ProjectDetailPage() {
     setEditDescription(caseData.description)
     setEditClientId(caseData.client_identifier)
     setEditStatus(caseData.status)
+    setEditProjectType(caseData.project_type || '')
+    setEditUserRole(caseData.user_role || '')
     setShowEditDialog(true)
   }
 
@@ -372,6 +378,8 @@ export default function ProjectDetailPage() {
           description: editDescription,
           client_identifier: editClientId,
           status: editStatus,
+          project_type: editProjectType.trim() || null,
+          user_role: editUserRole.trim() || null,
         }),
       })
       if (res.ok) {
@@ -513,6 +521,20 @@ export default function ProjectDetailPage() {
           )}
           {caseData.client_identifier && (
             <p className="text-xs text-muted-foreground mt-0.5">ID: {caseData.client_identifier}</p>
+          )}
+          {(caseData.project_type || caseData.user_role) && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+              {caseData.project_type && (
+                <Badge variant="secondary" className="font-normal">
+                  {caseData.project_type}
+                </Badge>
+              )}
+              {caseData.user_role && (
+                <Badge variant="outline" className="font-normal">
+                  {t('projects.createDialog.userRoleLabel')}: {caseData.user_role}
+                </Badge>
+              )}
+            </div>
           )}
         </div>
         <Badge variant="outline">{statusLabel(caseData.status)}</Badge>
@@ -918,6 +940,22 @@ export default function ProjectDetailPage() {
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 rows={4}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('projects.createDialog.projectTypeLabel')}</Label>
+              <Input
+                placeholder={t('projects.createDialog.projectTypePlaceholder')}
+                value={editProjectType}
+                onChange={(e) => setEditProjectType(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('projects.createDialog.userRoleLabel')}</Label>
+              <Input
+                placeholder={t('projects.createDialog.userRolePlaceholder')}
+                value={editUserRole}
+                onChange={(e) => setEditUserRole(e.target.value)}
               />
             </div>
           </div>

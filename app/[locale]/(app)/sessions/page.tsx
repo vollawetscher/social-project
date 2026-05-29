@@ -431,6 +431,10 @@ export default function SessionsPage() {
   const [newProjectTitle, setNewProjectTitle] = useState('')
   const [newProjectClientId, setNewProjectClientId] = useState('')
   const [newProjectDescription, setNewProjectDescription] = useState('')
+  const [newProjectType, setNewProjectType] = useState('')
+  const [newProjectUserRole, setNewProjectUserRole] = useState('')
+  const [aiPrefilledType, setAiPrefilledType] = useState(false)
+  const [aiPrefilledRole, setAiPrefilledRole] = useState(false)
   const [creatingProject, setCreatingProject] = useState(false)
   // When set, the newly created project will be auto-assigned to this session id
   const [createAndAssignSessionId, setCreateAndAssignSessionId] = useState<string | null>(null)
@@ -1330,6 +1334,50 @@ export default function SessionsPage() {
     if (view === 'projects') fetchProjects()
   }, [view, fetchProjects])
 
+  // When the user opens the assign dialog and switches to "+ New project",
+  // pre-fill project_type and user_role from the source session's AI analysis.
+  // Falls back to empty if the session hasn't been analyzed yet or the model
+  // decided this conversation isn't project-shaped.
+  useEffect(() => {
+    if (!showAssignDialog) return
+    if (selectedProjectId !== '__new__') return
+    if (!assignSessionId) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/sessions/${assignSessionId}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        const ctx = (data?.ai_extracted_context || {}) as Record<string, any>
+        const suggestedType = typeof ctx.suggested_project_type === 'string' ? ctx.suggested_project_type.trim() : ''
+        const suggestedRole = typeof ctx.suggested_user_role === 'string' ? ctx.suggested_user_role.trim() : ''
+        if (cancelled) return
+        setNewProjectType((current) => {
+          if (current.trim()) return current
+          if (suggestedType) {
+            setAiPrefilledType(true)
+            return suggestedType
+          }
+          return current
+        })
+        setNewProjectUserRole((current) => {
+          if (current.trim()) return current
+          if (suggestedRole) {
+            setAiPrefilledRole(true)
+            return suggestedRole
+          }
+          return current
+        })
+      } catch {
+        // Pre-fill is best-effort; the user can fill the fields manually.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [showAssignDialog, selectedProjectId, assignSessionId])
+
   const openAssignDialog = (session: Session) => {
     setAssignSessionId(session.id)
     setSelectedProjectId(session.caseId ?? '__none__')
@@ -1353,6 +1401,8 @@ export default function SessionsPage() {
             title: newProjectTitle.trim(),
             client_identifier: newProjectClientId.trim(),
             description: '',
+            project_type: newProjectType.trim() || null,
+            user_role: newProjectUserRole.trim() || null,
           }),
         })
         if (!createRes.ok) throw new Error()
@@ -1362,6 +1412,10 @@ export default function SessionsPage() {
         projectTitle = created.title
         setNewProjectTitle('')
         setNewProjectClientId('')
+        setNewProjectType('')
+        setNewProjectUserRole('')
+        setAiPrefilledType(false)
+        setAiPrefilledRole(false)
       } else {
         projectTitle = projectId ? (projects.find((p) => p.id === projectId)?.title ?? null) : null
       }
@@ -1399,6 +1453,8 @@ export default function SessionsPage() {
           title: newProjectTitle.trim(),
           client_identifier: newProjectClientId.trim(),
           description: newProjectDescription.trim(),
+          project_type: newProjectType.trim() || null,
+          user_role: newProjectUserRole.trim() || null,
         }),
       })
       if (!res.ok) throw new Error()
@@ -1408,6 +1464,10 @@ export default function SessionsPage() {
       setNewProjectTitle('')
       setNewProjectClientId('')
       setNewProjectDescription('')
+      setNewProjectType('')
+      setNewProjectUserRole('')
+      setAiPrefilledType(false)
+      setAiPrefilledRole(false)
 
       // Auto-assign the session that triggered "New project" from its action menu
       const targetSessionId = createAndAssignSessionId
@@ -2742,7 +2802,14 @@ export default function SessionsPage() {
       {/* Assign to Project Dialog — dropdown includes "+ New project" inline */}
       <Dialog open={showAssignDialog} onOpenChange={(open) => {
         setShowAssignDialog(open)
-        if (!open) { setNewProjectTitle(''); setNewProjectClientId('') }
+        if (!open) {
+          setNewProjectTitle('')
+          setNewProjectClientId('')
+          setNewProjectType('')
+          setNewProjectUserRole('')
+          setAiPrefilledType(false)
+          setAiPrefilledRole(false)
+        }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -2789,6 +2856,37 @@ export default function SessionsPage() {
                   value={newProjectClientId}
                   onChange={(e) => setNewProjectClientId(e.target.value)}
                 />
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t('projects.createDialog.projectTypeLabel')}
+                  </label>
+                  <Input
+                    placeholder={t('projects.createDialog.projectTypePlaceholder')}
+                    value={newProjectType}
+                    onChange={(e) => {
+                      setNewProjectType(e.target.value)
+                      setAiPrefilledType(false)
+                    }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t('projects.createDialog.userRoleLabel')}
+                  </label>
+                  <Input
+                    placeholder={t('projects.createDialog.userRolePlaceholder')}
+                    value={newProjectUserRole}
+                    onChange={(e) => {
+                      setNewProjectUserRole(e.target.value)
+                      setAiPrefilledRole(false)
+                    }}
+                  />
+                </div>
+                {(aiPrefilledType || aiPrefilledRole) && (
+                  <p className="text-xs text-muted-foreground italic">
+                    {t('projects.createDialog.aiSuggestedHint')}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -2817,7 +2915,15 @@ export default function SessionsPage() {
       {/* Create Project Dialog */}
       <Dialog open={showCreateProjectDialog} onOpenChange={(open) => {
         setShowCreateProjectDialog(open)
-        if (!open) { setNewProjectTitle(''); setNewProjectClientId(''); setNewProjectDescription('') }
+        if (!open) {
+          setNewProjectTitle('')
+          setNewProjectClientId('')
+          setNewProjectDescription('')
+          setNewProjectType('')
+          setNewProjectUserRole('')
+          setAiPrefilledType(false)
+          setAiPrefilledRole(false)
+        }
       }}>
         <DialogContent>
           <DialogHeader>
@@ -2842,6 +2948,32 @@ export default function SessionsPage() {
               onChange={(e) => setNewProjectDescription(e.target.value)}
               rows={3}
             />
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                {t('projects.createDialog.projectTypeLabel')}
+              </label>
+              <Input
+                placeholder={t('projects.createDialog.projectTypePlaceholder')}
+                value={newProjectType}
+                onChange={(e) => {
+                  setNewProjectType(e.target.value)
+                  setAiPrefilledType(false)
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                {t('projects.createDialog.userRoleLabel')}
+              </label>
+              <Input
+                placeholder={t('projects.createDialog.userRolePlaceholder')}
+                value={newProjectUserRole}
+                onChange={(e) => {
+                  setNewProjectUserRole(e.target.value)
+                  setAiPrefilledRole(false)
+                }}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateProjectDialog(false)}>
