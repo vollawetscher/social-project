@@ -224,7 +224,22 @@ export async function POST(request: Request) {
     const user = await requireAuth(request)
     const supabase = await createClient()
     const body = await request.json()
-    const { context_note = '', internal_case_id = '', case_id = null, language, input_hint, user_is_speaker } = body
+    const {
+      context_note = '',
+      internal_case_id = '',
+      case_id = null,
+      language,
+      input_hint,
+      user_is_speaker,
+      purpose: rawPurpose,
+    } = body
+
+    const trimmedPurpose = typeof rawPurpose === 'string' ? rawPurpose.trim() : ''
+    const purposeFields: { purpose?: string; purpose_source?: 'user' } = {}
+    if (trimmedPurpose) {
+      purposeFields.purpose = trimmedPurpose
+      purposeFields.purpose_source = 'user'
+    }
 
     const { data: session, error } = await supabase
       .from('sessions')
@@ -237,6 +252,7 @@ export async function POST(request: Request) {
         ...(language && { language }),
         ...(input_hint && { input_hint }),
         ...(user_is_speaker != null && { user_is_speaker }),
+        ...purposeFields,
       })
       .select()
       .single()

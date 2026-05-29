@@ -68,7 +68,6 @@ export function mapSessionToPulseInput(sessionRow: any): PulseSessionInput {
     .filter(Boolean)
     .slice(0, 12)
 
-  const purpose = String(extracted.purpose || '').trim()
   const agenda = Array.isArray(extracted.agenda)
     ? extracted.agenda.map((x: any) => String(x || '').trim()).filter(Boolean).slice(0, 12)
     : []
@@ -86,10 +85,24 @@ export function mapSessionToPulseInput(sessionRow: any): PulseSessionInput {
     .slice(0, 6)
 
   const summary = readSummaryBullets(sessionRow?.speechmatics_summary)
+  // Phase 3: prefer user-declared purpose when set; fall back to AI-extracted.
+  const declaredPurpose = String(sessionRow?.purpose || '').trim()
+  const declaredPurposeSource = String(sessionRow?.purpose_source || '')
+  const aiPurpose = String(extracted.purpose || '').trim()
+  const finalPurpose = declaredPurpose || aiPurpose
+  const finalPurposeSource: 'user' | 'ai' | null =
+    declaredPurpose && declaredPurposeSource === 'user'
+      ? 'user'
+      : declaredPurpose && declaredPurposeSource === 'ai'
+        ? 'ai'
+        : aiPurpose
+          ? 'ai'
+          : null
   return {
     session_id: String(sessionRow?.id || ''),
     summary,
-    purpose,
+    purpose: finalPurpose,
+    purpose_source: finalPurposeSource,
     agenda,
     domains,
     speakers,
@@ -354,7 +367,7 @@ export async function runPulseUpdateJob(input: {
       .single(),
     supabase
       .from('sessions')
-      .select('id, case_id, status, ai_extracted_context, speechmatics_summary, suggested_domains, recording_type, context_note, private_comments, recorded_at, created_at')
+      .select('id, case_id, status, ai_extracted_context, speechmatics_summary, suggested_domains, recording_type, context_note, private_comments, recorded_at, created_at, purpose, purpose_source')
       .eq('id', sessionId)
       .single(),
   ])

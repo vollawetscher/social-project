@@ -181,7 +181,7 @@ export function SessionSetupPanel({
       ?.map((p: any) => typeof p === 'string' ? p : p?.name || 'Unknown')
       .join(", ") || ""
   )
-  const [purpose, setPurpose] = useState(session.extractedContext?.purpose || "")
+  const [purpose, setPurpose] = useState(session.purpose || session.extractedContext?.purpose || "")
   const [agenda, setAgenda] = useState(session.extractedContext?.agenda?.join("\n") || "")
   const [venue, setVenue] = useState(session.extractedContext?.venue || "")
 
@@ -236,14 +236,14 @@ export function SessionSetupPanel({
       participants: session.extractedContext?.participants
         ?.map((p: any) => typeof p === 'string' ? p : p?.name || 'Unknown')
         .join(", ") || "",
-      purpose: session.extractedContext?.purpose || "",
+      purpose: session.purpose || session.extractedContext?.purpose || "",
       agenda: session.extractedContext?.agenda?.join("\n") || "",
       venue: session.extractedContext?.venue || ""
     })
     setParticipants(session.extractedContext?.participants
       ?.map((p: any) => typeof p === 'string' ? p : p?.name || 'Unknown')
       .join(", ") || "")
-    setPurpose(session.extractedContext?.purpose || "")
+    setPurpose(session.purpose || session.extractedContext?.purpose || "")
     setAgenda(session.extractedContext?.agenda?.join("\n") || "")
     setVenue(session.extractedContext?.venue || "")
     setSelectedRecordingType(session.recordingType)
@@ -641,6 +641,11 @@ export function SessionSetupPanel({
                     placeholder={t('purposePlaceholder')}
                     className="bg-secondary border-border text-sm min-h-[60px]"
                   />
+                  {session.purposeSource && (
+                    <p className="text-[11px] text-muted-foreground italic">
+                      {session.purposeSource === 'user' ? t('purposeSourceUser') : t('purposeSourceAi')}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground flex items-center gap-1">

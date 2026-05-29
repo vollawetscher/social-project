@@ -123,12 +123,13 @@ export async function PATCH(
         'status',
         'project_type',
         'user_role',
+        'default_session_purpose',
       ] as const
       updatePayload = {}
       for (const key of editableFields) {
         if (Object.prototype.hasOwnProperty.call(fields, key)) {
           const raw = (fields as Record<string, unknown>)[key]
-          if (key === 'project_type' || key === 'user_role') {
+          if (key === 'project_type' || key === 'user_role' || key === 'default_session_purpose') {
             const trimmed = typeof raw === 'string' ? raw.trim() : ''
             updatePayload[key] = trimmed || null
           } else if (typeof raw === 'string') {

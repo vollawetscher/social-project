@@ -31,6 +31,7 @@ export async function POST(request: Request) {
       scheduledTimezone,
       inviteEmail,
       inviteEmails,
+      purpose,
     } = body
     const resolvedPstnTranscriptionMode =
       callType === 'pstn_outbound' && pstnTranscriptionMode === 'live'
@@ -103,6 +104,8 @@ export async function POST(request: Request) {
     const calleeReachability = isInvite && calleeUserId
       ? await getCalleeReachability(createServiceRoleClient(), calleeUserId)
       : null
+    const trimmedPurpose = typeof purpose === 'string' ? purpose.trim() : ''
+
     const { data: call, error: callError } = await supabase
       .from('calls')
       .insert({
@@ -122,6 +125,7 @@ export async function POST(request: Request) {
         scheduled_duration_min: isScheduled ? normalizedScheduledDurationMin : null,
         scheduled_timezone: scheduledTimezone || null,
         guest_invite_email: isScheduled ? (normalizedInviteEmails[0] || null) : null,
+        ...(trimmedPurpose ? { purpose: trimmedPurpose } : {}),
       })
       .select('*')
       .single()

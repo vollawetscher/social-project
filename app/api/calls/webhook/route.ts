@@ -82,14 +82,14 @@ export async function POST(request: Request) {
         let call: any = null
         const primaryQuery = await supabase
           .from('calls')
-          .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, started_at, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number, pstn_consent_state, pstn_transcription_mode')
+          .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, started_at, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number, pstn_consent_state, pstn_transcription_mode, purpose')
           .eq('room_name', roomName)
           .maybeSingle()
 
         if (primaryQuery.error && /pstn_consent_state|live_track_a_egress_id|live_track_b_egress_id|column .* does not exist/i.test(primaryQuery.error.message || '')) {
           const fallbackQuery = await supabase
             .from('calls')
-            .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, started_at, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number')
+            .select('id, user_id, session_id, participant_a_identity, participant_b_identity, status, started_at, track_a_egress_id, track_b_egress_id, live_track_a_egress_id, live_track_b_egress_id, track_a_started_at_ns, track_b_started_at_ns, call_type, call_mode, contact_name, phone_number, purpose')
             .eq('room_name', roomName)
             .maybeSingle()
           call = fallbackQuery.data
@@ -157,6 +157,9 @@ export async function POST(request: Request) {
                   input_hint: inputHint,
                   language: 'auto',
                   user_is_speaker: true,
+                  ...(call.purpose && String(call.purpose).trim()
+                    ? { purpose: String(call.purpose).trim(), purpose_source: 'user' as const }
+                    : {}),
                 })
                 .select('id')
                 .single()

@@ -442,6 +442,9 @@ export default function SessionsPage() {
   const [newProjectType, setNewProjectType] = useState('')
   const [newProjectUserRole, setNewProjectUserRole] = useState('')
   const [aiPrefilledType, setAiPrefilledType] = useState(false)
+  const [assignPurpose, setAssignPurpose] = useState('')
+  const [assignPurposeSource, setAssignPurposeSource] = useState<'user' | 'ai' | 'none'>('none')
+  const [purposeQuickPicks, setPurposeQuickPicks] = useState<string[]>([])
   const [aiPrefilledRole, setAiPrefilledRole] = useState(false)
   const [creatingProject, setCreatingProject] = useState(false)
   // When set, the newly created project will be auto-assigned to this session id
@@ -709,7 +712,8 @@ export default function SessionsPage() {
     rawFileContent: string,
     fileName: string,
     ingestionSource: 'drag_drop' | 'file_select' | 'clipboard_paste' = 'file_select',
-    parseStrategy: TranscriptParseStrategy = 'auto'
+    parseStrategy: TranscriptParseStrategy = 'auto',
+    purpose?: string
   ): Promise<string | null> => {
     const { segments, rawText } = parseTranscriptFile(rawFileContent, fileName, { strategy: parseStrategy })
     if (segments.length === 0) {
@@ -736,6 +740,7 @@ export default function SessionsPage() {
           filename: fileName,
           ingestionSource,
           parseStrategy,
+          ...(purpose ? { purpose } : {}),
         }),
         signal: controller.signal,
       })
@@ -771,14 +776,15 @@ export default function SessionsPage() {
   const processPastedTranscript = useCallback(async (
     rawContent: string,
     source: 'clipboard_paste' | 'file_select' = 'clipboard_paste',
-    parseStrategy: TranscriptParseStrategy = 'auto'
+    parseStrategy: TranscriptParseStrategy = 'auto',
+    purpose?: string
   ): Promise<string | null> => {
     const trimmed = rawContent.trim()
     if (!trimmed || trimmed.length < 10) {
       toast.error(t('uploadMessages.emptyContent'))
       return null
     }
-    return importTranscriptContent(trimmed, 'pasted.txt', source, parseStrategy)
+    return importTranscriptContent(trimmed, 'pasted.txt', source, parseStrategy, purpose)
   }, [importTranscriptContent, t])
 
   const handleTranscriptFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -883,13 +889,14 @@ export default function SessionsPage() {
   const handlePastePreviewConfirm = useCallback(async (
     text: string,
     parseStrategy: TranscriptParseStrategy,
-    templateId?: string
+    templateId?: string,
+    purpose?: string
   ) => {
     setUploadingTranscript(true)
     try {
       const sessionId = pastePreviewSource === 'file' && pastePreviewFileName
-        ? await importTranscriptContent(text, pastePreviewFileName, 'file_select', parseStrategy)
-        : await processPastedTranscript(text, 'clipboard_paste', parseStrategy)
+        ? await importTranscriptContent(text, pastePreviewFileName, 'file_select', parseStrategy, purpose)
+        : await processPastedTranscript(text, 'clipboard_paste', parseStrategy, purpose)
 
       if (sessionId) {
         let outputId: string | undefined
@@ -1378,13 +1385,104 @@ export default function SessionsPage() {
           return current
         })
       } catch {
-        // Pre-fill is best-effort; the user can fill the fields manually.
       }
     })()
     return () => {
       cancelled = true
     }
   }, [showAssignDialog, selectedProjectId, assignSessionId])
+
+  // Phase 3: when the assign dialog opens, seed assignPurpose from the
+  // session's current purpose. If the value was AI-inferred, show it pre-
+  // filled so the user can confirm or replace it (their confirmation
+  // upgrades source to 'user'). If it was already user-set, keep it as-is.
+  useEffect(() => {
+    if (!showAssignDialog || !assignSessionId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/sessions/${assignSessionId}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        const purpose = String(data?.purpose || '').trim()
+        const purposeSource = String(data?.purpose_source || '')
+        setAssignPurpose(purpose)
+        setAssignPurposeSource(
+          purposeSource === 'user' ? 'user' : purposeSource === 'ai' ? 'ai' : 'none'
+        )
+      } catch {
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [showAssignDialog, assignSessionId])
+
+  // Phase 3: when the user picks a real project (not __new__ / __none__),
+  // fetch its recent session purposes and offer 3-5 quick-pick chips. This
+  // is the UI affordance that makes purpose capture nearly free for repeat
+  // captures on long-running projects.
+  useEffect(() => {
+    if (!showAssignDialog) {
+      setPurposeQuickPicks([])
+      return
+    }
+    if (!selectedProjectId || selectedProjectId === '__none__' || selectedProjectId === '__new__') {
+      setPurposeQuickPicks([])
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/cases/${selectedProjectId}`, { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        const sessions = Array.isArray(data?.sessions) ? data.sessions : []
+        const sorted = [...sessions].sort((a: any, b: any) => {
+          const at = new Date(a?.created_at || 0).getTime()
+          const bt = new Date(b?.created_at || 0).getTime()
+          return bt - at
+        })
+        const seen = new Set<string>()
+        const chips: string[] = []
+        for (const s of sorted) {
+          const p = String(s?.purpose || '').trim()
+          if (!p) continue
+          const key = p.toLowerCase()
+          if (seen.has(key)) continue
+          // De-dup near-identical entries by case-insensitive substring
+          // overlap so we don't show "Weekly check-in" and "Weekly check in".
+          let overlaps = false
+          seen.forEach((existing) => {
+            if (existing.includes(key) || key.includes(existing)) {
+              overlaps = true
+            }
+          })
+          if (overlaps) continue
+          seen.add(key)
+          chips.push(p)
+          if (chips.length >= 5) break
+        }
+
+        // If the project has a default_session_purpose, surface it as the
+        // first chip so it's prominent.
+        const defaultPurpose = String(data?.default_session_purpose || '').trim()
+        if (defaultPurpose) {
+          const dpKey = defaultPurpose.toLowerCase()
+          const filtered = chips.filter((c) => c.toLowerCase() !== dpKey)
+          setPurposeQuickPicks([defaultPurpose, ...filtered].slice(0, 5))
+        } else {
+          setPurposeQuickPicks(chips)
+        }
+      } catch {
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [showAssignDialog, selectedProjectId])
 
   const openAssignDialog = (session: Session) => {
     setAssignSessionId(session.id)
@@ -1428,10 +1526,19 @@ export default function SessionsPage() {
         projectTitle = projectId ? (projects.find((p) => p.id === projectId)?.title ?? null) : null
       }
 
+      const purposeToPersist = assignPurpose.trim()
+      const patchBody: Record<string, unknown> = { case_id: projectId }
+      // Only persist purpose when the user actually entered something. If
+      // they leave it blank, don't overwrite an existing AI-back-filled value
+      // — the analyze pipeline will keep populating it when they don't.
+      if (purposeToPersist) {
+        patchBody.purpose = purposeToPersist
+        patchBody.purpose_source = 'user'
+      }
       const res = await fetch(`/api/sessions/${assignSessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: projectId }),
+        body: JSON.stringify(patchBody),
       })
       if (!res.ok) throw new Error()
       setSessions((prev) =>
@@ -2826,6 +2933,9 @@ export default function SessionsPage() {
           setNewProjectUserRole('')
           setAiPrefilledType(false)
           setAiPrefilledRole(false)
+          setAssignPurpose('')
+          setAssignPurposeSource('none')
+          setPurposeQuickPicks([])
         }
       }}>
         <DialogContent>
@@ -2834,6 +2944,40 @@ export default function SessionsPage() {
             <DialogDescription>{t('projects.assignDialog.description')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            {/* Phase 3: purpose capture for the session being attached. Quick-pick
+                chips below show the project's most-recent unique purposes so
+                repeat capture is one click. The input itself is always
+                editable; clearing it just leaves the existing AI-back-filled
+                value untouched. */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                {t('projects.assignDialog.purposeLabel')}
+              </label>
+              <Input
+                placeholder={t('projects.assignDialog.purposePlaceholder')}
+                value={assignPurpose}
+                onChange={(e) => setAssignPurpose(e.target.value)}
+              />
+              {purposeQuickPicks.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {purposeQuickPicks.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setAssignPurpose(chip)}
+                      className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] hover:bg-muted"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {assignPurposeSource === 'ai' && (
+                <p className="text-[11px] text-muted-foreground italic">
+                  {t('projects.assignDialog.purposeAiHint')}
+                </p>
+              )}
+            </div>
             {loadingProjects ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
                 <Loader2 className="h-4 w-4 animate-spin" />

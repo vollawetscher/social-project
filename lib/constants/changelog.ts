@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.39.0',
+    date: 'May 29, 2026',
+    entries: [
+      {
+        version: '1.39.0',
+        date: 'May 29, 2026',
+        category: 'feature',
+        title: 'Tell us what your call is for',
+        description: 'You can now declare a purpose for any session — when you import a transcript, schedule a video call, or attach a recording to a project. The AI treats your declaration as ground truth, so it stops mislabeling, say, a post-rollout follow-up as a "training session" just because the call happened to include a demo. Drift between what you declared and what was actually discussed is treated as normal — calls go off-script, that\'s not a bug.',
+      },
+      {
+        version: '1.39.0',
+        date: 'May 29, 2026',
+        category: 'improvement',
+        title: 'Quick-pick session purposes per project',
+        description: 'When attaching a session to a project, the dialog now suggests up to five recently-used purposes from that project as one-click chips. Projects can also set a default purpose that auto-applies to new sessions when none is provided.',
+      },
+    ],
+  },
+  {
     version: '1.38.0',
     date: 'May 29, 2026',
     entries: [

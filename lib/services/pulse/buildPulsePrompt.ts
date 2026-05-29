@@ -82,6 +82,12 @@ PERMANENT LEDGER RULE:
 - Mark resolved/cancelled loops as ledger entries with the appropriate \`kind\`.
 - Never delete entries.
 
+PURPOSE SOURCE RULE:
+- Each session carries a \`purpose\` and a \`purpose_source\`.
+- \`purpose_source: user\` is the owner's declared intent — canonical for that session. Trust it.
+- \`purpose_source: ai\` is inferred from content and may be wrong.
+- When user-declared purpose and AI-inferred content would conflict, trust user-declared. Do not flag the gap as drift — calls go off-script all the time, that's expected.
+
 Output language for user-facing prose (current_status, covered, missing, next_actions, open_loops, narrative, history_chunks summaries, decision text): ${userLanguage}.
 Type and role labels stay in the form they were saved (do not translate "${projectType || ''}" or "${userRole || ''}").
 
@@ -152,6 +158,7 @@ Tracked as:           ${projectType || 'unspecified'} (role: ${userRole || 'unsp
 session_id:     ${session.session_id}
 recorded_at:    ${session.recorded_at}
 purpose:        ${session.purpose || '(none)'}
+purpose_source: ${session.purpose_source || 'unknown'}
 domains:        ${session.domains.join(', ') || '(none)'}
 speakers:       ${session.speakers.join(', ') || '(none)'}
 recording_type: ${session.recording_type}

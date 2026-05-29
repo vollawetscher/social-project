@@ -260,6 +260,11 @@
         "success": "Projekt erstellt",
         "error": "Projekt konnte nicht erstellt werden"
       },
+      "editDialog": {
+        "defaultPurposeLabel": "Standardzweck für neue Sitzungen",
+        "defaultPurposePlaceholder": "z. B. Wöchentliches Kunden-Check-in",
+        "defaultPurposeHint": "Optional. Wird automatisch auf neue Sitzungen angewendet, die ohne expliziten Zweck zugewiesen werden."
+      },
       "assignDialog": {
         "title": "Projekt zuweisen",
         "description": "Wählen Sie, zu welchem Projekt diese Sitzung gehört.",
@@ -271,7 +276,10 @@
         "assigning": "Wird zugewiesen...",
         "success": "Sitzung dem Projekt zugewiesen",
         "removeSuccess": "Sitzung aus Projekt entfernt",
-        "error": "Zuweisung fehlgeschlagen"
+        "error": "Zuweisung fehlgeschlagen",
+        "purposeLabel": "Worum ging es in diesem Gespräch? (optional)",
+        "purposePlaceholder": "z. B. Wöchentliches Kunden-Check-in",
+        "purposeAiHint": "Von der KI abgeleitet. Bearbeiten zum Bestätigen oder Ersetzen."
       },
       "assignToProject": "Projekt zuweisen",
       "removeFromProject": "Aus Projekt entfernen",
@@ -841,6 +849,9 @@
     "upcomingScheduled": "Geplante Anrufe",
     "scheduledCallDefaultTitle": "Geplanter Videoanruf",
     "scheduleDialogHint": "Waehlen Sie den Startzeitpunkt fuer den Videoanruf.",
+    "purposeLabel": "Worum geht es in diesem Anruf? (optional)",
+    "purposePlaceholder": "z. B. Quartalsmeeting mit Acme",
+    "purposeHint": "Hilft der KI bei der Analyse. Abweichungen zwischen Absicht und Inhalt sind normal.",
     "durationLabel": "Dauer",
     "minutes": "Min.",
     "scheduleJoinWindowHint": "Der Beitritt ist 10 Minuten vor Beginn moeglich.",
@@ -1537,7 +1548,10 @@
     "importing": "Wird importiert...",
     "importAndGenerate": "Importieren und Bericht erstellen",
     "templateLabel": "Bericht mit Vorlage erstellen (optional)",
-    "templateNone": "Keine Vorlage (nur Import)"
+    "templateNone": "Keine Vorlage (nur Import)",
+    "purposeLabel": "Worum geht es in diesem Gespräch? (optional)",
+    "purposePlaceholder": "z. B. Erstes Wochen-1-Follow-up nach Voice-Agent-Go-Live",
+    "purposeHelp": "Hilft der KI, die Analyse korrekt einzuordnen. Abweichungen zwischen Absicht und Inhalt sind normal."
   },
   "pasteSheet": {
     "title": "Inhalt einfügen",
@@ -1630,6 +1644,8 @@
     "listenerOnly": "Nur Zuhörer",
     "purpose": "Zweck",
     "purposePlaceholder": "Beschreiben Sie den Zweck...",
+    "purposeSourceUser": "Ihr deklarierter Zweck für diese Sitzung.",
+    "purposeSourceAi": "Aus dem Inhalt abgeleitet. Bearbeiten Sie ihn, um Ihren eigenen anzugeben.",
     "agenda": "Agenda",
     "agendaPlaceholder": "Ein Punkt pro Zeile...",
     "venue": "Ort",

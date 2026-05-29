@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       ingestionSource = 'unknown',
       parseStrategy = 'auto',
       queueMode = '',
+      purpose: rawPurpose,
     }: {
       language?: string
       sessionName?: string
@@ -56,7 +57,15 @@ export async function POST(request: Request) {
       ingestionSource?: TranscriptIngestionSource
       parseStrategy?: TranscriptParseStrategy
       queueMode?: string
+      purpose?: string
     } = body
+
+    const trimmedPurpose = typeof rawPurpose === 'string' ? rawPurpose.trim() : ''
+    const purposeFields: { purpose?: string; purpose_source?: 'user' } = {}
+    if (trimmedPurpose) {
+      purposeFields.purpose = trimmedPurpose
+      purposeFields.purpose_source = 'user'
+    }
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -216,6 +225,7 @@ export async function POST(request: Request) {
         word_count: wordCount,
         ...(inputHint ? { input_hint: inputHint } : {}),
         ai_extracted_context: seededExtractedContext,
+        ...purposeFields,
       })
       .select()
       .single()

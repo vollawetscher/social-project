@@ -140,6 +140,9 @@ export interface Session {
   curated?: boolean // True when session was prepared as a curated trial import — hides destructive controls
   ownerContext?: OwnerContext | null // Structured context about the session owner's role in the conversation
   pendingClarification?: PendingClarification | null // LLM-emitted question to disambiguate owner role
+  // Phase 3: user-declared session purpose (canonical when purposeSource = 'user').
+  purpose?: string | null
+  purposeSource?: 'user' | 'ai' | null
 }
 
 export interface OwnerContext {

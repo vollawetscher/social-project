@@ -66,6 +66,23 @@ export async function PATCH(
         userEdited: true,
         editedAt: new Date().toISOString()
       }
+
+      // Phase 3: when the user edits purpose via this panel, treat it as a
+      // user declaration and persist it to the canonical sessions.purpose
+      // column with purpose_source = 'user'. Empty string clears both.
+      if (Object.prototype.hasOwnProperty.call(extractedContext, 'purpose')) {
+        const raw = (extractedContext as Record<string, unknown>).purpose
+        if (typeof raw === 'string') {
+          const trimmed = raw.trim()
+          if (trimmed.length > 0) {
+            updates.purpose = trimmed
+            updates.purpose_source = 'user'
+          } else {
+            updates.purpose = null
+            updates.purpose_source = null
+          }
+        }
+      }
     }
 
     console.log('[Context API] Updating session with:', Object.keys(updates))

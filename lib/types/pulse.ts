@@ -110,6 +110,7 @@ export interface PulseSessionInput {
   session_id: string
   summary: string[]
   purpose: string
+  purpose_source: 'user' | 'ai' | null
   agenda: string[]
   domains: string[]
   speakers: string[]

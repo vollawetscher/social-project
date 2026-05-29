@@ -72,7 +72,7 @@ interface PastePreviewSheetProps {
   ingestionSource?: TranscriptIngestionSource
   fileName?: string | null
   templates?: Array<{ id: string; name: string }>
-  onConfirm: (text: string, strategy: TranscriptParseStrategy, templateId?: string) => void
+  onConfirm: (text: string, strategy: TranscriptParseStrategy, templateId?: string, purpose?: string) => void
   loading?: boolean
 }
 
@@ -90,6 +90,7 @@ export function PastePreviewSheet({
   const [text, setText] = useState(initialText)
   const [modeIndex, setModeIndex] = useState(0)
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  const [purpose, setPurpose] = useState('')
   const [editSuggestion, setEditSuggestion] = useState<EditSuggestion | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const prevTextRef = useRef(initialText)
@@ -102,6 +103,7 @@ export function PastePreviewSheet({
       setText(initialText)
       setModeIndex(0)
       setSelectedTemplateId('')
+      setPurpose('')
       setEditSuggestion(null)
       prevTextRef.current = initialText
     }
@@ -256,6 +258,21 @@ export function PastePreviewSheet({
           {t('stats', { words: wordCount.toLocaleString(), characters: charCount.toLocaleString() })}
         </div>
         <div className="pb-3">
+          <label htmlFor="preview-purpose-input" className="mb-1 block text-xs font-medium text-foreground">
+            {t('purposeLabel')}
+          </label>
+          <input
+            id="preview-purpose-input"
+            type="text"
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            disabled={loading}
+            placeholder={t('purposePlaceholder')}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground">{t('purposeHelp')}</p>
+        </div>
+        <div className="pb-3">
           <label htmlFor="preview-template-select" className="mb-1 block text-xs font-medium text-foreground">
             {t('templateLabel')}
           </label>
@@ -289,7 +306,7 @@ export function PastePreviewSheet({
             {t('cancel')}
           </Button>
           <Button
-            onClick={() => onConfirm(trimmed, parseModes[modeIndex], selectedTemplateId || undefined)}
+            onClick={() => onConfirm(trimmed, parseModes[modeIndex], selectedTemplateId || undefined, purpose.trim() || undefined)}
             disabled={loading || charCount < 10}
           >
             {loading ? (

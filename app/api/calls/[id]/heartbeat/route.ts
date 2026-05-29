@@ -24,7 +24,7 @@ export async function POST(
 
     const { data: call } = await supabase
       .from('calls')
-      .select('id, user_id, status, session_id, room_name, participant_b_identity, track_a_egress_id, track_b_egress_id, call_type, started_at')
+      .select('id, user_id, status, session_id, room_name, participant_b_identity, track_a_egress_id, track_b_egress_id, call_type, started_at, purpose')
       .eq('id', params.id)
       .or(`user_id.eq.${user.id},callee_user_id.eq.${user.id}`)
       .maybeSingle()
@@ -70,6 +70,9 @@ export async function POST(
               input_hint: 'phone_call',
               language: 'auto',
               user_is_speaker: true,
+              ...((call as any).purpose && String((call as any).purpose).trim()
+                ? { purpose: String((call as any).purpose).trim(), purpose_source: 'user' as const }
+                : {}),
             })
             .select('id')
             .single()

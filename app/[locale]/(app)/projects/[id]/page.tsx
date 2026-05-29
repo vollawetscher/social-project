@@ -209,6 +209,7 @@ export default function ProjectDetailPage() {
   const [editStatus, setEditStatus] = useState<CaseStatus>('active')
   const [editProjectType, setEditProjectType] = useState('')
   const [editUserRole, setEditUserRole] = useState('')
+  const [editDefaultPurpose, setEditDefaultPurpose] = useState('')
   const [saving, setSaving] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState('')
@@ -440,6 +441,7 @@ export default function ProjectDetailPage() {
     setEditStatus(caseData.status)
     setEditProjectType(caseData.project_type || '')
     setEditUserRole(caseData.user_role || '')
+    setEditDefaultPurpose((caseData as any).default_session_purpose || '')
     setShowEditDialog(true)
   }
 
@@ -455,6 +457,7 @@ export default function ProjectDetailPage() {
           status: editStatus,
           project_type: editProjectType.trim() || null,
           user_role: editUserRole.trim() || null,
+          default_session_purpose: editDefaultPurpose.trim() || null,
         }),
       })
       if (res.ok) {
@@ -1142,6 +1145,15 @@ export default function ProjectDetailPage() {
                 value={editUserRole}
                 onChange={(e) => setEditUserRole(e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t('projects.editDialog.defaultPurposeLabel')}</Label>
+              <Input
+                placeholder={t('projects.editDialog.defaultPurposePlaceholder')}
+                value={editDefaultPurpose}
+                onChange={(e) => setEditDefaultPurpose(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground">{t('projects.editDialog.defaultPurposeHint')}</p>
             </div>
           </div>
           <DialogFooter>

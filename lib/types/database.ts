@@ -42,6 +42,7 @@ export interface Case {
   scheduled_deletion_at?: string | null
   project_type?: string | null
   user_role?: string | null
+  default_session_purpose?: string | null
 }
 
 export interface Session {
@@ -62,6 +63,10 @@ export interface Session {
   duration_sec: number
   last_error: string
   preferred_report_language?: 'de' | 'en' | null  // User override for report language (null = auto-detect)
+  // User-declared session purpose (Phase 3). Canonical when purpose_source = 'user';
+  // back-filled from analyze with purpose_source = 'ai' when the user does not provide one.
+  purpose?: string | null
+  purpose_source?: 'user' | 'ai' | null
   structured_context?: {
     meeting_type?: string
     participants?: Array<{ name: string; role?: string; party?: string }>

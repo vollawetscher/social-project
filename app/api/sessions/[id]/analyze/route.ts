@@ -1039,6 +1039,23 @@ When you classify suggested_project_type / suggested_user_role, default to the p
       console.warn('[Analyze API] Failed to load project context for prompt:', err)
     }
 
+    // Phase 3: when the session owner has declared a purpose, treat it as
+    // ground truth. This is the fix for the Loerrach failure mode (a
+    // post-rollout follow-up call mislabeled as "CRM training" because the
+    // call happened to include a feature demonstration). Drift between
+    // declared intent and what was actually discussed is normal — never
+    // flag it.
+    let userPurposeBlock = ''
+    const declaredPurpose = String((session as any)?.purpose || '').trim()
+    const declaredPurposeSource = String((session as any)?.purpose_source || '')
+    const hasUserDeclaredPurpose = declaredPurpose.length > 0 && declaredPurposeSource === 'user'
+    if (hasUserDeclaredPurpose) {
+      userPurposeBlock = `USER-DECLARED PURPOSE (canonical — do not contradict, do not flag as drift):
+"${declaredPurpose}"
+
+This is what the session owner says the conversation was for. Treat it as ground truth for intent. Your AI-extracted purpose, classification, and project_type suggestions should be consistent with this declared purpose. Do not flag divergence between this declared purpose and what was actually discussed — conversations frequently take unexpected turns, that is not a bug.`
+    }
+
     // Call Claude to analyze with enhanced context extraction
     console.log('[Analyze API] Calling Claude API for enhanced analysis...')
     const analysisBudget = await resolveTokenBudget({
@@ -1097,6 +1114,7 @@ When you classify suggested_project_type / suggested_user_role, default to the p
 7. **Spoken Commands**: Detect voice commands directed at "Notissima" (the assistant). Use FUZZY matching—transcription/ASR often misspells proper nouns. Match variations such as: Notissima, Notisima, Notissma, Natissima, Notessima; with or without punctuation (Notissima:, Notissima,); after "Hey", "Ok", "So" etc. If a phrase looks like a command to an assistant (create X, send link, summarize) and the wake word is phonetically similar to Notissima, treat it as a match. Extract the exact phrase as spoken in transcript, speaker, and brief intent summary.
 8a. **Owner context assessment**: ${ownerContextBlock}
 8b. **Project context**: ${projectContextBlock || 'This session is not (yet) attached to a project.'}
+8c. **User-declared purpose**: ${userPurposeBlock || 'No user-declared purpose; infer from content.'}
 
 8. **Suggested Output Formats**: Based on the conversation type and domain, suggest exactly 3 different output formats that would be useful. Examples:
    - Sales call: meeting minutes, internal sales call analysis (what worked, what was missed, buying signals), short team update
@@ -1468,6 +1486,18 @@ Branch B (low confidence — ASK):
       speechmatics_summary: canonicalSummary,
       owner_context: nextOwnerContext,
       pending_clarification: nextPendingClarification,
+    }
+
+    // Phase 3: backfill sessions.purpose from AI-extracted purpose when the
+    // user did not declare one. Marked as purpose_source = 'ai' so downstream
+    // code can tell user-declared from inferred. If the user declared a
+    // purpose, preserve it untouched.
+    if (!hasUserDeclaredPurpose) {
+      const aiPurpose = String(mergedExtractedContext?.purpose || '').trim()
+      if (aiPurpose) {
+        sessionUpdate.purpose = aiPurpose
+        sessionUpdate.purpose_source = 'ai'
+      }
     }
     // Claude detects the transcript language authoritatively — always trust it over heuristics.
     const claudeDetectedLang = normalizeLanguageCode(analysis.detectedLanguage)

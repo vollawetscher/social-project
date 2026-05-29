@@ -156,7 +156,7 @@ async function handleConsentWebhook(
 
     const { data: call } = await db
       .from('calls')
-      .select('id, user_id, room_name, phone_number, participant_a_identity, track_a_egress_id, session_id, contact_name, sip_call_id')
+      .select('id, user_id, room_name, phone_number, participant_a_identity, track_a_egress_id, session_id, contact_name, sip_call_id, purpose')
       .eq('id', callId)
       .maybeSingle()
 
@@ -243,6 +243,9 @@ async function handleConsentWebhook(
               input_hint: 'phone_call',
               language: 'auto',
               user_is_speaker: true,
+              ...((call as any).purpose && String((call as any).purpose).trim()
+                ? { purpose: String((call as any).purpose).trim(), purpose_source: 'user' as const }
+                : {}),
             })
             .select('id')
             .single()

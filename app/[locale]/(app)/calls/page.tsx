@@ -166,6 +166,7 @@ export default function CallsPage() {
   const [scheduleInviteEmail, setScheduleInviteEmail] = useState("")
   const [scheduleSelectedContactIds, setScheduleSelectedContactIds] = useState<string[]>([])
   const [scheduleSaving, setScheduleSaving] = useState(false)
+  const [schedulePurpose, setSchedulePurpose] = useState("")
   // Save-to-contacts prompt: stores the phone number to save
   const [savingNumber, setSavingNumber] = useState<string | null>(null)
   const [saveContactName, setSaveContactName] = useState("")
@@ -447,6 +448,7 @@ export default function CallsPage() {
           scheduledTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
           inviteEmail: inviteEmails[0] || undefined,
           inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
+          purpose: schedulePurpose.trim() || undefined,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -1113,6 +1115,7 @@ export default function CallsPage() {
         if (!open) {
           setScheduleSelectedContactIds([])
           setScheduleDurationMin(30)
+          setSchedulePurpose("")
         }
       }}>
         <DialogContent className="max-w-sm">
@@ -1130,6 +1133,16 @@ export default function CallsPage() {
               min={scheduleMinDatetimeLocal}
               onChange={(e) => setScheduleAtLocal(e.target.value)}
             />
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">{t('purposeLabel')}</p>
+              <Input
+                type="text"
+                value={schedulePurpose}
+                onChange={(e) => setSchedulePurpose(e.target.value)}
+                placeholder={t('purposePlaceholder')}
+              />
+              <p className="text-[11px] text-muted-foreground">{t('purposeHint')}</p>
+            </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">{t('durationLabel')}</p>
               <select

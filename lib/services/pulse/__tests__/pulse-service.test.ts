@@ -164,10 +164,30 @@ describe('Project Pulse worker invariants (Phase 2)', () => {
 
     expect(mapped.session_id).toBe('sess-123')
     expect(mapped.purpose).toBe('Define rollout milestones')
+    expect(mapped.purpose_source).toBe('ai')
     expect(mapped.summary).toEqual(['Kickoff complete', 'Risks identified'])
     expect(mapped.speakers).toEqual(['Alice', 'Bob'])
     expect(mapped.domains[0]).toContain('operations')
     expect(mapped.recording_type).toBe('meeting')
+  })
+
+  it('prefers user-declared purpose over ai_extracted_context.purpose', () => {
+    const mapped = mapSessionToPulseInput({
+      id: 'sess-456',
+      purpose: 'First Week 1 follow-up after voice agent go-live',
+      purpose_source: 'user',
+      ai_extracted_context: {
+        purpose: 'CRM training session',
+        participants: [{ name: 'Alice' }],
+      },
+      speechmatics_summary: '',
+      suggested_domains: ['operations'],
+      recording_type: 'call',
+      recorded_at: '2026-03-17T10:00:00.000Z',
+    })
+
+    expect(mapped.purpose).toBe('First Week 1 follow-up after voice agent go-live')
+    expect(mapped.purpose_source).toBe('user')
   })
 })
 
@@ -184,6 +204,7 @@ describe('Project Pulse prompt contract (Phase 2)', () => {
         session_id: 'sess-1',
         summary: ['Intro'],
         purpose: 'Kickoff',
+        purpose_source: 'user',
         agenda: ['Scope'],
         domains: ['general'],
         speakers: ['A'],
@@ -210,6 +231,7 @@ describe('Project Pulse prompt contract (Phase 2)', () => {
         session_id: 'sess-final',
         summary: ['Closing'],
         purpose: 'Close out',
+        purpose_source: null,
         agenda: [],
         domains: [],
         speakers: [],

@@ -207,6 +207,8 @@ export function toV0Session(dbSession: DbSession, additionalData?: {
     curated: Boolean((dbSession as any).curated),
     ownerContext: ((dbSession as any).owner_context as V0Session['ownerContext']) ?? null,
     pendingClarification: ((dbSession as any).pending_clarification as V0Session['pendingClarification']) ?? null,
+    purpose: ((dbSession as any).purpose as string | null | undefined) ?? null,
+    purposeSource: ((dbSession as any).purpose_source as V0Session['purposeSource']) ?? null,
   }
 }
 

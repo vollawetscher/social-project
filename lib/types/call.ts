@@ -131,6 +131,7 @@ export interface CreateCallRequest {
   scheduledTimezone?: string  // Optional IANA timezone name
   inviteEmail?: string        // Optional guest email for scheduled reminders
   inviteEmails?: string[]     // Optional multiple guest emails for scheduled reminders
+  purpose?: string            // Optional user-declared purpose for the call (Phase 3)
 }
 
 export interface CreateCallResponse {

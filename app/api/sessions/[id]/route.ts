@@ -125,15 +125,64 @@ export async function PATCH(
     const supabase = await createClient()
     const body = await request.json()
     const hasCaseIdPatch = Object.prototype.hasOwnProperty.call(body || {}, 'case_id')
+    const hasPurposePatch = Object.prototype.hasOwnProperty.call(body || {}, 'purpose')
 
-    let previousSession: { case_id: string | null; user_id: string } | null = null
-    if (hasCaseIdPatch) {
+    let previousSession: { case_id: string | null; user_id: string; purpose?: string | null } | null = null
+    if (hasCaseIdPatch || hasPurposePatch) {
       const { data } = await createServiceRoleClient()
         .from('sessions')
-        .select('case_id, user_id')
+        .select('case_id, user_id, purpose')
         .eq('id', params.id)
         .maybeSingle()
       previousSession = (data as any) || null
+    }
+
+    // Normalize purpose: when the caller sets a string, mark the source as
+    // 'user'; when the caller clears it, clear purpose_source too.
+    if (hasPurposePatch) {
+      const raw = (body as Record<string, unknown>).purpose
+      if (typeof raw === 'string') {
+        const trimmed = raw.trim()
+        if (trimmed.length > 0) {
+          ;(body as Record<string, unknown>).purpose = trimmed
+          if (!Object.prototype.hasOwnProperty.call(body || {}, 'purpose_source')) {
+            ;(body as Record<string, unknown>).purpose_source = 'user'
+          }
+        } else {
+          ;(body as Record<string, unknown>).purpose = null
+          ;(body as Record<string, unknown>).purpose_source = null
+        }
+      } else if (raw === null) {
+        ;(body as Record<string, unknown>).purpose_source = null
+      }
+    }
+
+    // When attaching a session to a project (null -> caseId) and the session
+    // has no purpose yet, inherit the project's default_session_purpose if
+    // one is configured. The project owner has explicitly stated this is
+    // what new sessions are usually for, so persisting as purpose_source =
+    // 'user' is the right framing — it's the owner's declared intent
+    // transitively applied to this session.
+    if (hasCaseIdPatch && previousSession) {
+      const nextCaseId = (body as Record<string, unknown>).case_id
+      if (typeof nextCaseId === 'string' && nextCaseId && !previousSession.case_id) {
+        const sessionPurpose = String(previousSession.purpose || '').trim()
+        const purposeBeingSetInThisRequest = hasPurposePatch
+          ? String((body as Record<string, unknown>).purpose || '').trim()
+          : ''
+        if (!sessionPurpose && !purposeBeingSetInThisRequest) {
+          const { data: caseRow } = await createServiceRoleClient()
+            .from('cases')
+            .select('default_session_purpose')
+            .eq('id', nextCaseId)
+            .maybeSingle()
+          const defaultPurpose = String(caseRow?.default_session_purpose || '').trim()
+          if (defaultPurpose) {
+            ;(body as Record<string, unknown>).purpose = defaultPurpose
+            ;(body as Record<string, unknown>).purpose_source = 'user'
+          }
+        }
+      }
     }
 
     const { data: session, error } = await supabase

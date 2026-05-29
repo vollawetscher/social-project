@@ -260,6 +260,11 @@
         "success": "Project created",
         "error": "Failed to create project"
       },
+      "editDialog": {
+        "defaultPurposeLabel": "Default purpose for new sessions",
+        "defaultPurposePlaceholder": "e.g. Weekly customer check-in",
+        "defaultPurposeHint": "Optional. Auto-applied to new sessions attached to this project when no purpose is provided."
+      },
       "assignDialog": {
         "title": "Assign to project",
         "description": "Choose which project this session belongs to.",
@@ -271,7 +276,10 @@
         "assigning": "Assigning...",
         "success": "Session assigned to project",
         "removeSuccess": "Session removed from project",
-        "error": "Failed to assign session"
+        "error": "Failed to assign session",
+        "purposeLabel": "What was this conversation for? (optional)",
+        "purposePlaceholder": "e.g. Weekly customer check-in",
+        "purposeAiHint": "AI-inferred. Edit to confirm or replace."
       },
       "assignToProject": "Assign to project",
       "removeFromProject": "Remove from project",
@@ -842,6 +850,9 @@
     "upcomingScheduled": "Upcoming calls",
     "scheduledCallDefaultTitle": "Scheduled video call",
     "scheduleDialogHint": "Pick when this video call should start.",
+    "purposeLabel": "What is this call for? (optional)",
+    "purposePlaceholder": "e.g. Quarterly review with Acme",
+    "purposeHint": "Helps the AI frame analysis. Drift between intent and content is normal.",
     "durationLabel": "Duration",
     "minutes": "min",
     "scheduleJoinWindowHint": "Join opens 10 minutes before the scheduled start.",
@@ -1538,7 +1549,10 @@
       "importing": "Importing...",
       "importAndGenerate": "Import and generate output",
       "templateLabel": "Generate output with template (optional)",
-      "templateNone": "No template (import only)"
+      "templateNone": "No template (import only)",
+      "purposeLabel": "What is this conversation for? (optional)",
+      "purposePlaceholder": "e.g. First Week 1 follow-up after voice agent go-live",
+      "purposeHelp": "Helps the AI frame analysis correctly. Drift between intent and content is fine — calls go off-script."
   },
   "pasteSheet": {
     "title": "Paste Content",
@@ -1631,6 +1645,8 @@
     "listenerOnly": "Listener only",
     "purpose": "Purpose",
     "purposePlaceholder": "Describe the purpose...",
+    "purposeSourceUser": "Your declared purpose for this session.",
+    "purposeSourceAi": "AI-inferred from content. Edit to declare your own.",
     "agenda": "Agenda",
     "agendaPlaceholder": "One item per line...",
     "venue": "Venue",
