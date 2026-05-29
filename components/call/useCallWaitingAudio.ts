@@ -13,12 +13,10 @@ const FADE_MS = 600
  * Plays for both the host and the guest — whoever arrived first.
  * PSTN outbound keeps the traditional ring tone (see useRingtone in CallRoom).
  */
-export function useCallWaitingMusic(playing: boolean, minPlayMs = 2500) {
+export function useCallWaitingMusic(playing: boolean) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const deferStopRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startedRef = useRef(0)
-  const wantsStopRef = useRef(false)
 
   const clearFade = useCallback(() => {
     if (fadeTimerRef.current) {
@@ -27,16 +25,8 @@ export function useCallWaitingMusic(playing: boolean, minPlayMs = 2500) {
     }
   }, [])
 
-  const clearDeferStop = useCallback(() => {
-    if (deferStopRef.current) {
-      clearTimeout(deferStopRef.current)
-      deferStopRef.current = null
-    }
-  }, [])
-
   const stop = useCallback(() => {
     clearFade()
-    clearDeferStop()
     const audio = audioRef.current
     if (audio) {
       audio.pause()
@@ -44,8 +34,7 @@ export function useCallWaitingMusic(playing: boolean, minPlayMs = 2500) {
       audio.volume = 0
     }
     startedRef.current = 0
-    wantsStopRef.current = false
-  }, [clearFade, clearDeferStop])
+  }, [clearFade])
 
   const fadeTo = useCallback((audio: HTMLAudioElement, target: number, onDone?: () => void) => {
     clearFade()
@@ -74,11 +63,12 @@ export function useCallWaitingMusic(playing: boolean, minPlayMs = 2500) {
       audioRef.current = audio
     }
     const audio = audioRef.current
-    startedRef.current = Date.now()
-    wantsStopRef.current = false
     try {
-      audio.currentTime = 0
-      await audio.play()
+      if (audio.paused) {
+        audio.currentTime = 0
+        startedRef.current = Date.now()
+        await audio.play()
+      }
       fadeTo(audio, TARGET_VOLUME)
     } catch {
       // Autoplay blocked or asset missing — silent fallback.
@@ -95,37 +85,24 @@ export function useCallWaitingMusic(playing: boolean, minPlayMs = 2500) {
       audio.pause()
       audio.currentTime = 0
       startedRef.current = 0
-      wantsStopRef.current = false
     })
   }, [fadeTo, stop])
 
   useEffect(() => {
     if (playing) {
-      wantsStopRef.current = false
-      clearDeferStop()
       void start()
-    } else if (startedRef.current && Date.now() - startedRef.current < minPlayMs) {
-      wantsStopRef.current = true
-      clearDeferStop()
-      deferStopRef.current = setTimeout(() => {
-        if (wantsStopRef.current) fadeOutAndStop()
-      }, minPlayMs - (Date.now() - startedRef.current))
     } else {
       fadeOutAndStop()
     }
-    return () => {
-      clearDeferStop()
-    }
-  }, [playing, start, fadeOutAndStop, minPlayMs, clearDeferStop])
+  }, [playing, start, fadeOutAndStop])
 
   useEffect(() => () => {
     clearFade()
-    clearDeferStop()
     const audio = audioRef.current
     if (audio) {
       audio.pause()
       audio.src = ""
       audioRef.current = null
     }
-  }, [clearFade, clearDeferStop])
+  }, [clearFade])
 }

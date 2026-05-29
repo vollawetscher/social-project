@@ -811,22 +811,31 @@ function CallRoomInner({
   }, [isConnected, remoteParticipantsKey])
 
   // Soft waiting audio while alone in the room. WebRTC: both host and guest hear it.
+  // Keep this tied directly to LiveKit participant presence, not display status,
+  // so the music stops immediately when the other participant appears.
   // PSTN outbound: only the caller hears the phone ring tone.
   // We also bail out as soon as the call has been declined / missed /
   // ended remotely, even if LiveKit hasn't disconnected yet.
-  // The minimum play duration (2.5 s) ensures the caller hears at least one
-  // ring even when the callee joins almost instantly (< 4 s pickup).
-  const shouldPlayWaitingAudio = Boolean(
-    (callType === "web" || isInitiator) &&
+  const shouldPlayWebWaitingMusic = Boolean(
+    callType === "web" &&
+    isConnected &&
+    !hasRemote &&
+    !calleeLeft &&
+    !remoteCallEnded &&
+    !remoteEverConnected.current
+  )
+  const shouldPlayPstnRing = Boolean(
+    callType === "pstn_outbound" &&
+    isInitiator &&
     !calleeLeft &&
     !remoteCallEnded &&
     !remoteEverConnected.current &&
     (callStatus === "ringing" || callStatus === "connecting")
   )
-  useRingtone(callType === "pstn_outbound" && shouldPlayWaitingAudio)
-  useCallWaitingMusic(callType === "web" && shouldPlayWaitingAudio)
+  useRingtone(shouldPlayPstnRing)
+  useCallWaitingMusic(shouldPlayWebWaitingMusic)
   const showWaitingMusicCredit =
-    callType === "web" && (callStatus === "ringing" || callStatus === "connecting")
+    shouldPlayWebWaitingMusic
 
   // One-shot "you're connected" ping the moment both sides are first present
   // together. Replaces the abrupt silence on the initiator side when the
