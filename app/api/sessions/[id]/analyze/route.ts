@@ -998,6 +998,47 @@ If confidence is LOW: set ownerAssessment.needsClarification = true and emit a S
 
 Prefer asking when in doubt. A 2-second click is cheaper than a misframed 3-page report.`
 
+    // Phase 2: when this session belongs to a project, fetch the project's
+    // saved type/role and current pulse status so per-session classification
+    // inherits the project's framing instead of being computed cold from the
+    // transcript alone. This stops "Project A is tracked as a New Hire but
+    // session 3 happened to be a sprint planning meeting" from re-classifying
+    // the project as a tech build. The Pulse engine still detects mismatches
+    // separately and surfaces them as a switch-lens suggestion.
+    let projectContextBlock = ''
+    try {
+      const sessionCaseId = (session as any)?.case_id as string | null | undefined
+      if (sessionCaseId) {
+        const { data: caseRow } = await supabase
+          .from('cases')
+          .select('title, status, project_type, user_role, pulse')
+          .eq('id', sessionCaseId)
+          .maybeSingle()
+        if (caseRow) {
+          const pt = String((caseRow as any).project_type || '').trim()
+          const ur = String((caseRow as any).user_role || '').trim()
+          const status = String((caseRow as any).status || 'active')
+          const pulse = (caseRow as any).pulse || null
+          const currentStatus = pulse && typeof pulse === 'object'
+            ? String(pulse.current_status || pulse.current_direction || '').trim()
+            : ''
+          const lines: string[] = []
+          if (pt) lines.push(`project_type: ${pt}`)
+          if (ur) lines.push(`user_role:    ${ur}`)
+          lines.push(`case_status:  ${status}`)
+          if (currentStatus) lines.push(`current_status: ${currentStatus}`)
+          if (lines.length > 0) {
+            projectContextBlock = `PROJECT CONTEXT (this session belongs to an active project — frame your analysis through this lens):
+${lines.join('\n')}
+
+When you classify suggested_project_type / suggested_user_role, default to the project's saved type/role above unless this session strongly contradicts it. If it does contradict, classify on its own merits — the Pulse engine will reconcile and surface a switch suggestion to the user. Do not silently change framing.`
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[Analyze API] Failed to load project context for prompt:', err)
+    }
+
     // Call Claude to analyze with enhanced context extraction
     console.log('[Analyze API] Calling Claude API for enhanced analysis...')
     const analysisBudget = await resolveTokenBudget({
@@ -1055,6 +1096,7 @@ Prefer asking when in doubt. A 2-second click is cheaper than a misframed 3-page
 6. **Transcription Consent**: At the START of the conversation, was consent to record/transcribe mentioned? The initiator (caller/recorder) implicitly consents. Look for: "This call may be recorded", "Do you consent?", "Okay to record?", affirmative replies. Extract: discussed (boolean), participantsConsented (array of speaker IDs who consented, e.g. ["S1","S2"]), summary (one-line description of how consent was obtained, or null if not discussed).
 7. **Spoken Commands**: Detect voice commands directed at "Notissima" (the assistant). Use FUZZY matching—transcription/ASR often misspells proper nouns. Match variations such as: Notissima, Notisima, Notissma, Natissima, Notessima; with or without punctuation (Notissima:, Notissima,); after "Hey", "Ok", "So" etc. If a phrase looks like a command to an assistant (create X, send link, summarize) and the wake word is phonetically similar to Notissima, treat it as a match. Extract the exact phrase as spoken in transcript, speaker, and brief intent summary.
 8a. **Owner context assessment**: ${ownerContextBlock}
+8b. **Project context**: ${projectContextBlock || 'This session is not (yet) attached to a project.'}
 
 8. **Suggested Output Formats**: Based on the conversation type and domain, suggest exactly 3 different output formats that would be useful. Examples:
    - Sales call: meeting minutes, internal sales call analysis (what worked, what was missed, buying signals), short team update

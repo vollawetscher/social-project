@@ -1,7 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { buildPulsePrompt } from '@/lib/services/pulse/buildPulsePrompt'
-import type { ProjectPulse, PulseSessionInput, ParticipantEntry, DecisionEntry } from '@/lib/types/pulse'
+import { buildPulsePrompt, RECENT_WINDOW_TARGET } from '@/lib/services/pulse/buildPulsePrompt'
+import type {
+  DecisionEntry,
+  HistoryChunk,
+  LedgerEntry,
+  ParticipantEntry,
+  ProjectPulse,
+  PulseSessionInput,
+  SessionDigest,
+  TypeMismatchSuggestion,
+} from '@/lib/types/pulse'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { normalizeLanguageCode } from '@/lib/utils/language'
 import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
@@ -20,21 +29,6 @@ function readSummaryBullets(input: string | null | undefined): string[] {
     .map((line) => line.replace(/^[-*•]\s+/, '').trim())
     .filter(Boolean)
     .slice(0, 8)
-}
-
-function buildFallbackIntent(input: {
-  sessionPurpose?: string
-  caseTitle?: string
-  caseDescription?: string
-}): string {
-  const sessionPurpose = String(input.sessionPurpose || '').trim()
-  if (sessionPurpose) return sessionPurpose
-  const caseTitle = String(input.caseTitle || '').trim()
-  const caseDescription = String(input.caseDescription || '').trim()
-  if (caseTitle && caseDescription) return `${caseTitle}: ${caseDescription}`
-  if (caseTitle) return caseTitle
-  if (caseDescription) return caseDescription
-  return 'Project direction not yet specified'
 }
 
 function extractResolvedLoopMarkers(text: string | null | undefined): string[] {
@@ -93,6 +87,7 @@ export function mapSessionToPulseInput(sessionRow: any): PulseSessionInput {
 
   const summary = readSummaryBullets(sessionRow?.speechmatics_summary)
   return {
+    session_id: String(sessionRow?.id || ''),
     summary,
     purpose,
     agenda,
@@ -102,6 +97,26 @@ export function mapSessionToPulseInput(sessionRow: any): PulseSessionInput {
       ? (sessionRow.recording_type as PulseSessionInput['recording_type'])
       : 'other',
     recorded_at: String(sessionRow?.recorded_at || sessionRow?.created_at || new Date().toISOString()),
+  }
+}
+
+// Build a SessionDigest for the new session before handing to the engine, so
+// the engine can either keep the digest as-is in `recent_window` or use it
+// when rolling oldest digests into a history chunk.
+export function buildSessionDigest(input: {
+  session: PulseSessionInput
+  sessionIndex: number
+}): SessionDigest {
+  const { session, sessionIndex } = input
+  return {
+    session_id: session.session_id,
+    session_index: sessionIndex,
+    recorded_at: session.recorded_at,
+    purpose: session.purpose || '',
+    domains: session.domains.slice(0, 6),
+    speakers: session.speakers.slice(0, 12),
+    summary: session.summary.slice(0, 8),
+    key_extracts: [],
   }
 }
 
@@ -144,62 +159,184 @@ function isResolvedLoop(loop: string, resolvedMarkers: string[]): boolean {
   })
 }
 
-export function sanitizePulseJson(
-  parsed: any,
-  currentPulse: ProjectPulse | null,
-  sessionIndex: number,
-  fallbackIntent: string,
-  resolvedMarkers: string[] = []
-): ProjectPulse {
-  const safeDecisionLog: DecisionEntry[] = Array.isArray(parsed?.decision_log)
-    ? parsed.decision_log
-      .map((d: any) => ({
-        decision: String(d?.decision || '').trim(),
-        session_index: Number(d?.session_index || sessionIndex),
-        session_date: String(d?.session_date || new Date().toISOString()),
-      }))
-      .filter((d: DecisionEntry) => Boolean(d.decision))
-      .slice(0, 30)
-    : []
+function asStringArray(value: any, max = 30): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((x) => String(x || '').trim())
+    .filter(Boolean)
+    .slice(0, max)
+}
 
-  const safeParticipantMap: ParticipantEntry[] = Array.isArray(parsed?.participant_map)
-    ? parsed.participant_map
-      .map((p: any) => ({
-        name: String(p?.name || '').trim(),
-        sessions: Array.isArray(p?.sessions)
-          ? p.sessions.map((s: any) => Number(s)).filter((n: number) => Number.isFinite(n) && n > 0).slice(0, 60)
-          : [],
-        last_seen: String(p?.last_seen || new Date().toISOString()),
-      }))
-      .filter((p: ParticipantEntry) => Boolean(p.name))
-      .slice(0, 50)
-    : []
+function sanitizeDecisionLog(value: any, sessionIndex: number): DecisionEntry[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((d: any) => ({
+      decision: String(d?.decision || '').trim(),
+      session_index: Number.isFinite(Number(d?.session_index)) ? Number(d.session_index) : sessionIndex,
+      session_date: String(d?.session_date || new Date().toISOString()),
+    }))
+    .filter((d) => Boolean(d.decision))
+    .slice(0, 50)
+}
 
-  const safeLoops = Array.isArray(parsed?.open_loops)
-    ? parsed.open_loops.map((x: any) => String(x || '').trim()).filter(Boolean).slice(0, 30)
-    : []
-  const filteredLoops = safeLoops.filter((loop: string) => !isResolvedLoop(loop, resolvedMarkers))
+function sanitizeParticipants(value: any): ParticipantEntry[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((p: any) => ({
+      name: String(p?.name || '').trim(),
+      sessions: Array.isArray(p?.sessions)
+        ? p.sessions.map((s: any) => Number(s)).filter((n: number) => Number.isFinite(n) && n > 0).slice(0, 80)
+        : [],
+      last_seen: String(p?.last_seen || new Date().toISOString()),
+    }))
+    .filter((p) => Boolean(p.name))
+    .slice(0, 60)
+}
+
+function sanitizeRecentWindow(value: any): SessionDigest[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((d: any) => ({
+      session_id: String(d?.session_id || '').trim(),
+      session_index: Number.isFinite(Number(d?.session_index)) ? Number(d.session_index) : 0,
+      recorded_at: String(d?.recorded_at || new Date().toISOString()),
+      purpose: String(d?.purpose || '').trim(),
+      domains: asStringArray(d?.domains, 6),
+      speakers: asStringArray(d?.speakers, 12),
+      summary: asStringArray(d?.summary, 8),
+      key_extracts: asStringArray(d?.key_extracts, 8),
+    }))
+    .filter((d) => d.session_index > 0)
+    .slice(0, 20)
+}
+
+function sanitizeHistoryChunks(value: any): HistoryChunk[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((c: any) => ({
+      period_label: String(c?.period_label || '').trim(),
+      date_range: {
+        from: String(c?.date_range?.from || '').trim(),
+        to: String(c?.date_range?.to || '').trim(),
+      },
+      session_indices: Array.isArray(c?.session_indices)
+        ? c.session_indices.map((s: any) => Number(s)).filter((n: number) => Number.isFinite(n) && n > 0).slice(0, 200)
+        : [],
+      summary: String(c?.summary || '').trim(),
+      key_decisions: asStringArray(c?.key_decisions, 30),
+    }))
+    .filter((c) => c.period_label && c.summary)
+    .slice(0, 50)
+}
+
+function sanitizeLedger(value: any): LedgerEntry[] {
+  if (!Array.isArray(value)) return []
+  const allowedKinds: LedgerEntry['kind'][] = ['decision', 'milestone', 'resolved_loop', 'cancelled_loop']
+  return value
+    .map((e: any) => {
+      const kind = allowedKinds.includes(String(e?.kind) as LedgerEntry['kind'])
+        ? (e.kind as LedgerEntry['kind'])
+        : 'milestone'
+      const entry: LedgerEntry = {
+        kind,
+        text: String(e?.text || '').trim(),
+        session_index: Number.isFinite(Number(e?.session_index)) ? Number(e.session_index) : 0,
+        session_date: String(e?.session_date || new Date().toISOString()),
+      }
+      if (e?.resolved_at) entry.resolved_at = String(e.resolved_at)
+      return entry
+    })
+    .filter((e) => Boolean(e.text))
+    .slice(0, 500)
+}
+
+function sanitizeTypeMismatch(
+  value: any,
+  triggeringSessionId: string,
+  nowIso: string,
+  projectType: string,
+  projectRole: string
+): TypeMismatchSuggestion | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const suggestedType = String(value.suggested_type || '').trim()
+  const suggestedRole = String(value.suggested_role || '').trim()
+  if (!suggestedType) return null
+
+  // If the engine's suggestion matches what we already track, treat it as no
+  // mismatch. This protects against the model echoing the current type.
+  if (
+    suggestedType.toLowerCase() === String(projectType || '').toLowerCase() &&
+    (suggestedRole.toLowerCase() === String(projectRole || '').toLowerCase() || !suggestedRole)
+  ) {
+    return null
+  }
+
+  const confidence = Number(value.confidence)
+  return {
+    suggested_type: suggestedType,
+    suggested_role: suggestedRole,
+    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.5,
+    rationale: String(value.rationale || '').trim() || 'No rationale provided',
+    triggering_session_id: String(value.triggering_session_id || triggeringSessionId || '').trim(),
+    detected_at: nowIso,
+  }
+}
+
+export interface SanitizePulseInput {
+  parsed: any
+  currentPulse: ProjectPulse | null
+  sessionIndex: number
+  resolvedMarkers?: string[]
+  projectType: string
+  userRole: string
+  triggeringSessionId: string
+  nowIso?: string
+}
+
+export function sanitizePulseJson(input: SanitizePulseInput): ProjectPulse {
+  const {
+    parsed,
+    currentPulse,
+    sessionIndex,
+    resolvedMarkers = [],
+    projectType,
+    userRole,
+    triggeringSessionId,
+  } = input
+  const nowIso = input.nowIso || new Date().toISOString()
+
+  const safeOpenLoops = asStringArray(parsed?.open_loops, 30)
+  const filteredLoops = safeOpenLoops.filter((loop) => !isResolvedLoop(loop, resolvedMarkers))
 
   const baseVersion = currentPulse?.pulse_version || 0
-  return {
-    original_intent: currentPulse?.original_intent || String(parsed?.original_intent || fallbackIntent).trim() || fallbackIntent,
-    current_direction: String(parsed?.current_direction || '').trim() || 'Direction still forming',
-    drift_score: ['green', 'yellow', 'red'].includes(String(parsed?.drift_score))
-      ? parsed.drift_score
-      : 'yellow',
-    drift_rationale: String(parsed?.drift_rationale || '').trim() || 'No rationale provided',
+
+  const pulse: ProjectPulse = {
+    project_type: String(parsed?.project_type || projectType || '').trim() || 'unspecified',
+    user_role: String(parsed?.user_role || userRole || '').trim() || 'unspecified',
+    current_status: String(parsed?.current_status || '').trim() || 'Status not yet determined',
+    covered: asStringArray(parsed?.covered, 20),
+    missing: asStringArray(parsed?.missing, 20),
+    next_actions: asStringArray(parsed?.next_actions, 20),
     open_loops: filteredLoops,
-    decision_log: safeDecisionLog,
-    momentum: ['accelerating', 'stable', 'stalling'].includes(String(parsed?.momentum))
-      ? parsed.momentum
-      : 'stable',
-    momentum_rationale: String(parsed?.momentum_rationale || '').trim() || 'No rationale provided',
-    participant_map: safeParticipantMap,
-    session_count: sessionIndex,
+    decision_log: sanitizeDecisionLog(parsed?.decision_log, sessionIndex),
+    participants: sanitizeParticipants(parsed?.participants),
     narrative: String(parsed?.narrative || '').trim() || 'No narrative available',
-    updated_at: new Date().toISOString(),
+    type_mismatch_suggestion: sanitizeTypeMismatch(
+      parsed?.type_mismatch_suggestion,
+      triggeringSessionId,
+      nowIso,
+      projectType,
+      userRole
+    ),
+    recent_window: sanitizeRecentWindow(parsed?.recent_window),
+    history_chunks: sanitizeHistoryChunks(parsed?.history_chunks),
+    permanent_ledger: sanitizeLedger(parsed?.permanent_ledger),
     pulse_version: baseVersion + 1,
+    updated_at: nowIso,
+    session_count: sessionIndex,
   }
+
+  return pulse
 }
 
 export async function runPulseUpdateJob(input: {
@@ -212,7 +349,7 @@ export async function runPulseUpdateJob(input: {
   const [{ data: caseRow, error: caseError }, { data: sessionRow, error: sessionError }] = await Promise.all([
     supabase
       .from('cases')
-      .select('id, user_id, title, description, client_identifier, status, pulse, pulse_version')
+      .select('id, user_id, title, description, client_identifier, status, project_type, user_role, pulse, pulse_version')
       .eq('id', caseId)
       .single(),
     supabase
@@ -263,12 +400,35 @@ export async function runPulseUpdateJob(input: {
   const resolvedMarkers = extractResolvedLoopMarkers(
     `${String(sessionRow?.private_comments || '')}\n${String(sessionRow?.context_note || '')}`
   )
+
+  // Pre-pend the new session's digest to recent_window before sending to the
+  // engine. The engine is responsible for compressing oldest entries when the
+  // window exceeds RECENT_WINDOW_TARGET (lazy compression). For closed/archived
+  // cases the engine collapses the entire window into history_chunks.
+  const newDigest = buildSessionDigest({ session: sessionInput, sessionIndex: countValue })
+  const seededWindow: SessionDigest[] = [
+    newDigest,
+    ...((currentPulse?.recent_window || []) as SessionDigest[]).filter(
+      (d) => d.session_id !== newDigest.session_id && d.session_index !== newDigest.session_index
+    ),
+  ]
+  const seededPulse: ProjectPulse | null = currentPulse
+    ? { ...currentPulse, recent_window: seededWindow }
+    : null
+
+  const projectType = String((caseRow as any)?.project_type || '').trim()
+  const userRole = String((caseRow as any)?.user_role || '').trim()
+  const caseStatus = (caseRow.status as 'active' | 'closed' | 'archived') || 'active'
+
   const { system, user } = buildPulsePrompt({
-    currentPulse,
+    currentPulse: seededPulse,
     session: sessionInput,
     sessionIndex: countValue,
     userLanguage,
     resolvedMarkers,
+    caseStatus,
+    projectType,
+    userRole,
     projectContext: {
       title: (caseRow as any)?.title || null,
       description: (caseRow as any)?.description || null,
@@ -281,7 +441,7 @@ export async function runPulseUpdateJob(input: {
   }
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 2000,
+    max_tokens: 3000,
     messages: [
       { role: 'user', content: user },
       JSON_PREFILL,
@@ -300,15 +460,32 @@ export async function runPulseUpdateJob(input: {
     .map((block) => ('text' in block ? block.text : ''))
     .join('\n')
   const parsed = parseClaudeJson(withJsonPrefill(text))
-  const fallbackIntent = buildFallbackIntent({
-    sessionPurpose: sessionInput.purpose,
-    caseTitle: (caseRow as any)?.title,
-    caseDescription: (caseRow as any)?.description,
-  })
-  const pulse = sanitizePulseJson(parsed, currentPulse, countValue, fallbackIntent, resolvedMarkers)
-
   const nowIso = new Date().toISOString()
-  pulse.updated_at = nowIso
+  const pulse = sanitizePulseJson({
+    parsed,
+    currentPulse,
+    sessionIndex: countValue,
+    resolvedMarkers,
+    projectType,
+    userRole,
+    triggeringSessionId: sessionId,
+    nowIso,
+  })
+
+  // Floor: recent_window must contain at least the new digest. If the engine
+  // returned an empty window for an active project (e.g., it confused itself),
+  // recover by seeding the new digest. Closed/archived projects intentionally
+  // empty the window.
+  if (caseStatus === 'active' && pulse.recent_window.length === 0) {
+    pulse.recent_window = [newDigest]
+  }
+
+  // Cap recent_window in case the engine over-shoots without compressing.
+  if (pulse.recent_window.length > RECENT_WINDOW_TARGET + 2) {
+    pulse.recent_window = pulse.recent_window
+      .sort((a, b) => b.session_index - a.session_index)
+      .slice(0, RECENT_WINDOW_TARGET)
+  }
 
   const { error: updateError } = await supabase
     .from('cases')
@@ -332,4 +509,3 @@ export async function runPulseUpdateJob(input: {
 
   return { pulse, sessionCount: countValue }
 }
-

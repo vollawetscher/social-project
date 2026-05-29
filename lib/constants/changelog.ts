@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.38.0',
+    date: 'May 29, 2026',
+    entries: [
+      {
+        version: '1.38.0',
+        date: 'May 29, 2026',
+        category: 'feature',
+        title: 'Smarter, type-aware Project Pulse',
+        description: 'Project Pulse now reads each project through the lens of its actual type — a hire, a customer rollout, a trade show visit, a fundraise — and tells you what stage it\'s in, what\'s been covered, what\'s missing, and what typically comes next. Long projects keep their full memory: recent sessions stay in detail, older ones roll up into AI-written phase chunks, and key decisions never compress. If a session looks like a different kind of project, Pulse asks if you want to switch the lens instead of silently re-typing it.',
+      },
+      {
+        version: '1.38.0',
+        date: 'May 29, 2026',
+        category: 'improvement',
+        title: 'Session analysis inherits project framing',
+        description: 'When a session belongs to a project, post-call analysis is now told the project\'s type and current stage so it frames suggestions through that lens — instead of starting from a blank slate every time.',
+      },
+    ],
+  },
+  {
     version: '1.37.0',
     date: 'May 29, 2026',
     entries: [

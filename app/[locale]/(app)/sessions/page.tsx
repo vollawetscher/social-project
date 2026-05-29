@@ -212,17 +212,25 @@ function getProjectPulseSparkline(project: any): { path: string; isFlatline: boo
   const drift = String((pulse as any)?.drift_score || '')
   const momentum = String((pulse as any)?.momentum || '')
   const openLoops = Array.isArray((pulse as any)?.open_loops) ? (pulse as any)?.open_loops.length : 0
+  const missing = Array.isArray((pulse as any)?.missing) ? (pulse as any)?.missing.length : 0
   const sessionCount = Number(project?.session_count || 0)
   const updatedAtMs = project?.updated_at ? new Date(project.updated_at).getTime() : Date.now()
   const inactiveDays = Math.max(0, (Date.now() - updatedAtMs) / (1000 * 60 * 60 * 24))
   const stalePenalty = clamp01(inactiveDays / 21)
 
+  // Phase 2 pulses don't carry drift_score / momentum. Derive a hotness
+  // score from open_loops, missing items, and recency. Legacy pulses still
+  // contribute drift/momentum where present.
+  const hasLegacySignals = Boolean(drift) || Boolean(momentum)
   const driftScore = drift === 'green' ? 1 : drift === 'yellow' ? 0.6 : drift === 'red' ? 0.2 : 0.5
   const momentumScore = momentum === 'accelerating' ? 1 : momentum === 'stable' ? 0.65 : momentum === 'stalling' ? 0.25 : 0.5
   const loopScore = clamp01(1 - openLoops / 6)
+  const missingScore = clamp01(1 - missing / 6)
   const sessionScore = clamp01(sessionCount / 8)
 
-  const hotness = clamp01((driftScore * 0.35) + (momentumScore * 0.25) + (loopScore * 0.2) + (sessionScore * 0.2) - (stalePenalty * 0.45))
+  const hotness = hasLegacySignals
+    ? clamp01((driftScore * 0.35) + (momentumScore * 0.25) + (loopScore * 0.2) + (sessionScore * 0.2) - (stalePenalty * 0.45))
+    : clamp01((loopScore * 0.35) + (missingScore * 0.25) + (sessionScore * 0.4) - (stalePenalty * 0.45))
   const isFlatline = inactiveDays > 28 || (sessionCount <= 1 && inactiveDays > 10)
 
   const width = 52
@@ -1684,15 +1692,17 @@ export default function SessionsPage() {
     const q = searchQuery.toLowerCase()
     return projects.filter((project) => {
       const pulse = project?.pulse && typeof project.pulse === 'object' ? project.pulse : null
-      const pulseDirection = String((pulse as any)?.current_direction || '').toLowerCase()
+      const pulseStatus = String((pulse as any)?.current_status || (pulse as any)?.current_direction || '').toLowerCase()
       const pulseIntent = String((pulse as any)?.original_intent || '').toLowerCase()
       const pulseNarrative = String((pulse as any)?.narrative || '').toLowerCase()
+      const pulseProjectType = String((pulse as any)?.project_type || project?.project_type || '').toLowerCase()
       return (
         String(project?.title || '').toLowerCase().includes(q) ||
         String(project?.description || '').toLowerCase().includes(q) ||
         String(project?.client_identifier || '').toLowerCase().includes(q) ||
         String(project?.status || '').toLowerCase().includes(q) ||
-        pulseDirection.includes(q) ||
+        pulseProjectType.includes(q) ||
+        pulseStatus.includes(q) ||
         pulseIntent.includes(q) ||
         pulseNarrative.includes(q)
       )
@@ -2195,11 +2205,13 @@ export default function SessionsPage() {
                   const drift = String((pulse as any)?.drift_score || '')
                   const momentum = String((pulse as any)?.momentum || '')
                   const openLoops = Array.isArray((pulse as any)?.open_loops) ? (pulse as any)?.open_loops.length : 0
+                  const missingItems = Array.isArray((pulse as any)?.missing) ? (pulse as any)?.missing.length : 0
                   const sparkline = getProjectPulseSparkline(project)
                   const startedDate = project?.created_at
                     ? new Date(project.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
                     : null
                   const pulseContext = String(
+                    (pulse as any)?.current_status ||
                     (pulse as any)?.current_direction ||
                     (pulse as any)?.original_intent ||
                     (pulse as any)?.narrative ||
@@ -2209,8 +2221,13 @@ export default function SessionsPage() {
                   const deletionDate = project.scheduled_deletion_at
                     ? new Date(project.scheduled_deletion_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
                     : null
-                  const isOnTrack =
-                    drift === 'green' || (momentum === 'accelerating' && openLoops === 0)
+                  // Health: legacy pulses use drift/momentum; Phase 2 pulses use
+                  // open_loops + missing items as proxy ("things look at-risk
+                  // when there's a meaningful backlog of either").
+                  const hasLegacyHealth = Boolean(drift) || Boolean(momentum)
+                  const isOnTrack = hasLegacyHealth
+                    ? (drift === 'green' || (momentum === 'accelerating' && openLoops === 0))
+                    : (openLoops + missingItems <= 2)
                   return (
                   <div
                     key={project.id}

@@ -77,8 +77,6 @@ interface SessionRow {
 }
 
 type CaseStatus = 'active' | 'closed' | 'archived'
-type DriftScore = 'green' | 'yellow' | 'red'
-type Momentum = 'accelerating' | 'stable' | 'stalling'
 
 interface PulseDecision {
   decision: string
@@ -92,20 +90,51 @@ interface PulseParticipant {
   last_seen: string
 }
 
+interface PulseHistoryChunk {
+  period_label: string
+  date_range: { from: string; to: string }
+  session_indices: number[]
+  summary: string
+  key_decisions: string[]
+}
+
+interface PulseTypeMismatch {
+  suggested_type: string
+  suggested_role: string
+  confidence: number
+  rationale: string
+  triggering_session_id: string
+  detected_at: string
+}
+
+// Phase 2 universal frame. Legacy fields are kept optional so older pulses
+// still render gracefully until they are re-written by the next refresh.
 interface ProjectPulse {
-  original_intent: string
-  current_direction: string
-  drift_score: DriftScore
-  drift_rationale: string
+  // Universal frame
+  project_type?: string
+  user_role?: string
+  current_status?: string
+  covered?: string[]
+  missing?: string[]
+  next_actions?: string[]
   open_loops: string[]
   decision_log: PulseDecision[]
-  momentum: Momentum
-  momentum_rationale: string
-  participant_map: PulseParticipant[]
-  session_count: number
+  participants?: PulseParticipant[]
   narrative: string
-  updated_at: string
+  type_mismatch_suggestion?: PulseTypeMismatch | null
+  history_chunks?: PulseHistoryChunk[]
+  // Bookkeeping
+  session_count: number
   pulse_version: number
+  updated_at: string
+  // Deprecated (pre-Phase-2)
+  original_intent?: string
+  current_direction?: string
+  drift_score?: 'green' | 'yellow' | 'red'
+  drift_rationale?: string
+  momentum?: 'accelerating' | 'stable' | 'stalling'
+  momentum_rationale?: string
+  participant_map?: PulseParticipant[]
 }
 
 interface PulseResponse {
@@ -187,12 +216,14 @@ export default function ProjectDetailPage() {
   const [loadingPulse, setLoadingPulse] = useState(true)
   const [refreshingPulse, setRefreshingPulse] = useState(false)
   const [showPulseEditDialog, setShowPulseEditDialog] = useState(false)
-  const [pulseOverrideIntent, setPulseOverrideIntent] = useState('')
-  const [pulseOverrideDirection, setPulseOverrideDirection] = useState('')
+  const [pulseOverrideStatus, setPulseOverrideStatus] = useState('')
   const [pulseOverrideNarrative, setPulseOverrideNarrative] = useState('')
   const [savingPulseOverride, setSavingPulseOverride] = useState(false)
   const [decisionExpanded, setDecisionExpanded] = useState(false)
   const [resolvingLoop, setResolvingLoop] = useState<string | null>(null)
+  const [dismissingTypeMismatch, setDismissingTypeMismatch] = useState(false)
+  const [applyingTypeMismatch, setApplyingTypeMismatch] = useState(false)
+  const [historyExpanded, setHistoryExpanded] = useState(false)
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
   const [sparkleSessionId, setSparkleSessionId] = useState<string | null>(null)
   const sparkleTimeoutRef = useRef<number | null>(null)
@@ -298,14 +329,13 @@ export default function ProjectDetailPage() {
       toast.error(t('projects.pulse.empty'))
       return
     }
-    setPulseOverrideIntent(String(pulse.original_intent || ''))
-    setPulseOverrideDirection(String(pulse.current_direction || ''))
+    setPulseOverrideStatus(String(pulse.current_status || pulse.current_direction || ''))
     setPulseOverrideNarrative(String(pulse.narrative || ''))
     setShowPulseEditDialog(true)
   }
 
   const handleSavePulseCorrections = async () => {
-    if (!pulseOverrideIntent.trim() || !pulseOverrideDirection.trim() || !pulseOverrideNarrative.trim()) {
+    if (!pulseOverrideStatus.trim() || !pulseOverrideNarrative.trim()) {
       toast.error(t('projects.pulse.correctionRequired'))
       return
     }
@@ -316,8 +346,7 @@ export default function ProjectDetailPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          originalIntent: pulseOverrideIntent.trim(),
-          currentDirection: pulseOverrideDirection.trim(),
+          currentStatus: pulseOverrideStatus.trim(),
           narrative: pulseOverrideNarrative.trim(),
         }),
       })
@@ -330,6 +359,52 @@ export default function ProjectDetailPage() {
       toast.error(error?.message || t('projects.pulse.correctionFailed'))
     } finally {
       setSavingPulseOverride(false)
+    }
+  }
+
+  const handleApplyTypeMismatch = async () => {
+    const suggestion = pulseData?.pulse?.type_mismatch_suggestion
+    if (!suggestion) return
+    setApplyingTypeMismatch(true)
+    try {
+      const res = await fetch(`/api/cases/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_type: suggestion.suggested_type,
+          user_role: suggestion.suggested_role || caseData?.user_role || '',
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || tc('error'))
+      }
+      const updated = await res.json()
+      setCaseData((prev) => (prev ? { ...prev, ...updated } : null))
+      // Also clear the suggestion from the pulse so it doesn't keep prompting.
+      await fetch(`/api/cases/${projectId}/pulse/dismiss-type-mismatch`, { method: 'POST' }).catch(() => {})
+      await loadPulse()
+      toast.success(t('projects.pulse.typeSwitched'))
+    } catch (error: any) {
+      toast.error(error?.message || tc('error'))
+    } finally {
+      setApplyingTypeMismatch(false)
+    }
+  }
+
+  const handleDismissTypeMismatch = async () => {
+    setDismissingTypeMismatch(true)
+    try {
+      const res = await fetch(`/api/cases/${projectId}/pulse/dismiss-type-mismatch`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || tc('error'))
+      }
+      await loadPulse()
+    } catch (error: any) {
+      toast.error(error?.message || tc('error'))
+    } finally {
+      setDismissingTypeMismatch(false)
     }
   }
 
@@ -404,7 +479,6 @@ export default function ProjectDetailPage() {
   }
 
   const pulse = pulseData?.pulse || null
-  const firstSessionPulse = (pulse?.session_count || 0) === 1
   const loopCounts = useMemo(() => {
     const entries = pulse?.open_loops || []
     const map = new Map<string, number>()
@@ -420,26 +494,23 @@ export default function ProjectDetailPage() {
 
   const participantRows = useMemo(() => {
     const count = Math.max(1, pulse?.session_count || 1)
-    return (pulse?.participant_map || []).map((participant) => {
+    const source: PulseParticipant[] = (pulse?.participants && pulse.participants.length > 0)
+      ? pulse.participants
+      : (pulse?.participant_map || [])
+    return source.map((participant) => {
       const lastSeen = Math.max(...participant.sessions, 0)
       const stale = lastSeen > 0 && lastSeen <= count - 2
       return { ...participant, stale, sessionCount: count }
     })
-  }, [pulse?.participant_map, pulse?.session_count])
+  }, [pulse?.participants, pulse?.participant_map, pulse?.session_count])
 
-  const driftBadgeText = (score: DriftScore | null) => {
-    if (!score) return '--'
-    if (score === 'green') return '🟢 Green'
-    if (score === 'yellow') return '🟡 Yellow'
-    return '🔴 Red'
-  }
+  const historyChunks = useMemo(() => pulse?.history_chunks || [], [pulse?.history_chunks])
+  const visibleHistoryChunks = useMemo(() => {
+    if (historyExpanded || historyChunks.length <= 2) return historyChunks
+    return historyChunks.slice(-2)
+  }, [historyChunks, historyExpanded])
 
-  const momentumBadgeText = (momentum: Momentum | null) => {
-    if (!momentum) return '--'
-    if (momentum === 'accelerating') return '⚡ Accelerating'
-    if (momentum === 'stable') return '➡️ Stable'
-    return '🐢 Stalling'
-  }
+  const typeMismatch = pulse?.type_mismatch_suggestion || null
 
   const relativeMinutes = (iso?: string | null) => {
     if (!iso) return t('projects.pulse.neverUpdated')
@@ -763,28 +834,102 @@ export default function ProjectDetailPage() {
                   <div className="space-y-4">
                     <div className="sticky top-0 z-10 -mx-6 px-6 py-3 border-b border-border bg-card">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          title={firstSessionPulse ? t('projects.pulse.activatesFromSecondSession') : (pulse.drift_rationale || '')}
-                          className="cursor-help"
-                        >
-                          {firstSessionPulse ? '--' : driftBadgeText(pulse.drift_score)}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          title={firstSessionPulse ? t('projects.pulse.activatesFromSecondSession') : (pulse.momentum_rationale || '')}
-                          className="cursor-help"
-                        >
-                          {firstSessionPulse ? '--' : momentumBadgeText(pulse.momentum)}
-                        </Badge>
+                        {pulse.project_type && (
+                          <Badge variant="secondary" className="font-normal">
+                            {pulse.project_type}
+                          </Badge>
+                        )}
+                        {pulse.user_role && (
+                          <Badge variant="outline" className="font-normal">
+                            {pulse.user_role}
+                          </Badge>
+                        )}
                         <Badge variant="secondary">{t('projects.pulse.version', { version: pulse.pulse_version })}</Badge>
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-border p-3 space-y-2">
-                      <p className="text-xs text-muted-foreground italic">{pulse.original_intent || t('projects.pulse.notAvailable')}</p>
-                      <p className="text-sm font-semibold text-foreground">{pulse.current_direction || t('projects.pulse.notAvailable')}</p>
+                    {typeMismatch && (
+                      <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <Sparkles className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground">
+                              {t('projects.pulse.typeMismatchTitle')}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {t('projects.pulse.typeMismatchSuggested', {
+                                type: typeMismatch.suggested_type,
+                                role: typeMismatch.suggested_role || '—',
+                              })}
+                            </p>
+                            {typeMismatch.rationale && (
+                              <p className="text-xs text-foreground/80 mt-1 italic">{typeMismatch.rationale}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleApplyTypeMismatch}
+                            disabled={applyingTypeMismatch || dismissingTypeMismatch}
+                          >
+                            {applyingTypeMismatch ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                            <span className="ml-1">{t('projects.pulse.typeMismatchApply')}</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={handleDismissTypeMismatch}
+                            disabled={dismissingTypeMismatch || applyingTypeMismatch}
+                          >
+                            {dismissingTypeMismatch ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                            <span className="ml-1">{t('projects.pulse.typeMismatchDismiss')}</span>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="rounded-lg border border-border p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('projects.pulse.currentStatus')}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {pulse.current_status || pulse.current_direction || t('projects.pulse.notAvailable')}
+                      </p>
                     </div>
+
+                    {(pulse.covered && pulse.covered.length > 0) && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-sm font-medium">{t('projects.pulse.covered')}</p>
+                        <ul className="space-y-1 list-disc pl-5 text-sm text-foreground">
+                          {pulse.covered.map((item, idx) => (
+                            <li key={`covered-${idx}`}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {(pulse.missing && pulse.missing.length > 0) && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-sm font-medium">{t('projects.pulse.missing')}</p>
+                        <ul className="space-y-1 list-disc pl-5 text-sm text-foreground">
+                          {pulse.missing.map((item, idx) => (
+                            <li key={`missing-${idx}`}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {(pulse.next_actions && pulse.next_actions.length > 0) && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-sm font-medium">{t('projects.pulse.nextActions')}</p>
+                        <ul className="space-y-1 list-disc pl-5 text-sm text-foreground">
+                          {pulse.next_actions.map((item, idx) => (
+                            <li key={`next-${idx}`}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                     <div className="rounded-lg border border-border p-3 space-y-2">
                       <p className="text-sm font-medium flex items-center gap-2">
@@ -883,6 +1028,46 @@ export default function ProjectDetailPage() {
                         </div>
                       )}
                     </div>
+
+                    {historyChunks.length > 0 && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium">{t('projects.pulse.history')}</p>
+                          {historyChunks.length > 2 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setHistoryExpanded((prev) => !prev)}
+                            >
+                              {historyExpanded
+                                ? t('projects.pulse.showLess')
+                                : t('projects.pulse.historyShowAll', { count: historyChunks.length })}
+                            </Button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          {visibleHistoryChunks.map((chunk, idx) => (
+                            <div key={`history-${idx}`} className="rounded-md border border-border/60 p-2 bg-muted/20">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm font-medium">{chunk.period_label}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  S{chunk.session_indices[0] || '?'}–S{chunk.session_indices[chunk.session_indices.length - 1] || '?'}
+                                </p>
+                              </div>
+                              <p className="text-sm text-foreground mt-1">{chunk.summary}</p>
+                              {chunk.key_decisions && chunk.key_decisions.length > 0 && (
+                                <ul className="mt-2 space-y-0.5 list-disc pl-5 text-xs text-muted-foreground">
+                                  {chunk.key_decisions.map((d, di) => (
+                                    <li key={`history-${idx}-d-${di}`}>{d}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="rounded-lg border border-border p-3">
                       <p className="text-sm font-medium flex items-center gap-2 mb-2">
@@ -983,21 +1168,12 @@ export default function ProjectDetailPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>{t('projects.pulse.intentLabel')}</Label>
+              <Label>{t('projects.pulse.currentStatusLabel')}</Label>
               <Textarea
                 rows={2}
-                value={pulseOverrideIntent}
-                onChange={(e) => setPulseOverrideIntent(e.target.value)}
-                placeholder={t('projects.pulse.intentPlaceholder')}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t('projects.pulse.directionLabel')}</Label>
-              <Textarea
-                rows={2}
-                value={pulseOverrideDirection}
-                onChange={(e) => setPulseOverrideDirection(e.target.value)}
-                placeholder={t('projects.pulse.directionPlaceholder')}
+                value={pulseOverrideStatus}
+                onChange={(e) => setPulseOverrideStatus(e.target.value)}
+                placeholder={t('projects.pulse.currentStatusPlaceholder')}
               />
             </div>
             <div className="space-y-1.5">

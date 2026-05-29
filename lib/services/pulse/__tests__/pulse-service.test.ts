@@ -20,64 +20,137 @@ describe('Project Pulse trigger rules', () => {
   })
 })
 
-describe('Project Pulse worker invariants', () => {
-  it('preserves original_intent and increments pulse_version', () => {
-    const current = {
-      original_intent: 'Land enterprise healthcare clients in Q2',
-      current_direction: 'Current',
-      drift_score: 'green' as const,
-      drift_rationale: 'Aligned',
-      open_loops: [],
-      decision_log: [],
-      momentum: 'stable' as const,
-      momentum_rationale: 'Stable',
-      participant_map: [],
-      session_count: 2,
-      narrative: 'Narrative',
-      updated_at: '2026-03-17T00:00:00.000Z',
-      pulse_version: 3,
-    }
-
-    const next = sanitizePulseJson(
-      {
-        original_intent: 'Overwritten by model',
-        current_direction: 'Now targeting implementation velocity',
-        drift_score: 'yellow',
-        drift_rationale: 'Slight scope drift',
-        momentum: 'accelerating',
-        momentum_rationale: 'More decisions',
+describe('Project Pulse worker invariants (Phase 2)', () => {
+  it('preserves project_type / user_role and increments pulse_version', () => {
+    const next = sanitizePulseJson({
+      parsed: {
+        project_type: 'New Hire (employer side)',
+        user_role: 'Hiring manager',
+        current_status: 'Offer extended, awaiting acceptance',
+        covered: ['Technical interview', 'Cultural fit'],
+        missing: ['Reference checks'],
+        next_actions: ['Confirm acceptance', 'Send onboarding plan'],
+        open_loops: [],
+        decision_log: [{ decision: 'Extended offer', session_index: 4, session_date: '2026-04-01' }],
+        participants: [],
+        narrative: 'Final-stage hiring; offer extended.',
+        type_mismatch_suggestion: null,
+        recent_window: [],
+        history_chunks: [],
+        permanent_ledger: [],
       },
-      current,
-      4,
-      'Fallback intent'
-    )
+      currentPulse: {
+        project_type: 'New Hire (employer side)',
+        user_role: 'Hiring manager',
+        current_status: 'Late-stage interviews',
+        covered: [],
+        missing: [],
+        next_actions: [],
+        open_loops: [],
+        decision_log: [],
+        participants: [],
+        narrative: 'Prior',
+        type_mismatch_suggestion: null,
+        recent_window: [],
+        history_chunks: [],
+        permanent_ledger: [],
+        pulse_version: 3,
+        updated_at: '2026-03-17T00:00:00.000Z',
+        session_count: 3,
+      },
+      sessionIndex: 4,
+      projectType: 'New Hire (employer side)',
+      userRole: 'Hiring manager',
+      triggeringSessionId: 'session-4',
+    })
 
-    expect(next.original_intent).toBe(current.original_intent)
+    expect(next.project_type).toBe('New Hire (employer side)')
+    expect(next.user_role).toBe('Hiring manager')
     expect(next.pulse_version).toBe(4)
     expect(next.session_count).toBe(4)
+    expect(next.current_status).toContain('Offer')
   })
 
   it('removes resolved loops from open_loops deterministically', () => {
-    const next = sanitizePulseJson(
-      {
-        current_direction: 'Direction',
-        drift_score: 'green',
-        drift_rationale: 'Aligned',
+    const next = sanitizePulseJson({
+      parsed: {
+        project_type: 'Marketing Campaign',
+        user_role: 'Campaign owner',
+        current_status: 'Launch prep',
+        covered: [],
+        missing: [],
+        next_actions: [],
         open_loops: ['Finalize DPA wording', 'Schedule pilot review'],
-        momentum: 'stable',
-        momentum_rationale: 'Steady',
+        decision_log: [],
+        participants: [],
+        narrative: 'Steady',
+        type_mismatch_suggestion: null,
+        recent_window: [],
+        history_chunks: [],
+        permanent_ledger: [],
       },
-      null,
-      2,
-      'Fallback intent',
-      ['Finalize DPA wording']
-    )
+      currentPulse: null,
+      sessionIndex: 2,
+      resolvedMarkers: ['Finalize DPA wording'],
+      projectType: 'Marketing Campaign',
+      userRole: 'Campaign owner',
+      triggeringSessionId: 'session-2',
+    })
 
     expect(next.open_loops).toEqual(['Schedule pilot review'])
   })
 
-  it('normalizes session analysis mapping from session row', () => {
+  it('drops type_mismatch_suggestion when it echoes the current type', () => {
+    const next = sanitizePulseJson({
+      parsed: {
+        project_type: 'New Hire (employer side)',
+        user_role: 'Hiring manager',
+        current_status: 'Interviews',
+        type_mismatch_suggestion: {
+          suggested_type: 'New Hire (employer side)',
+          suggested_role: 'Hiring manager',
+          confidence: 0.4,
+          rationale: 'Matches current',
+        },
+      },
+      currentPulse: null,
+      sessionIndex: 1,
+      projectType: 'New Hire (employer side)',
+      userRole: 'Hiring manager',
+      triggeringSessionId: 'session-1',
+    })
+
+    expect(next.type_mismatch_suggestion).toBeNull()
+  })
+
+  it('keeps a real type_mismatch_suggestion', () => {
+    const next = sanitizePulseJson({
+      parsed: {
+        project_type: 'New Hire (employer side)',
+        user_role: 'Hiring manager',
+        current_status: 'Vendor scoping',
+        type_mismatch_suggestion: {
+          suggested_type: 'SW Development project',
+          suggested_role: 'Engineering lead',
+          confidence: 0.85,
+          rationale: 'New session is a sprint planning meeting, not a hiring step',
+        },
+      },
+      currentPulse: null,
+      sessionIndex: 5,
+      projectType: 'New Hire (employer side)',
+      userRole: 'Hiring manager',
+      triggeringSessionId: 'session-5',
+    })
+
+    expect(next.type_mismatch_suggestion).not.toBeNull()
+    expect(next.type_mismatch_suggestion?.suggested_type).toBe('SW Development project')
+    expect(next.type_mismatch_suggestion?.confidence).toBeGreaterThan(0.5)
+  })
+
+  it('normalizes session analysis mapping from session row (carries session_id)', () => {
     const mapped = mapSessionToPulseInput({
+      id: 'sess-123',
       ai_extracted_context: {
         purpose: 'Define rollout milestones',
         agenda: ['Timeline', 'Owners'],
@@ -89,6 +162,7 @@ describe('Project Pulse worker invariants', () => {
       recorded_at: '2026-03-17T10:00:00.000Z',
     })
 
+    expect(mapped.session_id).toBe('sess-123')
     expect(mapped.purpose).toBe('Define rollout milestones')
     expect(mapped.summary).toEqual(['Kickoff complete', 'Risks identified'])
     expect(mapped.speakers).toEqual(['Alice', 'Bob'])
@@ -97,13 +171,17 @@ describe('Project Pulse worker invariants', () => {
   })
 })
 
-describe('Project Pulse prompt contract', () => {
-  it('mentions worker-owned updated_at placeholder', () => {
+describe('Project Pulse prompt contract (Phase 2)', () => {
+  it('embeds project type/role and the worker placeholder', () => {
     const prompt = buildPulsePrompt({
       currentPulse: null,
       sessionIndex: 1,
       userLanguage: 'en',
+      caseStatus: 'active',
+      projectType: 'Trade Show Visit',
+      userRole: 'Booth lead',
       session: {
+        session_id: 'sess-1',
         summary: ['Intro'],
         purpose: 'Kickoff',
         agenda: ['Scope'],
@@ -114,9 +192,33 @@ describe('Project Pulse prompt contract', () => {
       },
     })
 
+    expect(prompt.system).toContain('Trade Show Visit')
+    expect(prompt.system).toContain('Booth lead')
     expect(prompt.system).toContain('WORKER_SETS_THIS')
-    expect(prompt.user).toContain('CURRENT PULSE')
-    expect(prompt.user).toContain('NEW SESSION ANALYSIS')
+    expect(prompt.user).toContain('NEW SESSION')
+  })
+
+  it('switches to closing-mode instructions for archived/closed cases', () => {
+    const prompt = buildPulsePrompt({
+      currentPulse: null,
+      sessionIndex: 6,
+      userLanguage: 'en',
+      caseStatus: 'closed',
+      projectType: 'New Hire (employer side)',
+      userRole: 'Hiring manager',
+      session: {
+        session_id: 'sess-final',
+        summary: ['Closing'],
+        purpose: 'Close out',
+        agenda: [],
+        domains: [],
+        speakers: [],
+        recording_type: 'meeting',
+        recorded_at: '2026-04-30T10:00:00.000Z',
+      },
+    })
+
+    expect(prompt.system).toContain('CLOSED')
+    expect(prompt.system).toContain('terminal entry')
   })
 })
-

@@ -58,13 +58,15 @@ export async function PATCH(
     const supabase = await createClient()
     const body = await request.json().catch(() => ({}))
 
-    const originalIntent = String(body?.originalIntent || '').trim()
-    const currentDirection = String(body?.currentDirection || '').trim()
+    // Phase 2: project_type / user_role are owned by the case row itself
+    // (cases.project_type / cases.user_role) and edited via the project edit
+    // dialog. The pulse correction dialog only adjusts the AI-derived prose.
+    const currentStatus = String(body?.currentStatus ?? body?.currentDirection ?? '').trim()
     const narrative = String(body?.narrative || '').trim()
 
-    if (!originalIntent || !currentDirection || !narrative) {
+    if (!currentStatus || !narrative) {
       return NextResponse.json(
-        { error: 'originalIntent, currentDirection, and narrative are required' },
+        { error: 'currentStatus and narrative are required' },
         { status: 400 }
       )
     }
@@ -90,8 +92,7 @@ export async function PATCH(
     const nextVersion = Number(caseRow.pulse_version || 0) + 1
     const nextPulse = {
       ...(caseRow.pulse as Record<string, unknown>),
-      original_intent: originalIntent,
-      current_direction: currentDirection,
+      current_status: currentStatus,
       narrative,
       updated_at: nowIso,
       pulse_version: nextVersion,
