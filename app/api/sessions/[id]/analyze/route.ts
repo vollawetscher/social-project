@@ -288,7 +288,6 @@ function speakerMatchesName(text: string, name: string): boolean {
   const selfIntroEn = new RegExp(`\\b(this is|it is|it's|i am|i'm|my name is)\\s+${escaped}\\b`)
   const selfIntroDe = new RegExp(`\\b(hier ist|hier spricht|ich bin|mein name ist)\\s+${escaped}\\b`)
   if (selfIntroEn.test(t) || selfIntroDe.test(t)) return true
-  if (new RegExp(`\\b${escaped}\\b`).test(t.slice(0, 50))) return true
   return false
 }
 
@@ -351,7 +350,7 @@ function resolveMeetingLinkSpeakers(
     if (addressMatchesName(allText, guest) || speakerMatchesName(allText, host)) {
       return { hostSpeaker: sp.speaker, guestSpeaker: otherSp.speaker, reason: 'pml_content_hint' }
     }
-    if (speakerMatchesName(allText, guest)) {
+    if (addressMatchesName(allText, host) || speakerMatchesName(allText, guest)) {
       return { hostSpeaker: otherSp.speaker, guestSpeaker: sp.speaker, reason: 'pml_content_hint' }
     }
   }

@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.36.14',
+    date: 'May 29, 2026',
+    entries: [
+      {
+        version: '1.36.14',
+        date: 'May 29, 2026',
+        category: 'fix',
+        title: 'Better Speaker Names in Calls',
+        description: 'Call transcripts now use greetings like "Hey, Christian" as evidence that the speaker is talking to Christian, not that the speaker is Christian, reducing swapped speaker names.',
+      },
+    ],
+  },
+  {
     version: '1.36.13',
     date: 'May 28, 2026',
     entries: [
