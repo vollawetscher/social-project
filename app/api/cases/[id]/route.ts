@@ -140,6 +140,17 @@ export async function PATCH(
         }
       }
 
+      // event_metadata is a JSON object (confirmed web-enriched event identity),
+      // handled separately from the string allowlist above.
+      if (Object.prototype.hasOwnProperty.call(fields, 'event_metadata')) {
+        const raw = (fields as Record<string, unknown>).event_metadata
+        if (raw === null) {
+          updatePayload.event_metadata = null
+        } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+          updatePayload.event_metadata = raw
+        }
+      }
+
       if (Object.keys(updatePayload).length === 0) {
         return NextResponse.json({ error: 'No editable fields provided' }, { status: 400 })
       }

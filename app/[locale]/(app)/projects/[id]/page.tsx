@@ -41,8 +41,15 @@ import {
   ListChecks,
   Sparkles,
   MessageSquareDot,
+  MapPin,
+  CalendarDays,
+  Globe,
+  Download,
+  Lightbulb,
+  Contact,
 } from 'lucide-react'
 import { formatDuration } from '@/lib/utils/date-formatters'
+import type { EventMetadata, EventDigest } from '@/lib/types/database'
 
 interface CaseData {
   id: string
@@ -54,7 +61,27 @@ interface CaseData {
   updated_at: string
   project_type: string | null
   user_role: string | null
+  event_metadata?: EventMetadata | null
   sessions: SessionRow[]
+}
+
+interface EventProposal {
+  event_name: string
+  venue: string
+  address: string
+  dates: string
+  official_speakers: string[]
+  agenda_url: string | null
+  source_url: string | null
+  confidence: number
+  rationale: string
+}
+
+// An Event project gets the auto-grouping / web-enrichment / digest surface.
+// project_type is free text, so match the event family loosely.
+function isEventProject(projectType: string | null | undefined): boolean {
+  const t = String(projectType || '').toLowerCase()
+  return /event|summit|conference|congress|trade ?show|messe|kongress|tagung/.test(t)
 }
 
 interface SessionRow {
@@ -229,9 +256,18 @@ export default function ProjectDetailPage() {
   const [sparkleSessionId, setSparkleSessionId] = useState<string | null>(null)
   const sparkleTimeoutRef = useRef<number | null>(null)
 
+  // Event project state
+  const [eventDigest, setEventDigest] = useState<EventDigest | null>(null)
+  const [generatingDigest, setGeneratingDigest] = useState(false)
+  const [enriching, setEnriching] = useState(false)
+  const [eventProposal, setEventProposal] = useState<EventProposal | null>(null)
+  const [showProposalDialog, setShowProposalDialog] = useState(false)
+  const [confirmingEvent, setConfirmingEvent] = useState(false)
+
   useEffect(() => {
     loadProject()
     loadPulse()
+    loadEventDigest()
   }, [projectId])
 
   const loadProject = async () => {
@@ -265,6 +301,113 @@ export default function ProjectDetailPage() {
     } finally {
       setLoadingPulse(false)
     }
+  }
+
+  const loadEventDigest = async () => {
+    try {
+      const res = await fetch(`/api/cases/${projectId}/digest`, { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setEventDigest((data?.digest as EventDigest) || null)
+      }
+    } catch {
+      // Best-effort.
+    }
+  }
+
+  const handleGenerateDigest = async () => {
+    setGeneratingDigest(true)
+    try {
+      const res = await fetch(`/api/cases/${projectId}/digest`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || tc('error'))
+      await loadEventDigest()
+      toast.success(t('projects.event.digestGenerated'))
+    } catch (error: any) {
+      toast.error(error?.message || tc('error'))
+    } finally {
+      setGeneratingDigest(false)
+    }
+  }
+
+  const handleIdentifyEvent = async () => {
+    setEnriching(true)
+    try {
+      const res = await fetch(`/api/cases/${projectId}/enrich-event`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || tc('error'))
+      setEventProposal(data.proposal as EventProposal)
+      setShowProposalDialog(true)
+    } catch (error: any) {
+      toast.error(error?.message || tc('error'))
+    } finally {
+      setEnriching(false)
+    }
+  }
+
+  const handleConfirmEvent = async () => {
+    if (!eventProposal) return
+    setConfirmingEvent(true)
+    try {
+      const metadata: EventMetadata = {
+        event_name: eventProposal.event_name,
+        venue: eventProposal.venue,
+        address: eventProposal.address,
+        dates: eventProposal.dates,
+        official_speakers: eventProposal.official_speakers,
+        agenda_url: eventProposal.agenda_url,
+        source_url: eventProposal.source_url,
+        confirmed: true,
+      }
+      const res = await fetch(`/api/cases/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_metadata: metadata }),
+      })
+      const updated = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(updated?.error || tc('error'))
+      setCaseData((prev) => (prev ? { ...prev, event_metadata: metadata } : prev))
+      setShowProposalDialog(false)
+      toast.success(t('projects.event.identityConfirmed'))
+    } catch (error: any) {
+      toast.error(error?.message || tc('error'))
+    } finally {
+      setConfirmingEvent(false)
+    }
+  }
+
+  const handleExportDigest = () => {
+    const content = eventDigest?.content
+    if (!content) return
+    const ev = caseData?.event_metadata
+    const lines: string[] = []
+    lines.push(`# ${content.event_name || ev?.event_name || caseData?.title || 'Event digest'}`)
+    if (ev?.venue || ev?.dates) {
+      lines.push('')
+      lines.push([ev?.venue, ev?.dates].filter(Boolean).join(' · '))
+    }
+    if (content.key_takeaways?.length) {
+      lines.push('', '## Key takeaways', ...content.key_takeaways.map((x) => `- ${x}`))
+    }
+    if (content.people_met?.length) {
+      lines.push('', '## People met', ...content.people_met.map((p) => {
+        const tail = [p.affiliation, p.note].filter(Boolean).join(' — ')
+        return `- ${p.name}${tail ? ` (${tail})` : ''}`
+      }))
+    }
+    if (content.follow_ups?.length) {
+      lines.push('', '## Follow-ups', ...content.follow_ups.map((x) => `- ${x}`))
+    }
+    if (content.narrative) {
+      lines.push('', '## Summary', content.narrative)
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `event-digest-${projectId.slice(0, 8)}.md`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleRefreshPulse = async () => {
@@ -616,6 +759,163 @@ export default function ProjectDetailPage() {
           <Settings className="h-4 w-4" />
         </Button>
       </div>
+
+      {isEventProject(caseData.project_type) && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarDays className="h-4 w-4" />
+                  {t('projects.event.title')}
+                </CardTitle>
+                <CardDescription>{t('projects.event.subtitle')}</CardDescription>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleIdentifyEvent}
+                  disabled={enriching}
+                >
+                  {enriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                  <span className="ml-1">
+                    {caseData.event_metadata?.confirmed
+                      ? t('projects.event.reidentify')
+                      : t('projects.event.identify')}
+                  </span>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleGenerateDigest}
+                  disabled={generatingDigest}
+                >
+                  {generatingDigest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  <span className="ml-1">
+                    {eventDigest ? t('projects.event.refreshDigest') : t('projects.event.generateDigest')}
+                  </span>
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {caseData.event_metadata?.confirmed ? (
+              <div className="rounded-lg border border-border p-3 space-y-1.5">
+                <p className="text-sm font-semibold text-foreground">
+                  {caseData.event_metadata.event_name || caseData.title}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {(caseData.event_metadata.venue || caseData.event_metadata.address) && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {[caseData.event_metadata.venue, caseData.event_metadata.address].filter(Boolean).join(', ')}
+                    </span>
+                  )}
+                  {caseData.event_metadata.dates && (
+                    <span className="flex items-center gap-1">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      {caseData.event_metadata.dates}
+                    </span>
+                  )}
+                  {caseData.event_metadata.source_url && (
+                    <a
+                      href={caseData.event_metadata.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 underline hover:text-foreground"
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      {t('projects.event.source')}
+                    </a>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+                {t('projects.event.notIdentified')}
+              </div>
+            )}
+
+            {!eventDigest ? (
+              <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                {t('projects.event.digestEmpty')}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {eventDigest.content.key_takeaways?.length > 0 && (
+                  <div className="rounded-lg border border-border p-3 space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4" />
+                      {t('projects.event.keyTakeaways')}
+                    </p>
+                    <ul className="space-y-1 list-disc pl-5 text-sm text-foreground">
+                      {eventDigest.content.key_takeaways.map((item, idx) => (
+                        <li key={`takeaway-${idx}`}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {eventDigest.content.people_met?.length > 0 && (
+                  <div className="rounded-lg border border-border p-3 space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Contact className="h-4 w-4" />
+                      {t('projects.event.peopleMet')}
+                    </p>
+                    <ul className="space-y-1.5 text-sm text-foreground">
+                      {eventDigest.content.people_met.map((person, idx) => (
+                        <li key={`person-${idx}`}>
+                          <span className="font-medium">{person.name}</span>
+                          {person.affiliation && (
+                            <span className="text-muted-foreground"> · {person.affiliation}</span>
+                          )}
+                          {person.note && <span className="text-muted-foreground"> — {person.note}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {eventDigest.content.follow_ups?.length > 0 && (
+                  <div className="rounded-lg border border-border p-3 space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <ListChecks className="h-4 w-4" />
+                      {t('projects.event.followUps')}
+                    </p>
+                    <ul className="space-y-1 list-disc pl-5 text-sm text-foreground">
+                      {eventDigest.content.follow_ups.map((item, idx) => (
+                        <li key={`followup-${idx}`}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {eventDigest.content.narrative && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-sm font-medium flex items-center gap-2 mb-2">
+                      <MessageSquareDot className="h-4 w-4" />
+                      {t('projects.event.summary')}
+                    </p>
+                    <p className="text-sm leading-relaxed text-foreground">{eventDigest.content.narrative}</p>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {t('projects.event.basedOnRecordings', { count: eventDigest.source_session_ids.length })}
+                  </span>
+                  <Button type="button" variant="outline" size="sm" onClick={handleExportDigest}>
+                    <Download className="h-4 w-4" />
+                    <span className="ml-1">{t('projects.event.export')}</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-2">
@@ -1205,6 +1505,68 @@ export default function ProjectDetailPage() {
             <Button onClick={handleSavePulseCorrections} disabled={savingPulseOverride}>
               {savingPulseOverride ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {t('projects.pulse.saveCorrections')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Event identity confirmation */}
+      <Dialog open={showProposalDialog} onOpenChange={setShowProposalDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('projects.event.confirmTitle')}</DialogTitle>
+            <DialogDescription>{t('projects.event.confirmDescription')}</DialogDescription>
+          </DialogHeader>
+          {eventProposal && (
+            <div className="space-y-3 py-2">
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <p className="text-base font-semibold text-foreground">
+                  {eventProposal.event_name || t('projects.event.unknownEvent')}
+                </p>
+                {(eventProposal.venue || eventProposal.address) && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    {[eventProposal.venue, eventProposal.address].filter(Boolean).join(', ')}
+                  </p>
+                )}
+                {eventProposal.dates && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                    {eventProposal.dates}
+                  </p>
+                )}
+                {eventProposal.official_speakers.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('projects.event.speakersFound', { count: eventProposal.official_speakers.length })}
+                  </p>
+                )}
+                {eventProposal.source_url && (
+                  <a
+                    href={eventProposal.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs underline text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    {eventProposal.source_url}
+                  </a>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="secondary">
+                  {t('projects.event.confidence', { percent: Math.round(eventProposal.confidence * 100) })}
+                </Badge>
+                {eventProposal.rationale && <span className="italic">{eventProposal.rationale}</span>}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowProposalDialog(false)} disabled={confirmingEvent}>
+              {t('projects.event.notRight')}
+            </Button>
+            <Button onClick={handleConfirmEvent} disabled={confirmingEvent || !eventProposal?.event_name}>
+              {confirmingEvent ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-1" />}
+              {t('projects.event.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

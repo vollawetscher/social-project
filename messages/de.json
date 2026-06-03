@@ -220,6 +220,16 @@
       "sessions": "Sitzungen",
       "projects": "Projekte"
     },
+    "events": {
+      "bannerTitle": "{count} Aufnahmen vom {date} sehen nach einem Event aus",
+      "bannerBody": "Gruppieren Sie sie zu einem Event-Projekt, um eine einzige Zusammenfassung mit Erkenntnissen, Personen und nächsten Schritten zu erhalten.",
+      "duplicatesSkipped": "{count} doppelte Aufnahmen werden übersprungen.",
+      "group": "Als Event gruppieren",
+      "dismiss": "Verwerfen",
+      "grouped": "Zu einem Event-Projekt gruppiert",
+      "error": "Etwas ist schiefgelaufen",
+      "defaultTitle": "Event · {date}"
+    },
     "projects": {
       "createProject": "Neues Projekt",
       "loading": "Projekte werden geladen...",
@@ -367,6 +377,32 @@
         "hoursAgo": "vor {count} Std.",
         "basedOnSessions": "Basierend auf {count} Sitzungen",
         "activatesFromSecondSession": "Die Trajektorienanalyse startet ab Sitzung 2"
+      },
+      "event": {
+        "title": "Event-Zusammenfassung",
+        "subtitle": "Eine sitzungsübergreifende Zusammenfassung dieses Events: zentrale Erkenntnisse, getroffene Personen und nächste Schritte.",
+        "identify": "Event identifizieren",
+        "reidentify": "Neu identifizieren",
+        "generateDigest": "Zusammenfassung erstellen",
+        "refreshDigest": "Zusammenfassung aktualisieren",
+        "source": "Quelle",
+        "notIdentified": "Event noch nicht identifiziert. Über \"Event identifizieren\" lässt es sich anhand eines Sprechernamens und des Aufnahmedatums im Web nachschlagen.",
+        "digestEmpty": "Noch keine Zusammenfassung. Erstellen Sie eine, um alle Aufnahmen zu zentralen Erkenntnissen, getroffenen Personen und nächsten Schritten zusammenzuführen.",
+        "keyTakeaways": "Zentrale Erkenntnisse",
+        "peopleMet": "Getroffene Personen",
+        "followUps": "Nächste Schritte",
+        "summary": "Zusammenfassung",
+        "basedOnRecordings": "Basierend auf {count} Aufnahmen",
+        "export": "Exportieren",
+        "digestGenerated": "Event-Zusammenfassung erstellt",
+        "identityConfirmed": "Event-Identität gespeichert",
+        "confirmTitle": "Ist das das richtige Event?",
+        "confirmDescription": "Wir haben dies im öffentlichen Web nachgeschlagen. Bestätigen Sie es, damit wir die Zusammenfassung am offiziellen Programm ausrichten können.",
+        "unknownEvent": "Unbekanntes Event",
+        "speakersFound": "{count} offizielle Sprecher gefunden",
+        "confidence": "{percent}% Übereinstimmung",
+        "notRight": "Nicht korrekt",
+        "confirm": "Event bestätigen"
       }
     }
   },

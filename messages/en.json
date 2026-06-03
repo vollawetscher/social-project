@@ -220,6 +220,16 @@
       "sessions": "Sessions",
       "projects": "Projects"
     },
+    "events": {
+      "bannerTitle": "{count} recordings from {date} look like one event",
+      "bannerBody": "Group them into an Event project to get a single digest of takeaways, people, and follow-ups.",
+      "duplicatesSkipped": "{count} duplicate recordings will be skipped.",
+      "group": "Group as event",
+      "dismiss": "Dismiss",
+      "grouped": "Grouped into an Event project",
+      "error": "Something went wrong",
+      "defaultTitle": "Event · {date}"
+    },
     "projects": {
       "createProject": "New Project",
       "loading": "Loading projects...",
@@ -367,6 +377,32 @@
         "hoursAgo": "{count}h ago",
         "basedOnSessions": "Based on {count} sessions",
         "activatesFromSecondSession": "Trajectory analysis activates from session 2"
+      },
+      "event": {
+        "title": "Event digest",
+        "subtitle": "A cross-session summary of this event: key takeaways, people met, and follow-ups.",
+        "identify": "Identify event",
+        "reidentify": "Re-identify",
+        "generateDigest": "Generate digest",
+        "refreshDigest": "Refresh digest",
+        "source": "Source",
+        "notIdentified": "Event not identified yet. Use \"Identify event\" to look it up from the web using a speaker name and the recording date.",
+        "digestEmpty": "No digest yet. Generate one to synthesize all recordings into key takeaways, people met, and follow-ups.",
+        "keyTakeaways": "Key takeaways",
+        "peopleMet": "People met",
+        "followUps": "Follow-ups",
+        "summary": "Summary",
+        "basedOnRecordings": "Based on {count} recordings",
+        "export": "Export",
+        "digestGenerated": "Event digest generated",
+        "identityConfirmed": "Event identity saved",
+        "confirmTitle": "Is this the right event?",
+        "confirmDescription": "We looked this up from the public web. Confirm it so we can ground the digest in the official program.",
+        "unknownEvent": "Unrecognized event",
+        "speakersFound": "{count} official speakers found",
+        "confidence": "{percent}% match",
+        "notRight": "Not right",
+        "confirm": "Confirm event"
       }
     }
   },

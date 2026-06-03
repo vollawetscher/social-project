@@ -43,6 +43,48 @@ export interface Case {
   project_type?: string | null
   user_role?: string | null
   default_session_purpose?: string | null
+  event_metadata?: EventMetadata | null
+}
+
+// Confirmed, web-enriched identity for an "Event" project. Free-form values
+// resolved from the public web (a speaker name + recording date) and confirmed
+// by the user. Null until enriched and confirmed.
+export interface EventMetadata {
+  event_name: string
+  venue?: string
+  address?: string
+  dates?: string
+  official_speakers?: string[]
+  agenda_url?: string | null
+  source_url?: string | null
+  confirmed: boolean
+}
+
+// A single resolved person in the cross-session digest. People at an event are
+// extracted from spoken content + session labels, so identity is best-effort.
+export interface EventDigestPerson {
+  name: string
+  affiliation?: string
+  note?: string
+}
+
+// Project-level cross-session digest for an Event project.
+export interface EventDigestContent {
+  event_name?: string
+  key_takeaways: string[]
+  people_met: EventDigestPerson[]
+  follow_ups: string[]
+  narrative?: string
+  language?: string
+}
+
+export interface EventDigest {
+  id: string
+  case_id: string
+  content: EventDigestContent
+  source_session_ids: string[]
+  version: number
+  created_at: string
 }
 
 export interface Session {

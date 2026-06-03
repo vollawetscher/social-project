@@ -42,6 +42,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { EventSuggestionBanner } from "@/components/event/EventSuggestionBanner"
 import {
   Table,
   TableBody,
@@ -1954,6 +1955,9 @@ export default function SessionsPage() {
           </Button>
         )}
       </div>
+
+      {/* Auto-group suggestion (sessions-only) */}
+      {view === 'sessions' && <EventSuggestionBanner onGrouped={fetchSessions} />}
 
       {/* Record Bar + Upload Section (sessions-only) */}
       {view === 'sessions' && (

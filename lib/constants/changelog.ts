@@ -14,6 +14,26 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.40.0',
+    date: 'June 3, 2026',
+    entries: [
+      {
+        version: '1.40.0',
+        date: 'June 3, 2026',
+        category: 'feature',
+        title: 'Event projects',
+        description: 'Recorded a stack of talks at a conference or trade show? When several recordings from the same day look like one event, we now offer to group them into an Event project in one click — and we quietly skip duplicate uploads of the same recording. Inside the project you get a single digest that synthesizes everything across all the talks: key takeaways, people met, and follow-ups, in the right order regardless of how you uploaded them.',
+      },
+      {
+        version: '1.40.0',
+        date: 'June 3, 2026',
+        category: 'feature',
+        title: 'Identify the event from the web',
+        description: 'For an Event project, we can look up the event from the public web using a speaker\'s name and the recording date — no location tracking needed. Confirm the match and we pull in the venue, dates, and official speaker list, then use them to sharpen the digest (for example, correcting a misheard speaker name against the official program).',
+      },
+    ],
+  },
+  {
     version: '1.39.0',
     date: 'May 29, 2026',
     entries: [
