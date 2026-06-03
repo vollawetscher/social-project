@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import {
   clusterSessions,
+  EVENT_GROUPING_MIN_DATE,
   type ClusterableSession,
   type EventCluster,
 } from '@/lib/services/event/event-clustering'
@@ -23,6 +24,7 @@ export async function GET() {
       .is('case_id', null)
       .in('status', ['done'])
       .not('recorded_at', 'is', null)
+      .gte('recorded_at', EVENT_GROUPING_MIN_DATE)
 
     if (sessionsError) {
       return NextResponse.json({ error: sessionsError.message }, { status: 500 })

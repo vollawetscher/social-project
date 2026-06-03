@@ -49,6 +49,11 @@ const EVENT_LIKE_RECORDING_TYPES = new Set([
 
 export const MIN_CLUSTER_SIZE = 3
 
+// Auto-grouping only applies to recordings from this date onward. Legacy
+// recordings (separate same-day sales calls, old trade shows, etc.) are left
+// untouched so they don't surface as false-positive event suggestions.
+export const EVENT_GROUPING_MIN_DATE = '2026-06-01'
+
 function isEventLike(session: ClusterableSession): boolean {
   const hint = (session.input_hint || '').trim()
   const recType = (session.recording_type || '').trim()
@@ -129,7 +134,11 @@ function buildSignature(date: string): string {
 // Group ungrouped, event-like sessions by recording date, after deduplication.
 // Only clusters with at least MIN_CLUSTER_SIZE deduped members are returned.
 export function clusterSessions(sessions: ClusterableSession[]): EventCluster[] {
-  const eventLike = sessions.filter(isEventLike).filter((s) => localDate(s) !== null)
+  const eventLike = sessions.filter(isEventLike).filter((s) => {
+    const date = localDate(s)
+    // ISO date strings compare lexicographically; legacy recordings are excluded.
+    return date !== null && date >= EVENT_GROUPING_MIN_DATE
+  })
 
   const byDate = new Map<string, ClusterableSession[]>()
   for (const s of eventLike) {
