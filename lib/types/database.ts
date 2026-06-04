@@ -72,6 +72,11 @@ export interface EventDigestPerson {
 export interface EventDigestContent {
   event_name?: string
   key_takeaways: string[]
+  // People who spoke/presented in the recorded talks (affiliation pulled from
+  // the official roster + the session titles the attendee wrote).
+  presenters?: EventDigestPerson[]
+  // People the attendee personally met in conversation/networking — NOT stage
+  // presenters. Often empty for a talk-heavy event.
   people_met: EventDigestPerson[]
   follow_ups: string[]
   narrative?: string

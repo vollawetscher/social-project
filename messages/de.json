@@ -389,6 +389,7 @@
         "notIdentified": "Event noch nicht identifiziert. Über \"Event identifizieren\" lässt es sich anhand eines Sprechernamens und des Aufnahmedatums im Web nachschlagen.",
         "digestEmpty": "Noch keine Zusammenfassung. Erstellen Sie eine, um alle Aufnahmen zu zentralen Erkenntnissen, getroffenen Personen und nächsten Schritten zusammenzuführen.",
         "keyTakeaways": "Zentrale Erkenntnisse",
+        "presenters": "Vortragende",
         "peopleMet": "Getroffene Personen",
         "followUps": "Nächste Schritte",
         "summary": "Zusammenfassung",

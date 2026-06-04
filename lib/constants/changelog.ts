@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.40.2',
+    date: 'June 4, 2026',
+    entries: [
+      {
+        version: '1.40.2',
+        date: 'June 4, 2026',
+        category: 'improvement',
+        title: 'Sharper "people" in event digests',
+        description: 'The event digest now separates the people who presented on stage from the people you actually met in conversation, so a networking contact no longer gets buried among the speakers. It also picks up affiliations straight from the session titles you wrote (e.g. "Matt Golubovic - Omnius"), instead of leaving them blank.',
+      },
+    ],
+  },
+  {
     version: '1.40.1',
     date: 'June 4, 2026',
     entries: [

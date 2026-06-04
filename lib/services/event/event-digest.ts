@@ -45,7 +45,12 @@ function buildPrompt(input: {
 
   const sessionBlocks = sessions
     .map((s, i) => {
-      const label = titleToIdentityLabel(s.internal_case_id || '') || s.internal_case_id || `Recording ${i + 1}`
+      // Use the FULL human title (not just the pre-dash identity), so an
+      // affiliation written after a dash — e.g. "Matt Golubovic - Omnius" — is
+      // visible to the model instead of being stripped away.
+      const rawTitle = String(s.internal_case_id || '').trim()
+      const isHumanTitle = Boolean(titleToIdentityLabel(rawTitle))
+      const label = isHumanTitle ? rawTitle : `Recording ${i + 1}`
       const when = s.recorded_at ? new Date(s.recorded_at).toISOString() : 'unknown time'
       const ctx = s.ai_extracted_context
       const purpose = String(s.purpose || ctx?.purpose || '').trim()
@@ -71,16 +76,19 @@ function buildPrompt(input: {
 - Official speakers: ${(eventMetadata.official_speakers || []).slice(0, 60).join(', ') || '(none listed)'}
 ${eventMetadata.source_url ? `- Source: ${eventMetadata.source_url}` : ''}
 
-Use the official speaker roster to correct and de-duplicate names in "people_met"
+Use the official speaker roster to correct and de-duplicate presenter names
 (e.g. a misheard "Felix Schmidt" should match the roster's "Felix Schlenther").`
     : 'No confirmed event identity is available. Work from the recordings alone.'
 
   const system = `You are producing a single Event digest for a user who attended an event and recorded multiple talks/conversations there. This is a project of type "Event".
 
-Synthesize ACROSS all the recordings into one concise, exportable digest with three sections:
+Synthesize ACROSS all the recordings into one concise, exportable digest with these sections:
 - key_takeaways: the most important things learned across the whole event (not a per-talk list).
-- people_met: notable people encountered or presenting, with affiliation when known. Names at an event are extracted from spoken content and session labels, so they are best-effort; correct them against the official roster when provided and omit anyone you are unsure even exists.
+- presenters: the people who SPOKE or PRESENTED in the recorded talks, each with an affiliation and a one-line note on their topic. Pull the affiliation from the session title when present — titles are often written as "Speaker Name, Affiliation — Talk Title" or "Speaker Name - Company" (for example "Matt Golubovic - Omnius" means affiliation "Omnius"; "Felix Schlenther Founder, AI First — ..." means affiliation "Founder, AI First"). Correct names against the official roster when provided.
+- people_met: individuals the attendee personally MET or spoke with in conversation/networking (hallway, booth, dinner, a one-on-one chat) who were NOT presenting on stage. Do NOT repeat stage presenters here. If a follow-up action is to contact someone the attendee met in conversation, that person belongs here. If no such people can be identified, return an empty array — do not pad it with presenters.
 - follow_ups: concrete next actions the attendee should take (people to contact, things to evaluate, materials to request).
+
+Names at an event are best-effort (extracted from spoken content and session titles); omit anyone you are unsure even exists.
 
 Write in ${language === 'de' ? 'German' : 'English'}. Use professional judgment on length — match substance, do not pad. Do not invent facts not supported by the recordings or the confirmed event identity.
 
@@ -88,6 +96,7 @@ Respond with ONLY a JSON object of this exact shape:
 {
   "event_name": string,
   "key_takeaways": string[],
+  "presenters": [ { "name": string, "affiliation": string, "note": string } ],
   "people_met": [ { "name": string, "affiliation": string, "note": string } ],
   "follow_ups": string[],
   "narrative": string
@@ -111,20 +120,25 @@ function sanitizeContent(parsed: any, language: string): EventDigestContent {
   const followUps: string[] = Array.isArray(parsed?.follow_ups)
     ? parsed.follow_ups.map((x: any) => String(x || '').trim()).filter(Boolean).slice(0, 30)
     : []
-  const people = Array.isArray(parsed?.people_met)
-    ? parsed.people_met
-        .map((p: any) => ({
-          name: String(p?.name || '').trim(),
-          affiliation: String(p?.affiliation || '').trim() || undefined,
-          note: String(p?.note || '').trim() || undefined,
-        }))
-        .filter((p: any) => Boolean(p.name))
-        .slice(0, 60)
-    : []
+  const toPeople = (raw: any) =>
+    Array.isArray(raw)
+      ? raw
+          .map((p: any) => ({
+            name: String(p?.name || '').trim(),
+            affiliation: String(p?.affiliation || '').trim() || undefined,
+            note: String(p?.note || '').trim() || undefined,
+          }))
+          .filter((p: any) => Boolean(p.name))
+          .slice(0, 60)
+      : []
+
+  const presenters = toPeople(parsed?.presenters)
+  const people = toPeople(parsed?.people_met)
 
   return {
     event_name: String(parsed?.event_name || '').trim() || undefined,
     key_takeaways: takeaways,
+    presenters,
     people_met: people,
     follow_ups: followUps,
     narrative: String(parsed?.narrative || '').trim() || undefined,

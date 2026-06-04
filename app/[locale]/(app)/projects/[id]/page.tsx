@@ -417,11 +417,15 @@ export default function ProjectDetailPage() {
     if (content.key_takeaways?.length) {
       lines.push('', '## Key takeaways', ...content.key_takeaways.map((x) => `- ${x}`))
     }
+    const personLine = (p: { name: string; affiliation?: string; note?: string }) => {
+      const tail = [p.affiliation, p.note].filter(Boolean).join(' — ')
+      return `- ${p.name}${tail ? ` (${tail})` : ''}`
+    }
+    if (content.presenters?.length) {
+      lines.push('', '## Presenters', ...content.presenters.map(personLine))
+    }
     if (content.people_met?.length) {
-      lines.push('', '## People met', ...content.people_met.map((p) => {
-        const tail = [p.affiliation, p.note].filter(Boolean).join(' — ')
-        return `- ${p.name}${tail ? ` (${tail})` : ''}`
-      }))
+      lines.push('', '## People met', ...content.people_met.map(personLine))
     }
     if (content.follow_ups?.length) {
       lines.push('', '## Follow-ups', ...content.follow_ups.map((x) => `- ${x}`))
@@ -881,6 +885,26 @@ export default function ProjectDetailPage() {
                     <ul className="space-y-1 list-disc pl-5 text-sm text-foreground">
                       {eventDigest.content.key_takeaways.map((item, idx) => (
                         <li key={`takeaway-${idx}`}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {(eventDigest.content.presenters?.length ?? 0) > 0 && (
+                  <div className="rounded-lg border border-border p-3 space-y-2">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      {t('projects.event.presenters')}
+                    </p>
+                    <ul className="space-y-1.5 text-sm text-foreground">
+                      {eventDigest.content.presenters!.map((person, idx) => (
+                        <li key={`presenter-${idx}`}>
+                          <span className="font-medium">{person.name}</span>
+                          {person.affiliation && (
+                            <span className="text-muted-foreground"> · {person.affiliation}</span>
+                          )}
+                          {person.note && <span className="text-muted-foreground"> — {person.note}</span>}
+                        </li>
                       ))}
                     </ul>
                   </div>

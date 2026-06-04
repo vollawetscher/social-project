@@ -389,6 +389,7 @@
         "notIdentified": "Event not identified yet. Use \"Identify event\" to look it up from the web using a speaker name and the recording date.",
         "digestEmpty": "No digest yet. Generate one to synthesize all recordings into key takeaways, people met, and follow-ups.",
         "keyTakeaways": "Key takeaways",
+        "presenters": "Presenters",
         "peopleMet": "People met",
         "followUps": "Follow-ups",
         "summary": "Summary",
