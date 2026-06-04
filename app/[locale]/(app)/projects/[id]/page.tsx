@@ -263,6 +263,8 @@ export default function ProjectDetailPage() {
   const [eventProposal, setEventProposal] = useState<EventProposal | null>(null)
   const [showProposalDialog, setShowProposalDialog] = useState(false)
   const [confirmingEvent, setConfirmingEvent] = useState(false)
+  const [editingEvent, setEditingEvent] = useState(false)
+  const [eventForm, setEventForm] = useState({ event_name: '', venue: '', address: '', dates: '' })
 
   useEffect(() => {
     loadProject()
@@ -336,7 +338,18 @@ export default function ProjectDetailPage() {
       const res = await fetch(`/api/cases/${projectId}/enrich-event`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || tc('error'))
-      setEventProposal(data.proposal as EventProposal)
+      const proposal = data.proposal as EventProposal
+      setEventProposal(proposal)
+      // When the web lookup can't confidently name the event, drop straight into
+      // manual entry (seeded with the project title) rather than a dead end.
+      const lookupFailed = !proposal.event_name
+      setEventForm({
+        event_name: proposal.event_name || (lookupFailed ? caseData?.title || '' : ''),
+        venue: proposal.venue || '',
+        address: proposal.address || '',
+        dates: proposal.dates || '',
+      })
+      setEditingEvent(lookupFailed)
       setShowProposalDialog(true)
     } catch (error: any) {
       toast.error(error?.message || tc('error'))
@@ -345,18 +358,32 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const startEditingEvent = () => {
+    setEventForm({
+      event_name: eventProposal?.event_name || caseData?.title || '',
+      venue: eventProposal?.venue || '',
+      address: eventProposal?.address || '',
+      dates: eventProposal?.dates || '',
+    })
+    setEditingEvent(true)
+  }
+
   const handleConfirmEvent = async () => {
-    if (!eventProposal) return
+    // Identity fields come from the edit form when correcting/forcing a result,
+    // otherwise straight from the lookup. Roster + source carry through from the
+    // lookup either way.
+    const eventName = (editingEvent ? eventForm.event_name : eventProposal?.event_name || '').trim()
+    if (!eventName) return
     setConfirmingEvent(true)
     try {
       const metadata: EventMetadata = {
-        event_name: eventProposal.event_name,
-        venue: eventProposal.venue,
-        address: eventProposal.address,
-        dates: eventProposal.dates,
-        official_speakers: eventProposal.official_speakers,
-        agenda_url: eventProposal.agenda_url,
-        source_url: eventProposal.source_url,
+        event_name: eventName,
+        venue: (editingEvent ? eventForm.venue : eventProposal?.venue || '').trim(),
+        address: (editingEvent ? eventForm.address : eventProposal?.address || '').trim(),
+        dates: (editingEvent ? eventForm.dates : eventProposal?.dates || '').trim(),
+        official_speakers: eventProposal?.official_speakers ?? [],
+        agenda_url: eventProposal?.agenda_url ?? null,
+        source_url: eventProposal?.source_url ?? null,
         confirmed: true,
       }
       const res = await fetch(`/api/cases/${projectId}`, {
@@ -368,6 +395,7 @@ export default function ProjectDetailPage() {
       if (!res.ok) throw new Error(updated?.error || tc('error'))
       setCaseData((prev) => (prev ? { ...prev, event_metadata: metadata } : prev))
       setShowProposalDialog(false)
+      setEditingEvent(false)
       toast.success(t('projects.event.identityConfirmed'))
     } catch (error: any) {
       toast.error(error?.message || tc('error'))
@@ -1511,60 +1539,126 @@ export default function ProjectDetailPage() {
       </Dialog>
 
       {/* Event identity confirmation */}
-      <Dialog open={showProposalDialog} onOpenChange={setShowProposalDialog}>
+      <Dialog
+        open={showProposalDialog}
+        onOpenChange={(open) => {
+          setShowProposalDialog(open)
+          if (!open) setEditingEvent(false)
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t('projects.event.confirmTitle')}</DialogTitle>
-            <DialogDescription>{t('projects.event.confirmDescription')}</DialogDescription>
+            <DialogTitle>
+              {editingEvent ? t('projects.event.manualTitle') : t('projects.event.confirmTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {editingEvent ? t('projects.event.manualDescription') : t('projects.event.confirmDescription')}
+            </DialogDescription>
           </DialogHeader>
-          {eventProposal && (
+
+          {editingEvent ? (
             <div className="space-y-3 py-2">
-              <div className="rounded-lg border border-border p-3 space-y-2">
-                <p className="text-base font-semibold text-foreground">
-                  {eventProposal.event_name || t('projects.event.unknownEvent')}
-                </p>
-                {(eventProposal.venue || eventProposal.address) && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" />
-                    {[eventProposal.venue, eventProposal.address].filter(Boolean).join(', ')}
-                  </p>
-                )}
-                {eventProposal.dates && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                    {eventProposal.dates}
-                  </p>
-                )}
-                {eventProposal.official_speakers.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {t('projects.event.speakersFound', { count: eventProposal.official_speakers.length })}
-                  </p>
-                )}
-                {eventProposal.source_url && (
-                  <a
-                    href={eventProposal.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs underline text-muted-foreground hover:text-foreground flex items-center gap-1"
-                  >
-                    <Globe className="h-3.5 w-3.5" />
-                    {eventProposal.source_url}
-                  </a>
-                )}
+              <div className="space-y-1.5">
+                <Label htmlFor="event-name">{t('projects.event.fieldName')}</Label>
+                <Input
+                  id="event-name"
+                  value={eventForm.event_name}
+                  onChange={(e) => setEventForm((f) => ({ ...f, event_name: e.target.value }))}
+                  placeholder={t('projects.event.fieldNamePlaceholder')}
+                  autoFocus
+                />
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Badge variant="secondary">
-                  {t('projects.event.confidence', { percent: Math.round(eventProposal.confidence * 100) })}
-                </Badge>
-                {eventProposal.rationale && <span className="italic">{eventProposal.rationale}</span>}
+              <div className="space-y-1.5">
+                <Label htmlFor="event-venue">{t('projects.event.fieldVenue')}</Label>
+                <Input
+                  id="event-venue"
+                  value={eventForm.venue}
+                  onChange={(e) => setEventForm((f) => ({ ...f, venue: e.target.value }))}
+                  placeholder={t('projects.event.fieldVenuePlaceholder')}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="event-address">{t('projects.event.fieldAddress')}</Label>
+                <Input
+                  id="event-address"
+                  value={eventForm.address}
+                  onChange={(e) => setEventForm((f) => ({ ...f, address: e.target.value }))}
+                  placeholder={t('projects.event.fieldAddressPlaceholder')}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="event-dates">{t('projects.event.fieldDates')}</Label>
+                <Input
+                  id="event-dates"
+                  value={eventForm.dates}
+                  onChange={(e) => setEventForm((f) => ({ ...f, dates: e.target.value }))}
+                  placeholder={t('projects.event.fieldDatesPlaceholder')}
+                />
               </div>
             </div>
+          ) : (
+            eventProposal && (
+              <div className="space-y-3 py-2">
+                <div className="rounded-lg border border-border p-3 space-y-2">
+                  <p className="text-base font-semibold text-foreground">
+                    {eventProposal.event_name || t('projects.event.unknownEvent')}
+                  </p>
+                  {(eventProposal.venue || eventProposal.address) && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {[eventProposal.venue, eventProposal.address].filter(Boolean).join(', ')}
+                    </p>
+                  )}
+                  {eventProposal.dates && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                      {eventProposal.dates}
+                    </p>
+                  )}
+                  {eventProposal.official_speakers.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('projects.event.speakersFound', { count: eventProposal.official_speakers.length })}
+                    </p>
+                  )}
+                  {eventProposal.source_url && (
+                    <a
+                      href={eventProposal.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs underline text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      {eventProposal.source_url}
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="secondary">
+                    {t('projects.event.confidence', { percent: Math.round(eventProposal.confidence * 100) })}
+                  </Badge>
+                  {eventProposal.rationale && <span className="italic">{eventProposal.rationale}</span>}
+                </div>
+              </div>
+            )
           )}
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowProposalDialog(false)} disabled={confirmingEvent}>
-              {t('projects.event.notRight')}
-            </Button>
-            <Button onClick={handleConfirmEvent} disabled={confirmingEvent || !eventProposal?.event_name}>
+            {editingEvent ? (
+              <Button variant="outline" onClick={() => setShowProposalDialog(false)} disabled={confirmingEvent}>
+                {tc('cancel')}
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={startEditingEvent} disabled={confirmingEvent}>
+                {t('projects.event.notRight')}
+              </Button>
+            )}
+            <Button
+              onClick={handleConfirmEvent}
+              disabled={
+                confirmingEvent ||
+                (editingEvent ? !eventForm.event_name.trim() : !eventProposal?.event_name)
+              }
+            >
               {confirmingEvent ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-1" />}
               {t('projects.event.confirm')}
             </Button>

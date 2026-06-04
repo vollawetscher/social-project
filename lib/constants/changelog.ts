@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.40.1',
+    date: 'June 4, 2026',
+    entries: [
+      {
+        version: '1.40.1',
+        date: 'June 4, 2026',
+        category: 'improvement',
+        title: 'More reliable event identification',
+        description: 'Identifying an Event from the web is now much more accurate — we search using the exact recording date and your project name, so the right event surfaces instead of a generic miss. And if the web still comes up empty, you can simply type the event name, venue, and dates yourself and continue — no more dead ends.',
+      },
+    ],
+  },
+  {
     version: '1.40.0',
     date: 'June 3, 2026',
     entries: [

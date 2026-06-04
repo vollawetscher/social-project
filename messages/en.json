@@ -402,7 +402,17 @@
         "speakersFound": "{count} official speakers found",
         "confidence": "{percent}% match",
         "notRight": "Not right",
-        "confirm": "Confirm event"
+        "confirm": "Confirm event",
+        "manualTitle": "Enter the event details",
+        "manualDescription": "We couldn't confirm this from the web. Fill in what you know — only the event name is required.",
+        "fieldName": "Event name",
+        "fieldNamePlaceholder": "e.g. Accelerate Tomorrow AI Summit 2026",
+        "fieldVenue": "Venue",
+        "fieldVenuePlaceholder": "e.g. CityCube Berlin",
+        "fieldAddress": "Address",
+        "fieldAddressPlaceholder": "Street, city",
+        "fieldDates": "Dates",
+        "fieldDatesPlaceholder": "e.g. 2–3 June 2026"
       }
     }
   },

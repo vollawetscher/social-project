@@ -19,7 +19,7 @@ export async function POST(
 
     const { data: caseRow, error: caseError } = await supabase
       .from('cases')
-      .select('id, user_id')
+      .select('id, user_id, title')
       .eq('id', params.id)
       .maybeSingle()
 
@@ -58,7 +58,7 @@ export async function POST(
       return NextResponse.json({ error: 'This project has no sessions to identify from.' }, { status: 400 })
     }
 
-    const proposal = await enrichEvent(rows)
+    const proposal = await enrichEvent(rows, { projectTitle: caseRow.title ?? null })
     return NextResponse.json({ proposal })
   } catch (error) {
     if (error instanceof Error) {

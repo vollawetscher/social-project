@@ -402,7 +402,17 @@
         "speakersFound": "{count} offizielle Sprecher gefunden",
         "confidence": "{percent}% Übereinstimmung",
         "notRight": "Nicht korrekt",
-        "confirm": "Event bestätigen"
+        "confirm": "Event bestätigen",
+        "manualTitle": "Event-Daten eingeben",
+        "manualDescription": "Wir konnten dies nicht über das Web bestätigen. Tragen Sie ein, was Sie wissen – nur der Event-Name ist erforderlich.",
+        "fieldName": "Event-Name",
+        "fieldNamePlaceholder": "z. B. Accelerate Tomorrow AI Summit 2026",
+        "fieldVenue": "Veranstaltungsort",
+        "fieldVenuePlaceholder": "z. B. CityCube Berlin",
+        "fieldAddress": "Adresse",
+        "fieldAddressPlaceholder": "Straße, Stadt",
+        "fieldDates": "Datum",
+        "fieldDatesPlaceholder": "z. B. 2.–3. Juni 2026"
       }
     }
   },
