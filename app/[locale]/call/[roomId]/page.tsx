@@ -375,18 +375,6 @@ function AudioConsentGate({
   onAgree: () => void
   onDecline: () => void
 }) {
-  useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return
-    const utterance = new SpeechSynthesisUtterance(prompt)
-    const navLang = navigator.language || "en-US"
-    if (navLang.toLowerCase().startsWith("de")) utterance.lang = "de-DE"
-    else if (navLang.toLowerCase().startsWith("es")) utterance.lang = "es-ES"
-    else utterance.lang = "en-US"
-    window.speechSynthesis.cancel()
-    window.speechSynthesis.speak(utterance)
-    return () => window.speechSynthesis.cancel()
-  }, [prompt])
-
   return (
     <div className="flex items-center justify-center h-[100dvh] bg-background p-6">
       <div className="w-full max-w-sm text-center space-y-5">

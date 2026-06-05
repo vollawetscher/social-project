@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.40.4',
+    date: 'June 5, 2026',
+    entries: [
+      {
+        version: '1.40.4',
+        date: 'June 5, 2026',
+        category: 'fix',
+        title: 'No more robotic voice on the call consent screen',
+        description: 'When joining a video call from a meeting link, the recording-consent screen no longer reads the text aloud in a synthetic voice. You can simply read it and tap Agree or Decline. (Spoken consent still applies to outbound phone calls, where it is read over the line.)',
+      },
+    ],
+  },
+  {
     version: '1.40.3',
     date: 'June 5, 2026',
     entries: [
