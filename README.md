@@ -293,3 +293,6 @@ Set environment variables on your hosting platform (Vercel, Railway, etc.).
 
 **Planning notes:**
 - Email ingress design note: `docs/EMAIL_INGRESS_NOTE.md`
+
+<!-- Deploy trigger: 2026-06-05 -->
+
