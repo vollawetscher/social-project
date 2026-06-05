@@ -157,6 +157,7 @@ export async function POST(request: Request) {
         })
         const organizer = displayName
         const callTitle = call.contact_name?.trim() || 'Notissima Video Call'
+        const icsTitle = call.purpose?.trim() || callTitle
         const subject = `${organizer} hat Sie zu einem Video Call eingeladen`
         const durationLabel = `${normalizedScheduledDurationMin} Min`
         const scheduledStartIso = call.scheduled_for || scheduledForIso!
@@ -183,7 +184,7 @@ export async function POST(request: Request) {
           uid: `${call.id}@notissima.app`,
           startIso: scheduledStartIso,
           endIso: scheduledEndIso,
-          title: callTitle,
+          title: icsTitle,
           description: `${organizer} hat Sie zu einem Video Call eingeladen.\n${joinUrl}`,
           joinUrl,
         })

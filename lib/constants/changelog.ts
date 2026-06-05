@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.40.3',
+    date: 'June 5, 2026',
+    entries: [
+      {
+        version: '1.40.3',
+        date: 'June 5, 2026',
+        category: 'improvement',
+        title: 'Better calendar invites for scheduled calls',
+        description: 'Calendar invites for scheduled calls now include a 5-minute reminder, so you and your guests get a heads-up notification right before the call starts. The "What is this call for?" purpose you enter now also shows up as the calendar event title and in the reminder, so invites are instantly recognizable.',
+      },
+    ],
+  },
+  {
     version: '1.40.2',
     date: 'June 4, 2026',
     entries: [

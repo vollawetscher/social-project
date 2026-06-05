@@ -46,6 +46,7 @@ import { toast } from "sonner"
 import type { Call, CallMode } from "@/lib/types/call"
 import type { PstnTranscriptionMode } from "@/lib/types/call"
 import { scheduledCallEndMs, toDatetimeLocalInputValue } from "@/lib/utils/scheduled-call"
+import { buildInviteIcs } from "@/lib/utils/invite-ics"
 
 const PSTN_TRANSCRIPTION_MODE_STORAGE_KEY = "notissima.pstn.transcriptionMode"
 
@@ -90,37 +91,6 @@ function formatScheduledLocal(timestamp: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
-}
-
-function buildInviteIcs(params: {
-  uid: string
-  startIso: string
-  endIso: string
-  title: string
-  description: string
-  joinUrl: string
-}): string {
-  const toUtcStamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
-  const nowStamp = toUtcStamp(new Date().toISOString())
-  return [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Notissima//Scheduled Calls//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    'BEGIN:VEVENT',
-    `UID:${params.uid}`,
-    `DTSTAMP:${nowStamp}`,
-    `DTSTART:${toUtcStamp(params.startIso)}`,
-    `DTEND:${toUtcStamp(params.endIso)}`,
-    `SUMMARY:${params.title}`,
-    `DESCRIPTION:${params.description.replace(/\n/g, '\\n')}`,
-    `LOCATION:${params.joinUrl}`,
-    `URL:${params.joinUrl}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
-    '',
-  ].join('\r\n')
 }
 
 /**
@@ -466,7 +436,7 @@ export default function CallsPage() {
         uid: `${data.callId}@notissima.app`,
         startIso: scheduledIso,
         endIso,
-        title: t('scheduledCallDefaultTitle'),
+        title: schedulePurpose.trim() || t('scheduledCallDefaultTitle'),
         description: `${t('inviteEmailBodyIntro')}\n${joinUrl}`,
         joinUrl,
       })
