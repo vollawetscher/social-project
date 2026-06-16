@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.40.5',
+    date: 'June 16, 2026',
+    entries: [
+      {
+        version: '1.40.5',
+        date: 'June 16, 2026',
+        category: 'fix',
+        title: 'Reports no longer generated multiple times',
+        description: 'When generating a report or output took longer than expected, the system could retry the request while the original was still running — resulting in two or three identical reports for the same session. This is now fixed: each generation job produces exactly one output, even if the underlying request is retried.',
+      },
+    ],
+  },
+  {
     version: '1.40.4',
     date: 'June 5, 2026',
     entries: [

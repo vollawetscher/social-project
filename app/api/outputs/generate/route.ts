@@ -182,6 +182,7 @@ export async function POST(request: Request) {
     }
 
     const isWorkerSync = request.headers.get('x-queue-worker') === '1'
+    const sourceJobId = request.headers.get('x-job-id') || null
     const forceSync = queueMode === 'sync' || isWorkerSync
     if (!forceSync) {
       try {
@@ -539,6 +540,35 @@ Please generate the requested output following all requirements and guidelines.`
       },
     }, supabase)
 
+    // Idempotency guard: if a concurrent execution already completed this job,
+    // return the existing output rather than burning another Claude call.
+    if (sourceJobId) {
+      const { data: existingOutput } = await supabase
+        .from('outputs')
+        .select('*')
+        .eq('source_job_id', sourceJobId)
+        .maybeSingle()
+      if (existingOutput) {
+        console.log('[Generate Output] Idempotency: output already exists for job', sourceJobId, '— returning existing:', existingOutput.id)
+        return NextResponse.json({
+          id: existingOutput.id,
+          sessionId: existingOutput.session_id,
+          sessionFilename: session.internal_case_id || 'Unknown',
+          templateId: existingOutput.template_id || '',
+          templateName: existingOutput.template_name,
+          perspective: existingOutput.perspective,
+          audience: existingOutput.audience,
+          language: existingOutput.language,
+          tone: existingOutput.tone,
+          format: existingOutput.format,
+          content: existingOutput.content,
+          createdAt: existingOutput.created_at,
+          transcriptVersionHash: existingOutput.transcript_version_hash || '',
+          citeTimestamps: existingOutput.cite_timestamps || false,
+        })
+      }
+    }
+
     // Generate with Claude (use generous token limit to avoid truncated reports)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
@@ -635,9 +665,39 @@ Please generate the requested output following all requirements and guidelines.`
         dont_instructions: config.dontInstructions || '',
         created_by: userId,
         cost_usd: costUsd,
+        ...(sourceJobId ? { source_job_id: sourceJobId } : {}),
       })
       .select()
       .single()
+
+    // Idempotency: if a concurrent execution already inserted an output for this job,
+    // the unique constraint on source_job_id fires. Return the existing row instead.
+    if (insertError?.code === '23505' && sourceJobId) {
+      const { data: existingOutput } = await supabase
+        .from('outputs')
+        .select('*')
+        .eq('source_job_id', sourceJobId)
+        .maybeSingle()
+      if (existingOutput) {
+        console.log('[Generate Output] Idempotency: concurrent insert resolved for job', sourceJobId, '— returning existing:', existingOutput.id)
+        return NextResponse.json({
+          id: existingOutput.id,
+          sessionId: existingOutput.session_id,
+          sessionFilename: session.internal_case_id || 'Unknown',
+          templateId: existingOutput.template_id || '',
+          templateName: existingOutput.template_name,
+          perspective: existingOutput.perspective,
+          audience: existingOutput.audience,
+          language: existingOutput.language,
+          tone: existingOutput.tone,
+          format: existingOutput.format,
+          content: existingOutput.content,
+          createdAt: existingOutput.created_at,
+          transcriptVersionHash: existingOutput.transcript_version_hash || '',
+          citeTimestamps: existingOutput.cite_timestamps || false,
+        })
+      }
+    }
 
     if (insertError || !output) {
       console.error('[Generate Output] Database insert error:', insertError)

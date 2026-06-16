@@ -41,6 +41,7 @@ async function processOutputGenerateJob(request: Request, job: AsyncJobRow): Pro
       'x-internal-secret': secret,
       'x-internal-user-id': job.user_id,
       'x-queue-worker': '1',
+      'x-job-id': job.id,
     },
     body: JSON.stringify({
       sessionId,
