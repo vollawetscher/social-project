@@ -14,6 +14,19 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.11.1',
+    date: 'June 24, 2026',
+    entries: [
+      {
+        version: '1.11.1',
+        date: 'June 24, 2026',
+        category: 'improvement',
+        title: 'Instant Call Link Copy',
+        description: 'When you start a video call with "Copy Link", the invite link is copied to your clipboard automatically so you can paste it into a message right away.',
+      },
+    ],
+  },
+  {
     version: '1.11.0',
     date: 'February 26, 2026',
     entries: [

@@ -457,6 +457,7 @@
     "phonePlaceholder": "+49 170 1234567",
     "copyLink": "Copy Link",
     "copyLinkDescription": "Share the invite link yourself",
+    "inviteLinkCopied": "Invite link copied to clipboard",
     "ringSms": "Ring + SMS",
     "ringSmsDescription": "Phone rings and an SMS with the link is sent",
     "audioCallDescription": "A new call room will be created. You can share the link with anyone you want to call.",

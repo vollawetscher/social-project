@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { buildInviteLinkFromCurrentUrl, copyInviteLinkContent } from "@/lib/utils/copy-invite-link"
 import { CallControls } from "@/components/call/CallControls"
 import type { CallMode, LayoutMode } from "@/lib/types/call"
 import { createClient as createSupabaseClient } from "@/lib/supabase/client"
@@ -607,72 +608,14 @@ function CallRoomInner({
   const [linkCopied, setLinkCopied] = useState(false)
 
   const copyInviteLink = useCallback(async () => {
-    const url = new URL(window.location.href)
-    url.searchParams.delete("token")
-    // Ensure callId is in invite link so guests can fetch caller info
-    if (callId && !url.searchParams.get("callId")) {
-      url.searchParams.set("callId", callId)
-    }
-    const inviteUrl = url.toString()
-
-    const caller = displayName || "Someone"
-    const callLabel = mode === "video" ? "video call" : "audio call"
-    // Plain-text version — works in SMS, WhatsApp, iMessage, Telegram, etc.
-    const plainText = `Join ${caller} in a ${callLabel} now: ${inviteUrl}`
-    // HTML version — renders as a clean hyperlink when pasted into email / rich editor
-    const htmlText = `<p>Join <strong>${caller}</strong> in a ${callLabel}:<br><a href="${inviteUrl}">${inviteUrl}</a></p>`
-
-    // Prefer Web Share API on mobile only (desktop share dialogs are clunky)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    if (isMobile && navigator.share) {
-      try {
-        await navigator.share({ text: `Join ${caller} in a ${callLabel}:`, url: inviteUrl })
-        return
-      } catch (err: any) {
-        if (err?.name === "AbortError") return
-      }
-    }
-
-    // Try rich clipboard (text/html + text/plain) — works in email clients & rich editors
-    if (typeof ClipboardItem !== "undefined") {
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            "text/plain": new Blob([plainText], { type: "text/plain" }),
-            "text/html": new Blob([htmlText], { type: "text/html" }),
-          }),
-        ])
-        setLinkCopied(true)
-        setTimeout(() => setLinkCopied(false), 2000)
-        return
-      } catch {
-        // Fall through
-      }
-    }
-
-    // Plain-text clipboard fallback
-    try {
-      await navigator.clipboard.writeText(plainText)
+    const content = buildInviteLinkFromCurrentUrl(callId, displayName || "Someone", mode)
+    const copied = await copyInviteLinkContent(content)
+    if (copied) {
       setLinkCopied(true)
       setTimeout(() => setLinkCopied(false), 2000)
-    } catch {
-      // Last resort: execCommand fallback for older browsers / focus issues
-      try {
-        const ta = document.createElement("textarea")
-        ta.value = plainText
-        ta.style.position = "fixed"
-        ta.style.opacity = "0"
-        document.body.appendChild(ta)
-        ta.focus()
-        ta.select()
-        document.execCommand("copy")
-        document.body.removeChild(ta)
-        setLinkCopied(true)
-        setTimeout(() => setLinkCopied(false), 2000)
-      } catch {
-        toast.error("Could not copy link — long-press the URL bar to copy manually")
-      }
+      return
     }
+    toast.error("Could not copy link — long-press the URL bar to copy manually")
   }, [callId, displayName, mode])
 
   const ringSmsLabel = ringSmsStatus === "sending"

@@ -457,6 +457,7 @@
     "phonePlaceholder": "+34 600 123 456",
     "copyLink": "Copiar enlace",
     "copyLinkDescription": "Comparte tú mismo el enlace de invitación",
+    "inviteLinkCopied": "Enlace de invitación copiado al portapapeles",
     "ringSms": "Llamar + SMS",
     "ringSmsDescription": "Suena el teléfono y se envía un SMS con el enlace",
     "audioCallDescription": "Se creará una nueva sala de llamada. Puedes compartir el enlace con cualquier persona a la que quieras llamar.",

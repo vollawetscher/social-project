@@ -38,6 +38,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { copyInviteLinkAfterCreateCall } from "@/lib/utils/copy-invite-link"
 import { DialPad } from "@/components/call/DialPad"
 import { toast } from "sonner"
 import type { Call, CallMode } from "@/lib/types/call"
@@ -266,21 +267,33 @@ export default function CallsPage() {
     }
   }
 
-  async function handleNewCall(mode: CallMode) {
+  async function handleNewCall(mode: CallMode, options?: { copyLink?: boolean }) {
     if (creating) return
     setCreating(true)
     setError(null)
     try {
-      const res = await fetch("/api/calls", {
+      const createCallPromise = fetch("/api/calls", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ callType: "web", mode }),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || `Failed to create call (${res.status})`)
+        }
+        return res.json()
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || `Failed to create call (${res.status})`)
+
+      if (options?.copyLink) {
+        const copied = await copyInviteLinkAfterCreateCall(createCallPromise, mode)
+        if (copied) {
+          toast.success(t('inviteLinkCopied'))
+        } else {
+          toast.info(t('copyLinkFailed'))
+        }
       }
-      const data = await res.json()
+
+      const data = await createCallPromise
       router.push(`/call/${data.roomName}?callId=${data.callId}&token=${encodeURIComponent(data.token)}&mode=${mode}`)
     } catch (err: any) {
       console.error("[Calls] Failed to create call:", err)
@@ -652,7 +665,7 @@ export default function CallsPage() {
               <button
                 onClick={() => {
                   setPendingCallMode(null)
-                  handleNewCall("video")
+                  handleNewCall("video", { copyLink: true })
                 }}
                 disabled={creating}
                 className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent transition-colors text-left"
