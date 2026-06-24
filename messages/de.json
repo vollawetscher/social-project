@@ -449,6 +449,7 @@
     "dialpadTab": "Wähltasten",
     "newCall": "Neuer Anruf",
     "videoCall": "Videoanruf",
+    "videoCallDescription": "Link kopiert — zum Einladen einfügen",
     "audioCall": "Audioanruf",
     "startVideoCall": "Videoanruf starten",
     "startAudioCall": "Audioanruf starten",

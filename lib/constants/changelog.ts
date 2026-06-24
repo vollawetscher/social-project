@@ -22,7 +22,7 @@ export const changelog: ChangelogVersion[] = [
         date: 'June 24, 2026',
         category: 'improvement',
         title: 'Instant Call Link Copy',
-        description: 'When you start a video call with "Copy Link", the invite link is copied to your clipboard automatically so you can paste it into a message right away.',
+        description: 'Tap Video Call to start instantly — the invite link is copied to your clipboard automatically, ready to paste into a message. Use the bell icon to ring someone by phone instead.',
       },
     ],
   },

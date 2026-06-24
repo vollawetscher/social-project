@@ -449,6 +449,7 @@
     "dialpadTab": "Teclado",
     "newCall": "Nueva Llamada",
     "videoCall": "Videollamada",
+    "videoCallDescription": "Enlace copiado — pega para invitar",
     "audioCall": "Llamada de audio",
     "startVideoCall": "Iniciar videollamada",
     "startAudioCall": "Iniciar llamada de audio",

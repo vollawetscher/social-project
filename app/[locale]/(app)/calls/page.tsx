@@ -22,7 +22,6 @@ import {
   X,
   UserPlus,
   BellRing,
-  Link2,
   Send,
   User,
 } from "lucide-react"
@@ -102,9 +101,8 @@ export default function CallsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Video call dialog: choose "Copy Link" vs "Ring + SMS"
+  // Video call dialog: Ring + SMS invite flow
   const [pendingCallMode, setPendingCallMode] = useState<CallMode | null>(null)
-  const [videoDialogStep, setVideoDialogStep] = useState<"choose" | "ring-sms">("choose")
   const [ringPhone, setRingPhone] = useState("")
   const [ringContactName, setRingContactName] = useState("")
   const [ringSending, setRingSending] = useState(false)
@@ -271,6 +269,7 @@ export default function CallsPage() {
     if (creating) return
     setCreating(true)
     setError(null)
+    const shouldCopyLink = options?.copyLink ?? mode === "video"
     try {
       const createCallPromise = fetch("/api/calls", {
         method: "POST",
@@ -284,7 +283,7 @@ export default function CallsPage() {
         return res.json()
       })
 
-      if (options?.copyLink) {
+      if (shouldCopyLink) {
         const copied = await copyInviteLinkAfterCreateCall(createCallPromise, mode)
         if (copied) {
           toast.success(t('inviteLinkCopied'))
@@ -301,6 +300,13 @@ export default function CallsPage() {
     } finally {
       setCreating(false)
     }
+  }
+
+  function openRingSmsDialog() {
+    setPendingCallMode("video")
+    setRingPhone("")
+    setRingContactName("")
+    fetchContacts()
   }
 
   async function handleVideoRingSms() {
@@ -549,19 +555,33 @@ export default function CallsPage() {
               <p className="text-[11px] text-muted-foreground">Twilio + Transcription</p>
             </div>
           </button>
-          <button
-            onClick={() => { setPendingCallMode("video"); setVideoDialogStep("choose"); setRingPhone(""); setRingContactName(""); fetchContacts() }}
-            disabled={creating}
-            className="flex items-center gap-3 p-3 rounded-xl bg-info/10 hover:bg-info/15 transition-colors disabled:opacity-50"
-          >
-            <div className="h-10 w-10 rounded-full bg-info flex items-center justify-center shrink-0">
-              <Video className="h-5 w-5 text-info-foreground" />
-            </div>
-            <div className="text-left">
-              <p className="text-sm font-medium text-foreground">Video Call</p>
-              <p className="text-[11px] text-muted-foreground">LiveKit + Transcription</p>
-            </div>
-          </button>
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-info/10 hover:bg-info/15 transition-colors">
+            <button
+              onClick={() => handleNewCall("video")}
+              disabled={creating}
+              className="flex items-center gap-3 flex-1 min-w-0 disabled:opacity-50 text-left"
+            >
+              <div className="h-10 w-10 rounded-full bg-info flex items-center justify-center shrink-0">
+                {creating ? (
+                  <Loader2 className="h-5 w-5 text-info-foreground animate-spin" />
+                ) : (
+                  <Video className="h-5 w-5 text-info-foreground" />
+                )}
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-sm font-medium text-foreground">Video Call</p>
+                <p className="text-[11px] text-muted-foreground">{t('videoCallDescription')}</p>
+              </div>
+            </button>
+            <button
+              onClick={openRingSmsDialog}
+              disabled={creating}
+              title={t('ringSms')}
+              className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-orange-600 hover:bg-orange-500/10 disabled:opacity-50"
+            >
+              <BellRing className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -643,100 +663,59 @@ export default function CallsPage() {
         {activeTab === "dialpad" && <DialPad key={dialpadNumber} initialNumber={dialpadNumber} onCall={(number, mode) => { setDialpadNumber(""); handleDialpadCall(number, mode) }} disabled={creating} />}
       </div>
 
-      {/* Video call dialog — choose Copy Link or Ring + SMS */}
+      {/* Video call dialog — Ring + SMS invite */}
       <Dialog open={pendingCallMode === "video"} onOpenChange={(open) => {
-        if (!open) { setPendingCallMode(null); setVideoDialogStep("choose"); setRingPhone(""); setRingContactName(""); }
+        if (!open) { setPendingCallMode(null); setRingPhone(""); setRingContactName(""); }
       }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Video className="h-5 w-5 text-info" />
-              {t('startVideoCall')}
+              <BellRing className="h-5 w-5 text-orange-600" />
+              {t('ringSms')}
             </DialogTitle>
             <DialogDescription>
-              {videoDialogStep === "choose"
-                ? t('invitePromptVideo')
-                : t('invitePromptPhone')}
+              {t('invitePromptPhone')}
             </DialogDescription>
           </DialogHeader>
 
-          {videoDialogStep === "choose" ? (
-            <div className="flex flex-col gap-3 pt-2">
-              <button
-                onClick={() => {
-                  setPendingCallMode(null)
-                  handleNewCall("video", { copyLink: true })
-                }}
-                disabled={creating}
-                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent transition-colors text-left"
+          <div className="flex flex-col gap-3 pt-2">
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                inputMode="tel"
+                placeholder="+49 170 1234567"
+                value={ringPhone}
+                onChange={(e) => { setRingPhone(e.target.value); setRingContactName("") }}
+                className="flex-1"
+                autoFocus
+              />
+              <Button
+                onClick={handleVideoRingSms}
+                disabled={ringSending || !ringPhone.trim()}
+                className="bg-orange-500 hover:bg-orange-600 text-white shrink-0"
               >
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Link2 className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{t('copyLink')}</p>
-                  <p className="text-xs text-muted-foreground">{t('copyLinkDescription')}</p>
-                </div>
-              </button>
-              <button
-                onClick={() => setVideoDialogStep("ring-sms")}
-                disabled={creating}
-                className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-accent transition-colors text-left"
-              >
-                <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
-                  <BellRing className="h-5 w-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{t('ringSms')}</p>
-                  <p className="text-xs text-muted-foreground">{t('ringSmsDescription')}</p>
-                </div>
-              </button>
-              <Button variant="ghost" size="sm" onClick={() => setPendingCallMode(null)} className="mt-1">
-                {t('cancel')}
+                {ringSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
-          ) : (
-            <div className="flex flex-col gap-3 pt-2">
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  inputMode="tel"
-                  placeholder="+49 170 1234567"
-                  value={ringPhone}
-                  onChange={(e) => { setRingPhone(e.target.value); setRingContactName("") }}
-                  className="flex-1"
-                  autoFocus
-                />
-                <Button
-                  onClick={handleVideoRingSms}
-                  disabled={ringSending || !ringPhone.trim()}
-                  className="bg-orange-500 hover:bg-orange-600 text-white shrink-0"
-                >
-                  {ringSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
+            {contacts.length > 0 && (
+              <div className="max-h-40 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+                {contacts.filter(c => c.phone_number).map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setRingPhone(c.phone_number || ""); setRingContactName(c.name) }}
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent text-left text-sm"
+                  >
+                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="truncate font-medium">{c.name}</span>
+                    <span className="text-xs text-muted-foreground ml-auto shrink-0">{c.phone_number}</span>
+                  </button>
+                ))}
               </div>
-              {contacts.length > 0 && (
-                <div className="max-h-40 overflow-y-auto border border-border rounded-lg divide-y divide-border">
-                  {contacts.filter(c => c.phone_number).map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => { setRingPhone(c.phone_number || ""); setRingContactName(c.name) }}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent text-left text-sm"
-                    >
-                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="truncate font-medium">{c.name}</span>
-                      <span className="text-xs text-muted-foreground ml-auto shrink-0">{c.phone_number}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2 justify-end">
-                <Button variant="ghost" size="sm" onClick={() => setVideoDialogStep("choose")}>
-                  {t('back')}
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setPendingCallMode(null)} className="mt-1">
+              {t('cancel')}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

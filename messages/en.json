@@ -449,6 +449,7 @@
     "dialpadTab": "Dialpad",
     "newCall": "New Call",
     "videoCall": "Video Call",
+    "videoCallDescription": "Link copied — paste to invite",
     "audioCall": "Audio Call",
     "startVideoCall": "Start Video Call",
     "startAudioCall": "Start Audio Call",
