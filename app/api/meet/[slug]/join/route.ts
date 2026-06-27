@@ -85,9 +85,8 @@ export async function POST(
 
       try {
         await createRoom(roomName, {
-          maxParticipants: 2,
           emptyTimeout: 900,
-          metadata: JSON.stringify({ type: 'personal_meeting', ownerSlug: slug }),
+          metadata: JSON.stringify({ type: 'personal_meeting', ownerSlug: slug, createdBy: owner.id }),
         })
       } catch (lkError: any) {
         console.error('[Meet] LiveKit createRoom failed:', lkError)

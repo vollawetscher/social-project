@@ -59,7 +59,6 @@ export async function POST(
     if (call.status === 'scheduled' && !call.session_id) {
       try {
         await createRoom(call.room_name, {
-          maxParticipants: 2,
           emptyTimeout: 900,
           metadata: JSON.stringify({ callType: 'web', mode: call.call_mode || 'video', scheduled: true, createdBy: call.user_id }),
         })
