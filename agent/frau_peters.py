@@ -135,7 +135,7 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
         tts=inference.TTS(
             model="cartesia/sonic-3",
-            voice=os.environ.get("CARTESIA_VOICE_ID", "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"),
+            voice=os.environ.get("CARTESIA_VOICE_ID", config.voice_id),
             language=config.language,
         ),
     )
@@ -239,11 +239,15 @@ async def _wait_for_room_disconnect(room: rtc.Room) -> None:
 server = AgentServer(shutdown_process_timeout=60.0)
 
 
-@server.rtc_session()
+@server.rtc_session(agent_name="notissima-voice-agent")
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
-    config = await load_voice_agent_config(ctx.room.name, ctx.room.metadata)
+    config = await load_voice_agent_config(
+        ctx.room.name,
+        ctx.room.metadata,
+        getattr(ctx.job, "metadata", None),
+    )
     if not config.enabled:
         logger.info(
             "Voice agent disabled for owner %s in room %s — disconnecting",

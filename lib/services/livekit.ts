@@ -1,5 +1,6 @@
 import {
   AccessToken,
+  AgentDispatchClient,
   RoomServiceClient,
   EgressClient,
   SipClient,
@@ -12,6 +13,9 @@ import {
 import type { EgressInfo } from 'livekit-server-sdk'
 import { resolveCallerIdForDestination } from '@/lib/services/pstn-routing'
 import { createHmac } from 'crypto'
+
+export const NOTISSIMA_VOICE_AGENT_NAME =
+  process.env.LIVEKIT_VOICE_AGENT_NAME || 'notissima-voice-agent'
 
 // LiveKit Cloud uses wss:// for client, https:// for server API
 function getLivekitHttpUrl(): string {
@@ -62,6 +66,10 @@ function getRoomService(): RoomServiceClient {
   return new RoomServiceClient(getLivekitHttpUrl(), getApiKey(), getApiSecret())
 }
 
+function getAgentDispatchClient(): AgentDispatchClient {
+  return new AgentDispatchClient(getLivekitHttpUrl(), getApiKey(), getApiSecret())
+}
+
 export async function createRoom(
   roomName: string,
   options?: { maxParticipants?: number; emptyTimeout?: number; metadata?: string }
@@ -94,6 +102,29 @@ export async function deleteRoom(roomName: string) {
 export async function listParticipants(roomName: string) {
   const roomService = getRoomService()
   return roomService.listParticipants(roomName)
+}
+
+export async function dispatchNotissimaVoiceAgent(
+  roomName: string,
+  metadata: Record<string, unknown>,
+) {
+  const dispatchClient = getAgentDispatchClient()
+  const existingDispatches = await dispatchClient.listDispatch(roomName).catch((err) => {
+    console.warn('[LiveKit] Failed to list agent dispatches:', err?.message || err)
+    return []
+  })
+
+  const existing = existingDispatches.find((dispatch: any) => dispatch.agentName === NOTISSIMA_VOICE_AGENT_NAME)
+  if (existing) {
+    console.log('[LiveKit] Voice agent already dispatched:', NOTISSIMA_VOICE_AGENT_NAME, 'room:', roomName)
+    return existing
+  }
+
+  const dispatch = await dispatchClient.createDispatch(roomName, NOTISSIMA_VOICE_AGENT_NAME, {
+    metadata: JSON.stringify(metadata),
+  })
+  console.log('[LiveKit] Voice agent dispatched:', NOTISSIMA_VOICE_AGENT_NAME, 'room:', roomName)
+  return dispatch
 }
 
 export async function removeParticipant(roomName: string, participantIdentity: string) {

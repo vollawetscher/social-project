@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { createRoom, createRoomToken, generateRoomName } from '@/lib/services/livekit'
+import { createRoom, createRoomToken, dispatchNotissimaVoiceAgent, generateRoomName } from '@/lib/services/livekit'
 import { logImplicitPersonalLinkHostConsent } from '@/lib/services/call-consent'
+import { getVoiceAgentSettingsForUser } from '@/lib/services/voice-agent'
 
 /**
  * POST /api/meet/[slug]/join - Join a personal meeting room.
@@ -142,6 +143,21 @@ export async function POST(
       }
 
       callId = call.id
+    }
+
+    const voiceAgent = await getVoiceAgentSettingsForUser(supabase, owner.id)
+    if (voiceAgent.enabled) {
+      try {
+        await dispatchNotissimaVoiceAgent(roomName, {
+          ownerUserId: owner.id,
+          callId,
+          displayName: voiceAgent.displayName,
+          wakeWord: voiceAgent.wakeWord,
+          voiceId: voiceAgent.voiceId,
+        })
+      } catch (dispatchError: any) {
+        console.error('[Meet] Failed to dispatch voice agent:', dispatchError?.message || dispatchError)
+      }
     }
 
     const tokenIdentity = isOwner ? owner.id : guestIdentity

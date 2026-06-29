@@ -55,6 +55,7 @@ import { useAuth } from "@/lib/auth/AuthProvider"
 import { Link } from "@/i18n/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { UserProfile, SUPPORTED_LANGUAGES, TIMEZONES } from "@/lib/types/profile"
+import { DEFAULT_VOICE_AGENT_VOICE_ID, VOICE_AGENT_VOICE_OPTIONS } from "@/lib/services/voice-agent"
 
 export default function SettingsPage() {
   const t = useTranslations('settings')
@@ -78,6 +79,7 @@ export default function SettingsPage() {
   const [voiceAgentDisplayName, setVoiceAgentDisplayName] = useState("Frau Peters")
   const [voiceAgentWakeWord, setVoiceAgentWakeWord] = useState("Frau Peters")
   const [voiceAgentDismissPhrase, setVoiceAgentDismissPhrase] = useState("Danke, Frau Peters")
+  const [voiceAgentVoiceId, setVoiceAgentVoiceId] = useState(DEFAULT_VOICE_AGENT_VOICE_ID)
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [changingPassword, setChangingPassword] = useState(false)
@@ -296,6 +298,7 @@ export default function SettingsPage() {
         setVoiceAgentDisplayName(data.voice_agent_display_name || 'Frau Peters')
         setVoiceAgentWakeWord(data.voice_agent_wake_word || 'Frau Peters')
         setVoiceAgentDismissPhrase(data.voice_agent_dismiss_phrase || 'Danke, Frau Peters')
+        setVoiceAgentVoiceId(data.voice_agent_voice_id || DEFAULT_VOICE_AGENT_VOICE_ID)
       } catch (error) {
         console.error('Error fetching profile:', error)
         toast.error(t('loadFailed'))
@@ -352,6 +355,7 @@ export default function SettingsPage() {
           voice_agent_display_name: voiceAgentDisplayName.trim(),
           voice_agent_wake_word: voiceAgentWakeWord.trim(),
           voice_agent_dismiss_phrase: voiceAgentDismissPhrase.trim(),
+          voice_agent_voice_id: voiceAgentVoiceId,
         })
       })
 
@@ -616,6 +620,22 @@ export default function SettingsPage() {
                     onChange={(e) => setVoiceAgentDismissPhrase(e.target.value)}
                     className="bg-secondary border-border"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="voice-agent-voice">{t('voiceAgentVoice')}</Label>
+                  <p className="text-sm text-muted-foreground">{t('voiceAgentVoiceHint')}</p>
+                  <Select value={voiceAgentVoiceId} onValueChange={setVoiceAgentVoiceId}>
+                    <SelectTrigger id="voice-agent-voice" className="w-full bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VOICE_AGENT_VOICE_OPTIONS.map((voice) => (
+                        <SelectItem key={voice.id} value={voice.id}>
+                          {voice.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Alert>
                   <Info className="h-4 w-4" />
