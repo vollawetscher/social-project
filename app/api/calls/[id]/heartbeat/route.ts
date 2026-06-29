@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { startCompositeEgress } from '@/lib/services/livekit'
+import { isVoiceAgentEnabledForUser } from '@/lib/services/voice-agent'
 
 /**
  * POST /api/calls/[id]/heartbeat
@@ -52,8 +53,9 @@ export async function POST(
     // Also creates the session if the participant_joined webhook was missed.
     const hasEgress = !!(call.track_a_egress_id || call.track_b_egress_id)
     let egressStarted = false
+    const voiceAgentEnabled = await isVoiceAgentEnabledForUser(createServiceRoleClient(), call.user_id)
 
-    if (clientHasRemote && !hasEgress && call.room_name && call.call_type !== 'pstn_outbound') {
+    if (clientHasRemote && !hasEgress && call.room_name && call.call_type !== 'pstn_outbound' && !voiceAgentEnabled) {
       try {
         const db = createServiceRoleClient()
         let sessionId = call.session_id as string | null

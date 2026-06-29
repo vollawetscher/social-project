@@ -59,6 +59,13 @@ export async function PATCH(request: Request) {
       'preferences',
       'default_retention_days',
       'meeting_slug',
+      'voice_agent_enabled',
+      'voice_agent_display_name',
+      'voice_agent_wake_word',
+      'voice_agent_wake_sounds_like',
+      'voice_agent_dismiss_phrase',
+      'voice_agent_ack_phrases',
+      'voice_agent_language',
     ]
     
     const filteredUpdates = Object.keys(updates)
@@ -122,6 +129,49 @@ export async function PATCH(request: Request) {
           { status: 400 }
         )
       }
+    }
+
+    if ('voice_agent_wake_sounds_like' in filteredUpdates) {
+      const value = filteredUpdates.voice_agent_wake_sounds_like
+      if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+        return NextResponse.json({ error: 'Invalid voice agent sounds_like list' }, { status: 400 })
+      }
+      filteredUpdates.voice_agent_wake_sounds_like = value.map((entry) => String(entry).trim()).filter(Boolean)
+    }
+
+    if ('voice_agent_ack_phrases' in filteredUpdates) {
+      const value = filteredUpdates.voice_agent_ack_phrases
+      if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+        return NextResponse.json({ error: 'Invalid voice agent acknowledgement list' }, { status: 400 })
+      }
+      filteredUpdates.voice_agent_ack_phrases = value.map((entry) => String(entry).trim()).filter(Boolean)
+    }
+
+    for (const textField of ['voice_agent_display_name', 'voice_agent_wake_word', 'voice_agent_dismiss_phrase'] as const) {
+      if (textField in filteredUpdates) {
+        const value = String(filteredUpdates[textField] ?? '').trim()
+        if (!value) {
+          return NextResponse.json({ error: `Invalid ${textField}` }, { status: 400 })
+        }
+        filteredUpdates[textField] = value
+      }
+    }
+
+    if ('voice_agent_language' in filteredUpdates) {
+      const value = filteredUpdates.voice_agent_language
+      if (value !== null && value !== undefined && String(value).trim() !== '') {
+        const normalized = String(value).trim().toLowerCase()
+        if (normalized !== 'auto' && !/^[a-z]{2}$/.test(normalized)) {
+          return NextResponse.json({ error: 'Invalid voice agent language' }, { status: 400 })
+        }
+        filteredUpdates.voice_agent_language = normalized
+      } else {
+        filteredUpdates.voice_agent_language = null
+      }
+    }
+
+    if ('voice_agent_enabled' in filteredUpdates) {
+      filteredUpdates.voice_agent_enabled = Boolean(filteredUpdates.voice_agent_enabled)
     }
 
     if (Object.keys(filteredUpdates).length === 0) {

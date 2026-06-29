@@ -9,6 +9,7 @@ import {
 } from '@/lib/services/livekit'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
+import { isVoiceAgentEnabledForUser } from '@/lib/services/voice-agent'
 
 function extractEgressStartedAtNs(info: any): number | null {
   if (!info) return null
@@ -137,6 +138,7 @@ export async function POST(request: Request) {
         const hasExistingEgress = Boolean(call.track_a_egress_id || call.track_b_egress_id)
         const calleeDeclinedPstnConsent =
           call.call_type === 'pstn_outbound' && call.pstn_consent_state === 'declined'
+        const voiceAgentEnabled = await isVoiceAgentEnabledForUser(supabase, call.user_id)
 
         if (!hasExistingEgress && !calleeDeclinedPstnConsent) {
           try {
@@ -157,6 +159,7 @@ export async function POST(request: Request) {
                   input_hint: inputHint,
                   language: 'auto',
                   user_is_speaker: true,
+                  recording_type: voiceAgentEnabled ? 'ai_agent_conversation' : undefined,
                   ...(call.purpose && String(call.purpose).trim()
                     ? { purpose: String(call.purpose).trim(), purpose_source: 'user' as const }
                     : {}),
@@ -171,6 +174,15 @@ export async function POST(request: Request) {
               console.log('[LiveKit Webhook] Session created for call:', call.id, 'session:', sessionId)
             }
 
+            if (voiceAgentEnabled) {
+              console.log('[LiveKit Webhook] Voice agent enabled — skipping batch recording egress for call:', call.id)
+              if (sessionId) {
+                await supabase
+                  .from('sessions')
+                  .update({ status: 'recording' })
+                  .eq('id', sessionId)
+              }
+            } else {
             const useDualTrack =
               call.call_type === 'pstn_outbound' &&
               (call as any).pstn_transcription_mode === 'live' &&
@@ -241,6 +253,7 @@ export async function POST(request: Request) {
               .from('sessions')
               .update({ status: 'recording' })
               .eq('id', sessionId)
+            }
           } catch (err: any) {
             console.error('[LiveKit Webhook] Failed to start egress:', err.message)
             await supabase
@@ -258,7 +271,7 @@ export async function POST(request: Request) {
 
         const { data: call } = await supabase
           .from('calls')
-          .select('id, status, session_id, started_at, track_a_egress_id, track_b_egress_id')
+          .select('id, user_id, status, session_id, started_at, track_a_egress_id, track_b_egress_id')
           .eq('room_name', roomName)
           .maybeSingle()
 
@@ -266,11 +279,14 @@ export async function POST(request: Request) {
 
         const hasEgress = !!(call.track_a_egress_id || call.track_b_egress_id)
         const wasNeverActive = call.status === 'invited' || call.status === 'waiting'
+        const voiceAgentEnabled = call.user_id
+          ? await isVoiceAgentEnabledForUser(supabase, call.user_id)
+          : false
 
         if (call.status === 'active' || call.status === 'waiting' || call.status === 'invited') {
           const nextStatus = wasNeverActive ? 'missed' : 'ended'
 
-          if (call.status === 'active' && !hasEgress) {
+          if (call.status === 'active' && !hasEgress && !voiceAgentEnabled) {
             console.error('[LiveKit Webhook] WARNING: Active call ended with NO recording:', call.id,
               'started_at:', call.started_at, 'session:', call.session_id)
             await supabase
@@ -288,11 +304,21 @@ export async function POST(request: Request) {
                 status: nextStatus,
                 ended_at: new Date().toISOString(),
                 missed_at: nextStatus === 'missed' ? new Date().toISOString() : undefined,
+                ...(voiceAgentEnabled && !hasEgress ? { last_error: null } : {}),
               })
               .eq('id', call.id)
           }
 
           console.log('[LiveKit Webhook] Call', nextStatus, ':', call.id)
+        }
+
+        if (voiceAgentEnabled && call.session_id && !hasEgress && !wasNeverActive) {
+          await supabase
+            .from('sessions')
+            .update({ status: 'done' })
+            .eq('id', call.session_id)
+          console.log('[LiveKit Webhook] Voice agent call finalized without batch recording:', call.session_id)
+          break
         }
 
         if (call.session_id && hasEgress && !wasNeverActive) {
@@ -321,7 +347,8 @@ export async function POST(request: Request) {
         // Sessions are now created only when recording starts (participant_joined),
         // so calls that never connected will have session_id = null — no cleanup needed.
         // Guard: if a session exists but has no egress (edge case), clean it up.
-        if (call.session_id && !hasEgress) {
+        // Voice-agent calls intentionally have no batch egress — keep the session.
+        if (call.session_id && !hasEgress && !voiceAgentEnabled) {
           await supabase.from('calls').update({ session_id: null }).eq('id', call.id)
           await supabase.from('sessions').delete().eq('id', call.session_id)
           console.log('[LiveKit Webhook] Deleted session with no recording:', call.session_id, call.id)

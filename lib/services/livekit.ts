@@ -67,12 +67,20 @@ export async function createRoom(
   options?: { maxParticipants?: number; emptyTimeout?: number; metadata?: string }
 ) {
   const roomService = getRoomService()
-  const room = await roomService.createRoom({
+  const roomConfig: {
+    name: string
+    emptyTimeout: number
+    metadata?: string
+    maxParticipants?: number
+  } = {
     name: roomName,
-    maxParticipants: options?.maxParticipants ?? 2,
     emptyTimeout: options?.emptyTimeout ?? 90, // 90 s empty timeout (outbound call answer window)
     metadata: options?.metadata,
-  })
+  }
+  if (typeof options?.maxParticipants === 'number' && options.maxParticipants > 0) {
+    roomConfig.maxParticipants = options.maxParticipants
+  }
+  const room = await roomService.createRoom(roomConfig)
   console.log('[LiveKit] Room created:', room.name)
   return room
 }

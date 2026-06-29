@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.41.0',
+    date: 'June 27, 2026',
+    entries: [
+      {
+        version: '1.41.0',
+        date: 'June 27, 2026',
+        category: 'feature',
+        title: 'In-Call Voice Assistant',
+        description:
+          'Enable a voice assistant in Settings that joins your calls when you turn it on. Say your wake phrase to activate it — only you can control it. Other participants can hear it, but only your microphone triggers it.',
+      },
+    ],
+  },
+  {
     version: '1.40.6',
     date: 'June 24, 2026',
     entries: [

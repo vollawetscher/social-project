@@ -23,6 +23,7 @@ import {
   Search,
   Phone,
   Video,
+  Mic,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -73,6 +74,10 @@ export default function SettingsPage() {
   const [sessionTimeout, setSessionTimeout] = useState(true)
   const [retentionPolicy, setRetentionPolicy] = useState("90")
   const [retentionCustomDays, setRetentionCustomDays] = useState("90")
+  const [voiceAgentEnabled, setVoiceAgentEnabled] = useState(false)
+  const [voiceAgentDisplayName, setVoiceAgentDisplayName] = useState("Frau Peters")
+  const [voiceAgentWakeWord, setVoiceAgentWakeWord] = useState("Frau Peters")
+  const [voiceAgentDismissPhrase, setVoiceAgentDismissPhrase] = useState("Danke, Frau Peters")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [changingPassword, setChangingPassword] = useState(false)
@@ -287,6 +292,10 @@ export default function SettingsPage() {
         const presets = ['90', '180', '365', '1095', '1825', '3650']
         setRetentionPolicy(presets.includes(String(days)) ? String(days) : 'custom')
         setRetentionCustomDays(String(days))
+        setVoiceAgentEnabled(Boolean(data.voice_agent_enabled))
+        setVoiceAgentDisplayName(data.voice_agent_display_name || 'Frau Peters')
+        setVoiceAgentWakeWord(data.voice_agent_wake_word || 'Frau Peters')
+        setVoiceAgentDismissPhrase(data.voice_agent_dismiss_phrase || 'Danke, Frau Peters')
       } catch (error) {
         console.error('Error fetching profile:', error)
         toast.error(t('loadFailed'))
@@ -339,6 +348,10 @@ export default function SettingsPage() {
           default_retention_days: retentionPolicy === 'custom'
             ? Math.max(1, parseInt(retentionCustomDays, 10) || 90)
             : parseInt(retentionPolicy, 10),
+          voice_agent_enabled: voiceAgentEnabled,
+          voice_agent_display_name: voiceAgentDisplayName.trim(),
+          voice_agent_wake_word: voiceAgentWakeWord.trim(),
+          voice_agent_dismiss_phrase: voiceAgentDismissPhrase.trim(),
         })
       })
 
@@ -542,6 +555,75 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Voice Agent */}
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mic className="h-5 w-5" />
+              {t('voiceAgentTitle')}
+            </CardTitle>
+            <CardDescription>
+              {t('voiceAgentDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="voice-agent-enabled" className="font-medium">
+                  {t('voiceAgentEnabled')}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {t('voiceAgentEnabledHint')}
+                </p>
+              </div>
+              <Switch
+                id="voice-agent-enabled"
+                checked={voiceAgentEnabled}
+                onCheckedChange={setVoiceAgentEnabled}
+              />
+            </div>
+
+            {voiceAgentEnabled && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="voice-agent-name">{t('voiceAgentDisplayName')}</Label>
+                  <Input
+                    id="voice-agent-name"
+                    value={voiceAgentDisplayName}
+                    onChange={(e) => setVoiceAgentDisplayName(e.target.value)}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="voice-agent-wake">{t('voiceAgentWakeWord')}</Label>
+                  <p className="text-sm text-muted-foreground">{t('voiceAgentWakeWordHint')}</p>
+                  <Input
+                    id="voice-agent-wake"
+                    value={voiceAgentWakeWord}
+                    onChange={(e) => setVoiceAgentWakeWord(e.target.value)}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="voice-agent-dismiss">{t('voiceAgentDismissPhrase')}</Label>
+                  <p className="text-sm text-muted-foreground">{t('voiceAgentDismissPhraseHint')}</p>
+                  <Input
+                    id="voice-agent-dismiss"
+                    value={voiceAgentDismissPhrase}
+                    onChange={(e) => setVoiceAgentDismissPhrase(e.target.value)}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>{t('voiceAgentRecordingNoteTitle')}</AlertTitle>
+                  <AlertDescription>{t('voiceAgentRecordingNote')}</AlertDescription>
+                </Alert>
+              </>
+            )}
           </CardContent>
         </Card>
 

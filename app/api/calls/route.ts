@@ -86,7 +86,6 @@ export async function POST(request: Request) {
       try {
         const isVideoCall = mode === 'video'
         await createRoom(roomName, {
-          maxParticipants: 2,
           emptyTimeout: isVideoCall ? 900 : 90,
           metadata: JSON.stringify({ callType, mode, createdBy: user.id }),
         })

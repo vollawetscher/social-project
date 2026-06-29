@@ -25,6 +25,15 @@ export interface UserProfile {
   // Data retention
   default_retention_days: number
 
+  // Voice agent (in-call assistant)
+  voice_agent_enabled?: boolean
+  voice_agent_display_name?: string
+  voice_agent_wake_word?: string
+  voice_agent_wake_sounds_like?: string[]
+  voice_agent_dismiss_phrase?: string
+  voice_agent_ack_phrases?: string[]
+  voice_agent_language?: string | null
+
   // Trial / onboarding
   onboarding_expires_at?: string | null
 }
