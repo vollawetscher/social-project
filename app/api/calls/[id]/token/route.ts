@@ -83,8 +83,22 @@ export async function POST(
     }
 
     const voiceAgent = await getVoiceAgentSettingsForUser(db, call.user_id)
+    console.log('[VoiceAgent Dispatch] /api/calls/[id]/token check', {
+      roomName: call.room_name,
+      callId,
+      ownerUserId: call.user_id,
+      status: call.status,
+      enabled: voiceAgent.enabled,
+      wakeWord: voiceAgent.wakeWord,
+      voiceId: voiceAgent.voiceId,
+    })
     if (voiceAgent.enabled) {
       try {
+        console.log('[VoiceAgent Dispatch] /api/calls/[id]/token dispatching', {
+          roomName: call.room_name,
+          callId,
+          ownerUserId: call.user_id,
+        })
         await dispatchNotissimaVoiceAgent(call.room_name, {
           ownerUserId: call.user_id,
           callId,
