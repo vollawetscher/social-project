@@ -13,7 +13,7 @@ SLEEP
   │
 ACTIVE
   │  AgentSession (LiveKit Inference STT → LLM → TTS) on owner mic only
-  │  LiveKit: Silero VAD, multilingual turn detector, BVC noise cancellation
+  │  LiveKit: bundled VAD + BVC noise cancellation
   │  Greeting → echo MVP conversation
   │
   ├──► Owner says dismiss phrase → random ack → SLEEP
