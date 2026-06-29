@@ -19,7 +19,7 @@ from livekit.agents import (
     room_io,
     stt,
 )
-from livekit.plugins import deepgram, noise_cancellation, silero
+from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from config_loader import VoiceAgentConfig, load_voice_agent_config, phrase_matches
@@ -68,7 +68,7 @@ async def run_wake_listener(
     """Standalone STT on owner mic only — no AgentSession while sleeping."""
     track = await wait_for_owner_audio_track(room, owner_identity)
     audio_stream = rtc.AudioStream(track)
-    stt_engine = deepgram.STT(model="nova-3", language=language)
+    stt_engine = inference.STT(model="deepgram/nova-3", language=language)
     stt_stream = stt_engine.stream()
 
     async def pump_audio() -> None:

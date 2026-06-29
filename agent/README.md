@@ -12,7 +12,7 @@ SLEEP
   ├──► Owner says wake phrase
   │
 ACTIVE
-  │  AgentSession (Deepgram STT → GPT → Cartesia TTS) on owner mic only
+  │  AgentSession (LiveKit Inference STT → LLM → TTS) on owner mic only
   │  LiveKit: Silero VAD, multilingual turn detector, BVC noise cancellation
   │  Greeting → echo MVP conversation
   │
@@ -39,15 +39,15 @@ cp .env.example .env
 
 | Variable | Description |
 |---|---|
-| `LIVEKIT_URL` | LiveKit Cloud WebSocket URL |
-| `LIVEKIT_API_KEY` | LiveKit API key |
-| `LIVEKIT_API_SECRET` | LiveKit API secret |
+| `LIVEKIT_URL` | Local development only. LiveKit Cloud injects this for hosted agents. |
+| `LIVEKIT_API_KEY` | Local development only. LiveKit Cloud injects this for hosted agents. |
+| `LIVEKIT_API_SECRET` | Local development only. LiveKit Cloud injects this for hosted agents. |
 | `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Read owner profile settings |
-| `OPENAI_API_KEY` | LiveKit Inference LLM |
-| `DEEPGRAM_API_KEY` | Wake listener + active STT |
-| `CARTESIA_API_KEY` | TTS |
-| `CARTESIA_VOICE_ID` | Optional voice UUID |
+| `CARTESIA_VOICE_ID` | Optional LiveKit Inference voice override |
+
+STT, LLM, and TTS are requested through LiveKit Inference. Do not add direct
+Deepgram, OpenAI, or Cartesia provider keys for the hosted LiveKit Cloud agent.
 
 ## Run / Deploy
 
