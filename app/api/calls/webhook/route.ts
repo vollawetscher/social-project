@@ -10,6 +10,14 @@ import {
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
 import { isVoiceAgentEnabledForUser } from '@/lib/services/voice-agent'
+import { createPIIRedactionService } from '@/lib/services/pii-redaction'
+
+type LiveTranscriptLine = {
+  source_key: string
+  speaker_label: string
+  text: string
+  timestamp_ms: number | string
+}
 
 function extractEgressStartedAtNs(info: any): number | null {
   if (!info) return null
@@ -41,6 +49,117 @@ function inferTrackKindFromPath(path: string): 'a' | 'b' | null {
   if (path.includes('_track_a.')) return 'a'
   if (path.includes('_track_b.')) return 'b'
   return null
+}
+
+async function finalizeVoiceAgentTranscript(supabase: any, call: any): Promise<string | null> {
+  const { data: lines, error: linesError } = await supabase
+    .from('call_live_transcript_lines')
+    .select('source_key, speaker_label, text, timestamp_ms')
+    .eq('call_id', call.id)
+    .order('timestamp_ms', { ascending: true })
+
+  if (linesError) {
+    console.error('[LiveKit Webhook] Failed to load voice agent transcript lines:', linesError.message)
+    return call.session_id || null
+  }
+
+  const liveLines = (lines || [])
+    .map((line: LiveTranscriptLine) => ({
+      ...line,
+      timestamp_ms: Number(line.timestamp_ms) || Date.now(),
+      text: String(line.text || '').trim(),
+      speaker_label: String(line.speaker_label || line.source_key || 'Speaker').trim(),
+    }))
+    .filter((line: LiveTranscriptLine) => line.text)
+
+  if (liveLines.length === 0) {
+    console.log('[LiveKit Webhook] Voice agent call ended without live transcript lines:', call.id)
+    return call.session_id || null
+  }
+
+  let sessionId = call.session_id as string | null
+  if (!sessionId) {
+    const callMode = call.call_mode
+    const inputHint = call.call_type === 'pstn_outbound' ? 'phone_call' : callMode === 'video' ? 'video_call' : 'phone_call'
+    const sessionLabel = call.call_type === 'pstn_outbound' ? 'Call' : callMode === 'video' ? 'Video Call' : 'Voice Call'
+    const { data: newSession, error: sessionError } = await supabase
+      .from('sessions')
+      .insert({
+        user_id: call.user_id,
+        status: 'done',
+        context_note: '',
+        internal_case_id: sessionLabel,
+        duration_sec: 0,
+        last_error: '',
+        input_hint: inputHint,
+        language: 'de',
+        user_is_speaker: true,
+        recording_type: 'ai_agent_conversation',
+        ...(call.purpose && String(call.purpose).trim()
+          ? { purpose: String(call.purpose).trim(), purpose_source: 'user' as const }
+          : {}),
+      })
+      .select('id')
+      .single()
+
+    if (sessionError || !newSession) {
+      console.error('[LiveKit Webhook] Failed to create voice agent transcript session:', sessionError?.message)
+      return null
+    }
+    sessionId = newSession.id
+    await supabase.from('calls').update({ session_id: sessionId }).eq('id', call.id)
+  }
+
+  const { data: existingTranscript } = await supabase
+    .from('transcripts')
+    .select('id')
+    .eq('session_id', sessionId)
+    .limit(1)
+    .maybeSingle()
+
+  if (!existingTranscript) {
+    const firstTs = liveLines[0].timestamp_ms
+    const segments = liveLines.map((line: LiveTranscriptLine) => {
+      const startMs = Math.max(0, Number(line.timestamp_ms) - firstTs)
+      return {
+        start_ms: startMs,
+        end_ms: startMs + 1000,
+        speaker: line.speaker_label,
+        text: line.text,
+        confidence: 1,
+      }
+    })
+    const rawText = liveLines.map((line: LiveTranscriptLine) => `${line.speaker_label}: ${line.text}`).join('\n')
+    const piiService = createPIIRedactionService()
+    const redactionResult = piiService.redact(segments)
+
+    const { error: transcriptError } = await supabase.from('transcripts').insert({
+      session_id: sessionId,
+      file_id: null,
+      raw_json: segments,
+      redacted_json: redactionResult.redactedSegments,
+      raw_text: rawText,
+      redacted_text: redactionResult.redactedText,
+      language: 'de',
+      summary: null,
+    })
+
+    if (transcriptError) {
+      console.error('[LiveKit Webhook] Failed to save voice agent transcript:', transcriptError.message)
+    }
+  }
+
+  const durationSec = Math.max(
+    0,
+    Math.round((liveLines[liveLines.length - 1].timestamp_ms - liveLines[0].timestamp_ms) / 1000),
+  )
+  await supabase
+    .from('sessions')
+    .update({ status: 'done', duration_sec: durationSec, language: 'de', last_error: '' })
+    .eq('id', sessionId)
+
+  console.log('[LiveKit Webhook] Voice agent transcript finalized:', sessionId, 'lines:', liveLines.length)
+  return sessionId
 }
 
 /** True when the call host (participant A) and at least one guest are in the LiveKit room. */
@@ -271,7 +390,7 @@ export async function POST(request: Request) {
 
         const { data: call } = await supabase
           .from('calls')
-          .select('id, user_id, status, session_id, started_at, track_a_egress_id, track_b_egress_id')
+          .select('id, user_id, status, session_id, started_at, track_a_egress_id, track_b_egress_id, call_type, call_mode, purpose')
           .eq('room_name', roomName)
           .maybeSingle()
 
@@ -312,12 +431,9 @@ export async function POST(request: Request) {
           console.log('[LiveKit Webhook] Call', nextStatus, ':', call.id)
         }
 
-        if (voiceAgentEnabled && call.session_id && !hasEgress && !wasNeverActive) {
-          await supabase
-            .from('sessions')
-            .update({ status: 'done' })
-            .eq('id', call.session_id)
-          console.log('[LiveKit Webhook] Voice agent call finalized without batch recording:', call.session_id)
+        if (voiceAgentEnabled && !hasEgress) {
+          const sessionId = await finalizeVoiceAgentTranscript(supabase, call)
+          console.log('[LiveKit Webhook] Voice agent call finalized without batch recording:', sessionId || 'no transcript')
           break
         }
 

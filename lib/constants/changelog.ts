@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.41.1',
+    date: 'June 29, 2026',
+    entries: [
+      {
+        version: '1.41.1',
+        date: 'June 29, 2026',
+        category: 'fix',
+        title: 'Voice Assistant Conversations',
+        description:
+          'The in-call voice assistant now answers naturally instead of echoing your question, and saves the active assistant conversation as a transcript when the call ends.',
+      },
+    ],
+  },
+  {
     version: '1.41.0',
     date: 'June 27, 2026',
     entries: [

@@ -19,23 +19,42 @@ from livekit.agents import (
 )
 from livekit.plugins import noise_cancellation
 
-from config_loader import VoiceAgentConfig, load_voice_agent_config, phrase_matches
+from config_loader import (
+    VoiceAgentConfig,
+    insert_live_transcript_line,
+    load_voice_agent_config,
+    phrase_matches,
+    resolve_call_id,
+)
 
 logger = logging.getLogger("voice-agent")
 load_dotenv()
 
 
-class EchoAgent(Agent):
-    """MVP active agent: echoes the owner's speech after wake."""
+class NotissimaVoiceAgent(Agent):
+    """Active voice agent for the owner after wake."""
 
     def __init__(self, config: VoiceAgentConfig) -> None:
         super().__init__(
             instructions=(
-                f"You are {config.display_name}, a concise voice assistant. "
-                f"Repeat the user's last request back verbatim, prefixed with 'Echo:'. "
-                "Use one short sentence. Plain text only."
+                f"You are {config.display_name}, a concise in-call voice assistant. "
+                "You are speaking in a live call and only the owner can command you. "
+                "Answer the owner's questions helpfully and naturally. "
+                "Keep responses brief: one to three sentences unless asked for more. "
+                "Plain text only; no markdown, lists, emojis, or JSON. "
+                "Do not explain internal modes or implementation details."
             )
         )
+
+
+async def wait_for_call_id(room_name: str, timeout_s: float = 10.0) -> str | None:
+    deadline = asyncio.get_event_loop().time() + timeout_s
+    while asyncio.get_event_loop().time() < deadline:
+        call_id = await resolve_call_id(room_name)
+        if call_id:
+            return call_id
+        await asyncio.sleep(0.5)
+    return None
 
 
 async def wait_for_owner_audio_track(room: rtc.Room, owner_identity: str) -> rtc.AudioTrack:
@@ -110,6 +129,7 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
         return
 
     dismiss_event = asyncio.Event()
+    persisted_assistant_texts: set[str] = set()
     session = AgentSession(
         stt=inference.STT(model="deepgram/nova-3", language=config.language),
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
@@ -126,9 +146,43 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
         if not text or not ev.is_final:
             return
         logger.info("[active] Owner said: %s", text)
+        asyncio.create_task(
+            insert_live_transcript_line(
+                config.call_id,
+                "owner",
+                "You",
+                text,
+            )
+        )
         if phrase_matches(text, config.dismiss_phrases):
             logger.info("Dismiss phrase detected")
             dismiss_event.set()
+
+    @session.on("conversation_item_added")
+    def on_conversation_item(ev) -> None:
+        item = getattr(ev, "item", None)
+        role = getattr(item, "role", "")
+        if role != "assistant":
+            return
+        content = getattr(item, "content", "")
+        if isinstance(content, list):
+            text = " ".join(str(part) for part in content if str(part).strip()).strip()
+        else:
+            text = str(content or "").strip()
+        if not text:
+            return
+        logger.info("[active] Assistant said: %s", text)
+        if text in persisted_assistant_texts:
+            return
+        persisted_assistant_texts.add(text)
+        asyncio.create_task(
+            insert_live_transcript_line(
+                config.call_id,
+                "agent",
+                config.display_name,
+                text,
+            )
+        )
 
     room_options = room_io.RoomOptions(
         audio_input=room_io.AudioInputOptions(
@@ -139,11 +193,18 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
     )
 
     await session.start(
-        agent=EchoAgent(config),
+        agent=NotissimaVoiceAgent(config),
         room=ctx.room,
         room_options=room_options,
     )
 
+    await insert_live_transcript_line(
+        config.call_id,
+        "agent",
+        config.display_name,
+        config.greeting,
+    )
+    persisted_assistant_texts.add(config.greeting)
     await session.generate_reply(
         instructions=f"Respond with exactly: {config.greeting}",
         allow_interruptions=False,
@@ -160,6 +221,8 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
 
     if dismiss_event.is_set() and ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
         ack = random.choice(config.ack_phrases)
+        persisted_assistant_texts.add(ack)
+        await insert_live_transcript_line(config.call_id, "agent", config.display_name, ack)
         await session.generate_reply(
             instructions=f'Respond with exactly: "{ack}"',
             allow_interruptions=False,
@@ -197,11 +260,16 @@ async def entrypoint(ctx: JobContext) -> None:
         return
 
     config.owner_identity = config.owner_user_id
+    if not config.call_id:
+        config.call_id = await wait_for_call_id(ctx.room.name)
+        if not config.call_id:
+            logger.warning("Voice agent proceeding without call id; transcript lines will not be stored")
     logger.info(
-        "Voice agent ready in room %s for owner %s (%s)",
+        "Voice agent ready in room %s for owner %s (%s), call=%s",
         ctx.room.name,
         config.owner_user_id,
         config.display_name,
+        config.call_id,
     )
 
     while ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
