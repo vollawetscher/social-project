@@ -137,8 +137,21 @@ export async function POST(request: Request) {
 
     if (!isScheduled) {
       const voiceAgent = await getVoiceAgentSettingsForUser(supabase, user.id)
+      console.log('[VoiceAgent Dispatch] /api/calls check', {
+        roomName,
+        callId: call.id,
+        ownerUserId: user.id,
+        enabled: voiceAgent.enabled,
+        wakeWord: voiceAgent.wakeWord,
+        voiceId: voiceAgent.voiceId,
+      })
       if (voiceAgent.enabled) {
         try {
+          console.log('[VoiceAgent Dispatch] /api/calls dispatching', {
+            roomName,
+            callId: call.id,
+            ownerUserId: user.id,
+          })
           await dispatchNotissimaVoiceAgent(roomName, {
             ownerUserId: user.id,
             callId: call.id,

@@ -108,23 +108,60 @@ export async function dispatchNotissimaVoiceAgent(
   roomName: string,
   metadata: Record<string, unknown>,
 ) {
+  console.log('[LiveKit] Voice agent dispatch requested:', {
+    agentName: NOTISSIMA_VOICE_AGENT_NAME,
+    roomName,
+    metadata,
+  })
   const dispatchClient = getAgentDispatchClient()
   const existingDispatches = await dispatchClient.listDispatch(roomName).catch((err) => {
-    console.warn('[LiveKit] Failed to list agent dispatches:', err?.message || err)
+    console.warn('[LiveKit] Failed to list agent dispatches:', {
+      agentName: NOTISSIMA_VOICE_AGENT_NAME,
+      roomName,
+      error: err?.message || err,
+    })
     return []
+  })
+
+  console.log('[LiveKit] Voice agent dispatch list result:', {
+    agentName: NOTISSIMA_VOICE_AGENT_NAME,
+    roomName,
+    count: existingDispatches.length,
+    existing: existingDispatches.map((dispatch: any) => ({
+      id: dispatch.id || dispatch.dispatchId,
+      agentName: dispatch.agentName,
+      room: dispatch.room,
+    })),
   })
 
   const existing = existingDispatches.find((dispatch: any) => dispatch.agentName === NOTISSIMA_VOICE_AGENT_NAME)
   if (existing) {
-    console.log('[LiveKit] Voice agent already dispatched:', NOTISSIMA_VOICE_AGENT_NAME, 'room:', roomName)
+    console.log('[LiveKit] Voice agent already dispatched:', {
+      agentName: NOTISSIMA_VOICE_AGENT_NAME,
+      roomName,
+      dispatchId: (existing as any).id || (existing as any).dispatchId,
+    })
     return existing
   }
 
-  const dispatch = await dispatchClient.createDispatch(roomName, NOTISSIMA_VOICE_AGENT_NAME, {
-    metadata: JSON.stringify(metadata),
-  })
-  console.log('[LiveKit] Voice agent dispatched:', NOTISSIMA_VOICE_AGENT_NAME, 'room:', roomName)
-  return dispatch
+  try {
+    const dispatch = await dispatchClient.createDispatch(roomName, NOTISSIMA_VOICE_AGENT_NAME, {
+      metadata: JSON.stringify(metadata),
+    })
+    console.log('[LiveKit] Voice agent dispatched:', {
+      agentName: NOTISSIMA_VOICE_AGENT_NAME,
+      roomName,
+      dispatchId: (dispatch as any).id || (dispatch as any).dispatchId,
+    })
+    return dispatch
+  } catch (err: any) {
+    console.error('[LiveKit] Voice agent dispatch create failed:', {
+      agentName: NOTISSIMA_VOICE_AGENT_NAME,
+      roomName,
+      error: err?.message || err,
+    })
+    throw err
+  }
 }
 
 export async function removeParticipant(roomName: string, participantIdentity: string) {

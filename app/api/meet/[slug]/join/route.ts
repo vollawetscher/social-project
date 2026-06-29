@@ -146,8 +146,22 @@ export async function POST(
     }
 
     const voiceAgent = await getVoiceAgentSettingsForUser(supabase, owner.id)
+    console.log('[VoiceAgent Dispatch] /api/meet/[slug]/join check', {
+      roomName,
+      callId,
+      ownerUserId: owner.id,
+      isOwner,
+      enabled: voiceAgent.enabled,
+      wakeWord: voiceAgent.wakeWord,
+      voiceId: voiceAgent.voiceId,
+    })
     if (voiceAgent.enabled) {
       try {
+        console.log('[VoiceAgent Dispatch] /api/meet/[slug]/join dispatching', {
+          roomName,
+          callId,
+          ownerUserId: owner.id,
+        })
         await dispatchNotissimaVoiceAgent(roomName, {
           ownerUserId: owner.id,
           callId,
