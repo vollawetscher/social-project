@@ -6,6 +6,9 @@ Single deployable named LiveKit agent (`notissima-voice-agent`) — one worker s
 
 ```
 SLEEP
+  │  Room transcript buffer transcribes up to 10 human participant tracks
+  │  and writes final utterances to call_live_transcript_lines
+  │
   │  Standalone Deepgram STT on owner mic only (no AgentSession)
   │  Fuzzy match wake phrase from owner profile
   │
@@ -21,6 +24,7 @@ ACTIVE
 
 - **Explicit dispatch:** Notissima dispatches the named agent only when `voice_agent_enabled` is true for the room owner.
 - **Owner binding:** `metadata.createdBy` or `calls.user_id` — never first participant in room.
+- **Room buffer:** all standard human participants are transcribed continuously while the agent job is in the room (cap: 10 participants).
 - **No batch recording:** when voice agent is enabled, Notissima skips composite egress (see webhook).
 
 ## Setup

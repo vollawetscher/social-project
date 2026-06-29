@@ -3,6 +3,7 @@ import contextlib
 import logging
 import os
 import random
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -29,6 +30,16 @@ from config_loader import (
 
 logger = logging.getLogger("voice-agent")
 load_dotenv()
+
+MAX_BUFFERED_PARTICIPANTS = 10
+
+
+@dataclass
+class TranscriptBufferTask:
+    participant_identity: str
+    track_sid: str
+    task: asyncio.Task
+    stop_event: asyncio.Event
 
 
 class NotissimaVoiceAgent(Agent):
@@ -126,6 +137,153 @@ async def run_wake_listener(
             await stt_engine.aclose()
 
 
+def is_standard_human_participant(participant: rtc.RemoteParticipant) -> bool:
+    return participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
+
+
+def get_participant_label(participant: rtc.RemoteParticipant, config: VoiceAgentConfig) -> str:
+    if participant.identity == config.owner_identity:
+        return "You"
+    return participant.name or participant.identity or "Participant"
+
+
+async def transcribe_participant_track(
+    track: rtc.AudioTrack,
+    participant: rtc.RemoteParticipant,
+    config: VoiceAgentConfig,
+    stop_event: asyncio.Event,
+) -> None:
+    """Continuously transcribe one participant audio track into the room buffer."""
+    audio_stream = rtc.AudioStream(track)
+    stt_engine = inference.STT(model="deepgram/nova-3", language=config.language)
+    stt_stream = stt_engine.stream()
+    source_key = f"participant:{participant.identity}"
+    speaker_label = get_participant_label(participant, config)
+
+    async def pump_audio() -> None:
+        try:
+            async for event in audio_stream:
+                if stop_event.is_set():
+                    break
+                stt_stream.push_frame(event.frame)
+        finally:
+            with contextlib.suppress(Exception):
+                stt_stream.end_input()
+
+    pump_task = asyncio.create_task(pump_audio())
+    logger.info(
+        "[buffer] Started participant STT: identity=%s track=%s label=%s",
+        participant.identity,
+        getattr(track, "sid", "unknown"),
+        speaker_label,
+    )
+    try:
+        async for event in stt_stream:
+            if stop_event.is_set():
+                break
+            if event.type != stt.SpeechEventType.FINAL_TRANSCRIPT:
+                continue
+            text = event.alternatives[0].text if event.alternatives else ""
+            text = (text or "").strip()
+            if not text:
+                continue
+            logger.info("[buffer] %s said: %s", speaker_label, text)
+            await insert_live_transcript_line(
+                config.call_id,
+                source_key,
+                speaker_label,
+                text,
+            )
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("[buffer] Participant STT failed: identity=%s", participant.identity)
+    finally:
+        stop_event.set()
+        pump_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await pump_task
+        with contextlib.suppress(Exception):
+            await stt_engine.aclose()
+        logger.info("[buffer] Stopped participant STT: identity=%s", participant.identity)
+
+
+async def run_room_transcript_buffer(
+    room: rtc.Room,
+    config: VoiceAgentConfig,
+    stop_event: asyncio.Event,
+) -> None:
+    """Run per-track STT for up to MAX_BUFFERED_PARTICIPANTS human participants."""
+    tasks: dict[str, TranscriptBufferTask] = {}
+
+    async def cleanup_finished_tasks() -> None:
+        finished_keys = [key for key, item in tasks.items() if item.task.done()]
+        for key in finished_keys:
+            item = tasks.pop(key)
+            item.stop_event.set()
+            with contextlib.suppress(Exception):
+                await item.task
+
+    async def maybe_start_tasks() -> None:
+        await cleanup_finished_tasks()
+        active_identities = {item.participant_identity for item in tasks.values()}
+        if len(active_identities) >= MAX_BUFFERED_PARTICIPANTS:
+            return
+
+        for participant in room.remote_participants.values():
+            if stop_event.is_set():
+                return
+            if not is_standard_human_participant(participant):
+                continue
+            if participant.identity in active_identities:
+                continue
+            if len(active_identities) >= MAX_BUFFERED_PARTICIPANTS:
+                logger.warning("[buffer] Participant transcript cap reached (%s)", MAX_BUFFERED_PARTICIPANTS)
+                return
+
+            for publication in participant.track_publications.values():
+                if publication.kind != rtc.TrackKind.KIND_AUDIO:
+                    continue
+                if not publication.subscribed:
+                    publication.set_subscribed(True)
+                track = publication.track
+                track_sid = (
+                    getattr(publication, "sid", None)
+                    or getattr(publication, "track_sid", None)
+                    or getattr(track, "sid", "")
+                    or f"{participant.identity}:audio"
+                )
+                if not track or track_sid in tasks:
+                    continue
+
+                participant_stop = asyncio.Event()
+                task = asyncio.create_task(
+                    transcribe_participant_track(track, participant, config, participant_stop)
+                )
+                tasks[track_sid] = TranscriptBufferTask(
+                    participant_identity=participant.identity,
+                    track_sid=track_sid,
+                    task=task,
+                    stop_event=participant_stop,
+                )
+                active_identities.add(participant.identity)
+                break
+
+    try:
+        while room.connection_state == rtc.ConnectionState.CONN_CONNECTED and not stop_event.is_set():
+            await maybe_start_tasks()
+            await asyncio.sleep(0.5)
+    finally:
+        stop_event.set()
+        for item in tasks.values():
+            item.stop_event.set()
+            item.task.cancel()
+        for item in tasks.values():
+            with contextlib.suppress(asyncio.CancelledError):
+                await item.task
+        logger.info("[buffer] Room transcript buffer stopped")
+
+
 async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
     """Full AgentSession pipeline on owner mic only until dismiss."""
     owner_identity = config.owner_identity or config.owner_user_id
@@ -150,14 +308,6 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
         if not text or not ev.is_final:
             return
         logger.info("[active] Owner said: %s", text)
-        asyncio.create_task(
-            insert_live_transcript_line(
-                config.call_id,
-                "owner",
-                "You",
-                text,
-            )
-        )
         if phrase_matches(text, config.dismiss_phrases):
             logger.info("Dismiss phrase detected")
             dismiss_event.set()
@@ -280,54 +430,62 @@ async def entrypoint(ctx: JobContext) -> None:
         config.call_id,
     )
 
-    while ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
-        wake_detected = asyncio.Event()
-        stop_listener = asyncio.Event()
-        wake_listener = asyncio.create_task(
-            run_wake_listener(
-                ctx.room,
-                config.owner_identity,
-                config.wake_phrases,
-                config.language,
-                wake_detected,
-                stop_listener,
+    buffer_stop = asyncio.Event()
+    buffer_task = asyncio.create_task(run_room_transcript_buffer(ctx.room, config, buffer_stop))
+    try:
+        while ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
+            wake_detected = asyncio.Event()
+            stop_listener = asyncio.Event()
+            wake_listener = asyncio.create_task(
+                run_wake_listener(
+                    ctx.room,
+                    config.owner_identity,
+                    config.wake_phrases,
+                    config.language,
+                    wake_detected,
+                    stop_listener,
+                )
             )
-        )
-        wake_wait = asyncio.create_task(wake_detected.wait())
+            wake_wait = asyncio.create_task(wake_detected.wait())
 
-        try:
-            finished, _pending = await asyncio.wait(
-                {wake_wait, wake_listener},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if wake_listener in finished and wake_listener.exception():
-                raise wake_listener.exception()  # type: ignore[misc]
-        except Exception:
-            logger.exception("Wake listener failed")
-            stop_listener.set()
-            wake_listener.cancel()
-            wake_wait.cancel()
-            if ctx.room.connection_state != rtc.ConnectionState.CONN_CONNECTED:
+            try:
+                finished, _pending = await asyncio.wait(
+                    {wake_wait, wake_listener},
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                if wake_listener in finished and wake_listener.exception():
+                    raise wake_listener.exception()  # type: ignore[misc]
+            except Exception:
+                logger.exception("Wake listener failed")
+                stop_listener.set()
+                wake_listener.cancel()
+                wake_wait.cancel()
+                if ctx.room.connection_state != rtc.ConnectionState.CONN_CONNECTED:
+                    break
+                await asyncio.sleep(1)
+                continue
+            finally:
+                stop_listener.set()
+                wake_listener.cancel()
+                wake_wait.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await wake_listener
+                    await wake_wait
+
+            if not wake_detected.is_set() or ctx.room.connection_state != rtc.ConnectionState.CONN_CONNECTED:
                 break
-            await asyncio.sleep(1)
-            continue
-        finally:
-            stop_listener.set()
-            wake_listener.cancel()
-            wake_wait.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await wake_listener
-                await wake_wait
 
-        if not wake_detected.is_set() or ctx.room.connection_state != rtc.ConnectionState.CONN_CONNECTED:
-            break
+            try:
+                await run_active_session(ctx, config)
+            except Exception:
+                logger.exception("Active session failed")
 
-        try:
-            await run_active_session(ctx, config)
-        except Exception:
-            logger.exception("Active session failed")
-
-        await asyncio.sleep(0.2)
+            await asyncio.sleep(0.2)
+    finally:
+        buffer_stop.set()
+        buffer_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await buffer_task
 
 
 if __name__ == "__main__":
