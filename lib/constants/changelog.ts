@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.41.2',
+    date: 'June 29, 2026',
+    entries: [
+      {
+        version: '1.41.2',
+        date: 'June 29, 2026',
+        category: 'improvement',
+        title: 'Voice Assistant Polish',
+        description:
+          'The in-call voice assistant now joins only when needed, stays out of the main participant tiles, and lets you choose a curated German voice in Settings.',
+      },
+    ],
+  },
+  {
     version: '1.41.1',
     date: 'June 29, 2026',
     entries: [

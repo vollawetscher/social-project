@@ -11,6 +11,7 @@ from typing import Any
 logger = logging.getLogger("voice-agent")
 
 DEFAULT_ACK_PHRASES = ["Gerne!", "Bitte sehr.", "Gern geschehen."]
+DEFAULT_VOICE_ID = "38aabb6a-f52b-4fb0-a3d1-988518f4dc06"
 
 
 @dataclass
@@ -25,6 +26,7 @@ class VoiceAgentConfig:
     ack_phrases: list[str] = field(default_factory=lambda: list(DEFAULT_ACK_PHRASES))
     greeting: str = "Was kann ich für Sie tun?"
     language: str = "de"
+    voice_id: str = DEFAULT_VOICE_ID
     call_id: str | None = None
 
 
@@ -91,7 +93,7 @@ def parse_room_metadata(raw: str | None) -> dict[str, Any]:
 
 
 async def resolve_owner_user_id(room_name: str, metadata: dict[str, Any]) -> str | None:
-    created_by = metadata.get("createdBy")
+    created_by = metadata.get("ownerUserId") or metadata.get("createdBy")
     if isinstance(created_by, str) and created_by.strip():
         return created_by.strip()
 
@@ -135,8 +137,14 @@ async def resolve_call_id(room_name: str) -> str | None:
     return None
 
 
-async def load_voice_agent_config(room_name: str, room_metadata_raw: str | None) -> VoiceAgentConfig:
-    metadata = parse_room_metadata(room_metadata_raw)
+async def load_voice_agent_config(
+    room_name: str,
+    room_metadata_raw: str | None,
+    dispatch_metadata_raw: str | None = None,
+) -> VoiceAgentConfig:
+    room_metadata = parse_room_metadata(room_metadata_raw)
+    dispatch_metadata = parse_room_metadata(dispatch_metadata_raw)
+    metadata = {**room_metadata, **dispatch_metadata}
     owner_user_id = await resolve_owner_user_id(room_name, metadata)
     config = VoiceAgentConfig(owner_user_id=owner_user_id, owner_identity=owner_user_id)
 
@@ -145,7 +153,10 @@ async def load_voice_agent_config(room_name: str, room_metadata_raw: str | None)
         logger.warning("No owner resolved for room %s — agent will idle", room_name)
         return config
 
-    config.call_id = await resolve_call_id(room_name)
+    if isinstance(metadata.get("callId"), str) and str(metadata.get("callId")).strip():
+        config.call_id = str(metadata["callId"]).strip()
+    else:
+        config.call_id = await resolve_call_id(room_name)
 
     try:
         result = (
@@ -153,7 +164,7 @@ async def load_voice_agent_config(room_name: str, room_metadata_raw: str | None)
             .select(
                 "voice_agent_enabled, voice_agent_display_name, voice_agent_wake_word, "
                 "voice_agent_wake_sounds_like, voice_agent_dismiss_phrase, voice_agent_ack_phrases, "
-                "voice_agent_language, default_recording_language"
+                "voice_agent_language, voice_agent_voice_id, default_recording_language"
             )
             .eq("id", owner_user_id)
             .maybe_single()
@@ -177,14 +188,16 @@ async def load_voice_agent_config(room_name: str, room_metadata_raw: str | None)
     config.dismiss_phrases = _build_dismiss_phrases(dismiss_phrase)
     config.ack_phrases = [str(v).strip() for v in ack_values if str(v).strip()] or list(DEFAULT_ACK_PHRASES)
     config.language = "de" if language == "auto" else language
+    config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
     config.greeting = "Was kann ich für Sie tun?"
     logger.info(
-        "Loaded voice agent config: owner=%s call=%s enabled=%s wake_word=%r language=%s",
+        "Loaded voice agent config: owner=%s call=%s enabled=%s wake_word=%r language=%s voice=%s",
         config.owner_user_id,
         config.call_id,
         config.enabled,
         config.wake_word,
         config.language,
+        config.voice_id,
     )
     return config
 

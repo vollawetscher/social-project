@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createRoom } from '@/lib/services/livekit'
-import { createRoomToken } from '@/lib/services/livekit'
+import { createRoom, createRoomToken, dispatchNotissimaVoiceAgent } from '@/lib/services/livekit'
+import { getVoiceAgentSettingsForUser } from '@/lib/services/voice-agent'
 
 /**
  * POST /api/calls/[id]/token - Generate a LiveKit access token for a call.
@@ -80,6 +80,21 @@ export async function POST(
         })
         .eq('id', callId)
         .is('session_id', null)
+    }
+
+    const voiceAgent = await getVoiceAgentSettingsForUser(db, call.user_id)
+    if (voiceAgent.enabled) {
+      try {
+        await dispatchNotissimaVoiceAgent(call.room_name, {
+          ownerUserId: call.user_id,
+          callId,
+          displayName: voiceAgent.displayName,
+          wakeWord: voiceAgent.wakeWord,
+          voiceId: voiceAgent.voiceId,
+        })
+      } catch (dispatchError: any) {
+        console.error('[Calls Token] Failed to dispatch voice agent:', dispatchError?.message || dispatchError)
+      }
     }
 
     // Only allow joining if call is still joinable

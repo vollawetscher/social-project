@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
-import { createRoom, createRoomToken, generateRoomName } from '@/lib/services/livekit'
+import { createRoom, createRoomToken, dispatchNotissimaVoiceAgent, generateRoomName } from '@/lib/services/livekit'
 import { sendCommunicationHubEmail } from '@/lib/services/communication-hub-email'
 import { logError } from '@/lib/services/error-logger'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
 import { buildInviteIcs } from '@/lib/utils/invite-ics'
 import type { CreateCallRequest } from '@/lib/types/call'
 import { getCalleeReachability } from '@/lib/services/call-reachability'
+import { getVoiceAgentSettingsForUser } from '@/lib/services/voice-agent'
 
 /**
  * POST /api/calls - Create a new call room
@@ -132,6 +133,27 @@ export async function POST(request: Request) {
     if (callError) {
       console.error('[Calls] Failed to create call record:', callError)
       return NextResponse.json({ error: `Call record creation failed: ${callError.message}` }, { status: 500 })
+    }
+
+    if (!isScheduled) {
+      const voiceAgent = await getVoiceAgentSettingsForUser(supabase, user.id)
+      if (voiceAgent.enabled) {
+        try {
+          await dispatchNotissimaVoiceAgent(roomName, {
+            ownerUserId: user.id,
+            callId: call.id,
+            displayName: voiceAgent.displayName,
+            wakeWord: voiceAgent.wakeWord,
+            voiceId: voiceAgent.voiceId,
+          })
+        } catch (dispatchError: any) {
+          console.error('[Calls] Failed to dispatch voice agent:', dispatchError?.message || dispatchError)
+          await supabase
+            .from('calls')
+            .update({ last_error: `Voice agent dispatch failed: ${dispatchError?.message || 'unknown error'}` })
+            .eq('id', call.id)
+        }
+      }
     }
 
     if (isScheduled) {
