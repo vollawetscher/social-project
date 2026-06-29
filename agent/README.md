@@ -1,6 +1,6 @@
 # Notissima Voice Agent
 
-Single deployable LiveKit agent (`frau_peters.py`) — one worker serves all users. Per-user wake word and enable flag come from Supabase `profiles`.
+Single deployable named LiveKit agent (`notissima-voice-agent`) — one worker serves all users. Per-user wake word, enable flag, and voice selection come from Supabase `profiles`.
 
 ## Architecture (MVP)
 
@@ -14,12 +14,12 @@ SLEEP
 ACTIVE
   │  AgentSession (LiveKit Inference STT → LLM → TTS) on owner mic only
   │  LiveKit: bundled VAD + BVC noise cancellation
-  │  Greeting → echo MVP conversation
+  │  Greeting → concise assistant conversation
   │
   ├──► Owner says dismiss phrase → random ack → SLEEP
 ```
 
-- **Auto-join:** worker joins LiveKit rooms on the project; exits immediately if `voice_agent_enabled` is false for the room owner.
+- **Explicit dispatch:** Notissima dispatches the named agent only when `voice_agent_enabled` is true for the room owner.
 - **Owner binding:** `metadata.createdBy` or `calls.user_id` — never first participant in room.
 - **No batch recording:** when voice agent is enabled, Notissima skips composite egress (see webhook).
 

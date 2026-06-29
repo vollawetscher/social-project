@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "@/i18n/navigation"
 import { useTranslations } from "next-intl"
 import {
@@ -13,7 +13,7 @@ import {
   useTracks,
   VideoTrack,
 } from "@livekit/components-react"
-import { ConnectionState, Track, RoomEvent } from "livekit-client"
+import { ConnectionState, Track, RoomEvent, ParticipantKind } from "livekit-client"
 import { isTrackReference } from "@livekit/components-core"
 import {
   BackgroundProcessor,
@@ -93,6 +93,10 @@ interface LiveTranscriptLine {
   speakerLabel: string
   text: string
   timestampMs: number
+}
+
+function isVoiceAgentParticipant(participant: any): boolean {
+  return Boolean(participant?.isAgent || participant?.kind === ParticipantKind.AGENT)
 }
 
 function normalizeRealtimeLanguageCode(input: unknown): string | null {
@@ -233,7 +237,15 @@ function CallRoomInner({
   const room = useRoomContext()
   const connectionState = useConnectionState()
   const { localParticipant } = useLocalParticipant()
-  const remoteParticipants = useRemoteParticipants()
+  const allRemoteParticipants = useRemoteParticipants()
+  const agentParticipants = useMemo(
+    () => allRemoteParticipants.filter(isVoiceAgentParticipant),
+    [allRemoteParticipants]
+  )
+  const remoteParticipants = useMemo(
+    () => allRemoteParticipants.filter((participant) => !isVoiceAgentParticipant(participant)),
+    [allRemoteParticipants]
+  )
 
   const cameraTracks = useTracks(
     [{ source: Track.Source.Camera, withPlaceholder: true }],
@@ -1541,6 +1553,7 @@ function CallRoomInner({
 
   const remoteDisplayName = remoteParticipants[0]?.name || contactName || contactPhone || t("participant")
   const remoteInitials = remoteDisplayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+  const activeAgentName = agentParticipants[0]?.name || "Frau Peters"
 
   // --- Audio-only or pre-connection view ---
   if (!isVideo || callStatus !== "connected") {
@@ -1568,6 +1581,12 @@ function CallRoomInner({
               <Badge variant="secondary" className="text-[10px] gap-1 bg-destructive/20 text-destructive border-0">
                 <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
                 REC
+              </Badge>
+            )}
+            {agentParticipants.length > 0 && (
+              <Badge variant="secondary" className="text-[10px] gap-1 bg-primary/15 text-primary border-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                {activeAgentName}
               </Badge>
             )}
             {isInitiator && (
@@ -1934,6 +1953,12 @@ function CallRoomInner({
             <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
             {formatDuration(duration)}
           </Badge>
+          {agentParticipants.length > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-1 bg-white/10 text-white/80 border-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              {activeAgentName}
+            </Badge>
+          )}
           {isInitiator && (
             <Badge variant="secondary" className={cn(
               "text-[10px] gap-1 border-0",

@@ -1011,6 +1011,8 @@
     "voiceAgentWakeWordHint": "Sagen Sie dies, um den Assistenten zu aktivieren (nur über Ihr Mikrofon).",
     "voiceAgentDismissPhrase": "Beendigungsphrase",
     "voiceAgentDismissPhraseHint": "Sagen Sie dies, um den Assistenten wieder in den Ruhezustand zu versetzen.",
+    "voiceAgentVoice": "Stimme",
+    "voiceAgentVoiceHint": "Wählen Sie eine geprüfte deutsche Stimme für den Assistenten.",
     "voiceAgentRecordingNoteTitle": "Keine Batch-Aufnahme",
     "voiceAgentRecordingNote": "Anrufe mit aktiviertem Sprachassistenten werden nicht als Audiodatei für die Batch-Transkription gespeichert. Live-Transkript-Funktionen folgen in einem späteren Update.",
     "defaultRecordingLanguage": "Standard-Aufnahmesprache",
