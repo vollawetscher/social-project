@@ -115,6 +115,26 @@ async def resolve_owner_user_id(room_name: str, metadata: dict[str, Any]) -> str
         return None
 
 
+async def resolve_call_id(room_name: str) -> str | None:
+    client = _supabase_client()
+    if not client or not room_name:
+        return None
+
+    try:
+        result = (
+            client.table("calls")
+            .select("id")
+            .eq("room_name", room_name)
+            .maybe_single()
+            .execute()
+        )
+        if result.data and result.data.get("id"):
+            return str(result.data["id"])
+    except Exception as exc:
+        logger.warning("Could not load call id for room %s: %s", room_name, exc)
+    return None
+
+
 async def load_voice_agent_config(room_name: str, room_metadata_raw: str | None) -> VoiceAgentConfig:
     metadata = parse_room_metadata(room_metadata_raw)
     owner_user_id = await resolve_owner_user_id(room_name, metadata)
@@ -125,18 +145,7 @@ async def load_voice_agent_config(room_name: str, room_metadata_raw: str | None)
         logger.warning("No owner resolved for room %s — agent will idle", room_name)
         return config
 
-    try:
-        call_result = (
-            client.table("calls")
-            .select("id")
-            .eq("room_name", room_name)
-            .maybe_single()
-            .execute()
-        )
-        if call_result.data and call_result.data.get("id"):
-            config.call_id = str(call_result.data["id"])
-    except Exception as exc:
-        logger.warning("Could not load call id for room %s: %s", room_name, exc)
+    config.call_id = await resolve_call_id(room_name)
 
     try:
         result = (
@@ -178,3 +187,39 @@ async def load_voice_agent_config(room_name: str, room_metadata_raw: str | None)
         config.language,
     )
     return config
+
+
+async def insert_live_transcript_line(
+    call_id: str | None,
+    source_key: str,
+    speaker_label: str,
+    text: str,
+) -> None:
+    value = text.strip()
+    if not call_id or not value:
+        return
+
+    client = _supabase_client()
+    if not client:
+        logger.warning("Cannot store live transcript line — Supabase unavailable")
+        return
+
+    try:
+        result = (
+            client.table("call_live_transcript_lines")
+            .insert(
+                {
+                    "call_id": call_id,
+                    "source_key": source_key,
+                    "speaker_label": speaker_label,
+                    "text": value,
+                    "is_final": True,
+                    "timestamp_ms": int(__import__("time").time() * 1000),
+                }
+            )
+            .execute()
+        )
+        if getattr(result, "error", None):
+            logger.error("Failed to store live transcript line: %s", result.error)
+    except Exception as exc:
+        logger.error("Failed to store live transcript line: %s", exc)
