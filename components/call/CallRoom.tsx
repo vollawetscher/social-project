@@ -2281,7 +2281,10 @@ function LiveParticipantTile({ name, isMuted, hasVideo, videoTrack, isLocal }: {
       {hasVideo && videoTrack?.publication?.track ? (
         <VideoTrack
           trackRef={videoTrack}
-          className="absolute inset-0 w-full h-full object-cover"
+          className={cn(
+            "absolute inset-0 w-full h-full object-cover",
+            isLocal && "scale-x-[-1]"
+          )}
         />
       ) : (
         <Avatar className="h-14 w-14">
