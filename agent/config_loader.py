@@ -169,4 +169,12 @@ async def load_voice_agent_config(room_name: str, room_metadata_raw: str | None)
     config.ack_phrases = [str(v).strip() for v in ack_values if str(v).strip()] or list(DEFAULT_ACK_PHRASES)
     config.language = "de" if language == "auto" else language
     config.greeting = "Was kann ich für Sie tun?"
+    logger.info(
+        "Loaded voice agent config: owner=%s call=%s enabled=%s wake_word=%r language=%s",
+        config.owner_user_id,
+        config.call_id,
+        config.enabled,
+        config.wake_word,
+        config.language,
+    )
     return config

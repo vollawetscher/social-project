@@ -12,15 +12,12 @@ from livekit.agents import (
     AgentSession,
     AutoSubscribe,
     JobContext,
-    JobProcess,
-    TurnHandlingOptions,
     cli,
     inference,
     room_io,
     stt,
 )
-from livekit.plugins import noise_cancellation, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins import noise_cancellation
 
 from config_loader import VoiceAgentConfig, load_voice_agent_config, phrase_matches
 
@@ -121,8 +118,6 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
             voice=os.environ.get("CARTESIA_VOICE_ID", "9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"),
             language=config.language,
         ),
-        turn_handling=TurnHandlingOptions(turn_detection=MultilingualModel()),
-        vad=ctx.proc.userdata["vad"],
     )
 
     @session.on("user_input_transcribed")
@@ -181,23 +176,24 @@ async def _wait_for_room_disconnect(room: rtc.Room) -> None:
 server = AgentServer(shutdown_process_timeout=60.0)
 
 
-def prewarm(proc: JobProcess) -> None:
-    proc.userdata["vad"] = silero.VAD.load()
-
-
-server.setup_fnc = prewarm
-
-
 @server.rtc_session()
 async def entrypoint(ctx: JobContext) -> None:
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
     config = await load_voice_agent_config(ctx.room.name, ctx.room.metadata)
     if not config.enabled:
-        logger.info("Voice agent disabled for room owner — exiting")
+        logger.info(
+            "Voice agent disabled for owner %s in room %s — disconnecting",
+            config.owner_user_id,
+            ctx.room.name,
+        )
+        await ctx.room.disconnect()
+        ctx.shutdown("voice agent disabled")
         return
     if not config.owner_user_id:
         logger.warning("Could not resolve room owner — exiting")
+        await ctx.room.disconnect()
+        ctx.shutdown("owner unresolved")
         return
 
     config.owner_identity = config.owner_user_id
