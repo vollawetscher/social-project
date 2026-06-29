@@ -199,7 +199,10 @@ function useRingtone(playing: boolean, minPlayMs = 2500) {
 
 export function CallRoom(props: CallRoomProps) {
   const videoCaptureOptions = props.mode === "video"
-    ? ({ resolution: { width: 1280, height: 720, frameRate: 30 } } as any)
+    ? ({
+        facingMode: "user",
+        resolution: { width: 1280, height: 720, frameRate: 30 },
+      } as any)
     : false
 
   return (
