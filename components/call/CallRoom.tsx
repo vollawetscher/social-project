@@ -1554,6 +1554,8 @@ function CallRoomInner({
   const remoteDisplayName = remoteParticipants[0]?.name || contactName || contactPhone || t("participant")
   const remoteInitials = remoteDisplayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
   const activeAgentName = agentParticipants[0]?.name || "Frau Peters"
+  const isAgentSpeaking = agentParticipants.some((participant) => participant.isSpeaking)
+  const agentStatusLabel = `${activeAgentName} ${isAgentSpeaking ? t("voiceAgentSpeaking") : t("voiceAgentListening")}`
 
   // --- Audio-only or pre-connection view ---
   if (!isVideo || callStatus !== "connected") {
@@ -1584,9 +1586,15 @@ function CallRoomInner({
               </Badge>
             )}
             {agentParticipants.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] gap-1 bg-primary/15 text-primary border-0">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                {activeAgentName}
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "text-[10px] gap-1 border-0",
+                  isAgentSpeaking ? "bg-primary/25 text-primary" : "bg-primary/15 text-primary"
+                )}
+              >
+                <span className={cn("h-1.5 w-1.5 rounded-full bg-primary", isAgentSpeaking && "animate-pulse")} />
+                {agentStatusLabel}
               </Badge>
             )}
             {isInitiator && (
@@ -1954,9 +1962,15 @@ function CallRoomInner({
             {formatDuration(duration)}
           </Badge>
           {agentParticipants.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] gap-1 bg-white/10 text-white/80 border-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              {activeAgentName}
+            <Badge
+              variant="secondary"
+              className={cn(
+                "text-[10px] gap-1 border-0",
+                isAgentSpeaking ? "bg-primary/30 text-white" : "bg-white/10 text-white/85"
+              )}
+            >
+              <span className={cn("h-1.5 w-1.5 rounded-full bg-primary", isAgentSpeaking && "animate-pulse")} />
+              {agentStatusLabel}
             </Badge>
           )}
           {isInitiator && (
@@ -1992,13 +2006,13 @@ function CallRoomInner({
             </button>
           )}
           {isInitiator && showModerationPanel && (
-            <div className="absolute right-0 top-9 z-30 w-72 rounded-lg border border-white/15 bg-[#1a1a1a] shadow-2xl p-3">
+            <div className="absolute right-0 top-9 z-30 w-80 rounded-lg border border-white/20 bg-[#101010] shadow-2xl p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-white/80">Host controls</span>
+                <span className="text-xs font-semibold text-white">Host controls</span>
                 <button
                   onClick={toggleRoomLock}
                   disabled={moderationLoading}
-                  className="inline-flex items-center gap-1 rounded-md border border-white/15 px-2 py-1 text-[11px] text-white/80 hover:bg-white/10 disabled:opacity-60"
+                  className="inline-flex items-center gap-1 rounded-md border border-white/25 px-2 py-1 text-[11px] font-medium text-white hover:bg-white/10 disabled:opacity-60"
                 >
                   {roomLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                   {roomLocked ? "Locked" : "Unlocked"}
@@ -2008,22 +2022,22 @@ function CallRoomInner({
                 {moderationParticipants
                   .filter((p) => p.identity !== localParticipant.identity)
                   .map((p) => (
-                    <div key={p.identity} className="flex items-center justify-between rounded-md border border-white/10 px-2 py-1.5">
+                    <div key={p.identity} className="flex items-center justify-between gap-2 rounded-md border border-white/15 bg-white/[0.04] px-2.5 py-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="text-[11px] text-white/85 truncate">{p.name}</p>
-                          <span className="shrink-0 rounded-full border border-white/20 px-1.5 py-0.5 text-[9px] text-white/70">
+                          <p className="text-xs font-semibold text-white truncate">{p.name}</p>
+                          <span className="shrink-0 rounded-full border border-white/25 bg-white/10 px-1.5 py-0.5 text-[9px] font-medium text-white/85">
                             {p.roleLabel || "Participant"}
                           </span>
                         </div>
-                        <p className="text-[10px] text-white/45 truncate">
+                        <p className="text-[10px] font-mono text-white/70 truncate">
                           {p.shortIdentity || p.identity}
                         </p>
                       </div>
                       <button
                         onClick={() => removeRemoteParticipant(p)}
                         disabled={moderationLoading}
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-destructive bg-destructive/10 hover:bg-destructive/15 disabled:opacity-60"
+                        className="shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold text-red-200 bg-red-500/20 hover:bg-red-500/30 disabled:opacity-60"
                       >
                         <UserX className="h-3 w-3" />
                         Remove
@@ -2031,7 +2045,7 @@ function CallRoomInner({
                     </div>
                   ))}
                 {moderationParticipants.filter((p) => p.identity !== localParticipant.identity).length === 0 && (
-                  <p className="text-[11px] text-white/45 py-2">No removable participants</p>
+                  <p className="text-[11px] text-white/70 py-2">No removable participants</p>
                 )}
               </div>
             </div>

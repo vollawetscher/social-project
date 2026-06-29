@@ -1014,6 +1014,8 @@
     "voiceAgentDismissPhraseHint": "Say this to send the assistant back to sleep.",
     "voiceAgentVoice": "Voice",
     "voiceAgentVoiceHint": "Choose a curated German voice for the assistant.",
+    "voiceAgentListening": "listening",
+    "voiceAgentSpeaking": "speaking",
     "voiceAgentRecordingNoteTitle": "No batch recording",
     "voiceAgentRecordingNote": "Calls with the voice assistant enabled are not saved as audio files for batch transcription. Live transcript features will apply in a future update.",
     "defaultRecordingLanguage": "Default Recording Language",
