@@ -1433,6 +1433,8 @@
     "invitationSentWaiting": "Einladung gesendet! Warten auf Beitritt...",
     "invitationFailed": "Einladung fehlgeschlagen — Link manuell teilen",
     "participant": "Teilnehmer",
+    "voiceAgentListening": "hört zu",
+    "voiceAgentSpeaking": "spricht",
     "background": "Hintergrund",
     "backgroundNone": "Keiner",
     "backgroundBlur": "Unschärfe",

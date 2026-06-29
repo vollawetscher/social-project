@@ -1434,6 +1434,8 @@
     "invitationSentWaiting": "Invitation sent! Waiting to join...",
     "invitationFailed": "Invitation failed — share link manually",
     "participant": "Participant",
+    "voiceAgentListening": "listening",
+    "voiceAgentSpeaking": "speaking",
     "background": "Background",
     "backgroundNone": "None",
     "backgroundBlur": "Blur",
