@@ -38,6 +38,10 @@ class NotissimaVoiceAgent(Agent):
         super().__init__(
             instructions=(
                 f"You are {config.display_name}, a concise in-call voice assistant. "
+                f"Your user-facing name is {config.display_name}; this is the only name you should use for yourself. "
+                f"You were activated by the wake phrase '{config.wake_word}'. "
+                f"If asked who you are or what your name is, answer that you are {config.display_name}. "
+                "Do not mention internal names such as Notissima, notissima-voice-agent, LiveKit, or dispatch rules unless explicitly asked about implementation. "
                 "You are speaking in a live call and only the owner can command you. "
                 "Answer the owner's questions helpfully and naturally. "
                 "Keep responses brief: one to three sentences unless asked for more. "
