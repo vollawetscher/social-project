@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.42.1',
+    date: 'June 30, 2026',
+    entries: [
+      {
+        version: '1.42.1',
+        date: 'June 30, 2026',
+        category: 'fix',
+        title: 'Voice Assistant Transcript Ordering',
+        description:
+          'The voice assistant no longer appears to reply before you finish speaking. The wake phrase and your turns are now recorded in the correct order relative to the assistant\'s responses.',
+      },
+    ],
+  },
+  {
     version: '1.42.0',
     date: 'June 30, 2026',
     entries: [
