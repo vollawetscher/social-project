@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
 import { deleteRoom } from '@/lib/services/livekit'
+import { isVoiceAgentEnabledForUser } from '@/lib/services/voice-agent'
 
 /**
  * POST /api/calls/[id]/end
@@ -46,9 +47,14 @@ export async function POST(
       console.log('[Calls End] Call status set to ended:', call.id)
     }
 
-    // Clean up session for calls that never produced a recording
+    // Clean up session for calls that never produced a recording.
+    // Voice-agent calls intentionally have no batch egress — their session is
+    // finalized from live transcript lines by the room_finished webhook, so we
+    // must not delete it here (that caused a race where the transcript insert
+    // hit a foreign-key violation against the just-deleted session).
     const hasEgress = !!(call.track_a_egress_id || call.track_b_egress_id)
-    if (call.session_id && !hasEgress) {
+    const voiceAgentEnabled = await isVoiceAgentEnabledForUser(supabase, user.id)
+    if (call.session_id && !hasEgress && !voiceAgentEnabled) {
       const { data: session } = await supabase
         .from('sessions')
         .select('status')
