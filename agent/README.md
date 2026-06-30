@@ -24,7 +24,7 @@ ACTIVE
 
 - **Explicit dispatch:** Notissima dispatches the named agent only when `voice_agent_enabled` is true for the room owner.
 - **Owner binding:** `metadata.createdBy` or `calls.user_id` — never first participant in room.
-- **Room buffer:** all standard human participants are transcribed continuously while the agent job is in the room (cap: 10 participants).
+- **Room buffer:** standard web participants and SIP/PSTN participants are transcribed continuously while the agent job is in the room (cap: 10 human participants).
 - **No batch recording:** when voice agent is enabled, Notissima skips composite egress (see webhook).
 
 ## Setup

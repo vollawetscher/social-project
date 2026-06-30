@@ -23,7 +23,7 @@ export const changelog: ChangelogVersion[] = [
         category: 'fix',
         title: 'Voice Assistant Sessions Always Appear',
         description:
-          'Calls with the voice assistant now create a Notissima session even if no live transcript text is captured before the call ends.',
+          'Calls with the voice assistant now create a Notissima session even if no live transcript text is captured before the call ends, and outbound phone-call transcripts include the SIP participant.',
       },
     ],
   },

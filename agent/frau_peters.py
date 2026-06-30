@@ -138,7 +138,11 @@ async def run_wake_listener(
 
 
 def is_standard_human_participant(participant: rtc.RemoteParticipant) -> bool:
-    return participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD
+    sip_kind = getattr(rtc.ParticipantKind, "PARTICIPANT_KIND_SIP", 3)
+    return participant.kind in {
+        rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD,
+        sip_kind,
+    }
 
 
 def get_participant_label(participant: rtc.RemoteParticipant, config: VoiceAgentConfig) -> str:
