@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.42.0',
+    date: 'June 30, 2026',
+    entries: [
+      {
+        version: '1.42.0',
+        date: 'June 30, 2026',
+        category: 'feature',
+        title: 'Inbound Phone Calls to the Voice Assistant',
+        description:
+          'The voice assistant can now answer inbound phone calls. It recognizes the caller by number — a known Notissima user or a callback to a recent outbound call — and saves the conversation as a session and transcript.',
+      },
+    ],
+  },
+  {
     version: '1.41.5',
     date: 'June 30, 2026',
     entries: [

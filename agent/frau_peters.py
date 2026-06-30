@@ -3,6 +3,7 @@ import contextlib
 import logging
 import os
 import random
+import re
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -22,8 +23,11 @@ from livekit.plugins import noise_cancellation
 
 from config_loader import (
     VoiceAgentConfig,
+    create_inbound_call,
     insert_live_transcript_line,
+    load_inbound_voice_agent_config,
     load_voice_agent_config,
+    normalize_phone,
     phrase_matches,
     resolve_call_id,
 )
@@ -394,6 +398,185 @@ async def _wait_for_room_disconnect(room: rtc.Room) -> None:
         await asyncio.sleep(0.5)
 
 
+# ---------------------------------------------------------------------------
+# Inbound SIP (caller-as-owner / callback) support
+# ---------------------------------------------------------------------------
+
+
+class InboundReceptionistAgent(Agent):
+    """Active-on-join agent that answers inbound phone calls."""
+
+    def __init__(self, config: VoiceAgentConfig) -> None:
+        super().__init__(
+            instructions=(
+                f"You are {config.display_name}, a professional German-speaking phone assistant for Notissima. "
+                f"Your user-facing name is {config.display_name}. "
+                "You answered an inbound phone call. Speak naturally and helpfully in German. "
+                "Keep responses brief: one to three sentences unless asked for more. "
+                "Plain text only; no markdown, lists, emojis, or JSON. "
+                "Do not mention internal names such as Notissima internals, LiveKit, SIP, or dispatch rules."
+            )
+        )
+
+
+def _extract_sip_number(participant: rtc.RemoteParticipant) -> str | None:
+    attributes = getattr(participant, "attributes", None) or {}
+    for key in (
+        "sip.phoneNumber",
+        "sip.phone_number",
+        "sip.from_number",
+        "sip.fromUser",
+        "sip.from",
+    ):
+        value = attributes.get(key)
+        if value:
+            normalized = normalize_phone(value)
+            if normalized:
+                return normalized
+    identity = getattr(participant, "identity", "") or ""
+    match = re.search(r"\+?\d{6,15}", identity)
+    if match:
+        return normalize_phone(match.group(0))
+    return None
+
+
+async def wait_for_sip_caller(
+    room: rtc.Room,
+    timeout_s: float = 10.0,
+) -> tuple[rtc.RemoteParticipant, str] | None:
+    sip_kind = getattr(rtc.ParticipantKind, "PARTICIPANT_KIND_SIP", 3)
+    deadline = asyncio.get_event_loop().time() + timeout_s
+    while asyncio.get_event_loop().time() < deadline:
+        if room.connection_state != rtc.ConnectionState.CONN_CONNECTED:
+            return None
+        for participant in room.remote_participants.values():
+            if participant.kind != sip_kind:
+                continue
+            number = _extract_sip_number(participant)
+            if number:
+                return participant, number
+        await asyncio.sleep(0.3)
+    return None
+
+
+async def run_inbound_session(
+    ctx: JobContext,
+    config: VoiceAgentConfig,
+    sip_identity: str,
+    caller_label: str,
+) -> None:
+    """Answer an inbound phone call and converse until the caller hangs up."""
+    persisted_assistant_texts: set[str] = set()
+    session = AgentSession(
+        stt=inference.STT(model="deepgram/nova-3", language=config.language),
+        llm=inference.LLM(model="openai/gpt-4.1-mini"),
+        tts=inference.TTS(
+            model="cartesia/sonic-3",
+            voice=os.environ.get("CARTESIA_VOICE_ID", config.voice_id),
+            language=config.language,
+        ),
+    )
+
+    @session.on("user_input_transcribed")
+    def on_transcript(ev) -> None:
+        text = (ev.transcript or "").strip()
+        if not text or not ev.is_final:
+            return
+        logger.info("[inbound] Caller said: %s", text)
+        asyncio.create_task(
+            insert_live_transcript_line(config.call_id, f"participant:{sip_identity}", caller_label, text)
+        )
+
+    @session.on("conversation_item_added")
+    def on_conversation_item(ev) -> None:
+        item = getattr(ev, "item", None)
+        role = getattr(item, "role", "")
+        if role != "assistant":
+            return
+        content = getattr(item, "content", "")
+        if isinstance(content, list):
+            text = " ".join(str(part) for part in content if str(part).strip()).strip()
+        else:
+            text = str(content or "").strip()
+        if not text or text in persisted_assistant_texts:
+            return
+        persisted_assistant_texts.add(text)
+        logger.info("[inbound] Assistant said: %s", text)
+        asyncio.create_task(
+            insert_live_transcript_line(config.call_id, "agent", config.display_name, text)
+        )
+
+    room_options = room_io.RoomOptions(
+        audio_input=room_io.AudioInputOptions(
+            noise_cancellation=noise_cancellation.BVC(),
+        ),
+        participant_kinds=[getattr(rtc.ParticipantKind, "PARTICIPANT_KIND_SIP", 3)],
+        participant_identity=sip_identity,
+    )
+
+    await session.start(
+        agent=InboundReceptionistAgent(config),
+        room=ctx.room,
+        room_options=room_options,
+    )
+
+    consent_greeting = (
+        f"Guten Tag, hier ist {config.display_name}. "
+        "Dieses Gespräch wird zu Dokumentationszwecken transkribiert. "
+        f"{config.greeting}"
+    )
+    persisted_assistant_texts.add(consent_greeting)
+    await insert_live_transcript_line(config.call_id, "agent", config.display_name, consent_greeting)
+    await session.generate_reply(
+        instructions=f"Respond with exactly: {consent_greeting}",
+        allow_interruptions=False,
+    )
+
+    await _wait_for_room_disconnect(ctx.room)
+    with contextlib.suppress(Exception):
+        await session.aclose()
+
+
+async def run_inbound_call(ctx: JobContext) -> bool:
+    """Handle an inbound SIP call. Returns True if handled as inbound."""
+    caller = await wait_for_sip_caller(ctx.room)
+    if not caller:
+        logger.info("Inbound: no SIP caller detected in room %s", ctx.room.name)
+        return False
+
+    participant, caller_number = caller
+    sip_identity = participant.identity
+    logger.info("Inbound call from %s (identity=%s)", caller_number, sip_identity)
+
+    config = await load_inbound_voice_agent_config(caller_number)
+    caller_label = config.caller_number or caller_number or "Anrufer"
+
+    if not config.owner_user_id:
+        # Tier 3: unknown caller. Politely answer and end without persistence.
+        logger.info("Inbound caller unknown — ending politely: %s", caller_number)
+        config.call_id = None
+        await run_inbound_session(ctx, config, sip_identity, caller_label)
+        return True
+
+    config.call_id = await create_inbound_call(
+        ctx.room.name,
+        config.owner_user_id,
+        config.caller_number,
+        sip_identity,
+    )
+    if not config.call_id:
+        logger.warning("Inbound: could not create call row; transcript will not persist")
+
+    logger.info(
+        "Inbound session ready: owner=%s caller=%s call=%s",
+        config.owner_user_id,
+        config.caller_number,
+        config.call_id,
+    )
+    await run_inbound_session(ctx, config, sip_identity, caller_label)
+    return True
+
+
 server = AgentServer(shutdown_process_timeout=60.0)
 
 
@@ -406,6 +589,22 @@ async def entrypoint(ctx: JobContext) -> None:
         ctx.room.metadata,
         getattr(ctx.job, "metadata", None),
     )
+
+    # Inbound rooms (LiveKit SIP dispatch) have no Notissima owner in the room
+    # metadata and no pre-existing calls row, so the owner cannot be resolved.
+    # Treat these as inbound phone calls and resolve the owner from caller ID.
+    if not config.owner_user_id:
+        handled = await run_inbound_call(ctx)
+        if handled:
+            with contextlib.suppress(Exception):
+                await ctx.room.disconnect()
+            ctx.shutdown("inbound call complete")
+            return
+        logger.warning("Could not resolve room owner and no inbound caller — exiting")
+        await ctx.room.disconnect()
+        ctx.shutdown("owner unresolved")
+        return
+
     if not config.enabled:
         logger.info(
             "Voice agent disabled for owner %s in room %s — disconnecting",
@@ -414,11 +613,6 @@ async def entrypoint(ctx: JobContext) -> None:
         )
         await ctx.room.disconnect()
         ctx.shutdown("voice agent disabled")
-        return
-    if not config.owner_user_id:
-        logger.warning("Could not resolve room owner — exiting")
-        await ctx.room.disconnect()
-        ctx.shutdown("owner unresolved")
         return
 
     config.owner_identity = config.owner_user_id
