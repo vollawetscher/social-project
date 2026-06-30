@@ -72,11 +72,6 @@ async function finalizeVoiceAgentTranscript(supabase: any, call: any): Promise<s
     }))
     .filter((line: LiveTranscriptLine) => line.text)
 
-  if (liveLines.length === 0) {
-    console.log('[LiveKit Webhook] Voice agent call ended without live transcript lines:', call.id)
-    return call.session_id || null
-  }
-
   let sessionId = call.session_id as string | null
   if (!sessionId) {
     const callMode = call.call_mode
@@ -108,6 +103,15 @@ async function finalizeVoiceAgentTranscript(supabase: any, call: any): Promise<s
     }
     sessionId = newSession.id
     await supabase.from('calls').update({ session_id: sessionId }).eq('id', call.id)
+  }
+
+  if (liveLines.length === 0) {
+    console.log('[LiveKit Webhook] Voice agent call ended without live transcript lines:', call.id, 'session:', sessionId)
+    await supabase
+      .from('sessions')
+      .update({ status: 'done', duration_sec: 0, language: 'de', last_error: '' })
+      .eq('id', sessionId)
+    return sessionId
   }
 
   const { data: existingTranscript } = await supabase
