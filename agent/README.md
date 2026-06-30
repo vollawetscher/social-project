@@ -24,6 +24,7 @@ ACTIVE
 
 - **Explicit dispatch:** Notissima dispatches the named agent only when `voice_agent_enabled` is true for the room owner.
 - **Owner binding:** `metadata.createdBy` or `calls.user_id` — never first participant in room.
+- **Inbound SIP:** rooms with no Notissima owner (LiveKit SIP dispatch) are treated as inbound calls. The owner is resolved from the caller's number — Tier 1: a Notissima user (`profiles.phone_number`), Tier 2: the most recent outbound call to that number. The agent answers active-on-join with a transcription consent line, creates a `pstn_inbound` calls row, and the webhook finalizes the transcript.
 - **Room buffer:** standard web participants and SIP/PSTN participants are transcribed continuously while the agent job is in the room (cap: 10 human participants).
 - **No batch recording:** when voice agent is enabled, Notissima skips composite egress (see webhook).
 

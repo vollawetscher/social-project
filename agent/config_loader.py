@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -28,6 +30,8 @@ class VoiceAgentConfig:
     language: str = "de"
     voice_id: str = DEFAULT_VOICE_ID
     call_id: str | None = None
+    inbound: bool = False
+    caller_number: str | None = None
 
 
 def _normalize_phrase(text: str) -> str:
@@ -227,7 +231,7 @@ async def insert_live_transcript_line(
                     "speaker_label": speaker_label,
                     "text": value,
                     "is_final": True,
-                    "timestamp_ms": int(__import__("time").time() * 1000),
+                    "timestamp_ms": int(time.time() * 1000),
                 }
             )
             .execute()
@@ -236,3 +240,162 @@ async def insert_live_transcript_line(
             logger.error("Failed to store live transcript line: %s", result.error)
     except Exception as exc:
         logger.error("Failed to store live transcript line: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Inbound SIP support
+# ---------------------------------------------------------------------------
+
+
+def normalize_phone(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    cleaned = re.sub(r"[^\d+]", "", str(raw))
+    if cleaned.startswith("00"):
+        cleaned = "+" + cleaned[2:]
+    if not cleaned.startswith("+"):
+        cleaned = "+" + cleaned
+    return cleaned if re.match(r"^\+\d{6,15}$", cleaned) else None
+
+
+async def _load_profile_voice_config(owner_user_id: str) -> dict[str, Any] | None:
+    client = _supabase_client()
+    if not client:
+        return None
+    try:
+        result = (
+            client.table("profiles")
+            .select(
+                "voice_agent_enabled, voice_agent_display_name, voice_agent_language, "
+                "voice_agent_voice_id, default_recording_language"
+            )
+            .eq("id", owner_user_id)
+            .maybe_single()
+            .execute()
+        )
+        return result.data or {}
+    except Exception as exc:
+        logger.error("Failed to load profile for inbound owner %s: %s", owner_user_id, exc)
+        return None
+
+
+async def resolve_inbound_owner(caller_number: str) -> str | None:
+    """Resolve the Notissima owner for an inbound caller.
+
+    Tier 1: the caller is a Notissima user (profiles.phone_number match).
+    Tier 2: the caller is someone a Notissima user dialed (most recent outbound call).
+    """
+    client = _supabase_client()
+    if not client or not caller_number:
+        return None
+
+    try:
+        tier1 = (
+            client.table("profiles")
+            .select("id")
+            .eq("phone_number", caller_number)
+            .maybe_single()
+            .execute()
+        )
+        if tier1.data and tier1.data.get("id"):
+            logger.info("Inbound caller matched Notissima user (tier 1): %s", caller_number)
+            return str(tier1.data["id"])
+    except Exception as exc:
+        logger.warning("Tier 1 inbound owner lookup failed: %s", exc)
+
+    try:
+        tier2 = (
+            client.table("calls")
+            .select("user_id, created_at")
+            .eq("phone_number", caller_number)
+            .eq("call_type", "pstn_outbound")
+            .order("created_at", desc=True)
+            .limit(1)
+            .maybe_single()
+            .execute()
+        )
+        if tier2.data and tier2.data.get("user_id"):
+            logger.info("Inbound caller matched prior outbound call (tier 2): %s", caller_number)
+            return str(tier2.data["user_id"])
+    except Exception as exc:
+        logger.warning("Tier 2 inbound owner lookup failed: %s", exc)
+
+    return None
+
+
+async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAgentConfig:
+    config = VoiceAgentConfig(inbound=True, caller_number=caller_number)
+    normalized = normalize_phone(caller_number)
+    config.caller_number = normalized or caller_number
+
+    if not normalized:
+        logger.warning("Inbound call with unrecognized caller number: %r", caller_number)
+        return config
+
+    owner_user_id = await resolve_inbound_owner(normalized)
+    if not owner_user_id:
+        logger.info("Inbound caller is unknown (tier 3): %s", normalized)
+        return config
+
+    config.owner_user_id = owner_user_id
+    config.owner_identity = owner_user_id
+
+    row = await _load_profile_voice_config(owner_user_id) or {}
+    language = str(row.get("voice_agent_language") or row.get("default_recording_language") or "de").strip()
+    config.enabled = True
+    config.display_name = str(row.get("voice_agent_display_name") or "Frau Peters").strip() or "Frau Peters"
+    config.language = "de" if language in ("auto", "") else language
+    config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
+    config.greeting = "Wie kann ich Ihnen helfen?"
+    logger.info(
+        "Loaded inbound config: owner=%s caller=%s display=%s language=%s voice=%s",
+        config.owner_user_id,
+        config.caller_number,
+        config.display_name,
+        config.language,
+        config.voice_id,
+    )
+    return config
+
+
+async def create_inbound_call(
+    room_name: str,
+    owner_user_id: str,
+    caller_number: str | None,
+    sip_identity: str | None,
+) -> str | None:
+    """Create a pstn_inbound calls row so the webhook can finalize the transcript."""
+    client = _supabase_client()
+    if not client:
+        return None
+
+    existing = await resolve_call_id(room_name)
+    if existing:
+        return existing
+
+    try:
+        result = (
+            client.table("calls")
+            .insert(
+                {
+                    "room_name": room_name,
+                    "user_id": owner_user_id,
+                    "call_type": "pstn_inbound",
+                    "call_mode": "audio",
+                    "status": "active",
+                    "phone_number": caller_number,
+                    "participant_b_identity": sip_identity,
+                    "started_at": "now()",
+                    "room_created_at_ms": int(time.time() * 1000),
+                }
+            )
+            .select("id")
+            .single()
+            .execute()
+        )
+        if result.data and result.data.get("id"):
+            return str(result.data["id"])
+    except Exception as exc:
+        logger.error("Failed to create inbound call row for room %s: %s", room_name, exc)
+        return await resolve_call_id(room_name)
+    return None

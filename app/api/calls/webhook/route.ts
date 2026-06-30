@@ -239,6 +239,14 @@ export async function POST(request: Request) {
 
         if (!call) break
 
+        // Inbound SIP calls are owned end-to-end by the voice agent: it creates
+        // the calls row, transcribes both sides, and the room_finished webhook
+        // finalizes the transcript. No batch egress is ever started here.
+        if (call.call_type === 'pstn_inbound') {
+          console.log('[LiveKit Webhook] Inbound voice-agent call — skipping egress:', call.id)
+          break
+        }
+
         const isParticipantB =
           identity !== call.participant_a_identity &&
           (!call.participant_b_identity || identity === call.participant_b_identity)
@@ -418,9 +426,12 @@ export async function POST(request: Request) {
 
         const hasEgress = !!(call.track_a_egress_id || call.track_b_egress_id)
         const wasNeverActive = call.status === 'invited' || call.status === 'waiting'
-        const voiceAgentEnabled = call.user_id
+        const isInbound = call.call_type === 'pstn_inbound'
+        // Inbound voice-agent calls are finalized from live transcript lines the
+        // same way as outbound voice-agent calls, regardless of the owner flag.
+        const voiceAgentEnabled = isInbound || (call.user_id
           ? await isVoiceAgentEnabledForUser(supabase, call.user_id)
-          : false
+          : false)
 
         if (call.status === 'active' || call.status === 'waiting' || call.status === 'invited') {
           const nextStatus = wasNeverActive ? 'missed' : 'ended'
