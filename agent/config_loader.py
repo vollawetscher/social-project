@@ -14,6 +14,15 @@ logger = logging.getLogger("voice-agent")
 
 DEFAULT_ACK_PHRASES = ["Gerne!", "Bitte sehr.", "Gern geschehen."]
 DEFAULT_VOICE_ID = "38aabb6a-f52b-4fb0-a3d1-988518f4dc06"
+DEFAULT_SPEECH_SPEED = 1.0
+
+
+def normalize_speech_speed(value: Any) -> float:
+    try:
+        speed = float(value)
+    except (TypeError, ValueError):
+        return DEFAULT_SPEECH_SPEED
+    return max(0.6, min(2.0, speed))
 
 
 @dataclass
@@ -29,6 +38,7 @@ class VoiceAgentConfig:
     greeting: str = "Was kann ich für Sie tun?"
     language: str = "de"
     voice_id: str = DEFAULT_VOICE_ID
+    speech_speed: float = 1.0
     call_id: str | None = None
     inbound: bool = False
     caller_number: str | None = None
@@ -168,7 +178,7 @@ async def load_voice_agent_config(
             .select(
                 "voice_agent_enabled, voice_agent_display_name, voice_agent_wake_word, "
                 "voice_agent_wake_sounds_like, voice_agent_dismiss_phrase, voice_agent_ack_phrases, "
-                "voice_agent_language, voice_agent_voice_id, default_recording_language"
+                "voice_agent_language, voice_agent_voice_id, voice_agent_speech_speed, default_recording_language"
             )
             .eq("id", owner_user_id)
             .maybe_single()
@@ -193,15 +203,17 @@ async def load_voice_agent_config(
     config.ack_phrases = [str(v).strip() for v in ack_values if str(v).strip()] or list(DEFAULT_ACK_PHRASES)
     config.language = "de" if language == "auto" else language
     config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
+    config.speech_speed = normalize_speech_speed(row.get("voice_agent_speech_speed"))
     config.greeting = "Was kann ich für Sie tun?"
     logger.info(
-        "Loaded voice agent config: owner=%s call=%s enabled=%s wake_word=%r language=%s voice=%s",
+        "Loaded voice agent config: owner=%s call=%s enabled=%s wake_word=%r language=%s voice=%s speed=%s",
         config.owner_user_id,
         config.call_id,
         config.enabled,
         config.wake_word,
         config.language,
         config.voice_id,
+        config.speech_speed,
     )
     return config
 
@@ -267,7 +279,7 @@ async def _load_profile_voice_config(owner_user_id: str) -> dict[str, Any] | Non
             client.table("profiles")
             .select(
                 "voice_agent_enabled, voice_agent_display_name, voice_agent_language, "
-                "voice_agent_voice_id, default_recording_language"
+                "voice_agent_voice_id, voice_agent_speech_speed, default_recording_language"
             )
             .eq("id", owner_user_id)
             .maybe_single()
@@ -346,14 +358,16 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
     config.display_name = str(row.get("voice_agent_display_name") or "Frau Peters").strip() or "Frau Peters"
     config.language = "de" if language in ("auto", "") else language
     config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
+    config.speech_speed = normalize_speech_speed(row.get("voice_agent_speech_speed"))
     config.greeting = "Wie kann ich Ihnen helfen?"
     logger.info(
-        "Loaded inbound config: owner=%s caller=%s display=%s language=%s voice=%s",
+        "Loaded inbound config: owner=%s caller=%s display=%s language=%s voice=%s speed=%s",
         config.owner_user_id,
         config.caller_number,
         config.display_name,
         config.language,
         config.voice_id,
+        config.speech_speed,
     )
     return config
 

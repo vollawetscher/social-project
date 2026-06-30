@@ -34,6 +34,7 @@ export interface UserProfile {
   voice_agent_ack_phrases?: string[]
   voice_agent_language?: string | null
   voice_agent_voice_id?: string
+  voice_agent_speech_speed?: number
 
   // Trial / onboarding
   onboarding_expires_at?: string | null

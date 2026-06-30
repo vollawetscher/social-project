@@ -271,6 +271,7 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
             model="cartesia/sonic-3",
             voice=os.environ.get("CARTESIA_VOICE_ID", config.voice_id),
             language=config.language,
+            extra_kwargs={"speed": config.speech_speed},
         ),
     )
 
@@ -438,6 +439,7 @@ async def run_inbound_session(
             model="cartesia/sonic-3",
             voice=os.environ.get("CARTESIA_VOICE_ID", config.voice_id),
             language=config.language,
+            extra_kwargs={"speed": config.speech_speed},
         ),
     )
 
