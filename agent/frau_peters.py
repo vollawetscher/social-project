@@ -76,71 +76,6 @@ async def wait_for_call_id(room_name: str, timeout_s: float = 10.0) -> str | Non
     return None
 
 
-async def wait_for_owner_audio_track(room: rtc.Room, owner_identity: str) -> rtc.AudioTrack:
-    while room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
-        participant = room.remote_participants.get(owner_identity)
-        if participant:
-            for publication in participant.track_publications.values():
-                if publication.kind != rtc.TrackKind.KIND_AUDIO:
-                    continue
-                if not publication.subscribed:
-                    publication.set_subscribed(True)
-                track = publication.track
-                if track is not None:
-                    return track
-        await asyncio.sleep(0.25)
-    raise RuntimeError("Room disconnected before owner audio was available")
-
-
-async def run_wake_listener(
-    room: rtc.Room,
-    owner_identity: str,
-    wake_phrases: list[str],
-    language: str,
-    wake_detected: asyncio.Event,
-    stop_event: asyncio.Event,
-) -> None:
-    """Standalone STT on owner mic only — no AgentSession while sleeping."""
-    track = await wait_for_owner_audio_track(room, owner_identity)
-    audio_stream = rtc.AudioStream(track)
-    stt_engine = inference.STT(model="deepgram/nova-3", language=language)
-    stt_stream = stt_engine.stream()
-
-    async def pump_audio() -> None:
-        try:
-            async for event in audio_stream:
-                if stop_event.is_set():
-                    break
-                stt_stream.push_frame(event.frame)
-        finally:
-            with contextlib.suppress(Exception):
-                stt_stream.end_input()
-
-    pump_task = asyncio.create_task(pump_audio())
-    try:
-        async for event in stt_stream:
-            if stop_event.is_set():
-                break
-            if event.type != stt.SpeechEventType.FINAL_TRANSCRIPT:
-                continue
-            text = event.alternatives[0].text if event.alternatives else ""
-            text = (text or "").strip()
-            if not text:
-                continue
-            logger.info("[sleep] Owner said: %s", text)
-            if phrase_matches(text, wake_phrases):
-                logger.info("Wake phrase detected")
-                wake_detected.set()
-                return
-    finally:
-        stop_event.set()
-        pump_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await pump_task
-        with contextlib.suppress(Exception):
-            await stt_engine.aclose()
-
-
 def is_standard_human_participant(participant: rtc.RemoteParticipant) -> bool:
     sip_kind = getattr(rtc.ParticipantKind, "PARTICIPANT_KIND_SIP", 3)
     return participant.kind in {
@@ -160,8 +95,16 @@ async def transcribe_participant_track(
     participant: rtc.RemoteParticipant,
     config: VoiceAgentConfig,
     stop_event: asyncio.Event,
+    is_owner: bool = False,
+    wake_event: asyncio.Event | None = None,
+    active_flag: asyncio.Event | None = None,
 ) -> None:
-    """Continuously transcribe one participant audio track into the room buffer."""
+    """Continuously transcribe one participant audio track into the room buffer.
+
+    For the owner track this is also the single source of wake-word detection,
+    so the wake phrase is recorded in the transcript before the agent greets —
+    keeping the stored conversation in the right order.
+    """
     audio_stream = rtc.AudioStream(track)
     stt_engine = inference.STT(model="deepgram/nova-3", language=config.language)
     stt_stream = stt_engine.stream()
@@ -202,6 +145,14 @@ async def transcribe_participant_track(
                 speaker_label,
                 text,
             )
+            if (
+                is_owner
+                and wake_event is not None
+                and (active_flag is None or not active_flag.is_set())
+                and phrase_matches(text, config.wake_phrases)
+            ):
+                logger.info("Wake phrase detected (owner buffer stream)")
+                wake_event.set()
     except asyncio.CancelledError:
         raise
     except Exception:
@@ -220,6 +171,8 @@ async def run_room_transcript_buffer(
     room: rtc.Room,
     config: VoiceAgentConfig,
     stop_event: asyncio.Event,
+    wake_event: asyncio.Event | None = None,
+    active_flag: asyncio.Event | None = None,
 ) -> None:
     """Run per-track STT for up to MAX_BUFFERED_PARTICIPANTS human participants."""
     tasks: dict[str, TranscriptBufferTask] = {}
@@ -265,8 +218,19 @@ async def run_room_transcript_buffer(
                     continue
 
                 participant_stop = asyncio.Event()
+                is_owner = bool(
+                    config.owner_identity and participant.identity == config.owner_identity
+                )
                 task = asyncio.create_task(
-                    transcribe_participant_track(track, participant, config, participant_stop)
+                    transcribe_participant_track(
+                        track,
+                        participant,
+                        config,
+                        participant_stop,
+                        is_owner=is_owner,
+                        wake_event=wake_event,
+                        active_flag=active_flag,
+                    )
                 )
                 tasks[track_sid] = TranscriptBufferTask(
                     participant_identity=participant.identity,
@@ -628,55 +592,40 @@ async def entrypoint(ctx: JobContext) -> None:
         config.call_id,
     )
 
+    # The room transcript buffer is the single owner STT stream and also drives
+    # wake-word detection, so the wake phrase is persisted before the agent
+    # greets. `active_flag` suppresses wake detection while a session is active.
     buffer_stop = asyncio.Event()
-    buffer_task = asyncio.create_task(run_room_transcript_buffer(ctx.room, config, buffer_stop))
+    wake_event = asyncio.Event()
+    active_flag = asyncio.Event()
+    buffer_task = asyncio.create_task(
+        run_room_transcript_buffer(ctx.room, config, buffer_stop, wake_event, active_flag)
+    )
     try:
         while ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
-            wake_detected = asyncio.Event()
-            stop_listener = asyncio.Event()
-            wake_listener = asyncio.create_task(
-                run_wake_listener(
-                    ctx.room,
-                    config.owner_identity,
-                    config.wake_phrases,
-                    config.language,
-                    wake_detected,
-                    stop_listener,
-                )
+            wake_event.clear()
+            wake_wait = asyncio.create_task(wake_event.wait())
+            disconnect_wait = asyncio.create_task(_wait_for_room_disconnect(ctx.room))
+            await asyncio.wait(
+                {wake_wait, disconnect_wait},
+                return_when=asyncio.FIRST_COMPLETED,
             )
-            wake_wait = asyncio.create_task(wake_detected.wait())
+            wake_wait.cancel()
+            disconnect_wait.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await wake_wait
+                await disconnect_wait
 
-            try:
-                finished, _pending = await asyncio.wait(
-                    {wake_wait, wake_listener},
-                    return_when=asyncio.FIRST_COMPLETED,
-                )
-                if wake_listener in finished and wake_listener.exception():
-                    raise wake_listener.exception()  # type: ignore[misc]
-            except Exception:
-                logger.exception("Wake listener failed")
-                stop_listener.set()
-                wake_listener.cancel()
-                wake_wait.cancel()
-                if ctx.room.connection_state != rtc.ConnectionState.CONN_CONNECTED:
-                    break
-                await asyncio.sleep(1)
-                continue
-            finally:
-                stop_listener.set()
-                wake_listener.cancel()
-                wake_wait.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await wake_listener
-                    await wake_wait
-
-            if not wake_detected.is_set() or ctx.room.connection_state != rtc.ConnectionState.CONN_CONNECTED:
+            if not wake_event.is_set() or ctx.room.connection_state != rtc.ConnectionState.CONN_CONNECTED:
                 break
 
+            active_flag.set()
             try:
                 await run_active_session(ctx, config)
             except Exception:
                 logger.exception("Active session failed")
+            finally:
+                active_flag.clear()
 
             await asyncio.sleep(0.2)
     finally:
