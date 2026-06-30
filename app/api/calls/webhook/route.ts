@@ -73,6 +73,22 @@ async function finalizeVoiceAgentTranscript(supabase: any, call: any): Promise<s
     .filter((line: LiveTranscriptLine) => line.text)
 
   let sessionId = call.session_id as string | null
+
+  // The session may have been deleted by a concurrent call-end cleanup. Treat a
+  // dangling session_id the same as a missing one so we always end up with a
+  // valid row before inserting the transcript.
+  if (sessionId) {
+    const { data: existingSession } = await supabase
+      .from('sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .maybeSingle()
+    if (!existingSession) {
+      console.log('[LiveKit Webhook] Voice agent session was removed, recreating:', sessionId)
+      sessionId = null
+    }
+  }
+
   if (!sessionId) {
     const callMode = call.call_mode
     const inputHint = call.call_type === 'pstn_outbound' ? 'phone_call' : callMode === 'video' ? 'video_call' : 'phone_call'

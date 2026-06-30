@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.41.5',
+    date: 'June 30, 2026',
+    entries: [
+      {
+        version: '1.41.5',
+        date: 'June 30, 2026',
+        category: 'fix',
+        title: 'Voice Assistant Call Sessions No Longer Lost on Hang-Up',
+        description:
+          'Ending a voice-assistant call no longer deletes its session before the transcript is saved, so the session and full transcript reliably appear in Notissima.',
+      },
+    ],
+  },
+  {
     version: '1.41.4',
     date: 'June 30, 2026',
     entries: [
