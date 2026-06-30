@@ -35,14 +35,13 @@ export function normalizeSpeechSpeed(value: unknown): number {
 }
 
 /**
- * The agent's TTS (LiveKit Cartesia plugin) uses a 0.6–2.0 speed scale where
- * 1.0 is normal. The Cartesia REST /tts/bytes API used for voice previews uses
- * a roughly -1.0..1.0 scale where 0.0 is normal. Convert so the preview matches
- * what the caller will hear.
+ * Cartesia REST /tts/bytes (sonic-3) accepts `generation_config.speed` between
+ * 0.6 and 1.5, where 1.0 is normal — the same direction as our stored speed.
+ * Clamp the user's speed into that range for the voice preview.
  */
 export function speechSpeedToCartesiaRest(speed: number): number {
   const normalized = normalizeSpeechSpeed(speed)
-  return Math.max(-1, Math.min(1, Math.round((normalized - 1.0) * 100) / 100))
+  return Math.max(0.6, Math.min(1.5, Math.round(normalized * 100) / 100))
 }
 
 export const VOICE_AGENT_VOICE_OPTIONS = [
