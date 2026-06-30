@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.42.3',
+    date: 'June 30, 2026',
+    entries: [
+      {
+        version: '1.42.3',
+        date: 'June 30, 2026',
+        category: 'improvement',
+        title: 'Inbound Calls Greeted by Name',
+        description:
+          'When an inbound caller is recognized — a known Notissima user or a contact you recently called — the voice assistant now greets and addresses them by name.',
+      },
+    ],
+  },
+  {
     version: '1.42.2',
     date: 'June 30, 2026',
     entries: [

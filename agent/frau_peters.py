@@ -372,11 +372,17 @@ class InboundReceptionistAgent(Agent):
     """Active-on-join agent that answers inbound phone calls."""
 
     def __init__(self, config: VoiceAgentConfig) -> None:
+        caller_line = (
+            f"The caller's name is {config.caller_name}; address them politely by name when natural. "
+            if config.caller_name
+            else ""
+        )
         super().__init__(
             instructions=(
                 f"You are {config.display_name}, a professional German-speaking phone assistant for Notissima. "
                 f"Your user-facing name is {config.display_name}. "
                 "You answered an inbound phone call. Speak naturally and helpfully in German. "
+                f"{caller_line}"
                 "Keep responses brief: one to three sentences unless asked for more. "
                 "Plain text only; no markdown, lists, emojis, or JSON. "
                 "Do not mention internal names such as Notissima internals, LiveKit, SIP, or dispatch rules."
@@ -486,8 +492,9 @@ async def run_inbound_session(
         room_options=room_options,
     )
 
+    salutation = f"Guten Tag {config.caller_name}" if config.caller_name else "Guten Tag"
     consent_greeting = (
-        f"Guten Tag, hier ist {config.display_name}. "
+        f"{salutation}, hier ist {config.display_name}. "
         "Dieses Gespräch wird zu Dokumentationszwecken transkribiert. "
         f"{config.greeting}"
     )
