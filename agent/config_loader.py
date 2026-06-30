@@ -42,6 +42,7 @@ class VoiceAgentConfig:
     call_id: str | None = None
     inbound: bool = False
     caller_number: str | None = None
+    caller_name: str | None = None
 
 
 def _normalize_phrase(text: str) -> str:
@@ -291,34 +292,48 @@ async def _load_profile_voice_config(owner_user_id: str) -> dict[str, Any] | Non
         return None
 
 
-async def resolve_inbound_owner(caller_number: str) -> str | None:
-    """Resolve the Notissima owner for an inbound caller.
+def _clean_caller_name(raw: Any) -> str | None:
+    """Return a usable first/display name, ignoring blank or number-only labels."""
+    value = str(raw or "").strip()
+    if not value:
+        return None
+    # Ignore labels that are just a phone number / digits.
+    if not re.search(r"[A-Za-zÀ-ÿ]", value):
+        return None
+    return value
 
-    Tier 1: the caller is a Notissima user (profiles.phone_number match).
-    Tier 2: the caller is someone a Notissima user dialed (most recent outbound call).
+
+async def resolve_inbound_owner(caller_number: str) -> tuple[str | None, str | None]:
+    """Resolve the Notissima owner and the caller's name for an inbound caller.
+
+    Tier 1: the caller is a Notissima user (profiles.phone_number match) — name is
+            their profile display name.
+    Tier 2: the caller is someone a Notissima user dialed (most recent outbound
+            call) — name is the stored contact name from that call.
+    Returns (owner_user_id, caller_name).
     """
     client = _supabase_client()
     if not client or not caller_number:
-        return None
+        return None, None
 
     try:
         tier1 = (
             client.table("profiles")
-            .select("id")
+            .select("id, display_name")
             .eq("phone_number", caller_number)
             .maybe_single()
             .execute()
         )
         if tier1.data and tier1.data.get("id"):
             logger.info("Inbound caller matched Notissima user (tier 1): %s", caller_number)
-            return str(tier1.data["id"])
+            return str(tier1.data["id"]), _clean_caller_name(tier1.data.get("display_name"))
     except Exception as exc:
         logger.warning("Tier 1 inbound owner lookup failed: %s", exc)
 
     try:
         tier2 = (
             client.table("calls")
-            .select("user_id, created_at")
+            .select("user_id, contact_name, created_at")
             .eq("phone_number", caller_number)
             .eq("call_type", "pstn_outbound")
             .order("created_at", desc=True)
@@ -328,11 +343,11 @@ async def resolve_inbound_owner(caller_number: str) -> str | None:
         )
         if tier2.data and tier2.data.get("user_id"):
             logger.info("Inbound caller matched prior outbound call (tier 2): %s", caller_number)
-            return str(tier2.data["user_id"])
+            return str(tier2.data["user_id"]), _clean_caller_name(tier2.data.get("contact_name"))
     except Exception as exc:
         logger.warning("Tier 2 inbound owner lookup failed: %s", exc)
 
-    return None
+    return None, None
 
 
 async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAgentConfig:
@@ -344,13 +359,14 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
         logger.warning("Inbound call with unrecognized caller number: %r", caller_number)
         return config
 
-    owner_user_id = await resolve_inbound_owner(normalized)
+    owner_user_id, caller_name = await resolve_inbound_owner(normalized)
     if not owner_user_id:
         logger.info("Inbound caller is unknown (tier 3): %s", normalized)
         return config
 
     config.owner_user_id = owner_user_id
     config.owner_identity = owner_user_id
+    config.caller_name = caller_name
 
     row = await _load_profile_voice_config(owner_user_id) or {}
     language = str(row.get("voice_agent_language") or row.get("default_recording_language") or "de").strip()
@@ -361,9 +377,10 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
     config.speech_speed = normalize_speech_speed(row.get("voice_agent_speech_speed"))
     config.greeting = "Wie kann ich Ihnen helfen?"
     logger.info(
-        "Loaded inbound config: owner=%s caller=%s display=%s language=%s voice=%s speed=%s",
+        "Loaded inbound config: owner=%s caller=%s caller_name=%s display=%s language=%s voice=%s speed=%s",
         config.owner_user_id,
         config.caller_number,
+        config.caller_name,
         config.display_name,
         config.language,
         config.voice_id,
