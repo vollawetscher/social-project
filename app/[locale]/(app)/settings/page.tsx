@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useTranslations } from "next-intl"
 import { useRouter } from "@/i18n/navigation"
 import {
@@ -24,6 +24,7 @@ import {
   Phone,
   Video,
   Mic,
+  Volume2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -81,6 +82,8 @@ export default function SettingsPage() {
   const [voiceAgentDismissPhrase, setVoiceAgentDismissPhrase] = useState("Danke, Frau Peters")
   const [voiceAgentVoiceId, setVoiceAgentVoiceId] = useState(DEFAULT_VOICE_AGENT_VOICE_ID)
   const [voiceAgentSpeechSpeed, setVoiceAgentSpeechSpeed] = useState(DEFAULT_VOICE_AGENT_SPEECH_SPEED)
+  const [voicePreviewLoading, setVoicePreviewLoading] = useState(false)
+  const voicePreviewAudioRef = useRef<HTMLAudioElement | null>(null)
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [changingPassword, setChangingPassword] = useState(false)
@@ -341,6 +344,36 @@ export default function SettingsPage() {
   }, [profile?.role])
 
   // Save profile changes
+  const handlePreviewVoice = async () => {
+    if (voicePreviewLoading) return
+    setVoicePreviewLoading(true)
+    try {
+      const res = await fetch('/api/voice-agent/voice-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voiceId: voiceAgentVoiceId, speed: voiceAgentSpeechSpeed }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Preview failed')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      if (voicePreviewAudioRef.current) {
+        voicePreviewAudioRef.current.pause()
+      }
+      const audio = new Audio(url)
+      voicePreviewAudioRef.current = audio
+      audio.onended = () => URL.revokeObjectURL(url)
+      await audio.play()
+    } catch (error) {
+      console.error('Error previewing voice:', error)
+      toast.error(t('voiceAgentPreviewFailed'))
+    } finally {
+      setVoicePreviewLoading(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!user) return
 
@@ -662,6 +695,21 @@ export default function SettingsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePreviewVoice}
+                    disabled={voicePreviewLoading}
+                  >
+                    {voicePreviewLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Volume2 className="h-4 w-4 mr-2" />
+                    )}
+                    {t('voiceAgentPreview')}
+                  </Button>
                 </div>
                 <Alert>
                   <Info className="h-4 w-4" />

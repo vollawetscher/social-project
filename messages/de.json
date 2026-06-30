@@ -1015,6 +1015,8 @@
     "voiceAgentVoiceHint": "Wählen Sie eine geprüfte deutsche Stimme für den Assistenten.",
     "voiceAgentSpeed": "Sprechgeschwindigkeit",
     "voiceAgentSpeedHint": "Wie schnell der Assistent spricht.",
+    "voiceAgentPreview": "Beispiel anhören",
+    "voiceAgentPreviewFailed": "Stimmprobe konnte nicht abgespielt werden",
     "voiceAgentListening": "hört zu",
     "voiceAgentSpeaking": "spricht",
     "voiceAgentRecordingNoteTitle": "Live-Transkript statt Audioaufnahme",

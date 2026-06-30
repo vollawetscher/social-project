@@ -1016,6 +1016,8 @@
     "voiceAgentVoiceHint": "Choose a curated German voice for the assistant.",
     "voiceAgentSpeed": "Speaking speed",
     "voiceAgentSpeedHint": "How fast the assistant speaks.",
+    "voiceAgentPreview": "Listen to sample",
+    "voiceAgentPreviewFailed": "Could not play voice sample",
     "voiceAgentListening": "listening",
     "voiceAgentSpeaking": "speaking",
     "voiceAgentRecordingNoteTitle": "Live transcript instead of audio recording",
