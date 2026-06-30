@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { isKnownVoiceAgentVoiceId } from '@/lib/services/voice-agent'
+import {
+  isKnownVoiceAgentVoiceId,
+  MIN_VOICE_AGENT_SPEECH_SPEED,
+  MAX_VOICE_AGENT_SPEECH_SPEED,
+} from '@/lib/services/voice-agent'
 
 function normalizePhone(raw: string): string | null {
   let cleaned = raw.replace(/[\s\-().]/g, '')
@@ -68,6 +72,7 @@ export async function PATCH(request: Request) {
       'voice_agent_ack_phrases',
       'voice_agent_language',
       'voice_agent_voice_id',
+      'voice_agent_speech_speed',
     ]
     
     const filteredUpdates = Object.keys(updates)
@@ -178,6 +183,14 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'Invalid voice agent voice' }, { status: 400 })
       }
       filteredUpdates.voice_agent_voice_id = value
+    }
+
+    if ('voice_agent_speech_speed' in filteredUpdates) {
+      const value = Number(filteredUpdates.voice_agent_speech_speed)
+      if (!Number.isFinite(value) || value < MIN_VOICE_AGENT_SPEECH_SPEED || value > MAX_VOICE_AGENT_SPEECH_SPEED) {
+        return NextResponse.json({ error: 'Invalid voice agent speech speed' }, { status: 400 })
+      }
+      filteredUpdates.voice_agent_speech_speed = Math.round(value * 100) / 100
     }
 
     if ('voice_agent_enabled' in filteredUpdates) {

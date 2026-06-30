@@ -9,10 +9,30 @@ export interface VoiceAgentSettings {
   ackPhrases: string[]
   language: string
   voiceId: string
+  speechSpeed: number
 }
 
 const DEFAULT_ACK_PHRASES = ['Gerne!', 'Bitte sehr.', 'Gern geschehen.']
 export const DEFAULT_VOICE_AGENT_VOICE_ID = '38aabb6a-f52b-4fb0-a3d1-988518f4dc06'
+
+// Cartesia sonic-3 accepts a speech speed between 0.6 and 2.0 (1.0 = normal).
+export const DEFAULT_VOICE_AGENT_SPEECH_SPEED = 1.0
+export const MIN_VOICE_AGENT_SPEECH_SPEED = 0.6
+export const MAX_VOICE_AGENT_SPEECH_SPEED = 2.0
+
+export const VOICE_AGENT_SPEED_OPTIONS = [
+  { value: 0.8, label: 'Langsam' },
+  { value: 0.9, label: 'Etwas langsamer' },
+  { value: 1.0, label: 'Normal' },
+  { value: 1.1, label: 'Etwas schneller' },
+  { value: 1.2, label: 'Schnell' },
+] as const
+
+export function normalizeSpeechSpeed(value: unknown): number {
+  const num = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(num)) return DEFAULT_VOICE_AGENT_SPEECH_SPEED
+  return Math.min(MAX_VOICE_AGENT_SPEECH_SPEED, Math.max(MIN_VOICE_AGENT_SPEECH_SPEED, num))
+}
 
 export const VOICE_AGENT_VOICE_OPTIONS = [
   {
@@ -76,6 +96,7 @@ export function mapVoiceAgentSettings(row: Record<string, unknown> | null | unde
     ackPhrases: normalizePhraseList(row?.voice_agent_ack_phrases as string[] | undefined, DEFAULT_ACK_PHRASES),
     language: language === 'auto' ? 'de' : language,
     voiceId: isKnownVoiceAgentVoiceId(voiceId) ? voiceId : DEFAULT_VOICE_AGENT_VOICE_ID,
+    speechSpeed: normalizeSpeechSpeed(row?.voice_agent_speech_speed),
   }
 }
 
@@ -86,7 +107,7 @@ export async function getVoiceAgentSettingsForUser(
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'voice_agent_enabled, voice_agent_display_name, voice_agent_wake_word, voice_agent_wake_sounds_like, voice_agent_dismiss_phrase, voice_agent_ack_phrases, voice_agent_language, voice_agent_voice_id, default_recording_language',
+      'voice_agent_enabled, voice_agent_display_name, voice_agent_wake_word, voice_agent_wake_sounds_like, voice_agent_dismiss_phrase, voice_agent_ack_phrases, voice_agent_language, voice_agent_voice_id, voice_agent_speech_speed, default_recording_language',
     )
     .eq('id', userId)
     .maybeSingle()

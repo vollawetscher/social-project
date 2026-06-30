@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.42.2',
+    date: 'June 30, 2026',
+    entries: [
+      {
+        version: '1.42.2',
+        date: 'June 30, 2026',
+        category: 'improvement',
+        title: 'Adjustable Voice Assistant Speed',
+        description:
+          'You can now set how fast the voice assistant speaks in Settings, from slow to fast.',
+      },
+    ],
+  },
+  {
     version: '1.42.1',
     date: 'June 30, 2026',
     entries: [

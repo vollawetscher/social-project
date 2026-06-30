@@ -1014,6 +1014,8 @@
     "voiceAgentDismissPhraseHint": "Say this to send the assistant back to sleep.",
     "voiceAgentVoice": "Voice",
     "voiceAgentVoiceHint": "Choose a curated German voice for the assistant.",
+    "voiceAgentSpeed": "Speaking speed",
+    "voiceAgentSpeedHint": "How fast the assistant speaks.",
     "voiceAgentListening": "listening",
     "voiceAgentSpeaking": "speaking",
     "voiceAgentRecordingNoteTitle": "Live transcript instead of audio recording",
