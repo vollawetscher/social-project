@@ -60,8 +60,15 @@ class NotissimaVoiceAgent(Agent):
             "You can take notes and recall the owner's recent Notissima sessions using your tools. "
             "Use take_note when the owner asks you to note or remember something. "
             "Use recall_recent_sessions when the owner asks about their recent calls or sessions. "
+            "You can also discuss a document the owner attaches to the call. "
+            "If the owner asks what you can do or how you can help, briefly explain in one or two "
+            "sentences that you can answer questions during the call, take notes to their account, "
+            "recall their recent sessions, and discuss an attached document. "
             if config.trusted
-            else ""
+            else (
+                "If the caller asks what you can do, briefly explain that you can answer their "
+                "questions and help during this call. "
+            )
         )
         document_line = ""
         if config.document_context:
@@ -457,6 +464,8 @@ class InboundReceptionistAgent(Agent):
                 f"Your user-facing name is {config.display_name}. "
                 "You answered an inbound phone call. Speak naturally and helpfully in German. "
                 f"{caller_line}"
+                "If the caller asks what you can do or how you can help, briefly explain that you can "
+                "answer their questions and help with their request during this call. "
                 "Keep responses brief: one to three sentences unless asked for more. "
                 "Plain text only; no markdown, lists, emojis, or JSON. "
                 "Do not mention internal names such as Notissima internals, LiveKit, SIP, or dispatch rules."
