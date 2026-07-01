@@ -14,7 +14,9 @@ from livekit.agents import (
     AgentSession,
     AutoSubscribe,
     JobContext,
+    RunContext,
     cli,
+    function_tool,
     inference,
     room_io,
     stt,
@@ -24,6 +26,8 @@ from livekit.plugins import noise_cancellation
 from config_loader import (
     VoiceAgentConfig,
     create_inbound_call,
+    create_owner_note,
+    get_owner_recent_sessions,
     insert_live_transcript_line,
     load_inbound_voice_agent_config,
     load_voice_agent_config,
@@ -50,6 +54,13 @@ class NotissimaVoiceAgent(Agent):
     """Active voice agent for the owner after wake."""
 
     def __init__(self, config: VoiceAgentConfig) -> None:
+        tools_line = (
+            "You can take notes and recall the owner's recent Notissima sessions using your tools. "
+            "Use take_note when the owner asks you to note or remember something. "
+            "Use recall_recent_sessions when the owner asks about their recent calls or sessions. "
+            if config.trusted
+            else ""
+        )
         super().__init__(
             instructions=(
                 f"You are {config.display_name}, a concise in-call voice assistant. "
@@ -59,11 +70,44 @@ class NotissimaVoiceAgent(Agent):
                 "Do not mention internal names such as Notissima, notissima-voice-agent, LiveKit, or dispatch rules unless explicitly asked about implementation. "
                 "You are speaking in a live call and only the owner can command you. "
                 "Answer the owner's questions helpfully and naturally. "
+                f"{tools_line}"
                 "Keep responses brief: one to three sentences unless asked for more. "
                 "Plain text only; no markdown, lists, emojis, or JSON. "
                 "Do not explain internal modes or implementation details."
             )
         )
+        self._config = config
+
+    @function_tool
+    async def take_note(self, context: RunContext, note: str) -> str:
+        """Save a note to the owner's Notissima account.
+
+        Args:
+            note: The exact text of the note to save.
+        """
+        if not self._config.trusted or not self._config.owner_user_id:
+            return "Ich kann die Notiz gerade nicht speichern."
+        ok = await create_owner_note(self._config.owner_user_id, note)
+        if ok and self._config.call_id:
+            await insert_live_transcript_line(
+                self._config.call_id, "agent", self._config.display_name, f"Notiz gespeichert: {note}"
+            )
+        return "Die Notiz wurde gespeichert." if ok else "Das Speichern der Notiz ist fehlgeschlagen."
+
+    @function_tool
+    async def recall_recent_sessions(self, context: RunContext) -> str:
+        """Recall the owner's most recent Notissima sessions (title, summary, date)."""
+        if not self._config.trusted or not self._config.owner_user_id:
+            return "Ich kann die letzten Sitzungen gerade nicht abrufen."
+        sessions = await get_owner_recent_sessions(self._config.owner_user_id, limit=3)
+        if not sessions:
+            return "Ich habe keine kürzlichen Sitzungen gefunden."
+        parts: list[str] = []
+        for item in sessions:
+            label = str(item.get("internal_case_id") or "Sitzung").strip()
+            summary = str(item.get("speechmatics_summary") or item.get("purpose") or "").strip()
+            parts.append(f"{label}: {summary}" if summary else label)
+        return "Ihre letzten Sitzungen: " + " | ".join(parts)
 
 
 async def wait_for_call_id(room_name: str, timeout_s: float = 10.0) -> str | None:
@@ -589,6 +633,10 @@ async def entrypoint(ctx: JobContext) -> None:
         return
 
     config.owner_identity = config.owner_user_id
+    # Outbound / web calls: the owner is the authenticated Notissima user in the
+    # room, so data tools are trusted. Inbound (caller-ID only) stays untrusted
+    # until phone verification is added.
+    config.trusted = True
     if not config.call_id:
         config.call_id = await wait_for_call_id(ctx.room.name)
         if not config.call_id:

@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.43.0',
+    date: 'July 1, 2026',
+    entries: [
+      {
+        version: '1.43.0',
+        date: 'July 1, 2026',
+        category: 'feature',
+        title: 'Voice Assistant Can Take Notes and Recall Sessions',
+        description:
+          'During a call you can ask the voice assistant to save a note or tell you about your recent sessions, and it acts on your Notissima account.',
+      },
+    ],
+  },
+  {
     version: '1.42.4',
     date: 'July 1, 2026',
     entries: [

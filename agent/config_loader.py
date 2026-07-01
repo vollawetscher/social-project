@@ -43,6 +43,7 @@ class VoiceAgentConfig:
     inbound: bool = False
     caller_number: str | None = None
     caller_name: str | None = None
+    trusted: bool = False
 
 
 def _normalize_phrase(text: str) -> str:
@@ -430,3 +431,86 @@ async def create_inbound_call(
         logger.error("Failed to create inbound call row for room %s: %s", room_name, exc)
         return await resolve_call_id(room_name)
     return None
+
+
+# ---------------------------------------------------------------------------
+# Owner-scoped data tools (function calling)
+# ---------------------------------------------------------------------------
+
+
+async def create_owner_note(owner_user_id: str, text: str) -> bool:
+    """Create a voice note session owned by the given user."""
+    value = (text or "").strip()
+    client = _supabase_client()
+    if not client or not owner_user_id or not value:
+        return False
+
+    try:
+        session_result = (
+            client.table("sessions")
+            .insert(
+                {
+                    "user_id": owner_user_id,
+                    "status": "done",
+                    "context_note": "",
+                    "internal_case_id": "Sprachnotiz",
+                    "duration_sec": 0,
+                    "last_error": "",
+                    "input_hint": "dictation",
+                    "language": "de",
+                    "user_is_speaker": True,
+                    "recording_type": "note",
+                }
+            )
+            .select("id")
+            .single()
+            .execute()
+        )
+        session_id = (session_result.data or {}).get("id")
+        if not session_id:
+            return False
+
+        segment = {
+            "start_ms": 0,
+            "end_ms": 1000,
+            "speaker": "Notiz",
+            "text": value,
+            "confidence": 1,
+        }
+        client.table("transcripts").insert(
+            {
+                "session_id": session_id,
+                "file_id": None,
+                "raw_json": [segment],
+                "redacted_json": [segment],
+                "raw_text": value,
+                "redacted_text": value,
+                "language": "de",
+            }
+        ).execute()
+        logger.info("[tool] Created voice note for owner %s (session %s)", owner_user_id, session_id)
+        return True
+    except Exception as exc:
+        logger.error("[tool] Failed to create note for owner %s: %s", owner_user_id, exc)
+        return False
+
+
+async def get_owner_recent_sessions(owner_user_id: str, limit: int = 3) -> list[dict[str, Any]]:
+    """Return the owner's most recent sessions (label, summary, date)."""
+    client = _supabase_client()
+    if not client or not owner_user_id:
+        return []
+
+    try:
+        result = (
+            client.table("sessions")
+            .select("internal_case_id, speechmatics_summary, purpose, created_at")
+            .eq("user_id", owner_user_id)
+            .order("created_at", desc=True)
+            .limit(max(1, min(10, limit)))
+            .execute()
+        )
+        return list(result.data or [])
+    except Exception as exc:
+        logger.error("[tool] Failed to load recent sessions for owner %s: %s", owner_user_id, exc)
+        return []
