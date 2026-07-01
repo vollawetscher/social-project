@@ -2089,6 +2089,29 @@ function CallRoomInner({
               {agentStatusLabel}
             </Badge>
           )}
+          {agentParticipants.length > 0 && isInitiator && (
+            <>
+              <input
+                ref={documentInputRef}
+                type="file"
+                accept=".pdf,.txt,.md,application/pdf,text/plain"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) void handleAttachDocument(f)
+                }}
+              />
+              <button
+                onClick={() => documentInputRef.current?.click()}
+                disabled={docUploading}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] bg-white/10 text-white/80 hover:bg-white/15 transition-colors disabled:opacity-60"
+                title={t("attachDocument")}
+              >
+                {docUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageSquareText className="h-3 w-3" />}
+                {attachedDocs.length > 0 ? String(attachedDocs.length) : t("attachDocument")}
+              </button>
+            </>
+          )}
           {isInitiator && (
             <Badge variant="secondary" className={cn(
               "text-[10px] gap-1 border-0",

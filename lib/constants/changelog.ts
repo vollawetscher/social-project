@@ -14,6 +14,36 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.45.0',
+    date: 'July 1, 2026',
+    entries: [
+      {
+        version: '1.45.0',
+        date: 'July 1, 2026',
+        category: 'improvement',
+        title: 'Multilingual Call Transcription',
+        description:
+          'Calls are now transcribed with automatic language detection, so conversations that switch between languages (for example German with the assistant and English with another participant) are captured accurately.',
+      },
+      {
+        version: '1.45.0',
+        date: 'July 1, 2026',
+        category: 'fix',
+        title: 'Reliable Voice Notes',
+        description:
+          'Asking the assistant to take a note now reliably saves it to your account.',
+      },
+      {
+        version: '1.45.0',
+        date: 'July 1, 2026',
+        category: 'fix',
+        title: 'Attach Documents in Video Calls',
+        description:
+          'The document attach button is now available during video calls, not just audio calls, so you can share a document with the assistant mid-call.',
+      },
+    ],
+  },
+  {
     version: '1.44.0',
     date: 'July 1, 2026',
     entries: [

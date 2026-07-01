@@ -454,7 +454,7 @@ async def create_owner_note(owner_user_id: str, text: str) -> bool:
                 {
                     "user_id": owner_user_id,
                     "status": "done",
-                    "context_note": "",
+                    "context_note": value,
                     "internal_case_id": "Sprachnotiz",
                     "duration_sec": 0,
                     "last_error": "",
@@ -464,36 +464,36 @@ async def create_owner_note(owner_user_id: str, text: str) -> bool:
                     "recording_type": "note",
                 }
             )
-            .select("id")
-            .single()
             .execute()
         )
-        session_id = (session_result.data or {}).get("id")
+        rows = session_result.data or []
+        session_id = rows[0]["id"] if rows else None
         if not session_id:
+            logger.error("[tool] Note session insert returned no id for owner %s", owner_user_id)
             return False
 
-        segment = {
-            "start_ms": 0,
-            "end_ms": 1000,
-            "speaker": "Notiz",
-            "text": value,
-            "confidence": 1,
-        }
-        client.table("transcripts").insert(
-            {
-                "session_id": session_id,
-                "file_id": None,
-                "raw_json": [segment],
-                "redacted_json": [segment],
-                "raw_text": value,
-                "redacted_text": value,
-                "language": "de",
-            }
-        ).execute()
+        # Also store the note as a transcript so it appears as session content.
+        # Best-effort: if this fails, the note still exists via context_note.
+        try:
+            segment = {"start_ms": 0, "end_ms": 1000, "speaker": "Notiz", "text": value, "confidence": 1}
+            client.table("transcripts").insert(
+                {
+                    "session_id": session_id,
+                    "file_id": None,
+                    "raw_json": [segment],
+                    "redacted_json": [segment],
+                    "raw_text": value,
+                    "redacted_text": value,
+                    "language": "de",
+                }
+            ).execute()
+        except Exception as transcript_exc:
+            logger.warning("[tool] Note transcript insert failed (note still saved): %s", transcript_exc)
+
         logger.info("[tool] Created voice note for owner %s (session %s)", owner_user_id, session_id)
         return True
     except Exception as exc:
-        logger.error("[tool] Failed to create note for owner %s: %s", owner_user_id, exc)
+        logger.error("[tool] Failed to create note for owner %s: %r", owner_user_id, exc)
         return False
 
 
