@@ -124,14 +124,15 @@ async def resolve_owner_user_id(room_name: str, metadata: dict[str, Any]) -> str
             client.table("calls")
             .select("user_id")
             .eq("room_name", room_name)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
-        data = result.data or {}
+        rows = result.data or []
+        data = rows[0] if rows else {}
         user_id = data.get("user_id")
         return str(user_id) if user_id else None
     except Exception as exc:
-        logger.error("Failed to resolve call owner for room %s: %s", room_name, exc)
+        logger.error("Failed to resolve call owner for room %s: %r", room_name, exc)
         return None
 
 
@@ -145,13 +146,14 @@ async def resolve_call_id(room_name: str) -> str | None:
             client.table("calls")
             .select("id")
             .eq("room_name", room_name)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
-        if result.data and result.data.get("id"):
-            return str(result.data["id"])
+        rows = result.data or []
+        if rows and rows[0].get("id"):
+            return str(rows[0]["id"])
     except Exception as exc:
-        logger.warning("Could not load call id for room %s: %s", room_name, exc)
+        logger.warning("Could not load call id for room %s: %r", room_name, exc)
     return None
 
 
@@ -185,12 +187,13 @@ async def load_voice_agent_config(
                 "voice_agent_language, voice_agent_voice_id, voice_agent_speech_speed, default_recording_language"
             )
             .eq("id", owner_user_id)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
-        row = result.data or {}
+        rows = result.data or []
+        row = rows[0] if rows else {}
     except Exception as exc:
-        logger.error("Failed to load voice agent profile for %s: %s", owner_user_id, exc)
+        logger.error("Failed to load voice agent profile for %s: %r", owner_user_id, exc)
         return config
 
     wake_word = str(row.get("voice_agent_wake_word") or "Frau Peters").strip() or "Frau Peters"
@@ -286,12 +289,13 @@ async def _load_profile_voice_config(owner_user_id: str) -> dict[str, Any] | Non
                 "voice_agent_voice_id, voice_agent_speech_speed, default_recording_language"
             )
             .eq("id", owner_user_id)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
-        return result.data or {}
+        rows = result.data or []
+        return rows[0] if rows else {}
     except Exception as exc:
-        logger.error("Failed to load profile for inbound owner %s: %s", owner_user_id, exc)
+        logger.error("Failed to load profile for inbound owner %s: %r", owner_user_id, exc)
         return None
 
 
@@ -324,14 +328,15 @@ async def resolve_inbound_owner(caller_number: str) -> tuple[str | None, str | N
             client.table("profiles")
             .select("id, display_name")
             .eq("phone_number", caller_number)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
-        if tier1.data and tier1.data.get("id"):
+        rows = tier1.data or []
+        if rows and rows[0].get("id"):
             logger.info("Inbound caller matched Notissima user (tier 1): %s", caller_number)
-            return str(tier1.data["id"]), _clean_caller_name(tier1.data.get("display_name"))
+            return str(rows[0]["id"]), _clean_caller_name(rows[0].get("display_name"))
     except Exception as exc:
-        logger.warning("Tier 1 inbound owner lookup failed: %s", exc)
+        logger.warning("Tier 1 inbound owner lookup failed: %r", exc)
 
     try:
         tier2 = (
@@ -341,14 +346,14 @@ async def resolve_inbound_owner(caller_number: str) -> tuple[str | None, str | N
             .eq("call_type", "pstn_outbound")
             .order("created_at", desc=True)
             .limit(1)
-            .maybe_single()
             .execute()
         )
-        if tier2.data and tier2.data.get("user_id"):
+        rows = tier2.data or []
+        if rows and rows[0].get("user_id"):
             logger.info("Inbound caller matched prior outbound call (tier 2): %s", caller_number)
-            return str(tier2.data["user_id"]), _clean_caller_name(tier2.data.get("contact_name"))
+            return str(rows[0]["user_id"]), _clean_caller_name(rows[0].get("contact_name"))
     except Exception as exc:
-        logger.warning("Tier 2 inbound owner lookup failed: %s", exc)
+        logger.warning("Tier 2 inbound owner lookup failed: %r", exc)
 
     return None, None
 
