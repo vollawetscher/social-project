@@ -1316,6 +1316,58 @@ function CallRoomInner({
     }
   }, [liveTranscriptEnabled, viewMode, showTranscript, liveTranscriptArmed])
 
+  // Voice-agent (and other non-PSTN-live) calls: the agent writes the live
+  // transcript server-side to call_live_transcript_lines. Poll it while the
+  // transcript panel is open so the conversation — including the assistant's
+  // turns and note confirmations — appears live.
+  useEffect(() => {
+    const transcriptOpen = viewMode === "transcript" || showTranscript
+    if (liveTranscriptEnabled || !transcriptOpen || !isConnected || !callId) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let cursor = 0
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/calls/${callId}/live-transcript?after=${cursor}`, { cache: "no-store" })
+        if (res.ok) {
+          const data = await res.json()
+          const incoming = Array.isArray(data?.lines) ? data.lines : []
+          if (incoming.length > 0 && !cancelled) {
+            setLiveTranscriptLines((prev) => {
+              const seen = new Set(prev.map((line) => line.id))
+              const merged = [...prev]
+              for (const line of incoming) {
+                if (!line?.id || seen.has(line.id)) continue
+                merged.push({
+                  id: String(line.id),
+                  speakerKey: String(line.speakerKey || "remote"),
+                  speakerLabel: String(line.speakerLabel || t("participant")),
+                  text: String(line.text || ""),
+                  timestampMs: Number(line.timestampMs || Date.now()),
+                })
+              }
+              return merged.slice(-240)
+            })
+          }
+          if (typeof data?.latestTimestampMs === "number" && data.latestTimestampMs > cursor) {
+            cursor = data.latestTimestampMs
+          }
+        }
+      } catch {
+        // ignore transient poll errors
+      } finally {
+        if (!cancelled) timer = setTimeout(poll, 2000)
+      }
+    }
+
+    void poll()
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [liveTranscriptEnabled, viewMode, showTranscript, isConnected, callId, t])
+
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible" && isConnected) {
@@ -1800,6 +1852,17 @@ function CallRoomInner({
                         })}
                     </div>
                   )}
+                </div>
+              ) : liveTranscriptLines.length > 0 ? (
+                <div className="space-y-2">
+                  {liveTranscriptLines.slice(-120).map((line) => (
+                    <div key={line.id} className="rounded-lg bg-secondary px-3 py-2">
+                      <p className="text-[11px] text-muted-foreground mb-0.5">
+                        {line.speakerLabel} · {new Date(line.timestampMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                      <p className="text-sm text-foreground">{line.text}</p>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="flex items-center justify-center py-12">
