@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.42.4',
+    date: 'July 1, 2026',
+    entries: [
+      {
+        version: '1.42.4',
+        date: 'July 1, 2026',
+        category: 'fix',
+        title: 'Readable Voice Assistant Badge & Host Controls',
+        description:
+          'The in-call voice assistant badge and host controls now use consistent, high-contrast text so they are easy to read.',
+      },
+    ],
+  },
+  {
     version: '1.42.3',
     date: 'June 30, 2026',
     entries: [

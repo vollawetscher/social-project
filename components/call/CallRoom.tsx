@@ -1591,12 +1591,14 @@ function CallRoomInner({
             {agentParticipants.length > 0 && (
               <Badge
                 variant="secondary"
-                className={cn(
-                  "text-[10px] gap-1 border-0",
-                  isAgentSpeaking ? "bg-primary/25 text-primary" : "bg-primary/15 text-primary"
-                )}
+                className="text-[10px] gap-1 border-0 bg-primary text-primary-foreground"
               >
-                <span className={cn("h-1.5 w-1.5 rounded-full bg-primary", isAgentSpeaking && "animate-pulse")} />
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full bg-primary-foreground",
+                    isAgentSpeaking ? "opacity-100 animate-pulse" : "opacity-60"
+                  )}
+                />
                 {agentStatusLabel}
               </Badge>
             )}
@@ -1967,12 +1969,14 @@ function CallRoomInner({
           {agentParticipants.length > 0 && (
             <Badge
               variant="secondary"
-              className={cn(
-                "text-[10px] gap-1 border-0",
-                isAgentSpeaking ? "bg-primary/30 text-white" : "bg-white/10 text-white/85"
-              )}
+              className="text-[10px] gap-1 border-0 bg-primary text-primary-foreground"
             >
-              <span className={cn("h-1.5 w-1.5 rounded-full bg-primary", isAgentSpeaking && "animate-pulse")} />
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full bg-primary-foreground",
+                  isAgentSpeaking ? "opacity-100 animate-pulse" : "opacity-60"
+                )}
+              />
               {agentStatusLabel}
             </Badge>
           )}
@@ -2033,7 +2037,7 @@ function CallRoomInner({
                             {p.roleLabel || "Participant"}
                           </span>
                         </div>
-                        <p className="text-[10px] font-mono text-white/70 truncate">
+                        <p className="text-[10px] font-mono text-white/80 truncate">
                           {p.shortIdentity || p.identity}
                         </p>
                       </div>
@@ -2048,7 +2052,7 @@ function CallRoomInner({
                     </div>
                   ))}
                 {moderationParticipants.filter((p) => p.identity !== localParticipant.identity).length === 0 && (
-                  <p className="text-[11px] text-white/70 py-2">No removable participants</p>
+                  <p className="text-[11px] text-white/80 py-2">No removable participants</p>
                 )}
               </div>
             </div>
