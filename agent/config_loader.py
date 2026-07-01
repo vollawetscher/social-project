@@ -423,14 +423,13 @@ async def create_inbound_call(
                     "room_created_at_ms": int(time.time() * 1000),
                 }
             )
-            .select("id")
-            .single()
             .execute()
         )
-        if result.data and result.data.get("id"):
-            return str(result.data["id"])
+        rows = result.data or []
+        if rows and rows[0].get("id"):
+            return str(rows[0]["id"])
     except Exception as exc:
-        logger.error("Failed to create inbound call row for room %s: %s", room_name, exc)
+        logger.error("Failed to create inbound call row for room %s: %r", room_name, exc)
         return await resolve_call_id(room_name)
     return None
 
