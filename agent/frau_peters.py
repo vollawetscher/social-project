@@ -25,8 +25,10 @@ from livekit.plugins import noise_cancellation
 
 from config_loader import (
     VoiceAgentConfig,
+    build_document_context,
     create_inbound_call,
     create_owner_note,
+    get_call_documents,
     get_owner_recent_sessions,
     insert_live_transcript_line,
     load_inbound_voice_agent_config,
@@ -61,6 +63,14 @@ class NotissimaVoiceAgent(Agent):
             if config.trusted
             else ""
         )
+        document_line = ""
+        if config.document_context:
+            document_line = (
+                "A document has been attached to this call for discussion. "
+                "Use read_document to look up exact passages when needed. "
+                "Here is a summary of the attached document(s):\n"
+                f"{config.document_context}\n"
+            )
         super().__init__(
             instructions=(
                 f"You are {config.display_name}, a concise in-call voice assistant. "
@@ -71,12 +81,21 @@ class NotissimaVoiceAgent(Agent):
                 "You are speaking in a live call and only the owner can command you. "
                 "Answer the owner's questions helpfully and naturally. "
                 f"{tools_line}"
+                f"{document_line}"
                 "Keep responses brief: one to three sentences unless asked for more. "
                 "Plain text only; no markdown, lists, emojis, or JSON. "
                 "Do not explain internal modes or implementation details."
             )
         )
         self._config = config
+
+    @function_tool
+    async def read_document(self, context: RunContext) -> str:
+        """Read the full text of the document(s) attached to this call."""
+        text = (self._config.documents_full or "").strip()
+        if not text:
+            return "Für dieses Gespräch ist kein Dokument hinterlegt."
+        return text[:6000]
 
     @function_tool
     async def take_note(self, context: RunContext, note: str) -> str:
@@ -305,6 +324,17 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
     owner_identity = config.owner_identity or config.owner_user_id
     if not owner_identity:
         return
+
+    # Load any documents attached to this call so the agent can discuss them.
+    if config.trusted and config.call_id:
+        documents = await get_call_documents(config.call_id)
+        if documents:
+            config.document_context = build_document_context(documents)
+            config.documents_full = "\n\n".join(
+                f"{str(d.get('filename') or 'Dokument')}:\n{str(d.get('extracted_text') or '')}"
+                for d in documents
+            ).strip()
+            logger.info("[active] Loaded %d attached document(s) for call %s", len(documents), config.call_id)
 
     dismiss_event = asyncio.Event()
     persisted_assistant_texts: set[str] = set()

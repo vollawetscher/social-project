@@ -307,6 +307,9 @@ function CallRoomInner({
   const [liveTranscriptConnections, setLiveTranscriptConnections] = useState<Record<string, boolean>>({})
   const [liveTranscriptError, setLiveTranscriptError] = useState<string | null>(null)
   const [realtimeLanguageCode, setRealtimeLanguageCode] = useState<string>("de")
+  const [docUploading, setDocUploading] = useState(false)
+  const [attachedDocs, setAttachedDocs] = useState<string[]>([])
+  const documentInputRef = useRef<HTMLInputElement | null>(null)
 
   const [roomLocked, setRoomLocked] = useState(false)
   const [moderationParticipants, setModerationParticipants] = useState<ModerationParticipant[]>([])
@@ -1540,6 +1543,26 @@ function CallRoomInner({
     toast.error(t("couldNotCopyLink"))
   }, [callId, displayName, mode, t])
 
+  const handleAttachDocument = useCallback(async (file: File) => {
+    if (!callId || docUploading) return
+    setDocUploading(true)
+    try {
+      const body = new FormData()
+      body.append("file", file)
+      const res = await fetch(`/api/calls/${callId}/documents`, { method: "POST", body })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Upload failed")
+      setAttachedDocs((prev) => [...prev, file.name])
+      toast.success(t("documentAttached", { name: file.name }))
+    } catch (error) {
+      console.error("Error attaching document:", error)
+      toast.error(t("documentAttachFailed"))
+    } finally {
+      setDocUploading(false)
+      if (documentInputRef.current) documentInputRef.current.value = ""
+    }
+  }, [callId, docUploading, t])
+
   const ringSmsLabel = ringSmsStatus === "sending"
     ? t("sendingSms")
     : ringSmsStatus === "sms_sent"
@@ -1653,6 +1676,29 @@ function CallRoomInner({
                 />
                 {agentStatusLabel}
               </Badge>
+            )}
+            {agentParticipants.length > 0 && isInitiator && (
+              <>
+                <input
+                  ref={documentInputRef}
+                  type="file"
+                  accept=".pdf,.txt,.md,application/pdf,text/plain"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) void handleAttachDocument(f)
+                  }}
+                />
+                <button
+                  onClick={() => documentInputRef.current?.click()}
+                  disabled={docUploading}
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-60"
+                  title={t("attachDocument")}
+                >
+                  {docUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageSquareText className="h-3 w-3" />}
+                  {attachedDocs.length > 0 ? String(attachedDocs.length) : t("attachDocument")}
+                </button>
+              </>
             )}
             {isInitiator && (
               <Badge variant="secondary" className={cn(

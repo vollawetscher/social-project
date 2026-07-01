@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.44.0',
+    date: 'July 1, 2026',
+    entries: [
+      {
+        version: '1.44.0',
+        date: 'July 1, 2026',
+        category: 'feature',
+        title: 'Discuss a Document with the Voice Assistant',
+        description:
+          'Attach a PDF or text document to a call and the voice assistant can reference and discuss it — ask it to summarize or look up details live.',
+      },
+    ],
+  },
+  {
     version: '1.43.1',
     date: 'July 1, 2026',
     entries: [

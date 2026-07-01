@@ -44,6 +44,8 @@ class VoiceAgentConfig:
     caller_number: str | None = None
     caller_name: str | None = None
     trusted: bool = False
+    document_context: str = ""
+    documents_full: str = ""
 
 
 def _normalize_phrase(text: str) -> str:
@@ -493,6 +495,38 @@ async def create_owner_note(owner_user_id: str, text: str) -> bool:
     except Exception as exc:
         logger.error("[tool] Failed to create note for owner %s: %s", owner_user_id, exc)
         return False
+
+
+async def get_call_documents(call_id: str | None) -> list[dict[str, Any]]:
+    """Return ready documents attached to a call (filename, summary, text)."""
+    client = _supabase_client()
+    if not client or not call_id:
+        return []
+    try:
+        result = (
+            client.table("call_documents")
+            .select("filename, summary, extracted_text, status")
+            .eq("call_id", call_id)
+            .eq("status", "ready")
+            .order("created_at", desc=False)
+            .execute()
+        )
+        return list(result.data or [])
+    except Exception as exc:
+        logger.error("[tool] Failed to load documents for call %s: %s", call_id, exc)
+        return []
+
+
+def build_document_context(documents: list[dict[str, Any]], max_chars: int = 4000) -> str:
+    """Build a compact context string from attached documents for the LLM."""
+    parts: list[str] = []
+    for doc in documents:
+        name = str(doc.get("filename") or "Dokument").strip()
+        body = str(doc.get("summary") or doc.get("extracted_text") or "").strip()
+        if not body:
+            continue
+        parts.append(f"Dokument '{name}':\n{body[:max_chars]}")
+    return "\n\n".join(parts)
 
 
 async def get_owner_recent_sessions(owner_user_id: str, limit: int = 3) -> list[dict[str, Any]]:
