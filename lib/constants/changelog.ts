@@ -14,6 +14,36 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.46.0',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.46.0',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Shared Call Transcripts Complete for Both Participants',
+        description:
+          'When you join another Notissima user\'s assistant-enabled call, your copy of the session now finishes processing and shows the full transcript instead of staying stuck on "transcribing".',
+      },
+      {
+        version: '1.46.0',
+        date: 'July 2, 2026',
+        category: 'improvement',
+        title: 'Summarize the Current Call',
+        description:
+          'Ask the assistant to summarize this call and it now uses the live conversation you are in, rather than an earlier finished session.',
+      },
+      {
+        version: '1.46.0',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Assistant Sees Documents Attached Mid-Call',
+        description:
+          'Documents attached during a call are now picked up by the assistant right away, so you can share a file and immediately ask about it.',
+      },
+    ],
+  },
+  {
     version: '1.45.0',
     date: 'July 1, 2026',
     entries: [

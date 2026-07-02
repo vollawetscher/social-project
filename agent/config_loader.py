@@ -533,6 +533,30 @@ def build_document_context(documents: list[dict[str, Any]], max_chars: int = 400
     return "\n\n".join(parts)
 
 
+async def get_call_transcript_lines(call_id: str | None, limit: int = 400) -> list[dict[str, Any]]:
+    """Return the current call's live transcript lines in chronological order.
+
+    Used so the agent can summarize or answer questions about THIS ongoing call
+    rather than recalling past finished sessions.
+    """
+    client = _supabase_client()
+    if not client or not call_id:
+        return []
+    try:
+        result = (
+            client.table("call_live_transcript_lines")
+            .select("speaker_label, source_key, text, timestamp_ms")
+            .eq("call_id", call_id)
+            .order("timestamp_ms", desc=False)
+            .limit(max(1, min(1000, limit)))
+            .execute()
+        )
+        return list(result.data or [])
+    except Exception as exc:
+        logger.error("[tool] Failed to load current transcript for call %s: %r", call_id, exc)
+        return []
+
+
 async def get_owner_recent_sessions(owner_user_id: str, limit: int = 3) -> list[dict[str, Any]]:
     """Return the owner's most recent sessions (label, summary, date)."""
     client = _supabase_client()

@@ -29,6 +29,7 @@ from config_loader import (
     create_inbound_call,
     create_owner_note,
     get_call_documents,
+    get_call_transcript_lines,
     get_owner_recent_sessions,
     insert_live_transcript_line,
     load_inbound_voice_agent_config,
@@ -63,13 +64,20 @@ class NotissimaVoiceAgent(Agent):
 
     def __init__(self, config: VoiceAgentConfig) -> None:
         tools_line = (
-            "You can take notes and recall the owner's recent Notissima sessions using your tools. "
+            "You can take notes, summarize the current call, recall the owner's past Notissima "
+            "sessions, and discuss an attached document using your tools. "
             "Use take_note when the owner asks you to note or remember something. "
-            "Use recall_recent_sessions when the owner asks about their recent calls or sessions. "
-            "You can also discuss a document the owner attaches to the call. "
+            "Use get_current_call_transcript when the owner asks about THIS call — for example to "
+            "summarize what has been discussed so far or what someone just said in the current "
+            "conversation. Base any summary of the current call only on that transcript. "
+            "Use recall_recent_sessions ONLY for the owner's earlier, already-finished Notissima "
+            "sessions — never use it to summarize the current call. "
+            "Use read_document to read a document attached to this call; documents may be attached "
+            "at any point during the call, so call read_document to check rather than assuming none "
+            "exists. "
             "If the owner asks what you can do or how you can help, briefly explain in one or two "
             "sentences that you can answer questions during the call, take notes to their account, "
-            "recall their recent sessions, and discuss an attached document. "
+            "summarize the current call, recall their past sessions, and discuss an attached document. "
             if config.trusted
             else (
                 "If the caller asks what you can do, briefly explain that you can answer their "
@@ -104,11 +112,48 @@ class NotissimaVoiceAgent(Agent):
 
     @function_tool
     async def read_document(self, context: RunContext) -> str:
-        """Read the full text of the document(s) attached to this call."""
+        """Read the full text of the document(s) attached to this call.
+
+        Documents may be attached at any time during the call, so this always
+        fetches the latest attached documents rather than a snapshot.
+        """
         text = (self._config.documents_full or "").strip()
+        if self._config.call_id:
+            documents = await get_call_documents(self._config.call_id)
+            if documents:
+                live_text = "\n\n".join(
+                    f"{str(d.get('filename') or 'Dokument')}:\n{str(d.get('extracted_text') or '')}"
+                    for d in documents
+                ).strip()
+                if live_text:
+                    text = live_text
+                    self._config.documents_full = live_text
+                    self._config.document_context = build_document_context(documents)
         if not text:
             return "Für dieses Gespräch ist kein Dokument hinterlegt."
         return text[:6000]
+
+    @function_tool
+    async def get_current_call_transcript(self, context: RunContext) -> str:
+        """Return the transcript of the CURRENT ongoing call.
+
+        Use this to summarize or answer questions about the current conversation
+        (what has been said so far in this call). Do not use recall_recent_sessions
+        for the current call.
+        """
+        if not self._config.call_id:
+            return "Für dieses Gespräch liegt noch kein Protokoll vor."
+        lines = await get_call_transcript_lines(self._config.call_id)
+        if not lines:
+            return "In diesem Gespräch wurde bisher nichts aufgezeichnet."
+        parts: list[str] = []
+        for line in lines:
+            speaker = str(line.get("speaker_label") or "Sprecher").strip()
+            text = str(line.get("text") or "").strip()
+            if text:
+                parts.append(f"{speaker}: {text}")
+        transcript = "\n".join(parts)
+        return "Protokoll des aktuellen Gesprächs:\n" + transcript[:6000]
 
     @function_tool
     async def take_note(self, context: RunContext, note: str) -> str:

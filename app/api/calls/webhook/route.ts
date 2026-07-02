@@ -127,6 +127,7 @@ async function finalizeVoiceAgentTranscript(supabase: any, call: any): Promise<s
       .from('sessions')
       .update({ status: 'done', duration_sec: 0, language: 'de', last_error: '' })
       .eq('id', sessionId)
+    await finalizeVoiceAgentCalleeSession(supabase, call.id, sessionId)
     return sessionId
   }
 
@@ -178,8 +179,91 @@ async function finalizeVoiceAgentTranscript(supabase: any, call: any): Promise<s
     .update({ status: 'done', duration_sec: durationSec, language: 'de', last_error: '' })
     .eq('id', sessionId)
 
+  await finalizeVoiceAgentCalleeSession(supabase, call.id, sessionId)
+
   console.log('[LiveKit Webhook] Voice agent transcript finalized:', sessionId, 'lines:', liveLines.length)
   return sessionId
+}
+
+/**
+ * Resolve a callee's forked session for a voice-agent call. When the callee
+ * claimed the call before the transcript existed, their session was left in
+ * `transcribing`/`is_callee_pending`. Voice-agent calls finalize via this webhook
+ * (not the batch transcribe pipeline), so we copy the transcript across and mark
+ * the callee session done here.
+ */
+async function finalizeVoiceAgentCalleeSession(
+  supabase: any,
+  callId: string,
+  hostSessionId: string | null,
+): Promise<void> {
+  if (!hostSessionId) return
+  try {
+    const { data: callRow } = await supabase
+      .from('calls')
+      .select('callee_session_id')
+      .eq('id', callId)
+      .not('callee_session_id', 'is', null)
+      .maybeSingle()
+
+    const calleeSessionId = callRow?.callee_session_id as string | null
+    if (!calleeSessionId) return
+
+    const { data: calleeSession } = await supabase
+      .from('sessions')
+      .select('id, status, is_callee_pending')
+      .eq('id', calleeSessionId)
+      .maybeSingle()
+    if (!calleeSession) return
+
+    // Copy the host transcript to the callee session if it doesn't have one yet.
+    const { data: existingCalleeTranscript } = await supabase
+      .from('transcripts')
+      .select('id')
+      .eq('session_id', calleeSessionId)
+      .limit(1)
+      .maybeSingle()
+
+    if (!existingCalleeTranscript) {
+      const { data: hostTranscripts } = await supabase
+        .from('transcripts')
+        .select('raw_json, redacted_json, raw_text, redacted_text, language, summary')
+        .eq('session_id', hostSessionId)
+      for (const t of hostTranscripts || []) {
+        await supabase.from('transcripts').insert({
+          session_id: calleeSessionId,
+          file_id: null,
+          raw_json: t.raw_json,
+          redacted_json: t.redacted_json,
+          raw_text: t.raw_text,
+          redacted_text: t.redacted_text,
+          language: t.language,
+          summary: t.summary ?? null,
+        })
+      }
+    }
+
+    const { data: hostSession } = await supabase
+      .from('sessions')
+      .select('duration_sec, language, speechmatics_summary')
+      .eq('id', hostSessionId)
+      .maybeSingle()
+
+    await supabase
+      .from('sessions')
+      .update({
+        status: 'done',
+        is_callee_pending: false,
+        duration_sec: hostSession?.duration_sec || 0,
+        language: hostSession?.language || 'de',
+        speechmatics_summary: hostSession?.speechmatics_summary ?? null,
+      })
+      .eq('id', calleeSessionId)
+
+    console.log('[LiveKit Webhook] Voice agent callee session finalized:', calleeSessionId)
+  } catch (err: any) {
+    console.error('[LiveKit Webhook] Failed to finalize callee session:', err?.message || err)
+  }
 }
 
 /** True when the call host (participant A) and at least one guest are in the LiveKit room. */
