@@ -168,6 +168,41 @@ export async function POST(request: Request) {
       .single()
 
     if (sessionError || !session) {
+      // Diagnostic: distinguish "row hidden by RLS from this user" vs "genuinely
+      // missing" vs "owned by someone else (e.g. callee/forked session)".
+      try {
+        const svc = createServiceRoleClient()
+        const { data: diagSession } = await svc
+          .from('sessions')
+          .select('id, user_id, status, recording_type')
+          .eq('id', sessionId)
+          .maybeSingle()
+        const { data: diagCall } = await svc
+          .from('calls')
+          .select('id, user_id, callee_user_id, session_id, callee_session_id')
+          .or(`session_id.eq.${sessionId},callee_session_id.eq.${sessionId}`)
+          .maybeSingle()
+        console.warn('[Generate Output] Session not found (RLS/owner diag):', {
+          sessionId,
+          requesterUserId: userId,
+          rowExists: !!diagSession,
+          rowUserId: diagSession?.user_id || null,
+          rowUserIdMatchesRequester: diagSession?.user_id === userId,
+          recordingType: diagSession?.recording_type || null,
+          linkedCall: diagCall
+            ? {
+                callId: diagCall.id,
+                callUserId: diagCall.user_id,
+                calleeUserId: diagCall.callee_user_id,
+                isHostSession: diagCall.session_id === sessionId,
+                isCalleeSession: diagCall.callee_session_id === sessionId,
+              }
+            : null,
+          sessionError: sessionError?.message || null,
+        })
+      } catch (diagErr: any) {
+        console.warn('[Generate Output] Session-not-found diagnostic failed:', diagErr?.message || diagErr)
+      }
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
     if (session.user_id !== userId) {
@@ -177,6 +212,11 @@ export async function POST(request: Request) {
         .eq('id', userId)
         .single()
       if (profile?.role !== 'admin') {
+        console.warn('[Generate Output] Session not found (owner mismatch):', {
+          sessionId,
+          requesterUserId: userId,
+          rowUserId: session.user_id,
+        })
         return NextResponse.json({ error: 'Session not found' }, { status: 404 })
       }
     }
