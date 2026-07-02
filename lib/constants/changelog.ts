@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.51.0',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.51.0',
+        date: 'July 2, 2026',
+        category: 'feature',
+        title: 'Secure Phone Access with a PIN',
+        description:
+          'Set a personal PIN in Settings, then call your own number and enter it on the keypad to let the assistant access your Notissima data over the phone. Without the PIN, inbound calls stay answer-only.',
+      },
+    ],
+  },
+  {
     version: '1.50.2',
     date: 'July 2, 2026',
     entries: [

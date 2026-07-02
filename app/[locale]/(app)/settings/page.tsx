@@ -84,6 +84,9 @@ export default function SettingsPage() {
   const [voiceAgentSpeechSpeed, setVoiceAgentSpeechSpeed] = useState(DEFAULT_VOICE_AGENT_SPEECH_SPEED)
   const [voicePreviewLoading, setVoicePreviewLoading] = useState(false)
   const voicePreviewAudioRef = useRef<HTMLAudioElement | null>(null)
+  const [voiceAgentPinSet, setVoiceAgentPinSet] = useState(false)
+  const [voiceAgentPinInput, setVoiceAgentPinInput] = useState("")
+  const [voiceAgentPinSaving, setVoiceAgentPinSaving] = useState(false)
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [changingPassword, setChangingPassword] = useState(false)
@@ -302,6 +305,7 @@ export default function SettingsPage() {
         setVoiceAgentDisplayName(data.voice_agent_display_name || 'Frau Peters')
         setVoiceAgentWakeWord(data.voice_agent_wake_word || 'Frau Peters')
         setVoiceAgentDismissPhrase(data.voice_agent_dismiss_phrase || 'Danke, Frau Peters')
+        setVoiceAgentPinSet(Boolean(data.voice_agent_pin_set))
         setVoiceAgentVoiceId(data.voice_agent_voice_id || DEFAULT_VOICE_AGENT_VOICE_ID)
         setVoiceAgentSpeechSpeed(
           typeof data.voice_agent_speech_speed === 'number'
@@ -342,6 +346,50 @@ export default function SettingsPage() {
     const interval = setInterval(fetchQueueHealth, 15000)
     return () => clearInterval(interval)
   }, [profile?.role])
+
+  const handleSaveVoiceAgentPin = async () => {
+    const pin = voiceAgentPinInput.trim()
+    if (!/^\d{4,6}$/.test(pin)) {
+      toast.error(t('voiceAgentPinInvalid'))
+      return
+    }
+    setVoiceAgentPinSaving(true)
+    try {
+      const res = await fetch('/api/profile/voice-agent-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Failed')
+      }
+      setVoiceAgentPinSet(true)
+      setVoiceAgentPinInput("")
+      toast.success(t('voiceAgentPinSaved'))
+    } catch (error) {
+      console.error('Error saving voice agent PIN:', error)
+      toast.error(t('voiceAgentPinSaveFailed'))
+    } finally {
+      setVoiceAgentPinSaving(false)
+    }
+  }
+
+  const handleRemoveVoiceAgentPin = async () => {
+    setVoiceAgentPinSaving(true)
+    try {
+      const res = await fetch('/api/profile/voice-agent-pin', { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed')
+      setVoiceAgentPinSet(false)
+      setVoiceAgentPinInput("")
+      toast.success(t('voiceAgentPinRemoved'))
+    } catch (error) {
+      console.error('Error removing voice agent PIN:', error)
+      toast.error(t('voiceAgentPinSaveFailed'))
+    } finally {
+      setVoiceAgentPinSaving(false)
+    }
+  }
 
   // Save profile changes
   const handlePreviewVoice = async () => {
@@ -695,6 +743,44 @@ export default function SettingsPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="voice-agent-pin">{t('voiceAgentPin')}</Label>
+                  <p className="text-sm text-muted-foreground">{t('voiceAgentPinHint')}</p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="voice-agent-pin"
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={6}
+                      placeholder={voiceAgentPinSet ? "••••" : t('voiceAgentPinPlaceholder')}
+                      value={voiceAgentPinInput}
+                      onChange={(e) => setVoiceAgentPinInput(e.target.value.replace(/\D/g, ""))}
+                      className="w-40 bg-secondary border-border"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleSaveVoiceAgentPin}
+                      disabled={voiceAgentPinSaving || !voiceAgentPinInput.trim()}
+                    >
+                      {voiceAgentPinSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('voiceAgentPinSave')}
+                    </Button>
+                    {voiceAgentPinSet && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleRemoveVoiceAgentPin}
+                        disabled={voiceAgentPinSaving}
+                      >
+                        {t('voiceAgentPinRemove')}
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {voiceAgentPinSet ? t('voiceAgentPinStatusSet') : t('voiceAgentPinStatusUnset')}
+                  </p>
                 </div>
                 <div>
                   <Button

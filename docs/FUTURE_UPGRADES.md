@@ -54,7 +54,7 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
   optimal; it's a fine baseline until group calls become common.
 
 ### Inbound identity + verification gate for sensitive tools
-- **Status:** Naming done; verification planned
+- **Status:** Done (PIN via DTMF shipped)
 - **Context:** Inbound SIP callers are matched to an owner by phone number
   (`resolve_inbound_owner`, tiers 1–3). Tools that read/write owner data
   (`take_note`, `recall_recent_sessions`, etc.) are gated by `config.trusted`
@@ -77,12 +77,20 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
     both reliability and privacy on a phone call.
   - Strongest later option: one-time code via SMS/app to the identified user
     (true possession-factor 2FA) — more moving parts; PIN first.
-- **Proposed approach:** per-user PIN (hashed) entered via DTMF before enabling
-  data tools; unlock is per-call only; lock out after a few failed attempts;
-  keep answer-only capabilities available pre-verification.
-- **Affected areas:** `agent/frau_peters.py` (inbound gating → flip
-  `config.trusted` on success), `agent/config_loader.py` (PIN load/verify),
-  profile settings + settings UI (set the PIN), a migration for the hashed PIN.
+- **Shipped:** per-user PIN (SHA-256 of `pepper:user_id:pin`) set in Settings;
+  tier-1 owner unlocks data tools by entering the PIN on the keypad (DTMF) or
+  saying it (`verify_pin`); unlock is per-call; DTMF locks out after 3 failed
+  attempts; web search stays available pre-verification, sensitive data tools
+  (`take_note`, `recall_recent_sessions`, `deep_research`) stay gated by
+  `config.trusted`. Tier-2 contacts can never unlock.
+  - Files: migration `..._add_voice_agent_pin.sql`,
+    `app/api/profile/voice-agent-pin/route.ts`, `app/api/profile/route.ts` (strips
+    hash, exposes `voice_agent_pin_set`), settings UI, `agent/config_loader.py`
+    (`verify_owner_pin`, tier resolution), `agent/frau_peters.py`
+    (`InboundOwnerAgent`, `verify_pin`, DTMF capture).
+- **Follow-ups (not yet):** cross-call lockout (persisted attempt counter),
+  optional OTP-via-SMS as a stronger factor, and a shared `VOICE_AGENT_PIN_PEPPER`
+  (must be set identically in web + agent envs if used).
 
 ### Agentic skills (web + delegation) — design
 - **Status:** In progress (slice 1 shipped)

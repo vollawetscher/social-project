@@ -35,6 +35,8 @@ export interface UserProfile {
   voice_agent_language?: string | null
   voice_agent_voice_id?: string
   voice_agent_speech_speed?: number
+  // Set by GET /api/profile (never the hash itself): whether an inbound PIN exists.
+  voice_agent_pin_set?: boolean
 
   // Trial / onboarding
   onboarding_expires_at?: string | null

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -53,6 +55,10 @@ class VoiceAgentConfig:
     trusted: bool = False
     document_context: str = ""
     documents_full: str = ""
+    # Inbound PIN gate: the resolved owner's hashed PIN (if set) and whether the
+    # caller IS that owner (tier 1). Only a tier-1 caller can unlock data access.
+    pin_hash: str | None = None
+    caller_is_owner: bool = False
 
 
 def _normalize_phrase(text: str) -> str:
@@ -293,7 +299,8 @@ async def _load_profile_voice_config(owner_user_id: str) -> dict[str, Any] | Non
             client.table("profiles")
             .select(
                 "voice_agent_enabled, voice_agent_display_name, voice_agent_language, "
-                "voice_agent_voice_id, voice_agent_speech_speed, default_recording_language"
+                "voice_agent_voice_id, voice_agent_speech_speed, default_recording_language, "
+                "voice_agent_pin_hash"
             )
             .eq("id", owner_user_id)
             .limit(1)
@@ -317,18 +324,19 @@ def _clean_caller_name(raw: Any) -> str | None:
     return value
 
 
-async def resolve_inbound_owner(caller_number: str) -> tuple[str | None, str | None]:
+async def resolve_inbound_owner(caller_number: str) -> tuple[str | None, str | None, bool]:
     """Resolve the Notissima owner and the caller's name for an inbound caller.
 
-    Tier 1: the caller is a Notissima user (profiles.phone_number match) — name is
-            their profile display name.
+    Tier 1: the caller IS a Notissima user (profiles.phone_number match) — name is
+            their profile display name, and caller_is_owner is True (they may
+            unlock data access with their PIN).
     Tier 2: the caller is someone a Notissima user dialed (most recent outbound
-            call) — name is the stored contact name from that call.
-    Returns (owner_user_id, caller_name).
+            call) — name is the stored contact name; caller_is_owner is False.
+    Returns (owner_user_id, caller_name, caller_is_owner).
     """
     client = _supabase_client()
     if not client or not caller_number:
-        return None, None
+        return None, None, False
 
     try:
         tier1 = (
@@ -341,7 +349,7 @@ async def resolve_inbound_owner(caller_number: str) -> tuple[str | None, str | N
         rows = tier1.data or []
         if rows and rows[0].get("id"):
             logger.info("Inbound caller matched Notissima user (tier 1): %s", caller_number)
-            return str(rows[0]["id"]), _clean_caller_name(rows[0].get("display_name"))
+            return str(rows[0]["id"]), _clean_caller_name(rows[0].get("display_name")), True
     except Exception as exc:
         logger.warning("Tier 1 inbound owner lookup failed: %r", exc)
 
@@ -358,11 +366,11 @@ async def resolve_inbound_owner(caller_number: str) -> tuple[str | None, str | N
         rows = tier2.data or []
         if rows and rows[0].get("user_id"):
             logger.info("Inbound caller matched prior outbound call (tier 2): %s", caller_number)
-            return str(rows[0]["user_id"]), _clean_caller_name(rows[0].get("contact_name"))
+            return str(rows[0]["user_id"]), _clean_caller_name(rows[0].get("contact_name")), False
     except Exception as exc:
         logger.warning("Tier 2 inbound owner lookup failed: %r", exc)
 
-    return None, None
+    return None, None, False
 
 
 async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAgentConfig:
@@ -378,7 +386,7 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
         logger.warning("Inbound call with unrecognized caller number: %r", caller_number)
         return config
 
-    owner_user_id, caller_name = await resolve_inbound_owner(normalized)
+    owner_user_id, caller_name, caller_is_owner = await resolve_inbound_owner(normalized)
     if not owner_user_id:
         logger.info("Inbound caller is unknown (tier 3): %s — using %s", normalized, GENERIC_INBOUND_NAME)
         return config
@@ -386,11 +394,16 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
     config.owner_user_id = owner_user_id
     config.owner_identity = owner_user_id
     config.caller_name = caller_name
+    config.caller_is_owner = caller_is_owner
 
     row = await _load_profile_voice_config(owner_user_id) or {}
     agent_enabled = bool(row.get("voice_agent_enabled"))
     language = str(row.get("voice_agent_language") or row.get("default_recording_language") or "de").strip()
     config.language = "de" if language in ("auto", "") else language
+    # PIN only matters when the caller IS the owner (tier 1) — a contact (tier 2)
+    # must never be able to unlock the owner's data.
+    if caller_is_owner:
+        config.pin_hash = str(row.get("voice_agent_pin_hash") or "").strip() or None
 
     if agent_enabled:
         # Identified caller whose owner has an activated agent → present as their agent.
@@ -404,17 +417,34 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
         config.display_name = GENERIC_INBOUND_NAME
 
     logger.info(
-        "Loaded inbound config: owner=%s caller=%s caller_name=%s display=%s agent_enabled=%s language=%s voice=%s speed=%s",
+        "Loaded inbound config: owner=%s caller=%s caller_name=%s display=%s agent_enabled=%s "
+        "caller_is_owner=%s pin_set=%s language=%s voice=%s speed=%s",
         config.owner_user_id,
         config.caller_number,
         config.caller_name,
         config.display_name,
         agent_enabled,
+        config.caller_is_owner,
+        bool(config.pin_hash),
         config.language,
         config.voice_id,
         config.speech_speed,
     )
     return config
+
+
+def _hash_pin(user_id: str, pin: str) -> str:
+    """Hash an inbound PIN. Must match the web app (voice-agent-pin route)."""
+    pepper = os.environ.get("VOICE_AGENT_PIN_PEPPER", "")
+    return hashlib.sha256(f"{pepper}:{user_id}:{pin}".encode("utf-8")).hexdigest()
+
+
+def verify_owner_pin(config: VoiceAgentConfig, pin: str) -> bool:
+    """Constant-time check of a candidate PIN against the owner's stored hash."""
+    candidate_pin = (pin or "").strip()
+    if not config.pin_hash or not config.owner_user_id or not candidate_pin:
+        return False
+    return hmac.compare_digest(_hash_pin(config.owner_user_id, candidate_pin), config.pin_hash)
 
 
 async def create_inbound_call(

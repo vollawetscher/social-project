@@ -33,7 +33,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })
     }
 
-    return NextResponse.json(profile)
+    // Never expose the PIN hash; surface only whether a PIN is set.
+    const { voice_agent_pin_hash, ...safeProfile } = (profile ?? {}) as Record<string, unknown>
+    return NextResponse.json({
+      ...safeProfile,
+      voice_agent_pin_set: Boolean(voice_agent_pin_hash),
+    })
   } catch (error) {
     console.error('Error in GET /api/profile:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
