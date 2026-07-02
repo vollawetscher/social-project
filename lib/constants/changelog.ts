@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.47.0',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.47.0',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Assistant Calls Get Analysis and Suggested Outputs',
+        description:
+          'Sessions from assistant-enabled calls are now automatically analyzed, so the call owner gets context, suggested outputs, and one-click report generation — the same as any other call.',
+      },
+    ],
+  },
+  {
     version: '1.46.0',
     date: 'July 2, 2026',
     entries: [

@@ -11,6 +11,31 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
 import { isVoiceAgentEnabledForUser } from '@/lib/services/voice-agent'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
+import { enqueueAsyncJob, linkJobToSession, triggerAsyncWorker } from '@/lib/services/queue'
+
+/**
+ * Voice-agent calls create their transcript here in the webhook rather than via
+ * the batch transcribe pipeline, so the post-transcribe → session_analyze step
+ * is never triggered for them. Enqueue it explicitly so voice-agent sessions get
+ * context extraction and suggested outputs just like normal calls.
+ */
+async function enqueueVoiceAgentAnalysis(sessionId: string | null, userId: string | null): Promise<void> {
+  if (!sessionId || !userId) return
+  try {
+    const job = await enqueueAsyncJob({
+      userId,
+      jobType: 'session_analyze',
+      payload: { sessionId },
+      idempotencyKey: `session_analyze:${sessionId}`,
+      maxAttempts: 5,
+    })
+    await linkJobToSession(job.id, sessionId)
+    triggerAsyncWorker()
+    console.log('[LiveKit Webhook] Voice agent analysis enqueued:', sessionId, 'job:', job.id)
+  } catch (err: any) {
+    console.error('[LiveKit Webhook] Failed to enqueue voice agent analysis:', err?.message || err)
+  }
+}
 
 type LiveTranscriptLine = {
   source_key: string
@@ -181,6 +206,10 @@ async function finalizeVoiceAgentTranscript(supabase: any, call: any): Promise<s
 
   await finalizeVoiceAgentCalleeSession(supabase, call.id, sessionId)
 
+  // Trigger analysis (context + suggested outputs) for the host session, which
+  // the voice-agent path would otherwise skip.
+  await enqueueVoiceAgentAnalysis(sessionId, call.user_id)
+
   console.log('[LiveKit Webhook] Voice agent transcript finalized:', sessionId, 'lines:', liveLines.length)
   return sessionId
 }
@@ -201,12 +230,13 @@ async function finalizeVoiceAgentCalleeSession(
   try {
     const { data: callRow } = await supabase
       .from('calls')
-      .select('callee_session_id')
+      .select('callee_session_id, callee_user_id')
       .eq('id', callId)
       .not('callee_session_id', 'is', null)
       .maybeSingle()
 
     const calleeSessionId = callRow?.callee_session_id as string | null
+    const calleeUserId = (callRow?.callee_user_id as string | null) || null
     if (!calleeSessionId) return
 
     const { data: calleeSession } = await supabase
@@ -224,6 +254,7 @@ async function finalizeVoiceAgentCalleeSession(
       .limit(1)
       .maybeSingle()
 
+    let hasTranscript = !!existingCalleeTranscript
     if (!existingCalleeTranscript) {
       const { data: hostTranscripts } = await supabase
         .from('transcripts')
@@ -241,6 +272,7 @@ async function finalizeVoiceAgentCalleeSession(
           summary: t.summary ?? null,
         })
       }
+      hasTranscript = (hostTranscripts?.length ?? 0) > 0
     }
 
     const { data: hostSession } = await supabase
@@ -259,6 +291,12 @@ async function finalizeVoiceAgentCalleeSession(
         speechmatics_summary: hostSession?.speechmatics_summary ?? null,
       })
       .eq('id', calleeSessionId)
+
+    // Analyze the callee's own session too so they get context + suggested
+    // outputs — only when it actually has transcript content.
+    if (hasTranscript) {
+      await enqueueVoiceAgentAnalysis(calleeSessionId, calleeUserId)
+    }
 
     console.log('[LiveKit Webhook] Voice agent callee session finalized:', calleeSessionId)
   } catch (err: any) {
