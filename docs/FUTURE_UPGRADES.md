@@ -53,18 +53,36 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 - **Note:** The current per-session analysis (shipped) is correct but not
   optimal; it's a fine baseline until group calls become common.
 
-### Inbound verification gate for sensitive tools
-- **Status:** Planned
+### Inbound identity + verification gate for sensitive tools
+- **Status:** Naming done; verification planned
 - **Context:** Inbound SIP callers are matched to an owner by phone number
   (`resolve_inbound_owner`, tiers 1–3). Tools that read/write owner data
-  (`take_note`, `recall_recent_sessions`, etc.) are gated by `config.trusted`.
-- **Problem:** Phone-number matching alone is weak authentication for unlocking
-  access to a user's private notes/sessions.
-- **Proposed approach:** Add a verification step (e.g. spoken PIN / one-time code)
-  before enabling data-access tools for inbound callers; keep answering-only
-  capabilities available pre-verification.
-- **Affected areas:** `agent/frau_peters.py` (inbound session gating),
-  `agent/config_loader.py` (owner resolution / trust flag).
+  (`take_note`, `recall_recent_sessions`, etc.) are gated by `config.trusted`
+  (inbound is never trusted today).
+- **Done — neutral vs personal identity:** unidentified callers (or identified
+  callers whose owner has NOT activated an agent) are answered as the neutral
+  **"Notissima Agent"** (`GENERIC_INBOUND_NAME`); identified callers whose owner
+  **has** an activated agent hear that owner's configured agent name/voice.
+  (`load_inbound_voice_agent_config`.)
+- **Problem (remaining):** caller-ID matching alone is weak auth for unlocking a
+  user's private data. Caller ID is factor 1 (weak/spoofable); a secret adds a
+  second factor.
+- **PIN vs passphrase — recommendation: numeric PIN via DTMF.**
+  - PIN (DTMF): reliable regardless of STT/accents/noise, private (not spoken
+    aloud where others can hear), fast, standard for phone systems, and reuses the
+    existing Twilio `Gather` IVR already used for PSTN consent. Downside: lower
+    entropy → require lockout after N attempts + hashed storage.
+  - Passphrase (spoken): nicer for a voice agent and higher potential entropy, but
+    STT-fragile (false rejects), and spoken aloud so it can be overheard. Worse for
+    both reliability and privacy on a phone call.
+  - Strongest later option: one-time code via SMS/app to the identified user
+    (true possession-factor 2FA) — more moving parts; PIN first.
+- **Proposed approach:** per-user PIN (hashed) entered via DTMF before enabling
+  data tools; unlock is per-call only; lock out after a few failed attempts;
+  keep answer-only capabilities available pre-verification.
+- **Affected areas:** `agent/frau_peters.py` (inbound gating → flip
+  `config.trusted` on success), `agent/config_loader.py` (PIN load/verify),
+  profile settings + settings UI (set the PIN), a migration for the hashed PIN.
 
 ### Agentic skills (web + delegation) — design
 - **Status:** In progress (slice 1 shipped)

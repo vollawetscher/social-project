@@ -18,6 +18,10 @@ logger = logging.getLogger("voice-agent")
 DEFAULT_ACK_PHRASES = ["Gerne!", "Bitte sehr.", "Gern geschehen."]
 DEFAULT_VOICE_ID = "38aabb6a-f52b-4fb0-a3d1-988518f4dc06"
 DEFAULT_SPEECH_SPEED = 1.0
+# Neutral identity for inbound callers who are not identified, or whose resolved
+# owner has not activated a personal agent. Identified callers with an activated
+# agent hear that owner's configured agent name instead.
+GENERIC_INBOUND_NAME = "Notissima Agent"
 
 
 def normalize_speech_speed(value: Any) -> float:
@@ -363,6 +367,10 @@ async def resolve_inbound_owner(caller_number: str) -> tuple[str | None, str | N
 
 async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAgentConfig:
     config = VoiceAgentConfig(inbound=True, caller_number=caller_number)
+    # Default to the neutral identity; only an identified caller whose owner has an
+    # activated agent gets that owner's personal agent name/voice.
+    config.display_name = GENERIC_INBOUND_NAME
+    config.greeting = "Wie kann ich Ihnen helfen?"
     normalized = normalize_phone(caller_number)
     config.caller_number = normalized or caller_number
 
@@ -372,7 +380,7 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
 
     owner_user_id, caller_name = await resolve_inbound_owner(normalized)
     if not owner_user_id:
-        logger.info("Inbound caller is unknown (tier 3): %s", normalized)
+        logger.info("Inbound caller is unknown (tier 3): %s — using %s", normalized, GENERIC_INBOUND_NAME)
         return config
 
     config.owner_user_id = owner_user_id
@@ -380,19 +388,28 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
     config.caller_name = caller_name
 
     row = await _load_profile_voice_config(owner_user_id) or {}
+    agent_enabled = bool(row.get("voice_agent_enabled"))
     language = str(row.get("voice_agent_language") or row.get("default_recording_language") or "de").strip()
-    config.enabled = True
-    config.display_name = str(row.get("voice_agent_display_name") or "Frau Peters").strip() or "Frau Peters"
     config.language = "de" if language in ("auto", "") else language
-    config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
-    config.speech_speed = normalize_speech_speed(row.get("voice_agent_speech_speed"))
-    config.greeting = "Wie kann ich Ihnen helfen?"
+
+    if agent_enabled:
+        # Identified caller whose owner has an activated agent → present as their agent.
+        config.enabled = True
+        config.display_name = str(row.get("voice_agent_display_name") or "Frau Peters").strip() or "Frau Peters"
+        config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
+        config.speech_speed = normalize_speech_speed(row.get("voice_agent_speech_speed"))
+    else:
+        # Known owner but no activated agent → stay neutral (Notissima Agent).
+        config.enabled = False
+        config.display_name = GENERIC_INBOUND_NAME
+
     logger.info(
-        "Loaded inbound config: owner=%s caller=%s caller_name=%s display=%s language=%s voice=%s speed=%s",
+        "Loaded inbound config: owner=%s caller=%s caller_name=%s display=%s agent_enabled=%s language=%s voice=%s speed=%s",
         config.owner_user_id,
         config.caller_number,
         config.caller_name,
         config.display_name,
+        agent_enabled,
         config.language,
         config.voice_id,
         config.speech_speed,

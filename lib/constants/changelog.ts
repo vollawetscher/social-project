@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.50.2',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.50.2',
+        date: 'July 2, 2026',
+        category: 'improvement',
+        title: 'Neutral Identity for Unknown Inbound Callers',
+        description:
+          'Inbound callers who aren\'t recognized now hear a neutral "Notissima Agent" instead of a personal assistant name. Recognized callers whose owner has an active assistant still reach that assistant.',
+      },
+    ],
+  },
+  {
     version: '1.50.1',
     date: 'July 2, 2026',
     entries: [
