@@ -116,23 +116,30 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
   user actually toggled (`sessions/[id]/page.tsx` ~434-439) — can over-record
   acceptances.
 
-### PSTN outbound speaker mislabeling ("Caller" + wrong name)
-- **Status:** Needs investigation
-- **Symptom (reported):** On a PSTN outbound call, the initiating Notissima user
-  was labeled "Caller" (not their name) and the callee was shown with the
-  initiator's name in the transcript.
-- **Leading hypotheses (from code review, unconfirmed against real rows):**
-  - `buildSpeakerResolution` falls back to `pstn_turn_order`
-    (`app/api/sessions/[id]/analyze/route.ts:445-457`) when intro/address hints
-    fail, assuming the callee speaks first; if the owner speaks first this can
-    swap labels.
-  - `initiatorLabel` falls back to the literal `'Caller'`
-    (`analyze/route.ts:471-472`) when the owner's `display_name` is empty at
-    analysis time.
-  - `contact_name` stored at dial time could carry the wrong name.
-- **Next step:** Confirm against the actual `sessions.transcript_corrections`,
-  `calls.contact_name`, and the transcript speaker labels for a real affected
-  (owned) PSTN session before changing logic.
+### Cross-user name leak in transcript speaker labels
+- **Status:** Done (fixed)
+- **Symptom (reported):** On other users' PSTN outbound calls, the callee's phone
+  number was replaced in the transcript with the **admin/developer's** name
+  ("Christian Kruppa") — someone who was not in the call at all.
+- **Root cause:** `app/api/sessions/[id]/analyze/route.ts` resolved participant
+  names relative to the user who *triggered* analysis, not the call's actual
+  participants. `linkedOtherName` fell back to `userName` (the analyzer's own
+  display name) whenever the analyzer wasn't the call owner. So when an admin
+  (or anyone not the owner) viewed/analyzed a session — which admins can do via
+  the service-role/admin fetch path — the "other participant" (the phone callee)
+  was stamped with the analyzer's name. It was deterministic and repeated across
+  every such session the admin opened.
+- **Fix:** Derive both sides from real participant data (call owner profile;
+  callee profile / `contact_name` / `phone_number` / consent-log name), only
+  using the analyzer's name when the analyzer genuinely is that participant
+  (`callee_user_id === userId`). Also pass the session owner (not the analyzer)
+  as `sessionUserId` to `buildSpeakerResolution`, and exclude the session/call
+  owner (not the analyzer) from the consent-log "other name" fallback.
+- **Affected areas:** `app/api/sessions/[id]/analyze/route.ts`.
+- **Note:** The earlier "speaker turn-order swap" hypotheses were wrong; the
+  fragile `pstn_turn_order` heuristic still exists but was not the cause here.
+  Making PSTN labeling identity-based (from per-participant egress) remains a
+  worthwhile hardening follow-up.
 
 ### Transcript-cleanup network loop on the session page
 - **Status:** Done (fixed)

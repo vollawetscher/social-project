@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.47.2',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.47.2',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Correct Speaker Names in Call Transcripts',
+        description:
+          'Fixed an issue where a call transcript could show the name of someone who was not on the call (such as an administrator who opened the session) in place of the actual participant. Speaker names are now always taken from the call\'s real participants.',
+      },
+    ],
+  },
+  {
     version: '1.47.1',
     date: 'July 2, 2026',
     entries: [

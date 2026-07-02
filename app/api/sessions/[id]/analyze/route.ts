@@ -786,8 +786,13 @@ export async function POST(
         .select('participant_name, participant_identity')
         .eq('call_id', linkedCall.id)
         .eq('granted', true)
+      // Exclude the session owner's / call owner's own consent entry — not the
+      // analyzer's — so the "other" name isn't taken from the viewer's identity.
+      const excludeIdentities = new Set(
+        [((session as any)?.user_id as string | null), linkedCall?.user_id].filter(Boolean) as string[]
+      )
       const otherConsent = (consentLogs || []).find(
-        (cl: any) => cl.participant_identity !== userId && cl.participant_name && cl.participant_name !== 'Guest'
+        (cl: any) => !excludeIdentities.has(cl.participant_identity) && cl.participant_name && cl.participant_name !== 'Guest'
       )
       if (otherConsent?.participant_name) {
         consentOtherName = otherConsent.participant_name
@@ -795,14 +800,25 @@ export async function POST(
       }
     }
 
+    // The owner of the session being analyzed — NOT necessarily the user who
+    // triggered analysis (e.g. an admin viewing another user's session).
+    const sessionOwnerId = ((session as any)?.user_id as string | null) || null
+
+    // Resolve the two call sides from actual participant data, independent of who
+    // triggered the analysis. Only fall back to the analyzer's own name when the
+    // analyzer genuinely is that participant. Previously the "other" side fell back
+    // to `userName` whenever the analyzer wasn't the call owner, which leaked the
+    // analyzer's name (e.g. an admin's) onto the callee/phone participant.
     const linkedInitiatorName =
-      linkedCall?.user_id === userId
-        ? userName
-        : (callOwnerName?.display_name || null)
+      (linkedCall?.user_id === userId ? userName : callOwnerName?.display_name) || null
     const linkedOtherName =
-      linkedCall?.user_id === userId
-        ? (calleeProfile?.display_name || linkedCall?.contact_name || linkedCall?.phone_number || consentOtherName || null)
-        : userName
+      (linkedCall?.callee_user_id && linkedCall.callee_user_id === userId
+        ? userName
+        : calleeProfile?.display_name)
+      || linkedCall?.contact_name
+      || linkedCall?.phone_number
+      || consentOtherName
+      || null
 
     const meetingLinkHostName =
       linkedCall?.user_id === userId
@@ -823,7 +839,7 @@ export async function POST(
       segments: speechSegments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
       callType: linkedCall?.call_type,
       callUserId: linkedCall?.user_id,
-      sessionUserId: userId,
+      sessionUserId: sessionOwnerId,
       initiatorName: linkedInitiatorName,
       otherParticipantName: linkedOtherName,
       meetingLinkContext,
