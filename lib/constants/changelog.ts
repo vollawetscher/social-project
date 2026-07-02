@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.50.0',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.50.0',
+        date: 'July 2, 2026',
+        category: 'feature',
+        title: 'Voice Assistant Can Search the Web',
+        description:
+          'Ask the in-call assistant about current information and it can search the web and read specific pages to answer — no longer limited to what it was trained on. You can also ask it to research a topic in the background and it will save the findings to your account as a note.',
+      },
+    ],
+  },
+  {
     version: '1.49.0',
     date: 'July 2, 2026',
     entries: [

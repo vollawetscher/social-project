@@ -66,14 +66,34 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 - **Affected areas:** `agent/frau_peters.py` (inbound session gating),
   `agent/config_loader.py` (owner resolution / trust flag).
 
-### More agent tools
-- **Status:** Idea
-- **Context:** The function-calling framework exists (`take_note`,
-  `recall_recent_sessions`, `read_document`, `get_current_call_transcript`).
-- **Ideas:** search across the owner's sessions/notes, create an output/report
-  from the current call, set reminders, look up/create contacts.
-- **Affected areas:** `agent/frau_peters.py`, `agent/config_loader.py`, plus any
-  new supporting API/DB helpers.
+### Agentic skills (web + delegation) — design
+- **Status:** In progress (slice 1 shipped)
+- **Model:** one voice agent (LiveKit-native, lowest latency) with a tool belt in
+  two tiers, to stay agentic without wrecking voice latency:
+  - **Tier 1 — inline** (answer within the turn, ~1–5s): `web_search`,
+    `read_url`, plus existing `take_note`, `recall_recent_sessions`,
+    `get_current_call_transcript`, `read_document`.
+  - **Tier 2 — delegated/async** (kick off → confirm by voice → deliver into the
+    account): `deep_research`, and future report generation.
+- **Provider:** Firecrawl (REST API from the Python agent via `aiohttp`), keyed by
+  `FIRECRAWL_API_KEY` in the **agent deployment env**. `country=de` geo-targets
+  results. EU boundary: web queries/content transit Firecrawl (accepted);
+  owner/meeting data stays in Supabase/EU.
+- **Shipped (slice 1):**
+  - `web_search(query)` — Firecrawl `/v1/search` (limit 4, country de).
+  - `read_url(url)` — Firecrawl `/v1/scrape` → markdown.
+  - `deep_research(topic)` — background task: search + scrape top results, saved
+    as a "Recherche: …" note via `create_owner_note` (owner-gated by `trusted`).
+- **Next:**
+  - `news_search` (`--sources news --tbs qdr:w`), `extract_structured`
+    (Firecrawl agent + JSON schema), `crawl_and_summarize`, "enrich this call"
+    (web lookup attached to the session).
+  - `generate_report` delegated to the existing Notissima async output queue.
+  - Voice latency filler ("einen Moment…") around slow tool calls.
+  - Per-user / per-call Firecrawl credit cap.
+  - Make the LLM model configurable (env/per-user); evaluate a stronger model for
+    tool-heavy turns (the knowledge cutoff itself is now handled by `web_search`).
+- **Affected areas:** `agent/frau_peters.py`, `agent/config_loader.py`.
 
 ### Configurable STT language (auto/multi vs locked)
 - **Status:** Idea

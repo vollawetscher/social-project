@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -9,6 +10,8 @@ import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
+
+import aiohttp
 
 logger = logging.getLogger("voice-agent")
 
@@ -444,8 +447,12 @@ async def create_inbound_call(
 # ---------------------------------------------------------------------------
 
 
-async def create_owner_note(owner_user_id: str, text: str) -> bool:
-    """Create a voice note session owned by the given user."""
+async def create_owner_note(owner_user_id: str, text: str, title: str = "Sprachnotiz") -> bool:
+    """Create a voice note session owned by the given user.
+
+    `title` becomes the session's internal_case_id (e.g. "Sprachnotiz" for a
+    dictated note, or "Recherche: …" for a delegated web-research result).
+    """
     value = (text or "").strip()
     client = _supabase_client()
     if not client or not owner_user_id or not value:
@@ -459,7 +466,7 @@ async def create_owner_note(owner_user_id: str, text: str) -> bool:
                     "user_id": owner_user_id,
                     "status": "done",
                     "context_note": value,
-                    "internal_case_id": "Sprachnotiz",
+                    "internal_case_id": title or "Sprachnotiz",
                     "duration_sec": 0,
                     "last_error": "",
                     "input_hint": "dictation",
@@ -576,3 +583,134 @@ async def get_owner_recent_sessions(owner_user_id: str, limit: int = 3) -> list[
     except Exception as exc:
         logger.error("[tool] Failed to load recent sessions for owner %s: %s", owner_user_id, exc)
         return []
+
+
+# ---------------------------------------------------------------------------
+# Web access via Firecrawl (search / scrape / delegated research)
+# ---------------------------------------------------------------------------
+
+FIRECRAWL_API_BASE = os.environ.get("FIRECRAWL_API_BASE", "https://api.firecrawl.dev")
+FIRECRAWL_TIMEOUT_S = float(os.environ.get("FIRECRAWL_TIMEOUT_S", "20"))
+
+
+def _firecrawl_key() -> str | None:
+    return os.environ.get("FIRECRAWL_API_KEY")
+
+
+def _extract_search_results(data: Any) -> list[dict[str, Any]]:
+    """Normalize Firecrawl search responses (list or {web:[...]}) to a flat list."""
+    if not isinstance(data, dict):
+        return []
+    body = data.get("data")
+    items: list[Any] = []
+    if isinstance(body, list):
+        items = body
+    elif isinstance(body, dict):
+        items = body.get("web") or body.get("results") or []
+    results: list[dict[str, Any]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        results.append(
+            {
+                "title": str(item.get("title") or "").strip(),
+                "description": str(item.get("description") or item.get("snippet") or "").strip(),
+                "url": str(item.get("url") or "").strip(),
+            }
+        )
+    return results
+
+
+async def firecrawl_search(query: str, limit: int = 4, country: str = "de") -> list[dict[str, Any]]:
+    """Web search via Firecrawl. Returns a list of {title, description, url}."""
+    key = _firecrawl_key()
+    q = (query or "").strip()
+    if not key or not q:
+        return []
+    payload: dict[str, Any] = {"query": q, "limit": max(1, min(10, limit))}
+    if country:
+        payload["country"] = country
+    try:
+        timeout = aiohttp.ClientTimeout(total=FIRECRAWL_TIMEOUT_S)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                f"{FIRECRAWL_API_BASE}/v1/search",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json=payload,
+            ) as resp:
+                if resp.status != 200:
+                    logger.warning("[web] Firecrawl search HTTP %s for %r", resp.status, q)
+                    return []
+                data = await resp.json()
+    except Exception as exc:
+        logger.error("[web] Firecrawl search failed: %r", exc)
+        return []
+    return _extract_search_results(data)
+
+
+async def firecrawl_scrape(url: str, max_chars: int = 6000) -> str:
+    """Scrape a single URL to clean markdown via Firecrawl."""
+    key = _firecrawl_key()
+    target = (url or "").strip()
+    if not key or not target:
+        return ""
+    payload = {"url": target, "formats": ["markdown"], "onlyMainContent": True}
+    try:
+        timeout = aiohttp.ClientTimeout(total=FIRECRAWL_TIMEOUT_S)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                f"{FIRECRAWL_API_BASE}/v1/scrape",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json=payload,
+            ) as resp:
+                if resp.status != 200:
+                    logger.warning("[web] Firecrawl scrape HTTP %s for %r", resp.status, target)
+                    return ""
+                data = await resp.json()
+    except Exception as exc:
+        logger.error("[web] Firecrawl scrape failed: %r", exc)
+        return ""
+    body = data.get("data") if isinstance(data, dict) else None
+    markdown = str(body.get("markdown") or "") if isinstance(body, dict) else ""
+    return markdown.strip()[:max_chars]
+
+
+async def run_deep_research(owner_user_id: str, topic: str) -> None:
+    """Delegated web research: search + scrape top results, store as an owner note.
+
+    Designed to run as a background task so it never blocks the live call.
+    """
+    t = (topic or "").strip()
+    if not owner_user_id or not t:
+        return
+    try:
+        results = await firecrawl_search(t, limit=5)
+        if not results:
+            await create_owner_note(
+                owner_user_id,
+                f"Zu '{t}' konnten keine Web-Ergebnisse gefunden werden.",
+                title=f"Recherche: {t}",
+            )
+            return
+        top = [r for r in results if r.get("url")][:3]
+        scrapes = await asyncio.gather(
+            *[firecrawl_scrape(r["url"], max_chars=2000) for r in top],
+            return_exceptions=True,
+        )
+        parts: list[str] = [f"Rechercheergebnis zu: {t}", ""]
+        for idx, r in enumerate(results):
+            title = r.get("title") or r.get("url") or "Ergebnis"
+            desc = r.get("description") or ""
+            url = r.get("url") or ""
+            parts.append(f"- {title}" + (f" — {desc}" if desc else ""))
+            if url:
+                parts.append(f"  {url}")
+            if idx < len(top):
+                content = scrapes[idx] if not isinstance(scrapes[idx], Exception) else ""
+                if content:
+                    parts.append(f"  Auszug: {str(content)[:1500]}")
+            parts.append("")
+        await create_owner_note(owner_user_id, "\n".join(parts).strip(), title=f"Recherche: {t}")
+        logger.info("[web] Deep research stored for owner %s (topic=%r)", owner_user_id, t)
+    except Exception as exc:
+        logger.error("[web] Deep research failed for owner %s: %r", owner_user_id, exc)

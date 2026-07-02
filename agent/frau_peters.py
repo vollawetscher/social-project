@@ -28,9 +28,12 @@ from config_loader import (
     build_document_context,
     create_inbound_call,
     create_owner_note,
+    firecrawl_scrape,
+    firecrawl_search,
     get_call_documents,
     get_call_transcript_lines,
     get_owner_recent_sessions,
+    run_deep_research,
     insert_live_transcript_line,
     load_inbound_voice_agent_config,
     load_voice_agent_config,
@@ -75,9 +78,14 @@ class NotissimaVoiceAgent(Agent):
             "Use read_document to read a document attached to this call; documents may be attached "
             "at any point during the call, so call read_document to check rather than assuming none "
             "exists. "
+            "Use web_search to look up current information the owner asks about (news, facts, prices, "
+            "anything that may be newer than your training) and read_url to read a specific web page. "
+            "Use deep_research when the owner asks you to research a topic and report back or save it — "
+            "it runs in the background and saves the result as a note. "
             "If the owner asks what you can do or how you can help, briefly explain in one or two "
-            "sentences that you can answer questions during the call, take notes to their account, "
-            "summarize the current call, recall their past sessions, and discuss an attached document. "
+            "sentences that you can answer questions during the call, search the web, take notes to "
+            "their account, summarize the current call, recall their past sessions, and discuss an "
+            "attached document. "
             if config.trusted
             else (
                 "If the caller asks what you can do, briefly explain that you can answer their "
@@ -154,6 +162,53 @@ class NotissimaVoiceAgent(Agent):
                 parts.append(f"{speaker}: {text}")
         transcript = "\n".join(parts)
         return "Protokoll des aktuellen Gesprächs:\n" + transcript[:6000]
+
+    @function_tool
+    async def web_search(self, context: RunContext, query: str) -> str:
+        """Search the web for current information to answer the owner's question.
+
+        Use this whenever the answer may be newer than your training data, or for
+        facts, current events, prices, or anything you're unsure about. Summarize
+        the results aloud in one or two sentences.
+
+        Args:
+            query: The search query.
+        """
+        results = await firecrawl_search(query, limit=4)
+        if not results:
+            return "Ich konnte dazu online nichts finden."
+        lines: list[str] = []
+        for r in results[:4]:
+            title = r.get("title") or r.get("url") or "Ergebnis"
+            desc = r.get("description") or ""
+            lines.append(f"{title}: {desc}".strip().rstrip(":"))
+        return "Web-Ergebnisse:\n" + "\n".join(lines)
+
+    @function_tool
+    async def read_url(self, context: RunContext, url: str) -> str:
+        """Read the content of a specific web page so you can discuss or summarize it.
+
+        Args:
+            url: The full URL to read.
+        """
+        content = await firecrawl_scrape(url, max_chars=6000)
+        if not content:
+            return "Ich konnte diese Seite nicht abrufen."
+        return content
+
+    @function_tool
+    async def deep_research(self, context: RunContext, topic: str) -> str:
+        """Start an in-depth web research task in the background and save the result
+        as a note in the owner's account. Use when the owner asks you to research
+        something and report back or save it (rather than answer immediately).
+
+        Args:
+            topic: What to research.
+        """
+        if not self._config.trusted or not self._config.owner_user_id:
+            return "Ich kann die Recherche gerade nicht starten."
+        asyncio.create_task(run_deep_research(self._config.owner_user_id, topic))
+        return "Ich recherchiere das im Hintergrund und lege dir das Ergebnis als Notiz ab."
 
     @function_tool
     async def take_note(self, context: RunContext, note: str) -> str:

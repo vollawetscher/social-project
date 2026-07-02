@@ -27,6 +27,7 @@ ACTIVE
 - **Inbound SIP:** rooms with no Notissima owner (LiveKit SIP dispatch) are treated as inbound calls. The owner is resolved from the caller's number — Tier 1: a Notissima user (`profiles.phone_number`), Tier 2: the most recent outbound call to that number. The agent answers active-on-join with a transcription consent line, creates a `pstn_inbound` calls row, and the webhook finalizes the transcript.
 - **Room buffer:** standard web participants and SIP/PSTN participants are transcribed continuously while the agent job is in the room (cap: 10 human participants).
 - **No batch recording:** when voice agent is enabled, Notissima skips composite egress (see webhook).
+- **Owner tools (active mode):** `take_note`, `recall_recent_sessions`, `get_current_call_transcript`, `read_document`, plus web access via Firecrawl — `web_search` and `read_url` (inline) and `deep_research` (background; saves a "Recherche: …" note). Web tools require `FIRECRAWL_API_KEY`.
 
 ## Setup
 
@@ -50,6 +51,8 @@ cp .env.example .env
 | `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Read owner profile settings |
 | `CARTESIA_VOICE_ID` | Optional LiveKit Inference voice override |
+| `FIRECRAWL_API_KEY` | Web search/scrape/research for the agent (Firecrawl). Without it, web tools return "nothing found". |
+| `FIRECRAWL_API_BASE` / `FIRECRAWL_TIMEOUT_S` | Optional Firecrawl overrides |
 
 STT, LLM, and TTS are requested through LiveKit Inference. Do not add direct
 Deepgram, OpenAI, or Cartesia provider keys for the hosted LiveKit Cloud agent.
