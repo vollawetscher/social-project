@@ -290,6 +290,10 @@ function CallRoomInner({
   // agent-answered call (agent is filtered out of remoteParticipants) would
   // ring for the whole call.
   const [pstnAnswered, setPstnAnswered] = useState(false)
+  // Latches once the voice agent has become active (started speaking). Used to
+  // stop the "waiting for participant" music so it doesn't play over Frau Peters
+  // — e.g. when testing solo by starting a call and calling her without a guest.
+  const [agentEngaged, setAgentEngaged] = useState(false)
   const [savingNotes, setSavingNotes] = useState(false)
   const remoteEverConnected = useRef(false)
 
@@ -854,7 +858,8 @@ function CallRoomInner({
     !hasRemote &&
     !calleeLeft &&
     !remoteCallEnded &&
-    !remoteEverConnected.current
+    !remoteEverConnected.current &&
+    !agentEngaged
   )
   const shouldPlayPstnRing = Boolean(
     callType === "pstn_outbound" &&
@@ -946,6 +951,13 @@ function CallRoomInner({
       setPstnAnswered(true)
     }
   }, [callType, hasRemote, agentParticipants.length])
+
+  // Mute the "waiting for participant" music once the voice agent becomes active
+  // (starts speaking), so it doesn't play over Frau Peters.
+  const agentIsSpeaking = agentParticipants.some((p) => (p as any).isSpeaking)
+  useEffect(() => {
+    if (agentIsSpeaking) setAgentEngaged(true)
+  }, [agentIsSpeaking])
 
   const refreshCameraDevices = useCallback(async () => {
     try {

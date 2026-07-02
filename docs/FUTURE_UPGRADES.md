@@ -108,6 +108,42 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 
 ---
 
+## Assistant
+
+### "Ask Frau Peters" text chat mode (assistant copilot)
+- **Status:** Planned (design)
+- **Two motivations:**
+  1. **Testing harness** — iterate on the assistant's brain (prompt, tool
+     selection, data access, answer quality) without spinning up a LiveKit room,
+     mic, STT and TTS. Note it tests the *brain*, not the voice pipeline
+     (wake/dismiss, STT, TTS, turn-taking, latency remain voice-only tests).
+  2. **Product feature** — a persistent, anytime text copilot for every user,
+     since Notissima already has both the data (sessions, transcripts, notes,
+     outputs, contacts) and the skills (recall, web search/research via
+     Firecrawl, document reading, note-taking, report generation).
+- **Architecture decision:** build chat in **TypeScript/Next**, not through the
+  Python LiveKit worker. The data access, the Anthropic SDK (already used for
+  summaries/outputs), and API routes are all in TS. Proposed:
+  - `POST /api/assistant/chat` (streaming) using **Claude with function-calling**.
+  - A chat UI: global slide-over panel or a dedicated `/assistant` page.
+  - Same persona ("Frau Peters") so voice and chat feel like one assistant.
+- **Skills = shared contract, implemented per runtime.** Voice tools live in
+  Python (`agent/`); chat tools wrap existing Notissima TS services/routes
+  (sessions query, `outputs/generate` queue, Firecrawl). Keep the tool
+  definitions conceptually shared so voice and chat don't drift; a later phase
+  can extract a single source of truth.
+- **Phasing:**
+  1. MVP: panel + streaming endpoint + Claude with `recall_recent_sessions`,
+     `search_my_data`, `web_search`, `take_note` (doubles as the test harness).
+  2. `discuss_session/document`, `generate_output` (delegate to the async queue),
+     `deep_research`.
+  3. Unify skill definitions across voice + chat.
+- **EU/data:** chat over the user's own data stays in Supabase/EU; web via
+  Firecrawl (accepted). Claude is also stronger at multi-tool orchestration than
+  the current `gpt-4.1-mini`, and `web_search` removes the knowledge-cutoff issue.
+- **Tradeoff:** some tool logic will exist in both Python (voice) and TS (chat)
+  until unified — manageable since the data layer is already TS.
+
 ## Calls & transcription
 
 ### Persistent, minimizable in-call widget (multitask during a call)

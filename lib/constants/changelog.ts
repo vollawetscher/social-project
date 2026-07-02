@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.50.1',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.50.1',
+        date: 'July 2, 2026',
+        category: 'improvement',
+        title: 'Waiting Music Stops When the Assistant Speaks',
+        description:
+          'The "waiting for participant" music now stops once the voice assistant becomes active, so it no longer plays over her.',
+      },
+    ],
+  },
+  {
     version: '1.50.0',
     date: 'July 2, 2026',
     entries: [
