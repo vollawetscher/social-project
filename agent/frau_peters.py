@@ -54,6 +54,13 @@ MAX_BUFFERED_PARTICIPANTS = 10
 # owner's configured language (config.language).
 STT_LANGUAGE = "multi"
 
+# Returned by owner-data tools when access hasn't been unlocked yet, so the LLM
+# relays a consistent instruction to the caller instead of refusing vaguely.
+PIN_LOCKED_MSG = (
+    "Der Zugriff auf Ihre Daten ist noch nicht freigeschaltet. "
+    "Bitte geben Sie Ihre PIN über die Telefontastatur ein, gefolgt von der Raute-Taste."
+)
+
 
 @dataclass
 class TranscriptBufferTask:
@@ -206,8 +213,10 @@ class NotissimaVoiceAgent(Agent):
         Args:
             topic: What to research.
         """
-        if not self._config.trusted or not self._config.owner_user_id:
-            return "Ich kann die Recherche gerade nicht starten."
+        if not self._config.owner_user_id:
+            return "Ich kann darauf gerade nicht zugreifen."
+        if not self._config.trusted:
+            return PIN_LOCKED_MSG
         asyncio.create_task(run_deep_research(self._config.owner_user_id, topic))
         return "Ich recherchiere das im Hintergrund und lege dir das Ergebnis als Notiz ab."
 
@@ -237,8 +246,10 @@ class NotissimaVoiceAgent(Agent):
         Args:
             note: The exact text of the note to save.
         """
-        if not self._config.trusted or not self._config.owner_user_id:
-            return "Ich kann die Notiz gerade nicht speichern."
+        if not self._config.owner_user_id:
+            return "Ich kann darauf gerade nicht zugreifen."
+        if not self._config.trusted:
+            return PIN_LOCKED_MSG
         ok = await create_owner_note(self._config.owner_user_id, note)
         if ok and self._config.call_id:
             await insert_live_transcript_line(
@@ -249,8 +260,10 @@ class NotissimaVoiceAgent(Agent):
     @function_tool
     async def recall_recent_sessions(self, context: RunContext) -> str:
         """Recall the owner's most recent Notissima sessions (title, summary, date)."""
-        if not self._config.trusted or not self._config.owner_user_id:
-            return "Ich kann die letzten Sitzungen gerade nicht abrufen."
+        if not self._config.owner_user_id:
+            return "Ich kann darauf gerade nicht zugreifen."
+        if not self._config.trusted:
+            return PIN_LOCKED_MSG
         sessions = await get_owner_recent_sessions(self._config.owner_user_id, limit=3)
         if not sessions:
             return "Ich habe keine kürzlichen Sitzungen gefunden."
@@ -624,13 +637,16 @@ class InboundOwnerAgent(NotissimaVoiceAgent):
 
     def __init__(self, config: VoiceAgentConfig) -> None:
         pin_line = (
-            "Before you may use any tool that reads or writes their Notissima data "
-            "(take_note, recall_recent_sessions, deep_research), the caller must "
-            "verify their identity with their PIN. They can enter it on their phone "
-            "keypad, or say it — if they say it, call verify_pin with the digits. "
-            "Until verified, only answer general questions and use web search; do "
-            "not reveal or modify their account data. If they ask for their data "
-            "before verifying, ask them to enter their PIN. "
+            "Access to the caller's Notissima data is unlocked by entering their PIN "
+            "on the phone keypad. IMPORTANT: when the caller asks about their notes, "
+            "sessions, or wants to save something, ALWAYS call the matching tool "
+            "(take_note, recall_recent_sessions, deep_research) — do not refuse or "
+            "ask for the PIN on your own first. If access isn't unlocked yet, the "
+            "tool result itself will tell you to ask for the PIN; only then ask them "
+            "once to enter it on the keypad followed by the pound key. Once you have "
+            "seen a confirmation that access is freigeschaltet (or a tool succeeds), "
+            "treat access as granted and NEVER ask for the PIN again. If the caller "
+            "says they already entered their PIN, do not argue — just call the tool. "
             if config.pin_hash
             else (
                 "No PIN is configured for this account, so you cannot access their "
@@ -789,10 +805,13 @@ async def run_inbound_session(
         max_pin_attempts = 3
 
         async def _announce(text: str) -> None:
+            # Speak it; the conversation_item_added handler persists it once. Don't
+            # also insert the line manually or it appears twice in the transcript.
             with contextlib.suppress(Exception):
-                await insert_live_transcript_line(config.call_id, "agent", config.display_name, text)
-            with contextlib.suppress(Exception):
-                await session.generate_reply(instructions=f'Say exactly: "{text}"', allow_interruptions=False)
+                await session.generate_reply(
+                    instructions=f'Say exactly this and nothing else: "{text}"',
+                    allow_interruptions=False,
+                )
 
         def _evaluate_pin() -> None:
             candidate = "".join(pin_buffer)
