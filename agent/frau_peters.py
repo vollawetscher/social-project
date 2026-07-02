@@ -471,6 +471,11 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
         if phrase_matches(text, config.dismiss_phrases):
             logger.info("Dismiss phrase detected")
             dismiss_event.set()
+            # The AgentSession auto-replies to every turn, so the farewell would
+            # otherwise trigger a rambling LLM goodbye. Cut it immediately so only
+            # the short acknowledgement below is spoken before she deactivates.
+            with contextlib.suppress(Exception):
+                asyncio.create_task(session.interrupt())
 
     @session.on("conversation_item_added")
     def on_conversation_item(ev) -> None:
@@ -534,11 +539,15 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
     disconnect_wait.cancel()
 
     if dismiss_event.is_set() and ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
+        # Stop any in-progress/queued auto-reply to the farewell, then say only a
+        # brief acknowledgement so deactivation is clean and quiet.
+        with contextlib.suppress(Exception):
+            await session.interrupt()
         ack = random.choice(config.ack_phrases)
         persisted_assistant_texts.add(ack)
         await insert_live_transcript_line(config.call_id, "agent", config.display_name, ack)
         await session.generate_reply(
-            instructions=f'Respond with exactly: "{ack}"',
+            instructions=f'Say exactly this and nothing else, then stop: "{ack}"',
             allow_interruptions=False,
         )
 
