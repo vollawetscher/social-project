@@ -110,6 +110,34 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 
 ## Calls & transcription
 
+### Persistent, minimizable in-call widget (multitask during a call)
+- **Status:** Idea (backburner)
+- **Problem:** A call takes over the whole tab — launchers `router.push('/call/...')`
+  and navigating away unmounts `<LiveKitRoom>`, dropping the media connection. So
+  you can't use the Notissima GUI (sessions, notes, outputs) while in a live call.
+  `ActiveCallBanner` (`components/call/ActiveCallBanner.tsx`) only offers
+  Rejoin/End after the connection has already dropped — it's a workaround, not
+  true multitasking.
+- **Proposed approach (Option B):** Hoist `<LiveKitRoom>` into a top-level
+  provider **above the Next router** (app layout) with a floating, minimizable
+  UI. Route changes no longer unmount the room, so the call stays live in the
+  same tab and can be shrunk to a corner tile. This is the Zoom-web /
+  Meet-embedded pattern.
+- **Why this over a second window (Option A):** `window.open('/call/...')` is a
+  quick desktop win but feels detached, needs beforeunload/heartbeat cleanup, and
+  **doesn't work on mobile** (no multi-window). Option B is the only approach that
+  also helps mobile (minimize to a floating tile) and keeps shared state in one
+  tab.
+- **Building blocks that already exist:** `lib/utils/call-session-storage.ts`
+  (persisted call session), `ActiveCallBanner` (becomes "expand minimized call"),
+  `/api/calls/active`, `/api/calls/[id]/heartbeat`.
+- **Scope/risk:** Medium-invasive — move the room/connection lifecycle out of
+  `app/[locale]/call/[roomId]/page.tsx` into a global provider; add
+  minimize/restore UI; ensure the setup/consent/join flows still fire correctly
+  when the room is provider-owned; define mobile behavior (floating tile).
+- **Affected areas:** app layout / a new call provider, `components/call/CallRoom.tsx`,
+  `app/[locale]/call/[roomId]/page.tsx`, `components/call/ActiveCallBanner.tsx`.
+
 ### AI analysis auto-applies cleanup without approval (decision needed)
 - **Status:** Needs product decision
 - **Context:** The `analyze` step writes `name_corrections`, `word_corrections`,
