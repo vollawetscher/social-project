@@ -14,6 +14,28 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.49.0',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.49.0',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Reliable Document Attachments in Calls',
+        description:
+          'Attaching a document during a call now works reliably, and if something does go wrong the app shows the specific reason instead of a generic error.',
+      },
+      {
+        version: '1.49.0',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Steadier Video on Mobile Rotation',
+        description:
+          'Rotating your phone during a video call no longer re-triggers the camera/microphone permission prompt or briefly drops a shared screen.',
+      },
+    ],
+  },
+  {
     version: '1.48.0',
     date: 'July 2, 2026',
     entries: [

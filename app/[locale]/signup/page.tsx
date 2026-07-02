@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Link, useRouter } from '@/i18n/navigation'
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +20,7 @@ export default function SignupPage() {
   const searchParams = useSearchParams()
   const supabase = createClient()
   const t = useTranslations('auth')
+  const locale = useLocale()
 
   const [email, setEmail] = useState(searchParams.get('email') || '')
   const [password, setPassword] = useState('')
@@ -51,7 +52,11 @@ export default function SignupPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${siteUrl}/auth/callback?next=/sessions`,
+          // Persist the user's chosen language so account emails (welcome /
+          // confirmation via a Supabase Send Email hook or template) and the app
+          // can render in their language instead of defaulting to German.
+          data: { locale, preferred_language: locale },
+          emailRedirectTo: `${siteUrl}/auth/callback?next=/${locale}/sessions`,
         },
       })
 

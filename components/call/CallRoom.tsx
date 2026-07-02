@@ -198,12 +198,20 @@ function useRingtone(playing: boolean, minPlayMs = 2500) {
 }
 
 export function CallRoom(props: CallRoomProps) {
-  const videoCaptureOptions = props.mode === "video"
-    ? ({
-        facingMode: "user",
-        resolution: { width: 1280, height: 720, frameRate: 30 },
-      } as any)
-    : false
+  // Stable reference: a fresh object here makes <LiveKitRoom> re-run its local
+  // media setup on every re-render, which on mobile re-calls getUserMedia (a new
+  // permission prompt when rotating the device) and blips subscribed tracks
+  // (screen share briefly disappearing). Memoizing keeps capture options stable.
+  const videoCaptureOptions = useMemo(
+    () =>
+      props.mode === "video"
+        ? ({
+            facingMode: "user",
+            resolution: { width: 1280, height: 720, frameRate: 30 },
+          } as any)
+        : false,
+    [props.mode],
+  )
 
   return (
     <LiveKitRoom
@@ -1570,7 +1578,8 @@ function CallRoomInner({
       toast.success(t("documentAttached", { name: file.name }))
     } catch (error) {
       console.error("Error attaching document:", error)
-      toast.error(t("documentAttachFailed"))
+      const detail = error instanceof Error ? error.message : ""
+      toast.error(detail ? `${t("documentAttachFailed")}: ${detail}` : t("documentAttachFailed"))
     } finally {
       setDocUploading(false)
       if (documentInputRef.current) documentInputRef.current.value = ""

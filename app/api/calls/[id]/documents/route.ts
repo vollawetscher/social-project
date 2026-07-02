@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth, handleAuthError } from '@/lib/auth/helpers'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
@@ -71,6 +71,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Call not found' }, { status: 404 })
     }
 
+    // Ownership is verified above via the user-scoped client. Use the service
+    // role for storage + DB writes so uploads don't fail on storage-bucket RLS
+    // path restrictions, and so the final status update isn't blocked (the
+    // call_documents table has no UPDATE policy for authenticated users).
+    const db = createServiceRoleClient()
+
     const formData = await request.formData()
     const file = formData.get('file')
     if (!(file instanceof File)) {
@@ -93,14 +99,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
     const storagePath = `documents/${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await db.storage
       .from('rohbericht-audio')
       .upload(storagePath, buffer, { contentType: mimeType, upsert: false })
     if (uploadError) {
+      console.error('[Call Documents] Storage upload failed:', uploadError)
       return NextResponse.json({ error: `Upload failed: ${uploadError.message}` }, { status: 500 })
     }
 
-    const { data: inserted, error: insertError } = await supabase
+    const { data: inserted, error: insertError } = await db
       .from('call_documents')
       .insert({
         call_id: call.id,
@@ -114,7 +121,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
       .single()
 
     if (insertError || !inserted) {
-      return NextResponse.json({ error: 'Failed to save document record' }, { status: 500 })
+      console.error('[Call Documents] DB insert failed:', insertError)
+      return NextResponse.json(
+        { error: `Failed to save document record${insertError?.message ? `: ${insertError.message}` : ''}` },
+        { status: 500 },
+      )
     }
 
     let extracted = ''
@@ -122,7 +133,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       extracted = (await extractText(buffer, mimeType, file.name)).trim().slice(0, MAX_EXTRACTED_CHARS)
     } catch (err) {
       console.error('[Call Documents] Extraction failed:', err)
-      await supabase
+      await db
         .from('call_documents')
         .update({ status: 'error' })
         .eq('id', inserted.id)
@@ -131,10 +142,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const summary = await summarizeIfLong(extracted)
 
-    await supabase
+    const { error: updateError } = await db
       .from('call_documents')
       .update({ extracted_text: extracted, summary, status: 'ready' })
       .eq('id', inserted.id)
+    if (updateError) {
+      console.error('[Call Documents] Status update failed:', updateError)
+      return NextResponse.json(
+        { error: `Failed to finalize document: ${updateError.message}` },
+        { status: 500 },
+      )
+    }
 
     return NextResponse.json({
       id: inserted.id,

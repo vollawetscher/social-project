@@ -88,6 +88,29 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 
 ---
 
+## Onboarding / email
+
+### Welcome / confirmation email is German-only (Supabase template)
+- **Status:** Code prerequisite done; needs Supabase-side decision
+- **Symptom:** New users receive the welcome/confirmation email in German
+  regardless of their chosen language.
+- **Root cause:** Both `supabase.auth.signUp` (`app/[locale]/signup/page.tsx`)
+  and admin invite (`app/api/admin/invite/route.ts`) rely on Supabase Auth's
+  built-in email templates, which are configured in the Supabase dashboard as a
+  single language. No app code composes that email, so it can't be localized in
+  code alone.
+- **Done:** Signup now stores the user's locale in `user_metadata`
+  (`data: { locale, preferred_language }`) and localizes the post-confirm
+  redirect — the prerequisite for any localized email.
+- **Remaining options (pick one):**
+  - **Send Email Auth Hook (recommended, code-owned):** add an API route that
+    Supabase calls to send auth emails; render localized HTML using the SMTP
+    transport already in `lib/services/communication-hub-email.ts` and the
+    `locale` from `user_metadata`. Requires enabling the hook + setting a hook
+    secret in the Supabase dashboard.
+  - **Dashboard template:** make the Supabase email template bilingual or
+    English. Zero code, but not per-user localized.
+
 ## Calls & transcription
 
 ### AI analysis auto-applies cleanup without approval (decision needed)
@@ -173,6 +196,35 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 - **Fix:** Added a `pstnAnswered` latch that trips when a human remote **or** the
   voice agent joins, and gate `shouldPlayPstnRing` on it.
 - **Affected areas:** `components/call/CallRoom.tsx`.
+
+### Mobile: orientation re-prompts permissions / screen-share drops
+- **Status:** Mitigated in code; needs on-device verification
+- **Symptom:** Rotating a phone during a video call re-triggered the mic/camera
+  permission prompt (#4) and briefly dropped a shared screen (#5).
+- **Root cause (code contributor):** `videoCaptureOptions` was a fresh object on
+  every render, so `<LiveKitRoom video={...}>` re-ran local-media setup
+  (re-`getUserMedia` → new permission prompt; track churn → screen-share blip).
+- **Fix:** Memoized `videoCaptureOptions` (stable reference) in
+  `components/call/CallRoom.tsx`.
+- **Caveat:** Mobile rotation behavior is browser-specific; confirm on a real
+  device. If it persists, capture device logs (which getUserMedia call fires on
+  rotation) — the remaining cause would be browser/LiveKit reconnection, not the
+  capture-options churn.
+
+### Mid-call document upload failed
+- **Status:** Done (fixed)
+- **Symptom:** "Dokument konnte nicht angehängt werden" when attaching a document
+  during an active call.
+- **Root cause:** The route used the user-scoped client for storage + DB writes.
+  The `call_documents` table has no UPDATE RLS policy (only SELECT/INSERT/DELETE),
+  so the final `status: 'ready'` update was blocked, and the `documents/` storage
+  path likely wasn't permitted by the bucket's RLS for the user client (the
+  working audio upload uses a `sessions/` path).
+- **Fix:** Verify call ownership with the user client, then do storage upload +
+  all `call_documents` writes with the service-role client; surface the real
+  error to the client instead of a generic message.
+- **Affected areas:** `app/api/calls/[id]/documents/route.ts`,
+  `components/call/CallRoom.tsx`.
 
 ### Notes feature unusable on mobile
 - **Status:** Done (disabled on mobile per product decision)
