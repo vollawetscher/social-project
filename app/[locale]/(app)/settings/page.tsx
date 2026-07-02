@@ -744,6 +744,21 @@ export default function SettingsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePreviewVoice}
+                    disabled={voicePreviewLoading}
+                  >
+                    {voicePreviewLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Volume2 className="h-4 w-4 mr-2" />
+                    )}
+                    {t('voiceAgentPreview')}
+                  </Button>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="voice-agent-pin">{t('voiceAgentPin')}</Label>
                   <p className="text-sm text-muted-foreground">{t('voiceAgentPinHint')}</p>
@@ -781,21 +796,6 @@ export default function SettingsPage() {
                   <p className="text-xs text-muted-foreground">
                     {voiceAgentPinSet ? t('voiceAgentPinStatusSet') : t('voiceAgentPinStatusUnset')}
                   </p>
-                </div>
-                <div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePreviewVoice}
-                    disabled={voicePreviewLoading}
-                  >
-                    {voicePreviewLoading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Volume2 className="h-4 w-4 mr-2" />
-                    )}
-                    {t('voiceAgentPreview')}
-                  </Button>
                 </div>
                 <Alert>
                   <Info className="h-4 w-4" />
