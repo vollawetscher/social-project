@@ -59,10 +59,11 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
   (`resolve_inbound_owner`, tiers 1–3). Tools that read/write owner data
   (`take_note`, `recall_recent_sessions`, etc.) are gated by `config.trusted`
   (inbound is never trusted today).
-- **Done — neutral vs personal identity:** unidentified callers (or identified
-  callers whose owner has NOT activated an agent) are answered as the neutral
-  **"Notissima Agent"** (`GENERIC_INBOUND_NAME`); identified callers whose owner
-  **has** an activated agent hear that owner's configured agent name/voice.
+- **Done — neutral vs personal identity:** only the **owner themselves** (tier 1,
+  with an activated agent) hears their personal agent name/voice. Tier-2 contacts
+  and unknown callers are answered as the neutral **"Notissima Agent"**
+  (`GENERIC_INBOUND_NAME`) — a returning contact can't be assumed to know the
+  owner's agent name, and personalizing would leak the owner's setup.
   (`load_inbound_voice_agent_config`.)
 - **Problem (remaining):** caller-ID matching alone is weak auth for unlocking a
   user's private data. Caller ID is factor 1 (weak/spoofable); a secret adds a

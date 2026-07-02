@@ -405,14 +405,16 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
     if caller_is_owner:
         config.pin_hash = str(row.get("voice_agent_pin_hash") or "").strip() or None
 
-    if agent_enabled:
-        # Identified caller whose owner has an activated agent → present as their agent.
+    if agent_enabled and caller_is_owner:
+        # Only the owner themselves (tier 1) hears their personal agent — a tier-2
+        # contact can't be assumed to know "Frau Peters"/"Herr X", and it would
+        # leak the owner's setup. Everyone else stays neutral.
         config.enabled = True
         config.display_name = str(row.get("voice_agent_display_name") or "Frau Peters").strip() or "Frau Peters"
         config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
         config.speech_speed = normalize_speech_speed(row.get("voice_agent_speech_speed"))
     else:
-        # Known owner but no activated agent → stay neutral (Notissima Agent).
+        # Tier-2 contact, or owner without an activated agent → neutral Notissima Agent.
         config.enabled = False
         config.display_name = GENERIC_INBOUND_NAME
 
