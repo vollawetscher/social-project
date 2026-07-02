@@ -163,14 +163,21 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 - **Affected areas:** `app/[locale]/(app)/sessions/[id]/page.tsx`,
   `app/api/calls/webhook/route.ts`.
 
-### Ringtone (Freizeichen) may not stop if SIP never joins the client room
-- **Status:** Idea
-- **Context:** The client ringtone stops when a remote participant appears
-  (`remoteEverConnected`), but the "connected" UI needs remote audio. If the PSTN
-  leg connects at the carrier but the SIP participant never surfaces as a LiveKit
-  participant on the initiator's client, the ring can keep looping until the call
-  row flips to an ended state.
-- **Affected areas:** `components/call/CallRoom.tsx` (`useRingtone`,
-  `shouldPlayPstnRing`, `callStatus` derivation).
-- **Next step:** Reproduce and confirm whether this is an independent bug or a
-  symptom of a failed SIP/webhook path.
+### Ringback tone kept playing for the whole call
+- **Status:** Done (fixed)
+- **Symptom:** The caller's ringback ("tut, tut") kept playing in the background
+  throughout an outbound call instead of stopping once it was answered.
+- **Cause:** The ring-stop latch (`remoteEverConnected`) only counted non-agent
+  remotes, and the voice agent is filtered out of `remoteParticipants`. So an
+  agent-answered call never registered as "answered" and the ring never stopped.
+- **Fix:** Added a `pstnAnswered` latch that trips when a human remote **or** the
+  voice agent joins, and gate `shouldPlayPstnRing` on it.
+- **Affected areas:** `components/call/CallRoom.tsx`.
+
+### Notes feature unusable on mobile
+- **Status:** Done (disabled on mobile per product decision)
+- **Symptom:** On mobile, tapping Notes opened an overlay with no input field /
+  no keyboard; only cluttered the small screen.
+- **Fix:** Hide the Notes control on mobile in both `CallControls` layout
+  variants (so the panel can't be opened there).
+- **Affected areas:** `components/call/CallControls.tsx`.

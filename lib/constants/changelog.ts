@@ -14,6 +14,28 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.48.0',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.48.0',
+        date: 'July 2, 2026',
+        category: 'improvement',
+        title: 'Cleaner Mobile Call Screen',
+        description:
+          'The Notes button is now hidden during calls on mobile, where it wasn\'t usable and only cluttered the screen.',
+      },
+      {
+        version: '1.48.0',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Ringback Tone Stops When the Call Connects',
+        description:
+          'On outbound calls, the caller\'s ringing tone now stops as soon as the call is answered — including calls answered by the voice assistant — instead of continuing in the background.',
+      },
+    ],
+  },
+  {
     version: '1.47.2',
     date: 'July 2, 2026',
     entries: [

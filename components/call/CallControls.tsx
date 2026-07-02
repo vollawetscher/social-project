@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile"
 import type { CallMode } from "@/lib/types/call"
 
 interface CallControlsProps {
@@ -73,6 +74,9 @@ export function CallControls({
   variant = "call",
 }: CallControlsProps) {
   const t = useTranslations('callRoom')
+  // Notes are disabled on mobile: the panel has no usable input there and only
+  // clutters the small screen. Hide the entry point entirely on mobile.
+  const isMobile = useIsMobile()
 
   if (variant === "room") {
     return (
@@ -111,13 +115,15 @@ export function CallControls({
             dark
           />
         )}
-        <ControlButton
-          icon={StickyNote}
-          label={t('notes')}
-          active={showNotes}
-          onClick={onToggleNotes}
-          dark
-        />
+        {!isMobile && (
+          <ControlButton
+            icon={StickyNote}
+            label={t('notes')}
+            active={showNotes}
+            onClick={onToggleNotes}
+            dark
+          />
+        )}
         <button onClick={onEndCall} className="flex flex-col items-center gap-1">
           <div className="h-12 w-12 rounded-full flex items-center justify-center bg-destructive hover:bg-destructive/90 transition-colors">
             <PhoneOff className="h-5 w-5 text-destructive-foreground" />
@@ -146,7 +152,7 @@ export function CallControls({
           <ControlButton icon={MonitorUp} label={t('shareScreen')} title={t('shareScreenHint')} active={isScreenSharing} onClick={onToggleScreenShare} dark={dark} accent />
         )}
         {isInitiator && <ControlButton icon={isOnHold ? Play : Pause} label={isOnHold ? t('resume') : t('hold')} active={isOnHold} onClick={onToggleHold} dark={dark} />}
-        <ControlButton icon={StickyNote} label={t('notes')} active={showNotes} onClick={onToggleNotes} dark={dark} />
+        {!isMobile && <ControlButton icon={StickyNote} label={t('notes')} active={showNotes} onClick={onToggleNotes} dark={dark} />}
         {onDialPad && (
           <ControlButton icon={Phone} label={t('dialpad')} active={false} onClick={onDialPad} dark={dark} />
         )}

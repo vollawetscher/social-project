@@ -277,6 +277,11 @@ function CallRoomInner({
   const [liveTranscriptArmed, setLiveTranscriptArmed] = useState(false)
   // Post-call notes state
   const [calleeLeft, setCalleeLeft] = useState(false)
+  // Latches once the outbound call is answered (a human remote OR the voice
+  // agent joins). Used to stop the caller's ringback — otherwise an
+  // agent-answered call (agent is filtered out of remoteParticipants) would
+  // ring for the whole call.
+  const [pstnAnswered, setPstnAnswered] = useState(false)
   const [savingNotes, setSavingNotes] = useState(false)
   const remoteEverConnected = useRef(false)
 
@@ -849,6 +854,7 @@ function CallRoomInner({
     !calleeLeft &&
     !remoteCallEnded &&
     !remoteEverConnected.current &&
+    !pstnAnswered &&
     (callStatus === "ringing" || callStatus === "connecting")
   )
   useRingtone(shouldPlayPstnRing)
@@ -924,6 +930,14 @@ function CallRoomInner({
       setCalleeLeft(true)
     }
   }, [hasRemote, isConnected, calleeLeft])
+
+  // Stop the outbound ringback as soon as the call is answered by anyone —
+  // a human remote or the voice agent (which is filtered out of remoteParticipants).
+  useEffect(() => {
+    if (callType === "pstn_outbound" && (hasRemote || agentParticipants.length > 0)) {
+      setPstnAnswered(true)
+    }
+  }, [callType, hasRemote, agentParticipants.length])
 
   const refreshCameraDevices = useCallback(async () => {
     try {
