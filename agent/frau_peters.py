@@ -326,6 +326,10 @@ async def transcribe_participant_track(
                 and wake_event is not None
                 and (active_flag is None or not active_flag.is_set())
                 and phrase_matches(text, config.wake_phrases)
+                # The dismiss phrase (e.g. "Danke, Frau Peters") contains the wake
+                # phrase ("Frau Peters"), so without this guard the farewell would
+                # immediately re-wake her right after she deactivates.
+                and not phrase_matches(text, config.dismiss_phrases)
             ):
                 logger.info("Wake phrase detected (owner buffer stream)")
                 wake_event.set()
