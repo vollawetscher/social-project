@@ -109,20 +109,26 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
   (owned) PSTN session before changing logic.
 
 ### Transcript-cleanup network loop on the session page
-- **Status:** Planned (client-side, no DB access needed)
+- **Status:** Done (fixed)
 - **Symptom:** While a session is processing, DevTools shows `cleanup-suggestions`
   being called repeatedly ("endless loop"), and in-progress cleanup edits get
   reset.
 - **Cause:** In `app/[locale]/(app)/sessions/[id]/page.tsx`, a poll effect
-  refreshes `session` every 3–5s while processing, and a second effect re-fires
-  on every `session` change (`~953-963`), calling `GET /cleanup-suggestions`
-  again and resetting `speakerNameMap` / `speakerMergeMap` / `wordCorrectionsDraft`
-  from DB each tick.
-- **Proposed approach:** Decouple the cleanup-suggestions fetch and draft
-  initialization from the polling-driven `session` object updates (e.g. load
-  cleanup once per session id / on explicit transcript-version change, and don't
-  clobber unsaved draft edits on every poll tick).
-- **Affected areas:** `app/[locale]/(app)/sessions/[id]/page.tsx`.
+  refreshes `session` every 3–5s while processing, and a second effect re-fired
+  on every `session` change, calling `GET /cleanup-suggestions` again and
+  resetting `speakerNameMap` / `speakerMergeMap` / `wordCorrectionsDraft` each
+  tick. The voice assistant exposed it: a callee's forked session could get stuck
+  in `transcribing` forever (voice-agent calls don't run the batch pipeline that
+  resolves callee-pending), so `isProcessing` stayed true and the poll — and thus
+  the cleanup effect — ran forever.
+- **Fix:** (1) Webhook now resolves the callee's pending session on voice-agent
+  finalization (root cause of the *permanent* loop). (2) The cleanup effect now
+  only re-initializes when its real inputs change (session id, saved corrections,
+  transcript length) via a signature guard, instead of on every `session`
+  reference change — stopping the per-tick `cleanup-suggestions` storm and no
+  longer wiping unsaved draft edits.
+- **Affected areas:** `app/[locale]/(app)/sessions/[id]/page.tsx`,
+  `app/api/calls/webhook/route.ts`.
 
 ### Ringtone (Freizeichen) may not stop if SIP never joins the client room
 - **Status:** Idea

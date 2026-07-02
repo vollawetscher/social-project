@@ -950,9 +950,25 @@ export default function SessionDetailPage() {
     return () => clearInterval(interval)
   }, [sessionId, session?.status, fetchOutputs, needsAnalysisPoll])
 
+  // Initialize cleanup drafts + load cleanup suggestions ONLY when the inputs
+  // that actually affect them change (session id, saved corrections, transcript
+  // length) — not on every `session` reference change. The polling effect calls
+  // setSession every 3–5s while a session is processing; without this guard each
+  // tick re-fetched /cleanup-suggestions and wiped the user's unsaved draft edits.
+  // (A session stuck in a processing status — e.g. a voice-agent callee session
+  // that never left "transcribing" — turned that into an endless loop.)
+  const cleanupInitSigRef = useRef<string | null>(null)
   useEffect(() => {
     if (!session) return
     const corrections = session.transcriptCorrections || {}
+    const signature = JSON.stringify({
+      id: sessionId,
+      corrections,
+      transcriptLen: session.transcript?.length || 0,
+    })
+    if (cleanupInitSigRef.current === signature) return
+    cleanupInitSigRef.current = signature
+
     const initialSpeakerNameMap = (corrections.speaker_name_map || corrections.name_corrections || {}) as Record<string, string>
     const initialSpeakerMergeMap = (corrections.speaker_merge_map || {}) as Record<string, string>
     const initialWordCorrections = normalizeWordCorrections(corrections.word_corrections)
@@ -960,7 +976,7 @@ export default function SessionDetailPage() {
     setSpeakerMergeMap(initialSpeakerMergeMap)
     setWordCorrectionsDraft(initialWordCorrections)
     void loadCleanupSuggestions()
-  }, [session, loadCleanupSuggestions])
+  }, [session, sessionId, loadCleanupSuggestions])
 
   if (loading) {
     return (

@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.47.1',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.47.1',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Smoother Transcript Cleanup',
+        description:
+          'Fixed a session view issue where transcript cleanup could refresh repeatedly and discard your unsaved speaker and word edits while a call was still processing.',
+      },
+    ],
+  },
+  {
     version: '1.47.0',
     date: 'July 2, 2026',
     entries: [
