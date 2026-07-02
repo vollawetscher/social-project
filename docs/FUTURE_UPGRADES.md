@@ -90,6 +90,32 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 
 ## Calls & transcription
 
+### AI analysis auto-applies cleanup without approval (decision needed)
+- **Status:** Needs product decision
+- **Context:** The `analyze` step writes `name_corrections`, `word_corrections`,
+  and `speaker_merges` directly into `sessions.transcript_corrections`
+  (`app/api/sessions/[id]/analyze/route.ts:1386-1398`), so AI speaker labels,
+  word fixes, and speaker merges are applied to the transcript automatically.
+  The manual cleanup panel, by contrast, only persists on the explicit
+  "Apply Cleanup" button.
+- **Symptom (reported):** transcript speaker was renamed with no user approval
+  (compounded by the PSTN mislabel bug producing the wrong name).
+- **Options:**
+  - **Option 1 (recommended):** keep auto speaker-name labeling (so transcripts
+    show names, not `S1`/`S2`), but route AI `word_corrections` and
+    `speaker_merges` into the cleanup suggestions list for user approval instead
+    of auto-applying them.
+  - **Option 2:** nothing auto-applied — AI proposes everything (including names)
+    as suggestions; transcript shows raw speaker ids until approved.
+- **Affected areas:** `app/api/sessions/[id]/analyze/route.ts` (stop merging
+  those keys into `transcript_corrections`; return them as suggestions),
+  `app/api/sessions/[id]/cleanup-suggestions/route.ts` (surface AI-proposed
+  merges/word fixes), session page cleanup UI.
+- **Minor related bug:** `handleSaveCleanup` derives `accepted_suggestions` from
+  all `cleanupSuggestions` whose draft map happens to match, not only the ones the
+  user actually toggled (`sessions/[id]/page.tsx` ~434-439) — can over-record
+  acceptances.
+
 ### PSTN outbound speaker mislabeling ("Caller" + wrong name)
 - **Status:** Needs investigation
 - **Symptom (reported):** On a PSTN outbound call, the initiating Notissima user
