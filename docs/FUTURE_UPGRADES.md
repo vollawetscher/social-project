@@ -88,29 +88,6 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 
 ---
 
-## Onboarding / email
-
-### Welcome / confirmation email is German-only (Supabase template)
-- **Status:** Code prerequisite done; needs Supabase-side decision
-- **Symptom:** New users receive the welcome/confirmation email in German
-  regardless of their chosen language.
-- **Root cause:** Both `supabase.auth.signUp` (`app/[locale]/signup/page.tsx`)
-  and admin invite (`app/api/admin/invite/route.ts`) rely on Supabase Auth's
-  built-in email templates, which are configured in the Supabase dashboard as a
-  single language. No app code composes that email, so it can't be localized in
-  code alone.
-- **Done:** Signup now stores the user's locale in `user_metadata`
-  (`data: { locale, preferred_language }`) and localizes the post-confirm
-  redirect — the prerequisite for any localized email.
-- **Remaining options (pick one):**
-  - **Send Email Auth Hook (recommended, code-owned):** add an API route that
-    Supabase calls to send auth emails; render localized HTML using the SMTP
-    transport already in `lib/services/communication-hub-email.ts` and the
-    `locale` from `user_metadata`. Requires enabling the hook + setting a hook
-    secret in the Supabase dashboard.
-  - **Dashboard template:** make the Supabase email template bilingual or
-    English. Zero code, but not per-user localized.
-
 ## Calls & transcription
 
 ### AI analysis auto-applies cleanup without approval (decision needed)
