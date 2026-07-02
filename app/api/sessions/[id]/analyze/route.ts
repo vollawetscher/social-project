@@ -835,8 +835,25 @@ export async function POST(
           }
         : null
 
+    // Voice-agent calls include the AI assistant as a "speaker" (e.g. "Frau
+    // Peters" / "Notissima Agent"). Exclude it from human speaker-name resolution
+    // so its label isn't swapped onto a person or phone number.
+    const agentOwnerId = (linkedCall?.user_id || (session as any)?.user_id) as string | null
+    const agentSpeakerNames = new Set<string>([normalizeForMatch('Notissima Agent')])
+    if (agentOwnerId) {
+      const { data: agentProfile } = await sessionClient
+        .from('profiles')
+        .select('voice_agent_display_name')
+        .eq('id', agentOwnerId)
+        .maybeSingle()
+      const agentName = normalizeForMatch(String(agentProfile?.voice_agent_display_name || ''))
+      if (agentName) agentSpeakerNames.add(agentName)
+    }
+    const isAgentSpeaker = (speaker?: string) => agentSpeakerNames.has(normalizeForMatch(String(speaker || '')))
+    const humanSpeechSegments = speechSegments.filter((seg) => !isAgentSpeaker(seg.speaker))
+
     let speakerResolution = buildSpeakerResolution({
-      segments: speechSegments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
+      segments: humanSpeechSegments as Array<{ speaker?: string; text?: string; start_ms?: number; end_ms?: number }>,
       callType: linkedCall?.call_type,
       callUserId: linkedCall?.user_id,
       sessionUserId: sessionOwnerId,
@@ -1399,15 +1416,16 @@ Branch B (low confidence — ASK):
           }
         : {}),
     }
+    // Never remap the assistant's own speaker label, and prune any stale agent
+    // entry a previous (buggy) run may have written (e.g. "Frau Peters" -> phone).
+    const cleanedNameCorrections = Object.fromEntries(
+      Object.entries({ ...existingNameCorrections, ...(speakerResolution?.nameMap ?? {}) })
+        .filter(([rawLabel]) => !isAgentSpeaker(rawLabel))
+    )
     const mergedTranscriptCorrections = {
       ...existingCorrections,
-      ...(speakerResolution
-        ? {
-            name_corrections: {
-              ...existingNameCorrections,
-              ...speakerResolution.nameMap,
-            },
-          }
+      ...(Object.keys(cleanedNameCorrections).length > 0
+        ? { name_corrections: cleanedNameCorrections }
         : {}),
       ...(Object.keys(mergedWordCorrections).length > 0 ? { word_corrections: mergedWordCorrections } : {}),
       ...(aiSpeakerMerges.length > 0 ? { speaker_merges: aiSpeakerMerges } : {}),

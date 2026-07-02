@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.51.1',
+    date: 'July 2, 2026',
+    entries: [
+      {
+        version: '1.51.1',
+        date: 'July 2, 2026',
+        category: 'fix',
+        title: 'Correct Speaker Labels in Assistant Calls',
+        description:
+          'The assistant is no longer mistaken for a call participant, so its lines keep its name and the human speaker gets the right name instead of the two being swapped.',
+      },
+    ],
+  },
+  {
     version: '1.51.0',
     date: 'July 2, 2026',
     entries: [
