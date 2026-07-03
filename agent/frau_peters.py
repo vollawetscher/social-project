@@ -49,6 +49,23 @@ load_dotenv()
 
 MAX_BUFFERED_PARTICIPANTS = 10
 
+
+def make_stt(config: "VoiceAgentConfig | None" = None):
+    """Build the STT engine, optionally boosting recognition of the owner's known
+    proper nouns (contacts/name) via Deepgram keyterms. Falls back gracefully if
+    the provider doesn't accept keyterms so transcription never breaks."""
+    keyterms = list(getattr(config, "keyterms", None) or [])
+    if keyterms:
+        try:
+            return inference.STT(
+                model="deepgram/nova-3",
+                language=STT_LANGUAGE,
+                extra_kwargs={"keyterm": keyterms},
+            )
+        except Exception as exc:
+            logger.warning("STT keyterm boosting unavailable, falling back: %r", exc)
+    return inference.STT(model="deepgram/nova-3", language=STT_LANGUAGE)
+
 # Use Deepgram nova-3 multilingual/code-switching mode for speech-to-text so that
 # calls with mixed languages (e.g. the owner speaking German to the agent and
 # English to another participant) are transcribed correctly. TTS still uses the
@@ -353,7 +370,7 @@ async def transcribe_participant_track(
     keeping the stored conversation in the right order.
     """
     audio_stream = rtc.AudioStream(track)
-    stt_engine = inference.STT(model="deepgram/nova-3", language=STT_LANGUAGE)
+    stt_engine = make_stt(config)
     stt_stream = stt_engine.stream()
     source_key = f"participant:{participant.identity}"
     speaker_label = get_participant_label(participant, config)
@@ -527,7 +544,7 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
     dismiss_event = asyncio.Event()
     persisted_assistant_texts: set[str] = set()
     session = AgentSession(
-        stt=inference.STT(model="deepgram/nova-3", language=STT_LANGUAGE),
+        stt=make_stt(config),
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
         tts=inference.TTS(
             model="cartesia/sonic-3",
@@ -775,7 +792,7 @@ async def run_inbound_session(
     """Answer an inbound phone call and converse until the caller hangs up."""
     persisted_assistant_texts: set[str] = set()
     session = AgentSession(
-        stt=inference.STT(model="deepgram/nova-3", language=STT_LANGUAGE),
+        stt=make_stt(config),
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
         tts=inference.TTS(
             model="cartesia/sonic-3",

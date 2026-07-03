@@ -55,6 +55,9 @@ class VoiceAgentConfig:
     trusted: bool = False
     document_context: str = ""
     documents_full: str = ""
+    # Proper nouns (owner's contacts + name) fed to STT as keyterms so names are
+    # transcribed correctly. Only populated when VOICE_AGENT_STT_KEYTERMS is on.
+    keyterms: list[str] = field(default_factory=list)
     # Inbound PIN gate: the resolved owner's hashed PIN (if set) and whether the
     # caller IS that owner (tier 1). Only a tier-1 caller can unlock data access.
     pin_hash: str | None = None
@@ -97,6 +100,29 @@ def _build_dismiss_phrases(dismiss_phrase: str) -> list[str]:
         if short:
             phrases.append(f"danke {short}")
     return phrases or ["danke frau peters"]
+
+
+def stt_keyterms_enabled() -> bool:
+    """Opt-in flag for feeding known names to STT as keyterms (off by default)."""
+    return os.environ.get("VOICE_AGENT_STT_KEYTERMS", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+async def load_owner_keyterms(owner_user_id: str | None, limit: int = 100) -> list[str]:
+    """Owner's known proper nouns (contacts + display name) for STT keyterm boosting."""
+    if not stt_keyterms_enabled() or not owner_user_id:
+        return []
+    names = await get_owner_known_names(owner_user_id)
+    seen: set[str] = set()
+    out: list[str] = []
+    for nm in names:
+        nm = (nm or "").strip()
+        key = nm.lower()
+        if nm and key not in seen and len(nm) <= 60:
+            seen.add(key)
+            out.append(nm)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def cologne_phonetic(word: str) -> str:
@@ -300,6 +326,7 @@ async def load_voice_agent_config(
     config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
     config.speech_speed = normalize_speech_speed(row.get("voice_agent_speech_speed"))
     config.greeting = "Was kann ich für Sie tun?"
+    config.keyterms = await load_owner_keyterms(owner_user_id)
     logger.info(
         "Loaded voice agent config: owner=%s call=%s enabled=%s wake_word=%r language=%s voice=%s speed=%s",
         config.owner_user_id,
@@ -492,6 +519,8 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
         # Tier-2 contact, or owner without an activated agent → neutral Notissima Agent.
         config.enabled = False
         config.display_name = GENERIC_INBOUND_NAME
+
+    config.keyterms = await load_owner_keyterms(owner_user_id)
 
     logger.info(
         "Loaded inbound config: owner=%s caller=%s caller_name=%s display=%s agent_enabled=%s "

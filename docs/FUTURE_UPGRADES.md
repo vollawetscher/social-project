@@ -214,12 +214,13 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
   and F/V/W/PH→3 make it German-correct (verified: Kruppa~Grupper,
   Innovaphone~Innova-Fonds, Reuter~Reuther, Meyer~Maier all match; Kruppa≠Meyer).
 - **Remaining:**
-  - **Layer 1 — STT keyterm boosting (root cause):** feed the owner's known names
-    (contacts, company, own name) to Deepgram nova-3 as keyterms so proper nouns
-    are transcribed correctly in the first place. Needs verification that LiveKit
-    `inference.STT` forwards Deepgram `keyterm` (likely via `extra_kwargs`) before
-    wiring it into the buffer/active/inbound STT construction — do NOT ship
-    blind, as bad extra_kwargs could break STT for all calls.
+  - **Layer 1 — STT keyterm boosting (root cause):** IMPLEMENTED behind an opt-in
+    flag. `make_stt(config)` feeds the owner's known names (contacts + display
+    name, via `load_owner_keyterms`) to Deepgram as `keyterm` — but only when
+    `VOICE_AGENT_STT_KEYTERMS` is enabled, and with a fallback to plain STT if the
+    provider rejects it (so it can't break transcription). **TODO before enabling:**
+    verify LiveKit `inference.STT` actually forwards Deepgram `keyterm` via
+    `extra_kwargs` in your deployment, then flip the flag.
   - **Transcript-side phonetic index:** to find garbled names in already-recorded
     transcripts (not just resolve the query), index transcript tokens by Cologne
     code (a PL/pgSQL Kölner-Phonetik function + index), since the current bridge

@@ -55,6 +55,7 @@ cp .env.example .env
 | `CARTESIA_VOICE_ID` | Optional LiveKit Inference voice override |
 | `FIRECRAWL_API_KEY` | Web search/scrape/research for the agent (Firecrawl). Without it, web tools return "nothing found". |
 | `FIRECRAWL_API_BASE` / `FIRECRAWL_TIMEOUT_S` | Optional Firecrawl overrides |
+| `VOICE_AGENT_STT_KEYTERMS` | Opt-in (`1`/`true`) to boost STT with the owner's contact/name keyterms. Off by default; falls back safely if unsupported. |
 
 STT, LLM, and TTS are requested through LiveKit Inference. Do not add direct
 Deepgram, OpenAI, or Cartesia provider keys for the hosted LiveKit Cloud agent.
