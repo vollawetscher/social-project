@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.52.0',
+    date: 'July 3, 2026',
+    entries: [
+      {
+        version: '1.52.0',
+        date: 'July 3, 2026',
+        category: 'feature',
+        title: 'Assistant Can Search Your Past Sessions',
+        description:
+          'The voice assistant can now search your earlier sessions by keyword (a person, company, or topic) and date range — not just your few most recent ones.',
+      },
+    ],
+  },
+  {
     version: '1.51.1',
     date: 'July 2, 2026',
     entries: [

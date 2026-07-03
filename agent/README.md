@@ -29,7 +29,7 @@ ACTIVE
 - **Inbound PIN gate:** a tier-1 owner unlocks data tools (`take_note`, `recall_recent_sessions`, `deep_research`) only after entering their PIN on the keypad (DTMF) — or saying it (`verify_pin`). Web search stays available; sensitive data tools stay locked (`config.trusted`) until verified. PIN is a SHA-256 hash of `<VOICE_AGENT_PIN_PEPPER>:<user_id>:<pin>` (must match the web app).
 - **Room buffer:** standard web participants and SIP/PSTN participants are transcribed continuously while the agent job is in the room (cap: 10 human participants).
 - **No batch recording:** when voice agent is enabled, Notissima skips composite egress (see webhook).
-- **Owner tools (active mode):** `take_note`, `recall_recent_sessions`, `get_current_call_transcript`, `read_document`, plus web access via Firecrawl — `web_search` and `read_url` (inline) and `deep_research` (background; saves a "Recherche: …" note). Web tools require `FIRECRAWL_API_KEY`.
+- **Owner tools (active mode):** `take_note`, `recall_recent_sessions`, `search_my_data` (keyword + date-range search over past sessions/transcripts), `get_current_call_transcript`, `read_document`, plus web access via Firecrawl — `web_search` and `read_url` (inline) and `deep_research` (background; saves a "Recherche: …" note). Web tools require `FIRECRAWL_API_KEY`.
 
 ## Setup
 

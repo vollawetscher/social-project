@@ -34,6 +34,7 @@ from config_loader import (
     get_call_transcript_lines,
     get_owner_recent_sessions,
     run_deep_research,
+    search_owner_sessions,
     verify_owner_pin,
     insert_live_transcript_line,
     load_inbound_voice_agent_config,
@@ -81,8 +82,10 @@ class NotissimaVoiceAgent(Agent):
             "Use get_current_call_transcript when the owner asks about THIS call — for example to "
             "summarize what has been discussed so far or what someone just said in the current "
             "conversation. Base any summary of the current call only on that transcript. "
-            "Use recall_recent_sessions ONLY for the owner's earlier, already-finished Notissima "
-            "sessions — never use it to summarize the current call. "
+            "Use recall_recent_sessions for the owner's few most recent finished sessions — never "
+            "use it to summarize the current call. "
+            "Use search_my_data to find OLDER or specific past sessions by keyword (a person, "
+            "company, or topic) and/or a date range, when recall_recent_sessions isn't enough. "
             "Use read_document to read a document attached to this call; documents may be attached "
             "at any point during the call, so call read_document to check rather than assuming none "
             "exists. "
@@ -273,6 +276,41 @@ class NotissimaVoiceAgent(Agent):
             summary = str(item.get("speechmatics_summary") or item.get("purpose") or "").strip()
             parts.append(f"{label}: {summary}" if summary else label)
         return "Ihre letzten Sitzungen: " + " | ".join(parts)
+
+    @function_tool
+    async def search_my_data(
+        self,
+        context: RunContext,
+        query: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> str:
+        """Search the owner's past Notissima sessions by keyword and optional date range.
+
+        Use this to find older sessions than recall_recent_sessions returns — e.g.
+        by a person, company, or topic ("the call with Herr Reuter"), or within a
+        time range.
+
+        Args:
+            query: Keywords to search for (person, company, or topic).
+            from_date: Optional lower bound date, ISO format YYYY-MM-DD.
+            to_date: Optional upper bound date, ISO format YYYY-MM-DD.
+        """
+        if not self._config.owner_user_id:
+            return "Ich kann darauf gerade nicht zugreifen."
+        if not self._config.trusted:
+            return PIN_LOCKED_MSG
+        rows = await search_owner_sessions(self._config.owner_user_id, query, from_date, to_date)
+        if not rows:
+            return "Ich habe dazu nichts gefunden."
+        parts: list[str] = []
+        for item in rows:
+            label = str(item.get("internal_case_id") or "Sitzung").strip()
+            date = str(item.get("created_at") or "")[:10]
+            summary = str(item.get("speechmatics_summary") or item.get("purpose") or "").strip()
+            entry = f"{label} ({date})" if date else label
+            parts.append(f"{entry}: {summary}" if summary else entry)
+        return "Gefundene Sitzungen: " + " | ".join(parts)
 
 
 async def wait_for_call_id(room_name: str, timeout_s: float = 10.0) -> str | None:

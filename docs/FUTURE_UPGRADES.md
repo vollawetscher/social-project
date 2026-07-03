@@ -171,6 +171,39 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 - **Tradeoff:** some tool logic will exist in both Python (voice) and TS (chat)
   until unified — manageable since the data layer is already TS.
 
+### Assistant memory & retrieval: keyword → semantic → graph
+- **Status:** Keyword search shipped; semantic/graph = design
+- **Context:** The agent could previously only see the 3 most recent sessions
+  (`get_owner_recent_sessions`). Added `search_my_data` (`search_owner_sessions`)
+  — keyword search over session metadata + transcript text with an optional date
+  range, owner-scoped. The stack today is relational Postgres with `.ilike`/`.or`
+  filtering; there are **no embeddings and no full-text index** yet.
+- **Is the data model good enough?** For the common assistant queries (recall,
+  summarize, "find the call about X / with person Y / from last week"), a
+  relational model + good retrieval covers the large majority. A graph is not
+  required for those. Recommended evolution, in ROI order:
+  1. **Postgres full-text search (FTS):** add `tsvector` columns/indexes on
+     `transcripts` + session metadata (and/or `pg_trgm`) so keyword search is fast
+     and ranked instead of `ilike` scans. Low effort, big correctness/perf win.
+  2. **Semantic search (pgvector):** embed transcript chunks + session summaries;
+     retrieve by meaning, not just keywords → real RAG for "what did we decide
+     about pricing?" Supabase supports pgvector natively (no new infra). This is
+     the **highest-value** next step and where most assistant value lives.
+  3. **Knowledge graph (only if needed):** extract entities (people, orgs, topics,
+     commitments) and relationships across sessions, stored as an edges table in
+     Postgres (or a dedicated graph DB), enabling GraphRAG / multi-hop queries
+     ("all commitments I made to company Y", "who introduced me to Z"). Powerful
+     but heavy: needs an extraction pipeline, entity resolution/dedup, and ongoing
+     maintenance/drift handling. Treat as a **later, optional layer** once a
+     concrete relationship-query need exists — not a prerequisite.
+- **Recommendation:** don't jump to graphs. Do FTS, then pgvector semantic search
+  (covers ~90% of "look further back / find by meaning"); revisit a graph only
+  when relationship/multi-hop questions become a real, recurring need. All three
+  layers can coexist on the current relational model.
+- **Affected areas:** `supabase/migrations/*` (FTS indexes, `vector` columns),
+  an embedding/backfill job, `agent/config_loader.py` (`search_owner_sessions`),
+  and the future chat assistant (same retrieval layer).
+
 ## Calls & transcription
 
 ### Persistent, minimizable in-call widget (multitask during a call)

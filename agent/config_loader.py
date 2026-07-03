@@ -613,6 +613,71 @@ async def get_call_transcript_lines(call_id: str | None, limit: int = 400) -> li
         return []
 
 
+async def search_owner_sessions(
+    owner_user_id: str,
+    query: str,
+    from_date: str | None = None,
+    to_date: str | None = None,
+    limit: int = 8,
+) -> list[dict[str, Any]]:
+    """Keyword-search the owner's sessions by metadata and transcript text.
+
+    Matches title/purpose/summary/context and (best-effort) transcript text,
+    optionally bounded by a created_at date range (ISO 'YYYY-MM-DD'). Owner-scoped.
+    """
+    client = _supabase_client()
+    if not client or not owner_user_id:
+        return []
+    limit = max(1, min(20, limit))
+    # Sanitize: PostgREST or()/ilike filters use ',' '(' ')' as syntax and '*' as
+    # the wildcard, so strip those from the user's query.
+    q = re.sub(r"[,()*%]", " ", (query or "")).strip()
+    cols = "id, internal_case_id, speechmatics_summary, purpose, context_note, created_at"
+    results: dict[str, dict[str, Any]] = {}
+
+    try:
+        meta = client.table("sessions").select(cols).eq("user_id", owner_user_id)
+        if from_date:
+            meta = meta.gte("created_at", from_date)
+        if to_date:
+            meta = meta.lte("created_at", to_date)
+        if q:
+            meta = meta.or_(
+                f"internal_case_id.ilike.*{q}*,speechmatics_summary.ilike.*{q}*,"
+                f"purpose.ilike.*{q}*,context_note.ilike.*{q}*"
+            )
+        meta = meta.order("created_at", desc=True).limit(limit)
+        for row in meta.execute().data or []:
+            results[row["id"]] = row
+    except Exception as exc:
+        logger.error("[tool] session metadata search failed: %r", exc)
+
+    # Best-effort transcript-text match → owner-scoped session lookup.
+    if q and len(results) < limit:
+        try:
+            tr = (
+                client.table("transcripts")
+                .select("session_id")
+                .ilike("redacted_text", f"%{q}%")
+                .limit(50)
+                .execute()
+            )
+            ids = [r["session_id"] for r in (tr.data or []) if r.get("session_id") and r["session_id"] not in results]
+            if ids:
+                sq = client.table("sessions").select(cols).eq("user_id", owner_user_id).in_("id", ids)
+                if from_date:
+                    sq = sq.gte("created_at", from_date)
+                if to_date:
+                    sq = sq.lte("created_at", to_date)
+                for row in sq.execute().data or []:
+                    results[row["id"]] = row
+        except Exception as exc:
+            logger.error("[tool] transcript search failed: %r", exc)
+
+    rows = sorted(results.values(), key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    return rows[:limit]
+
+
 async def get_owner_recent_sessions(owner_user_id: str, limit: int = 3) -> list[dict[str, Any]]:
     """Return the owner's most recent sessions (label, summary, date)."""
     client = _supabase_client()
