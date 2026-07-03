@@ -200,6 +200,33 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
   (covers ~90% of "look further back / find by meaning"); revisit a graph only
   when relationship/multi-hop questions become a real, recurring need. All three
   layers can coexist on the current relational model.
+
+### Name matching for STT-garbled proper nouns (German)
+- **Status:** Cologne-phonetic query resolution shipped; STT boosting pending
+- **Problem:** STT mangles proper nouns — e.g. "Innovaphone"→"Innova-Fonds",
+  "Kruppa"→"Grupper"/"Krupper". Substring/trigram/English-phonetic (Soundex,
+  Metaphone) don't reliably bridge these (esp. K↔G).
+- **Shipped:** **Kölner Phonetik (Cologne phonetics)** in `config_loader.py`
+  (`cologne_phonetic`, `_cologne_match`), plus known-entity resolution:
+  `search_my_data` now expands the query by phonetically matching it against the
+  owner's **contacts + display name** (`get_owner_known_names`,
+  `resolve_known_names`) and searches for the resolved canonical name too. G/K→4
+  and F/V/W/PH→3 make it German-correct (verified: Kruppa~Grupper,
+  Innovaphone~Innova-Fonds, Reuter~Reuther, Meyer~Maier all match; Kruppa≠Meyer).
+- **Remaining:**
+  - **Layer 1 — STT keyterm boosting (root cause):** feed the owner's known names
+    (contacts, company, own name) to Deepgram nova-3 as keyterms so proper nouns
+    are transcribed correctly in the first place. Needs verification that LiveKit
+    `inference.STT` forwards Deepgram `keyterm` (likely via `extra_kwargs`) before
+    wiring it into the buffer/active/inbound STT construction — do NOT ship
+    blind, as bad extra_kwargs could break STT for all calls.
+  - **Transcript-side phonetic index:** to find garbled names in already-recorded
+    transcripts (not just resolve the query), index transcript tokens by Cologne
+    code (a PL/pgSQL Kölner-Phonetik function + index), since the current bridge
+    only helps when the correct name is in the session or the query resolves to a
+    known contact.
+  - Consider matching against `raw_text` (unredacted) as well, since names in
+    `redacted_text` may be masked.
 - **Affected areas:** `supabase/migrations/*` (FTS indexes, `vector` columns),
   an embedding/backfill job, `agent/config_loader.py` (`search_owner_sessions`),
   and the future chat assistant (same retrieval layer).

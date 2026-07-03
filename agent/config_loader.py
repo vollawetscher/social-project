@@ -99,6 +99,81 @@ def _build_dismiss_phrases(dismiss_phrase: str) -> list[str]:
     return phrases or ["danke frau peters"]
 
 
+def cologne_phonetic(word: str) -> str:
+    """Kölner Phonetik (Cologne phonetics) code for a German word.
+
+    German-tuned phonetic algorithm: notably G and K both map to 4, and F/V/W and
+    P-before-H all map to 3 — so STT mishearings like Kruppa/Grupper and
+    Innovaphone/Innova-Fonds encode to the same (or prefix-sharing) codes.
+    """
+    if not word:
+        return ""
+    w = word.lower().replace("ä", "a").replace("ö", "o").replace("ü", "u").replace("ß", "ss")
+    w = re.sub(r"[^a-z]", "", w)
+    if not w:
+        return ""
+    n = len(w)
+    codes: list[str] = []
+    for i, ch in enumerate(w):
+        prev = w[i - 1] if i > 0 else ""
+        nxt = w[i + 1] if i < n - 1 else ""
+        code: str | None = None
+        if ch in "aeijouy":
+            code = "0"
+        elif ch == "h":
+            code = None
+        elif ch == "b":
+            code = "1"
+        elif ch == "p":
+            code = "3" if nxt == "h" else "1"
+        elif ch in "dt":
+            code = "8" if nxt in "csz" else "2"
+        elif ch in "fvw":
+            code = "3"
+        elif ch in "gkq":
+            code = "4"
+        elif ch == "c":
+            if i == 0:
+                code = "4" if nxt in "ahkloqrux" else "8"
+            elif prev in "sz":
+                code = "8"
+            else:
+                code = "4" if nxt in "ahkoqux" else "8"
+        elif ch == "x":
+            code = "8" if prev in "ckq" else "48"
+        elif ch == "l":
+            code = "5"
+        elif ch in "mn":
+            code = "6"
+        elif ch == "r":
+            code = "7"
+        elif ch in "sz":
+            code = "8"
+        if code is not None:
+            codes.append(code)
+    s = "".join(codes)
+    # Collapse consecutive duplicate digits.
+    dedup: list[str] = []
+    for c in s:
+        if not dedup or dedup[-1] != c:
+            dedup.append(c)
+    result = "".join(dedup)
+    # Drop all '0' except a leading one.
+    if result:
+        result = result[0] + result[1:].replace("0", "")
+    return result
+
+
+def _cologne_match(a: str, b: str, min_len: int = 3) -> bool:
+    """True if two Cologne codes are equal or one is a prefix of the other."""
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
+    return len(shorter) >= min_len and longer.startswith(shorter)
+
+
 def _supabase_client():
     url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -613,6 +688,55 @@ async def get_call_transcript_lines(call_id: str | None, limit: int = 400) -> li
         return []
 
 
+async def get_owner_known_names(owner_user_id: str) -> list[str]:
+    """The owner's known entity names (contacts + own display name) for phonetic
+    query resolution."""
+    client = _supabase_client()
+    if not client or not owner_user_id:
+        return []
+    names: list[str] = []
+    try:
+        c = client.table("contacts").select("name").eq("user_id", owner_user_id).limit(1000).execute()
+        for r in c.data or []:
+            nm = str(r.get("name") or "").strip()
+            if nm:
+                names.append(nm)
+    except Exception as exc:
+        logger.warning("[tool] contacts load failed: %r", exc)
+    try:
+        p = client.table("profiles").select("display_name").eq("id", owner_user_id).limit(1).execute()
+        rows = p.data or []
+        if rows:
+            nm = str(rows[0].get("display_name") or "").strip()
+            if nm:
+                names.append(nm)
+    except Exception as exc:
+        logger.warning("[tool] profile name load failed: %r", exc)
+    return names
+
+
+def resolve_known_names(query: str, known_names: list[str], max_matches: int = 3) -> list[str]:
+    """Return known names that phonetically (Kölner Phonetik) match a query word.
+
+    Bridges STT / spelling variants of proper nouns (e.g. a query 'Kruppa' resolves
+    a contact stored as such even if spoken/typed as 'Grupper').
+    """
+    q_words = [w for w in re.split(r"\s+", (query or "").strip()) if len(w) >= 3]
+    if not q_words or not known_names:
+        return []
+    q_codes = [cologne_phonetic(w) for w in q_words]
+    q_codes = [c for c in q_codes if c]
+    matched: list[str] = []
+    for name in known_names:
+        name_codes = [cologne_phonetic(w) for w in re.split(r"\s+", name) if len(w) >= 2]
+        name_codes = [c for c in name_codes if c]
+        if any(_cologne_match(qc, nc) for qc in q_codes for nc in name_codes):
+            matched.append(name)
+            if len(matched) >= max_matches:
+                break
+    return matched
+
+
 async def search_owner_sessions(
     owner_user_id: str,
     query: str,
@@ -629,9 +753,26 @@ async def search_owner_sessions(
     if not client or not owner_user_id:
         return []
     limit = max(1, min(20, limit))
-    # Sanitize: PostgREST or()/ilike filters use ',' '(' ')' as syntax and '*' as
-    # the wildcard, so strip those from the user's query.
-    q = re.sub(r"[,()*%]", " ", (query or "")).strip()
+
+    def _sanitize(s: str) -> str:
+        # PostgREST or()/ilike filters use ',' '(' ')' as syntax and '*' as the
+        # wildcard, so strip those from user-supplied terms.
+        return re.sub(r"[,()*%]", " ", s or "").strip()
+
+    q = _sanitize(query)
+    terms: list[str] = [q] if q else []
+    # Expand with phonetically-resolved known names (Kölner Phonetik) so proper
+    # nouns are found despite STT/spelling variants.
+    try:
+        known = await get_owner_known_names(owner_user_id)
+        for name in resolve_known_names(query, known):
+            sn = _sanitize(name)
+            if sn and sn.lower() not in {t.lower() for t in terms}:
+                terms.append(sn)
+    except Exception as exc:
+        logger.warning("[tool] known-name resolution failed: %r", exc)
+    terms = [t for t in terms if t][:4]
+
     cols = "id, internal_case_id, speechmatics_summary, purpose, context_note, created_at"
     results: dict[str, dict[str, Any]] = {}
 
@@ -641,24 +782,31 @@ async def search_owner_sessions(
             meta = meta.gte("created_at", from_date)
         if to_date:
             meta = meta.lte("created_at", to_date)
-        if q:
-            meta = meta.or_(
-                f"internal_case_id.ilike.*{q}*,speechmatics_summary.ilike.*{q}*,"
-                f"purpose.ilike.*{q}*,context_note.ilike.*{q}*"
-            )
+        if terms:
+            conds: list[str] = []
+            for t in terms:
+                conds += [
+                    f"internal_case_id.ilike.*{t}*",
+                    f"speechmatics_summary.ilike.*{t}*",
+                    f"purpose.ilike.*{t}*",
+                    f"context_note.ilike.*{t}*",
+                ]
+            meta = meta.or_(",".join(conds))
         meta = meta.order("created_at", desc=True).limit(limit)
         for row in meta.execute().data or []:
             results[row["id"]] = row
     except Exception as exc:
         logger.error("[tool] session metadata search failed: %r", exc)
 
-    # Best-effort transcript-text match → owner-scoped session lookup.
-    if q and len(results) < limit:
+    # Best-effort transcript-text match per term → owner-scoped session lookup.
+    for t in terms:
+        if len(results) >= limit:
+            break
         try:
             tr = (
                 client.table("transcripts")
                 .select("session_id")
-                .ilike("redacted_text", f"%{q}%")
+                .ilike("redacted_text", f"%{t}%")
                 .limit(50)
                 .execute()
             )

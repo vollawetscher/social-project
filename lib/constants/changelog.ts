@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.53.0',
+    date: 'July 3, 2026',
+    entries: [
+      {
+        version: '1.53.0',
+        date: 'July 3, 2026',
+        category: 'improvement',
+        title: 'Smarter Name Search (German Phonetics)',
+        description:
+          'Searching your sessions for a person or company now tolerates spelling and speech-to-text variants of German names (for example finding the right contact even when a name was misheard), by matching against your contacts using Cologne phonetics.',
+      },
+    ],
+  },
+  {
     version: '1.52.0',
     date: 'July 3, 2026',
     entries: [
