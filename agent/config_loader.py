@@ -822,6 +822,26 @@ async def search_owner_sessions(
         except Exception as exc:
             logger.error("[tool] transcript search failed: %r", exc)
 
+    # Phonetic transcript match (Kölner Phonetik) via RPC — finds garbled proper
+    # nouns inside transcript text. Best-effort: no-op if the migration/function
+    # isn't present yet.
+    if len(results) < limit:
+        try:
+            codes = sorted(
+                {cologne_phonetic(w) for w in re.split(r"\s+", query or "") if len(w) >= 3}
+            )
+            codes = [c for c in codes if c]
+            if codes:
+                rpc = client.rpc(
+                    "search_sessions_by_phonetic",
+                    {"p_owner": owner_user_id, "p_codes": codes, "p_limit": limit},
+                ).execute()
+                for row in rpc.data or []:
+                    if row.get("id"):
+                        results[row["id"]] = row
+        except Exception as exc:
+            logger.warning("[tool] phonetic transcript RPC unavailable: %r", exc)
+
     rows = sorted(results.values(), key=lambda r: str(r.get("created_at") or ""), reverse=True)
     return rows[:limit]
 
