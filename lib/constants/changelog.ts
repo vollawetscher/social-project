@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.53.1',
+    date: 'July 4, 2026',
+    entries: [
+      {
+        version: '1.53.1',
+        date: 'July 4, 2026',
+        category: 'fix',
+        title: 'Last Words No Longer Cut Off',
+        description:
+          'Fixed a timing issue where the final words of a call could be missing from the transcript, so summaries and context now include the end of the conversation.',
+      },
+    ],
+  },
+  {
     version: '1.53.0',
     date: 'July 3, 2026',
     entries: [

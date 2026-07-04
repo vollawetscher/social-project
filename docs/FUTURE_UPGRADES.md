@@ -234,6 +234,25 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 
 ## Calls & transcription
 
+### Transcript last-words cut off at call end (race)
+- **Status:** Fixed (primary); residual finalize-timing race noted
+- **Cause:** at call end the room transcript buffer hard-cancelled each STT task
+  immediately, and the reader loop broke on stop — so the final utterance, which
+  streaming STT only finalizes a beat after the audio (endpointing latency), was
+  dropped before being written to `call_live_transcript_lines`. Missing end-of-call
+  context in summaries/sessions.
+- **Fix:** on stop, flush (`end_input`) and **drain** remaining final transcripts
+  with a grace period (`STT_DRAIN_GRACE_S`) instead of cancelling; graceful,
+  bounded teardown in `run_room_transcript_buffer` and the entrypoint. Also await
+  in-flight agent/caller transcript inserts (previously fire-and-forget
+  `create_task`) before `session.aclose()` in active + inbound sessions.
+- **Residual (minor):** the `room_finished` webhook could still run
+  `finalizeVoiceAgentTranscript` before the very last DB write lands if shutdown
+  and finalize race. Mitigated by the agent flushing during its (up to ~60s)
+  graceful shutdown window; could be further hardened by having finalize re-read
+  lines after a short delay, or debounce on last-write timestamp.
+- **Affected:** `agent/frau_peters.py`.
+
 ### Persistent, minimizable in-call widget (multitask during a call)
 - **Status:** Idea (backburner)
 - **Problem:** A call takes over the whole tab — launchers `router.push('/call/...')`

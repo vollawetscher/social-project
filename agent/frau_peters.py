@@ -49,6 +49,10 @@ load_dotenv()
 
 MAX_BUFFERED_PARTICIPANTS = 10
 
+# Grace period to let each STT stream flush its final transcript(s) at call end
+# before the task is closed, so the last words aren't cut off (endpointing latency).
+STT_DRAIN_GRACE_S = 4.0
+
 
 def make_stt(config: "VoiceAgentConfig | None" = None):
     """Build the STT engine, optionally boosting recognition of the owner's known
@@ -394,8 +398,11 @@ async def transcribe_participant_track(
     )
     try:
         async for event in stt_stream:
-            if stop_event.is_set():
-                break
+            # Intentionally do NOT break on stop_event here. When stopping, pump_audio
+            # calls end_input(), which flushes the final utterance(s) and then ends
+            # this stream — draining them so the last words before the call ends are
+            # captured instead of being cut off. Teardown is bounded by the caller's
+            # grace timeout (STT_DRAIN_GRACE_S).
             if event.type != stt.SpeechEventType.FINAL_TRANSCRIPT:
                 continue
             text = event.alternatives[0].text if event.alternatives else ""
@@ -515,12 +522,18 @@ async def run_room_transcript_buffer(
             await asyncio.sleep(0.5)
     finally:
         stop_event.set()
+        # Signal each track to stop, then give the STT streams a grace period to
+        # flush and drain their final transcripts before cancelling stragglers —
+        # otherwise the last words spoken before the call ends are lost.
         for item in tasks.values():
             item.stop_event.set()
-            item.task.cancel()
-        for item in tasks.values():
-            with contextlib.suppress(asyncio.CancelledError):
-                await item.task
+        pending_tasks = [item.task for item in tasks.values() if not item.task.done()]
+        if pending_tasks:
+            done, pending = await asyncio.wait(pending_tasks, timeout=STT_DRAIN_GRACE_S + 2.0)
+            for t in pending:
+                t.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await t
         logger.info("[buffer] Room transcript buffer stopped")
 
 
@@ -543,6 +556,7 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
 
     dismiss_event = asyncio.Event()
     persisted_assistant_texts: set[str] = set()
+    pending_inserts: set[asyncio.Task] = set()
     session = AgentSession(
         stt=make_stt(config),
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
@@ -586,7 +600,7 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
         if text in persisted_assistant_texts:
             return
         persisted_assistant_texts.add(text)
-        asyncio.create_task(
+        _ins = asyncio.create_task(
             insert_live_transcript_line(
                 config.call_id,
                 "agent",
@@ -594,6 +608,8 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
                 text,
             )
         )
+        pending_inserts.add(_ins)
+        _ins.add_done_callback(pending_inserts.discard)
 
     room_options = room_io.RoomOptions(
         audio_input=room_io.AudioInputOptions(
@@ -643,6 +659,10 @@ async def run_active_session(ctx: JobContext, config: VoiceAgentConfig) -> None:
             allow_interruptions=False,
         )
 
+    # Ensure the agent's own transcript lines are persisted before closing.
+    if pending_inserts:
+        with contextlib.suppress(Exception):
+            await asyncio.wait(list(pending_inserts), timeout=5.0)
     await session.aclose()
 
 
@@ -791,6 +811,13 @@ async def run_inbound_session(
 ) -> None:
     """Answer an inbound phone call and converse until the caller hangs up."""
     persisted_assistant_texts: set[str] = set()
+    pending_inserts: set[asyncio.Task] = set()
+
+    def _track_insert(coro) -> None:
+        t = asyncio.create_task(coro)
+        pending_inserts.add(t)
+        t.add_done_callback(pending_inserts.discard)
+
     session = AgentSession(
         stt=make_stt(config),
         llm=inference.LLM(model="openai/gpt-4.1-mini"),
@@ -808,7 +835,7 @@ async def run_inbound_session(
         if not text or not ev.is_final:
             return
         logger.info("[inbound] Caller said: %s", text)
-        asyncio.create_task(
+        _track_insert(
             insert_live_transcript_line(config.call_id, f"participant:{sip_identity}", caller_label, text)
         )
 
@@ -827,7 +854,7 @@ async def run_inbound_session(
             return
         persisted_assistant_texts.add(text)
         logger.info("[inbound] Assistant said: %s", text)
-        asyncio.create_task(
+        _track_insert(
             insert_live_transcript_line(config.call_id, "agent", config.display_name, text)
         )
 
@@ -922,6 +949,11 @@ async def run_inbound_session(
     )
 
     await _wait_for_room_disconnect(ctx.room)
+    # Flush any in-flight transcript inserts (caller + agent lines) so the last
+    # words aren't lost when the session closes.
+    if pending_inserts:
+        with contextlib.suppress(Exception):
+            await asyncio.wait(list(pending_inserts), timeout=5.0)
     with contextlib.suppress(Exception):
         await session.aclose()
 
@@ -1058,10 +1090,15 @@ async def entrypoint(ctx: JobContext) -> None:
 
             await asyncio.sleep(0.2)
     finally:
+        # Stop the buffer gracefully so STT streams can flush their final words
+        # before shutdown; only cancel if the drain overruns the grace period.
         buffer_stop.set()
-        buffer_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await buffer_task
+        try:
+            await asyncio.wait_for(buffer_task, timeout=STT_DRAIN_GRACE_S + 5.0)
+        except (asyncio.TimeoutError, Exception):
+            buffer_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await buffer_task
 
 
 if __name__ == "__main__":
