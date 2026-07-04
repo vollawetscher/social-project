@@ -58,17 +58,18 @@ def make_stt(config: "VoiceAgentConfig | None" = None):
     """Build the STT engine, optionally boosting recognition of the owner's known
     proper nouns (contacts/name) via Deepgram keyterms. Falls back gracefully if
     the provider doesn't accept keyterms so transcription never breaks."""
+    lang = getattr(config, "stt_language", None) or STT_LANGUAGE
     keyterms = list(getattr(config, "keyterms", None) or [])
     if keyterms:
         try:
             return inference.STT(
                 model="deepgram/nova-3",
-                language=STT_LANGUAGE,
+                language=lang,
                 extra_kwargs={"keyterm": keyterms},
             )
         except Exception as exc:
             logger.warning("STT keyterm boosting unavailable, falling back: %r", exc)
-    return inference.STT(model="deepgram/nova-3", language=STT_LANGUAGE)
+    return inference.STT(model="deepgram/nova-3", language=lang)
 
 # Use Deepgram nova-3 multilingual/code-switching mode for speech-to-text so that
 # calls with mixed languages (e.g. the owner speaking German to the agent and

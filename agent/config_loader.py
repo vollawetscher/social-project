@@ -46,6 +46,9 @@ class VoiceAgentConfig:
     ack_phrases: list[str] = field(default_factory=lambda: list(DEFAULT_ACK_PHRASES))
     greeting: str = "Was kann ich für Sie tun?"
     language: str = "de"
+    # STT recognition language: "multi" = Deepgram multilingual auto-detect (handles
+    # mixed-language calls but can misdetect); a specific code (e.g. "de") pins it.
+    stt_language: str = "multi"
     voice_id: str = DEFAULT_VOICE_ID
     speech_speed: float = 1.0
     call_id: str | None = None
@@ -323,6 +326,7 @@ async def load_voice_agent_config(
     config.dismiss_phrases = _build_dismiss_phrases(dismiss_phrase)
     config.ack_phrases = [str(v).strip() for v in ack_values if str(v).strip()] or list(DEFAULT_ACK_PHRASES)
     config.language = "de" if language == "auto" else language
+    config.stt_language = "multi" if language in ("auto", "", "multi") else language
     config.voice_id = str(row.get("voice_agent_voice_id") or DEFAULT_VOICE_ID).strip() or DEFAULT_VOICE_ID
     config.speech_speed = normalize_speech_speed(row.get("voice_agent_speech_speed"))
     config.greeting = "Was kann ich für Sie tun?"
@@ -502,6 +506,7 @@ async def load_inbound_voice_agent_config(caller_number: str | None) -> VoiceAge
     agent_enabled = bool(row.get("voice_agent_enabled"))
     language = str(row.get("voice_agent_language") or row.get("default_recording_language") or "de").strip()
     config.language = "de" if language in ("auto", "") else language
+    config.stt_language = "multi" if language in ("auto", "", "multi") else language
     # PIN only matters when the caller IS the owner (tier 1) — a contact (tier 2)
     # must never be able to unlock the owner's data.
     if caller_is_owner:

@@ -80,6 +80,7 @@ export default function SettingsPage() {
   const [voiceAgentDisplayName, setVoiceAgentDisplayName] = useState("Frau Peters")
   const [voiceAgentWakeWord, setVoiceAgentWakeWord] = useState("Frau Peters")
   const [voiceAgentDismissPhrase, setVoiceAgentDismissPhrase] = useState("Danke, Frau Peters")
+  const [voiceAgentLanguage, setVoiceAgentLanguage] = useState("auto")
   const [voiceAgentVoiceId, setVoiceAgentVoiceId] = useState(DEFAULT_VOICE_AGENT_VOICE_ID)
   const [voiceAgentSpeechSpeed, setVoiceAgentSpeechSpeed] = useState(DEFAULT_VOICE_AGENT_SPEECH_SPEED)
   const [voicePreviewLoading, setVoicePreviewLoading] = useState(false)
@@ -305,6 +306,7 @@ export default function SettingsPage() {
         setVoiceAgentDisplayName(data.voice_agent_display_name || 'Frau Peters')
         setVoiceAgentWakeWord(data.voice_agent_wake_word || 'Frau Peters')
         setVoiceAgentDismissPhrase(data.voice_agent_dismiss_phrase || 'Danke, Frau Peters')
+        setVoiceAgentLanguage(data.voice_agent_language || 'auto')
         setVoiceAgentPinSet(Boolean(data.voice_agent_pin_set))
         setVoiceAgentVoiceId(data.voice_agent_voice_id || DEFAULT_VOICE_AGENT_VOICE_ID)
         setVoiceAgentSpeechSpeed(
@@ -442,6 +444,7 @@ export default function SettingsPage() {
           voice_agent_display_name: voiceAgentDisplayName.trim(),
           voice_agent_wake_word: voiceAgentWakeWord.trim(),
           voice_agent_dismiss_phrase: voiceAgentDismissPhrase.trim(),
+          voice_agent_language: voiceAgentLanguage,
           voice_agent_voice_id: voiceAgentVoiceId,
           voice_agent_speech_speed: voiceAgentSpeechSpeed,
         })
@@ -708,6 +711,24 @@ export default function SettingsPage() {
                     onChange={(e) => setVoiceAgentDismissPhrase(e.target.value)}
                     className="bg-secondary border-border"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="voice-agent-language">{t('voiceAgentLanguage')}</Label>
+                  <p className="text-sm text-muted-foreground">{t('voiceAgentLanguageHint')}</p>
+                  <Select value={voiceAgentLanguage} onValueChange={setVoiceAgentLanguage}>
+                    <SelectTrigger id="voice-agent-language" className="w-full bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">{t('voiceAgentLanguageAuto')}</SelectItem>
+                      <SelectItem value="de">Deutsch</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Español</SelectItem>
+                      <SelectItem value="fr">Français</SelectItem>
+                      <SelectItem value="it">Italiano</SelectItem>
+                      <SelectItem value="nl">Nederlands</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="voice-agent-voice">{t('voiceAgentVoice')}</Label>

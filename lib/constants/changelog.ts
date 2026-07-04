@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.54.0',
+    date: 'July 4, 2026',
+    entries: [
+      {
+        version: '1.54.0',
+        date: 'July 4, 2026',
+        category: 'improvement',
+        title: 'Choose Your Call Recognition Language',
+        description:
+          'A new "Recognition language" setting lets you keep automatic multilingual detection or pin a specific language (e.g. German) — pinning avoids the occasional wrong-language transcript on single-language calls.',
+      },
+    ],
+  },
+  {
     version: '1.53.1',
     date: 'July 4, 2026',
     entries: [

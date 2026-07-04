@@ -123,15 +123,20 @@ into `lib/constants/changelog.ts` and delete or mark the entry as Done.
 - **Affected areas:** `agent/frau_peters.py`, `agent/config_loader.py`.
 
 ### Configurable STT language (auto/multi vs locked)
-- **Status:** Idea
-- **Context:** STT was switched to Deepgram `nova-3` multilingual (`multi`) so
-  mixed-language calls transcribe correctly.
-- **Trade-off:** `multi` can be marginally less accurate than a single locked
-  language for wake/dismiss phrase matching.
-- **Proposed approach:** Make STT language a per-user setting (e.g. "auto/multi"
-  vs a fixed locale), defaulting to `multi`.
-- **Affected areas:** `agent/frau_peters.py` (`STT_LANGUAGE`), profile settings +
-  settings UI.
+- **Status:** Done
+- **Context:** STT uses Deepgram `nova-3` multilingual (`multi`); its per-utterance
+  auto-detect can misfire on short/accented speech, producing wrong-language
+  segments (e.g. German/English rendered as Dutch).
+- **Shipped:** the `voice_agent_language` profile setting now drives STT via
+  `config.stt_language` (`auto`→`multi`, otherwise the chosen locale), with a
+  "Recognition language" selector in Settings (Auto/de/en/es/fr/it/nl). Single-
+  language users can pin their language to avoid misdetection; mixed-language
+  users keep Auto.
+- **Known limitation:** for genuinely mixed calls, `multi` is inherent and can
+  still occasionally mis-detect; nova-3 `multi` doesn't support restricting to a
+  specific language subset (e.g. de+en only).
+- **Affected areas:** `agent/config_loader.py`, `agent/frau_peters.py`
+  (`make_stt`), settings UI + i18n.
 
 ---
 
