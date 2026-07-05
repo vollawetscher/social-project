@@ -1093,7 +1093,7 @@ This is what the session owner says the conversation was for. Treat it as ground
     console.log('[Analyze API] Calling Claude API for enhanced analysis...')
     const analysisBudget = await resolveTokenBudget({
       task: 'session_analyze',
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       // Approximate full prompt size from transcript sample + fixed instructions.
       promptChars: sample.length + 4500,
     }, supabase)
@@ -1114,7 +1114,7 @@ This is what the session owner says the conversation was for. Treat it as ground
       },
     }, supabase)
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       max_tokens: analysisBudget.maxTokens,
       messages: [
         {

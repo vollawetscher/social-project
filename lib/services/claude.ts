@@ -134,7 +134,7 @@ If information is not available, omit the field.`
 
     try {
       const message = await this.client.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2048,
         temperature: 0.1,
         messages: [
@@ -335,7 +335,7 @@ Reply ONLY with the clear instructions (no "Here is..." or meta comments, no mar
 
     try {
       const message = await this.client.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2048,
         temperature: 0.3,
         messages: [{ role: 'user', content: prompt }],
@@ -413,7 +413,7 @@ Respond ONLY with a JSON object in this format:
 
     try {
       const message = await this.client.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-sonnet-4-6',
         max_tokens: 500,
         temperature: 0.2,
         messages: [
@@ -468,7 +468,7 @@ Respond ONLY with a JSON object in this format:
     })
 
     const message = await this.client.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       max_tokens: 16384,
       temperature: 0.3,
       messages: [
@@ -516,7 +516,7 @@ Respond ONLY with a JSON object in this format:
       const prompt = this.buildPrompt(input)
 
       const message = await this.client.messages.create({
-        model: 'claude-sonnet-4-5-20250929',
+        model: 'claude-sonnet-4-6',
         max_tokens: 16384,
         temperature: 0.3,
         messages: [

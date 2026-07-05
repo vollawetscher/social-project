@@ -516,7 +516,7 @@ Please generate the requested output following all requirements and guidelines.`
     console.log('[Generate Output] Prompt length:', userPrompt.length)
     const outputBudget = await resolveTokenBudget({
       task: 'output_generate',
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       promptChars: userPrompt.length + systemPrompt.length,
       templateId: config.templateId || null,
       lengthPreference: config.lengthPreference || 'medium',
@@ -571,7 +571,7 @@ Please generate the requested output following all requirements and guidelines.`
 
     // Generate with Claude (use generous token limit to avoid truncated reports)
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       max_tokens: outputBudget.maxTokens,
       messages: [
         {

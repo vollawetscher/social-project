@@ -41,7 +41,7 @@ Build using:
 - **Styling:** Tailwind CSS
 - **Components:** shadcn/ui (already installed)
 - **Database:** Supabase (Auth, Storage, Postgres)
-- **AI:** Anthropic Claude Sonnet 4.5
+- **AI:** Anthropic Claude Sonnet 4.6
 - **Transcription:** Speechmatics
 - **Offline:** IndexedDB for local recordings
 - **Language:** German primary (de), English secondary (en)

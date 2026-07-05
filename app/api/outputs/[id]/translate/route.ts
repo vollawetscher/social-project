@@ -86,7 +86,7 @@ export async function POST(
 
     // Call Claude to translate, preserving format and structure
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       max_tokens: 8192,
       system: `You are a professional translator. Your task is to translate document content from ${sourceLangName} to ${targetLangName}.
 

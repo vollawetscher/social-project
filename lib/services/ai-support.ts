@@ -61,7 +61,7 @@ export class AISupportService {
 
     // Get AI analysis
     const aiResponse = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       messages: [
         {
@@ -149,7 +149,7 @@ Focus on:
     const errorSummary = this.prepareErrorSummary(errors)
 
     const aiResponse = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       messages: [
         {
@@ -254,7 +254,7 @@ ${topEndpoints.map((e) => `  ${e.endpoint}: ${e.count} errors`).join('\n')}
 `
 
     const aiResponse = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1000,
       messages: [
         {
@@ -395,7 +395,7 @@ Generate a friendly, professional response to the user that:
 Keep it concise (3-4 paragraphs) and avoid technical jargon.`
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-sonnet-4-6',
       max_tokens: 500,
       messages: [{ role: 'user', content: prompt }],
     })

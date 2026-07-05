@@ -35,7 +35,7 @@ Multi-domain, multi-language transcription and report generation system with aut
 - **Backend**: Next.js API Routes (serverless)
 - **Database**: PostgreSQL + Supabase (RLS, Storage, Auth)
 - **Transcription**: Speechmatics API v2 (auto language detection, diarization, punctuation)
-- **AI**: Anthropic Claude Sonnet 4.5 (domain detection, report generation)
+- **AI**: Anthropic Claude Sonnet 4.6 (domain detection, report generation)
 - **PDF**: jsPDF
 
 ## Landing Page (Notissima) - Implementation Playbook
