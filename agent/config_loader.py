@@ -902,15 +902,114 @@ async def get_owner_recent_sessions(owner_user_id: str, limit: int = 3) -> list[
 
 
 # ---------------------------------------------------------------------------
-# Web access via Firecrawl (search / scrape / delegated research)
+# Web access: Perplexity (search / research) + Firecrawl (URL scrape only)
 # ---------------------------------------------------------------------------
+
+PERPLEXITY_CHAT_URL = "https://api.perplexity.ai/chat/completions"
+PERPLEXITY_MODEL = os.environ.get("PERPLEXITY_MODEL", "sonar")
+PERPLEXITY_RESEARCH_MODEL = os.environ.get("PERPLEXITY_RESEARCH_MODEL", PERPLEXITY_MODEL)
+PERPLEXITY_TIMEOUT_S = float(os.environ.get("PERPLEXITY_TIMEOUT_S", "45"))
 
 FIRECRAWL_API_BASE = os.environ.get("FIRECRAWL_API_BASE", "https://api.firecrawl.dev")
 FIRECRAWL_TIMEOUT_S = float(os.environ.get("FIRECRAWL_TIMEOUT_S", "20"))
 
 
+def _perplexity_key() -> str | None:
+    return os.environ.get("PERPLEXITY_API_KEY")
+
+
 def _firecrawl_key() -> str | None:
     return os.environ.get("FIRECRAWL_API_KEY")
+
+
+def _extract_perplexity_citations(data: Any) -> list[str]:
+    urls: list[str] = []
+    if not isinstance(data, dict):
+        return urls
+    search_results = data.get("search_results")
+    if isinstance(search_results, list):
+        for item in search_results:
+            if isinstance(item, dict):
+                url = str(item.get("url") or "").strip()
+                if url:
+                    urls.append(url)
+    citations = data.get("citations")
+    if isinstance(citations, list):
+        for item in citations:
+            url = str(item or "").strip()
+            if url and url not in urls:
+                urls.append(url)
+    return urls
+
+
+async def perplexity_chat(
+    *,
+    system: str,
+    user: str,
+    model: str | None = None,
+    max_tokens: int = 1200,
+    temperature: float = 0.2,
+) -> tuple[str, list[str]]:
+    """Call Perplexity Sonar. Returns (answer_text, citation_urls)."""
+    key = _perplexity_key()
+    if not key:
+        return "", []
+    payload = {
+        "model": model or PERPLEXITY_MODEL,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    try:
+        timeout = aiohttp.ClientTimeout(total=PERPLEXITY_TIMEOUT_S)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                PERPLEXITY_CHAT_URL,
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json=payload,
+            ) as resp:
+                if resp.status != 200:
+                    body = await resp.text()
+                    logger.warning("[web] Perplexity HTTP %s: %s", resp.status, body[:300])
+                    return "", []
+                data = await resp.json()
+    except Exception as exc:
+        logger.error("[web] Perplexity request failed: %r", exc)
+        return "", []
+    choices = data.get("choices") if isinstance(data, dict) else None
+    if not isinstance(choices, list) or not choices:
+        return "", _extract_perplexity_citations(data)
+    message = choices[0].get("message") if isinstance(choices[0], dict) else None
+    content = str(message.get("content") or "").strip() if isinstance(message, dict) else ""
+    return content, _extract_perplexity_citations(data)
+
+
+async def perplexity_web_answer(query: str) -> str:
+    """Inline web lookup for voice: concise German answer with optional sources."""
+    q = (query or "").strip()
+    if not q:
+        return "Ich konnte dazu online nichts finden."
+    if not _perplexity_key():
+        return "Die Websuche ist gerade nicht verfügbar."
+    system = (
+        "Du bist eine kurze Sprachassistentin. Beantworte die Frage präzise auf Deutsch "
+        "in ein bis zwei Sätzen. Keine Markdown-Formatierung, keine Aufzählungen."
+    )
+    answer, citations = await perplexity_chat(
+        system=system,
+        user=q,
+        max_tokens=400,
+        temperature=0.1,
+    )
+    if not answer:
+        return "Ich konnte dazu online nichts finden."
+    if citations:
+        sources = ", ".join(citations[:3])
+        return f"{answer} Quellen: {sources}"
+    return answer
 
 
 def _extract_search_results(data: Any) -> list[dict[str, Any]]:
@@ -992,7 +1091,7 @@ async def firecrawl_scrape(url: str, max_chars: int = 6000) -> str:
 
 
 async def run_deep_research(owner_user_id: str, topic: str) -> None:
-    """Delegated web research: search + scrape top results, store as an owner note.
+    """Delegated web research via Perplexity Sonar, stored as an owner note.
 
     Designed to run as a background task so it never blocks the live call.
     """
@@ -1000,32 +1099,40 @@ async def run_deep_research(owner_user_id: str, topic: str) -> None:
     if not owner_user_id or not t:
         return
     try:
-        results = await firecrawl_search(t, limit=5)
-        if not results:
+        if not _perplexity_key():
+            await create_owner_note(
+                owner_user_id,
+                "Die Recherche ist gerade nicht verfügbar (PERPLEXITY_API_KEY fehlt).",
+                title=f"Recherche: {t}",
+            )
+            return
+
+        system = (
+            "Du recherchierst ein Thema für eine Notiz in Notissima. "
+            "Schreibe auf Deutsch eine klare, zusammengefasste Recherche mit Absätzen: "
+            "Kurzüberblick, wichtigste Fakten, aktuelle Entwicklungen falls relevant. "
+            "Keine Navigation, keine Roh-HTML-Auszüge, keine Tabellen. "
+            "Am Ende eine Zeile 'Quellen:' mit bis zu fünf URLs aus den Suchergebnissen."
+        )
+        answer, citations = await perplexity_chat(
+            system=system,
+            user=f"Recherchiere ausführlich: {t}",
+            model=PERPLEXITY_RESEARCH_MODEL,
+            max_tokens=1800,
+            temperature=0.2,
+        )
+        if not answer:
             await create_owner_note(
                 owner_user_id,
                 f"Zu '{t}' konnten keine Web-Ergebnisse gefunden werden.",
                 title=f"Recherche: {t}",
             )
             return
-        top = [r for r in results if r.get("url")][:3]
-        scrapes = await asyncio.gather(
-            *[firecrawl_scrape(r["url"], max_chars=2000) for r in top],
-            return_exceptions=True,
-        )
-        parts: list[str] = [f"Rechercheergebnis zu: {t}", ""]
-        for idx, r in enumerate(results):
-            title = r.get("title") or r.get("url") or "Ergebnis"
-            desc = r.get("description") or ""
-            url = r.get("url") or ""
-            parts.append(f"- {title}" + (f" — {desc}" if desc else ""))
-            if url:
-                parts.append(f"  {url}")
-            if idx < len(top):
-                content = scrapes[idx] if not isinstance(scrapes[idx], Exception) else ""
-                if content:
-                    parts.append(f"  Auszug: {str(content)[:1500]}")
-            parts.append("")
+
+        parts = [f"Recherche: {t}", "", answer.strip()]
+        if citations:
+            parts.extend(["", "Quellen:"])
+            parts.extend(f"- {url}" for url in citations[:5])
         await create_owner_note(owner_user_id, "\n".join(parts).strip(), title=f"Recherche: {t}")
         logger.info("[web] Deep research stored for owner %s (topic=%r)", owner_user_id, t)
     except Exception as exc:

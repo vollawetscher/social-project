@@ -29,7 +29,7 @@ ACTIVE
 - **Inbound PIN gate:** a tier-1 owner unlocks data tools (`take_note`, `recall_recent_sessions`, `deep_research`) only after entering their PIN on the keypad (DTMF) — or saying it (`verify_pin`). Web search stays available; sensitive data tools stay locked (`config.trusted`) until verified. PIN is a SHA-256 hash of `<VOICE_AGENT_PIN_PEPPER>:<user_id>:<pin>` (must match the web app).
 - **Room buffer:** standard web participants and SIP/PSTN participants are transcribed continuously while the agent job is in the room (cap: 10 human participants).
 - **No batch recording:** when voice agent is enabled, Notissima skips composite egress (see webhook).
-- **Owner tools (active mode):** `take_note`, `recall_recent_sessions`, `search_my_data` (keyword + date-range search over past sessions/transcripts), `get_current_call_transcript`, `read_document`, plus web access via Firecrawl — `web_search` and `read_url` (inline) and `deep_research` (background; saves a "Recherche: …" note). Web tools require `FIRECRAWL_API_KEY`.
+- **Owner tools (active mode):** `take_note`, `recall_recent_sessions`, `search_my_data` (keyword + date-range search over past sessions/transcripts), `get_current_call_transcript`, `read_document`, plus web access — `web_search` and `deep_research` via **Perplexity Sonar** (`PERPLEXITY_API_KEY`), `read_url` via Firecrawl scrape (`FIRECRAWL_API_KEY`).
 
 ## Setup
 
@@ -53,7 +53,10 @@ cp .env.example .env
 | `SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Read owner profile settings |
 | `CARTESIA_VOICE_ID` | Optional LiveKit Inference voice override |
-| `FIRECRAWL_API_KEY` | Web search/scrape/research for the agent (Firecrawl). Without it, web tools return "nothing found". |
+| `PERPLEXITY_API_KEY` | Web search + delegated research (`web_search`, `deep_research`) via Perplexity Sonar. Required for research tools. |
+| `PERPLEXITY_MODEL` | Optional inline search model (default: `sonar`). |
+| `PERPLEXITY_RESEARCH_MODEL` | Optional deep-research model (defaults to `PERPLEXITY_MODEL`). |
+| `FIRECRAWL_API_KEY` | URL scraping for `read_url` only. Without it, `read_url` returns unavailable. |
 | `FIRECRAWL_API_BASE` / `FIRECRAWL_TIMEOUT_S` | Optional Firecrawl overrides |
 | `VOICE_AGENT_STT_KEYTERMS` | Opt-in (`1`/`true`) to boost STT with the owner's contact/name keyterms. Off by default; falls back safely if unsupported. |
 

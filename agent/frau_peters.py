@@ -29,10 +29,10 @@ from config_loader import (
     create_inbound_call,
     create_owner_note,
     firecrawl_scrape,
-    firecrawl_search,
     get_call_documents,
     get_call_transcript_lines,
     get_owner_recent_sessions,
+    perplexity_web_answer,
     run_deep_research,
     search_owner_sessions,
     verify_owner_pin,
@@ -207,15 +207,7 @@ class NotissimaVoiceAgent(Agent):
         Args:
             query: The search query.
         """
-        results = await firecrawl_search(query, limit=4)
-        if not results:
-            return "Ich konnte dazu online nichts finden."
-        lines: list[str] = []
-        for r in results[:4]:
-            title = r.get("title") or r.get("url") or "Ergebnis"
-            desc = r.get("description") or ""
-            lines.append(f"{title}: {desc}".strip().rstrip(":"))
-        return "Web-Ergebnisse:\n" + "\n".join(lines)
+        return await perplexity_web_answer(query)
 
     @function_tool
     async def read_url(self, context: RunContext, url: str) -> str:
