@@ -776,20 +776,6 @@ export default function SessionsPage() {
     return !!sessionId
   }, [importTranscriptContent])
 
-  const processPastedTranscript = useCallback(async (
-    rawContent: string,
-    source: 'clipboard_paste' | 'file_select' = 'clipboard_paste',
-    parseStrategy: TranscriptParseStrategy = 'auto',
-    purpose?: string
-  ): Promise<string | null> => {
-    const trimmed = rawContent.trim()
-    if (!trimmed || trimmed.length < 10) {
-      toast.error(t('uploadMessages.emptyContent'))
-      return null
-    }
-    return importTranscriptContent(trimmed, 'pasted.txt', source, parseStrategy, purpose)
-  }, [importTranscriptContent, t])
-
   const handleTranscriptFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files ? Array.from(e.target.files) : []
     e.target.value = ''
