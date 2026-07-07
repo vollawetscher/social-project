@@ -25,19 +25,13 @@ export const changelog: ChangelogVersion[] = [
         description:
           'MS Teams VTT files now import correctly from Upload or Paste — including pasted WEBVTT content, with a parsed preview showing speakers and timestamps before you confirm.',
       },
-    ],
-  },
-  {
-    version: '1.54.1',
-    date: 'July 7, 2026',
-    entries: [
       {
-        version: '1.54.1',
+        version: '1.54.2',
         date: 'July 7, 2026',
         category: 'fix',
-        title: 'Better VTT Import',
+        title: 'Cleaner VTT Transcript Blocks',
         description:
-          'VTT transcript imports now handle more real-world formats — including Teams-style speaker blocks, short timestamps, voice tags, and file headers — so your captions import with the right speakers and timing.',
+          'Imported VTT and SRT files now combine consecutive lines from the same speaker into one block, so you see one speaker label per turn instead of many repeated labels for short fragments.',
       },
     ],
   },

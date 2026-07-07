@@ -154,6 +154,23 @@ export function isStructuredSubtitleContent(content: string, filename?: string |
   return /^\d+\s*\r?\n\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->/m.test(trimmed)
 }
 
+/** Merge consecutive subtitle cues from the same speaker into one turn. */
+function mergeConsecutiveSameSpeakerSegments(segments: ParsedSegment[]): ParsedSegment[] {
+  if (segments.length <= 1) return segments
+
+  const merged: ParsedSegment[] = []
+  for (const seg of segments) {
+    const prev = merged[merged.length - 1]
+    if (prev && prev.speaker === seg.speaker) {
+      prev.text = `${prev.text} ${seg.text}`.replace(/\s+/g, ' ').trim()
+      prev.end_ms = Math.max(prev.end_ms, seg.end_ms)
+    } else {
+      merged.push({ ...seg })
+    }
+  }
+  return merged
+}
+
 export type TranscriptParseStrategy =
   | 'auto'
   | 'sprecher_zeit'
@@ -225,8 +242,9 @@ function parseSRT(content: string): ParseResult {
     }
   }
 
-  const rawText = segments.map(s => s.text).join(' ')
-  return { segments, rawText }
+  const merged = mergeConsecutiveSameSpeakerSegments(segments)
+  const rawText = merged.map(s => s.text).join(' ')
+  return { segments: merged, rawText }
 }
 
 /** Extract speaker label (S1, S2, Speaker 1, etc.) from start of text if present */
@@ -294,7 +312,8 @@ function parseMSTeams(content: string): ParseResult | null {
   }
 
   if (segments.length < 2) return null
-  return { segments, rawText: segments.map(s => s.text).join(' ') }
+  const merged = mergeConsecutiveSameSpeakerSegments(segments)
+  return { segments: merged, rawText: merged.map(s => s.text).join(' ') }
 }
 
 /**
@@ -363,19 +382,21 @@ function parseVTT(content: string): ParseResult {
     })
   }
 
-  if (segments.length >= 2) {
-    const rawText = segments.map((s) => s.text).join(' ')
-    return { segments, rawText }
+  const merged = mergeConsecutiveSameSpeakerSegments(segments)
+
+  if (merged.length >= 2) {
+    const rawText = merged.map((s) => s.text).join(' ')
+    return { segments: merged, rawText }
   }
 
   // Fallback: Teams-style blocks saved as .vtt (speaker line + flexible timestamps)
   const msTeamsResult = parseMSTeams(content)
-  if (msTeamsResult && msTeamsResult.segments.length >= segments.length) {
+  if (msTeamsResult && msTeamsResult.segments.length >= merged.length) {
     return msTeamsResult
   }
 
-  const rawText = segments.map((s) => s.text).join(' ')
-  return { segments, rawText }
+  const rawText = merged.map((s) => s.text).join(' ')
+  return { segments: merged, rawText }
 }
 
 /**
