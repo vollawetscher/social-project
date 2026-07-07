@@ -96,6 +96,25 @@ function stripVttMarkup(text: string): string {
     .trim()
 }
 
+function looksLikeCueId(line: string): boolean {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/\S+)?$/i.test(trimmed)) {
+    return true
+  }
+  return /^\d+$/.test(trimmed)
+}
+
+function extractVttVoiceTag(text: string): { speaker: string | null; text: string } {
+  const match = text.match(/<v([^>]*)>([\s\S]*?)<\/v>/i)
+  if (!match) {
+    return { speaker: null, text: stripVttMarkup(text) }
+  }
+  const speaker = match[1].trim() || null
+  const inner = match[2].replace(/\s*\r?\n\s*/g, ' ').trim()
+  return { speaker, text: inner }
+}
+
 function isVttMetadataBlock(block: string): boolean {
   const first = block.trim().split(/\r?\n/)[0]?.trim().toUpperCase() || ''
   return (
@@ -289,12 +308,23 @@ function parseVTT(content: string): ParseResult {
     const { lineIndex, times } = cue
     const speakerLines = lines
       .slice(0, lineIndex)
-      .filter((line) => !CUE_TIMESTAMP_RE.test(line))
+      .filter((line) => !CUE_TIMESTAMP_RE.test(line) && !looksLikeCueId(line))
     const textLines = lines.slice(lineIndex + 1)
-    const text = stripVttMarkup(textLines.join(' ').trim())
+    const rawText = textLines.join(' ').trim()
+    const { speaker: voiceSpeaker, text } = extractVttVoiceTag(rawText)
     if (!text) continue
 
     const speakerFromLine = speakerLines.join(' ').trim()
+    if (voiceSpeaker) {
+      segments.push({
+        start_ms: times.startMs,
+        end_ms: times.endMs,
+        speaker: voiceSpeaker,
+        text,
+      })
+      continue
+    }
+
     if (speakerFromLine) {
       segments.push({
         start_ms: times.startMs,

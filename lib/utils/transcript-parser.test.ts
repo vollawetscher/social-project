@@ -106,4 +106,37 @@ BOM test`
     expect(segments).toHaveLength(1)
     expect(segments[0].text).toBe('BOM test')
   })
+
+  it('parses LiveKit-style VTT with UUID cue ids and voice tags', () => {
+    const vtt = `WEBVTT
+
+f33a4a33-0db0-4930-af36-528b5542a96d/33-0
+00:00:03.683 --> 00:00:04.083
+<v Christian Kruppa>Ne?</v>
+
+f33a4a33-0db0-4930-af36-528b5542a96d/40-0
+00:00:08.483 --> 00:00:09.683
+<v Thomas Bernhard>So, jetzt übers Set.</v>
+
+f33a4a33-0db0-4930-af36-528b5542a96d/65-0
+00:00:19.443 --> 00:00:20.483
+<v Jonas de Laporte>Ja, bei mir steht auch.</v>`
+
+    const { segments } = parseTranscriptFile(vtt, 'livekit.vtt')
+    expect(segments).toHaveLength(3)
+    expect(segments[0]).toMatchObject({
+      start_ms: 3683,
+      end_ms: 4083,
+      speaker: 'Christian Kruppa',
+      text: 'Ne?',
+    })
+    expect(segments[1]).toMatchObject({
+      speaker: 'Thomas Bernhard',
+      text: 'So, jetzt übers Set.',
+    })
+    expect(segments[2]).toMatchObject({
+      speaker: 'Jonas de Laporte',
+      text: 'Ja, bei mir steht auch.',
+    })
+  })
 })
