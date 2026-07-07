@@ -107,7 +107,7 @@ BOM test`
     expect(segments[0].text).toBe('BOM test')
   })
 
-  it('parses LiveKit-style VTT with UUID cue ids and voice tags', () => {
+  it('parses MS Teams VTT with UUID cue ids and voice tags', () => {
     const vtt = `WEBVTT
 
 f33a4a33-0db0-4930-af36-528b5542a96d/33-0
@@ -122,7 +122,7 @@ f33a4a33-0db0-4930-af36-528b5542a96d/65-0
 00:00:19.443 --> 00:00:20.483
 <v Jonas de Laporte>Ja, bei mir steht auch.</v>`
 
-    const { segments } = parseTranscriptFile(vtt, 'livekit.vtt')
+    const { segments } = parseTranscriptFile(vtt, 'teams-transcript.vtt')
     expect(segments).toHaveLength(3)
     expect(segments[0]).toMatchObject({
       start_ms: 3683,

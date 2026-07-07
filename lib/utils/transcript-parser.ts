@@ -285,8 +285,8 @@ function parseMSTeams(content: string): ParseResult | null {
  * 00:00:00.000 --> 00:00:02.500
  * Subtitle text
  *
- * Also supports Teams-style speaker blocks, short MM:SS timestamps, cue IDs,
- * voice tags (<v Name>), and cue settings after the end time.
+ * Also supports MS Teams VTT exports (UUID cue ids, <v Name> voice tags),
+ * short MM:SS timestamps, cue settings, and NOTE/STYLE blocks.
  */
 function parseVTT(content: string): ParseResult {
   const withoutHeader = stripVttHeader(content)
