@@ -43,6 +43,98 @@ export interface ParseResult {
   rawText: string
 }
 
+/** Matches WebVTT/SRT cue timestamps: HH:MM:SS.mmm, H:MM:SS.mmm, or MM:SS.mmm */
+const CUE_TIMESTAMP_RE =
+  /(\d{1,2}):(\d{2})(?::(\d{2}))?[.,](\d{3})\s*-->\s*(\d{1,2}):(\d{2})(?::(\d{2}))?[.,](\d{3})/
+
+function parseCueTimestampToMs(
+  hours: string,
+  minutes: string,
+  seconds: string | undefined,
+  millis: string
+): number {
+  const h = parseInt(hours, 10)
+  const m = parseInt(minutes, 10)
+  const s = seconds ? parseInt(seconds, 10) : 0
+  const ms = parseInt(millis, 10)
+  if (!seconds) {
+    return (h * 60 + m) * 1000 + ms
+  }
+  return h * 3600000 + m * 60000 + s * 1000 + ms
+}
+
+function parseCueTimestampLine(line: string): { startMs: number; endMs: number } | null {
+  const match = line.match(CUE_TIMESTAMP_RE)
+  if (!match) return null
+  return {
+    startMs: parseCueTimestampToMs(match[1], match[2], match[3], match[4]),
+    endMs: parseCueTimestampToMs(match[5], match[6], match[7], match[8]),
+  }
+}
+
+function stripVttHeader(content: string): string {
+  const normalized = content.replace(/^\uFEFF/, '').trim()
+  if (!/^WEBVTT/i.test(normalized)) return normalized
+
+  const lines = normalized.split(/\r?\n/)
+  let i = 1
+  while (i < lines.length && lines[i].trim() !== '') {
+    i++
+  }
+  if (i < lines.length) i++
+  return lines.slice(i).join('\n')
+}
+
+function stripVttMarkup(text: string): string {
+  return text
+    .replace(/<v[^>]*>/gi, '')
+    .replace(/<\/v>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .trim()
+}
+
+function looksLikeCueId(line: string): boolean {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/\S+)?$/i.test(trimmed)) {
+    return true
+  }
+  return /^\d+$/.test(trimmed)
+}
+
+function extractVttVoiceTag(text: string): { speaker: string | null; text: string } {
+  const match = text.match(/<v([^>]*)>([\s\S]*?)<\/v>/i)
+  if (!match) {
+    return { speaker: null, text: stripVttMarkup(text) }
+  }
+  const speaker = match[1].trim() || null
+  const inner = match[2].replace(/\s*\r?\n\s*/g, ' ').trim()
+  return { speaker, text: inner }
+}
+
+function isVttMetadataBlock(block: string): boolean {
+  const first = block.trim().split(/\r?\n/)[0]?.trim().toUpperCase() || ''
+  return (
+    first.startsWith('NOTE') ||
+    first.startsWith('STYLE') ||
+    first.startsWith('REGION') ||
+    first === 'REGION'
+  )
+}
+
+function findCueTimestampInLines(
+  lines: string[]
+): { lineIndex: number; times: { startMs: number; endMs: number } } | null {
+  for (let i = 0; i < Math.min(lines.length, 4); i++) {
+    const times = parseCueTimestampLine(lines[i])
+    if (times) return { lineIndex: i, times }
+  }
+  return null
+}
+
 export type TranscriptParseStrategy =
   | 'auto'
   | 'sprecher_zeit'
@@ -151,8 +243,7 @@ function extractSpeakerFromText(text: string): { speaker: string; text: string }
  * Spoken text here
  */
 function parseMSTeams(content: string): ParseResult | null {
-  const TIMESTAMP_RE = /(\d{1,2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})\.(\d{3})/
-  if (!TIMESTAMP_RE.test(content)) return null
+  if (!CUE_TIMESTAMP_RE.test(content)) return null
 
   const blocks = content.trim().split(/\r?\n\r?\n+/).filter(Boolean)
   const segments: ParsedSegment[] = []
@@ -162,36 +253,25 @@ function parseMSTeams(content: string): ParseResult | null {
     if (lines.length < 2) continue
 
     let speakerLine: string | null = null
-    let timeMatch: RegExpMatchArray | null = null
+    let times: { startMs: number; endMs: number } | null = null
     let textStartIdx = 0
 
     for (let i = 0; i < Math.min(lines.length, 3); i++) {
-      const m = lines[i].match(TIMESTAMP_RE)
-      if (m) {
-        timeMatch = m
+      const parsed = parseCueTimestampLine(lines[i])
+      if (parsed) {
+        times = parsed
         speakerLine = i > 0 ? lines.slice(0, i).join(' ') : null
         textStartIdx = i + 1
         break
       }
     }
-    if (!timeMatch) continue
-
-    const startMs =
-      parseInt(timeMatch[1], 10) * 3600000 +
-      parseInt(timeMatch[2], 10) * 60000 +
-      parseInt(timeMatch[3], 10) * 1000 +
-      parseInt(timeMatch[4], 10)
-    const endMs =
-      parseInt(timeMatch[5], 10) * 3600000 +
-      parseInt(timeMatch[6], 10) * 60000 +
-      parseInt(timeMatch[7], 10) * 1000 +
-      parseInt(timeMatch[8], 10)
+    if (!times) continue
 
     const textContent = lines.slice(textStartIdx).join(' ').trim()
     if (!textContent) continue
 
     const speaker = speakerLine?.trim() || 'S1'
-    segments.push({ start_ms: startMs, end_ms: endMs, speaker, text: textContent })
+    segments.push({ start_ms: times.startMs, end_ms: times.endMs, speaker, text: textContent })
   }
 
   if (segments.length < 2) return null
@@ -204,9 +284,12 @@ function parseMSTeams(content: string): ParseResult | null {
  *
  * 00:00:00.000 --> 00:00:02.500
  * Subtitle text
+ *
+ * Also supports MS Teams VTT exports (UUID cue ids, <v Name> voice tags),
+ * short MM:SS timestamps, cue settings, and NOTE/STYLE blocks.
  */
 function parseVTT(content: string): ParseResult {
-  const withoutHeader = content.replace(/^WEBVTT\s*\n?\s*(\d+\s*\n)?/i, '')
+  const withoutHeader = stripVttHeader(content)
   const segments: ParsedSegment[] = []
   const blocks = withoutHeader
     .trim()
@@ -214,45 +297,65 @@ function parseVTT(content: string): ParseResult {
     .filter(Boolean)
 
   for (const block of blocks) {
-    const lines = block.split(/\r?\n/)
+    if (isVttMetadataBlock(block)) continue
+
+    const lines = block.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     if (lines.length < 2) continue
 
-    const timeLine = lines[0].match(/\d{2}:\d{2}:\d{2}[.,]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[.,]\d{3}/)
-      ? lines[0]
-      : lines[1]
-    const textLines = timeLine === lines[0] ? lines.slice(1) : [lines[0], ...lines.slice(2)]
+    const cue = findCueTimestampInLines(lines)
+    if (!cue) continue
 
-    if (!timeLine) continue
+    const { lineIndex, times } = cue
+    const speakerLines = lines
+      .slice(0, lineIndex)
+      .filter((line) => !CUE_TIMESTAMP_RE.test(line) && !looksLikeCueId(line))
+    const textLines = lines.slice(lineIndex + 1)
+    const rawText = textLines.join(' ').trim()
+    const { speaker: voiceSpeaker, text } = extractVttVoiceTag(rawText)
+    if (!text) continue
 
-    const match = timeLine.match(
-      /(\d{2}):(\d{2}):(\d{2})[.,](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[.,](\d{3})/
-    )
-    if (!match) continue
-
-    const startMs =
-      parseInt(match[1], 10) * 3600000 +
-      parseInt(match[2], 10) * 60000 +
-      parseInt(match[3], 10) * 1000 +
-      parseInt(match[4], 10)
-    const endMs =
-      parseInt(match[5], 10) * 3600000 +
-      parseInt(match[6], 10) * 60000 +
-      parseInt(match[7], 10) * 1000 +
-      parseInt(match[8], 10)
-
-    const text = textLines.join(' ').trim()
-    if (text) {
-      const { speaker, text: cleanText } = extractSpeakerFromText(text)
+    const speakerFromLine = speakerLines.join(' ').trim()
+    if (voiceSpeaker) {
       segments.push({
-        start_ms: startMs,
-        end_ms: endMs,
-        speaker,
-        text: cleanText || text,
+        start_ms: times.startMs,
+        end_ms: times.endMs,
+        speaker: voiceSpeaker,
+        text,
       })
+      continue
     }
+
+    if (speakerFromLine) {
+      segments.push({
+        start_ms: times.startMs,
+        end_ms: times.endMs,
+        speaker: speakerFromLine,
+        text,
+      })
+      continue
+    }
+
+    const { speaker, text: cleanText } = extractSpeakerFromText(text)
+    segments.push({
+      start_ms: times.startMs,
+      end_ms: times.endMs,
+      speaker,
+      text: cleanText || text,
+    })
   }
 
-  const rawText = segments.map(s => s.text).join(' ')
+  if (segments.length >= 2) {
+    const rawText = segments.map((s) => s.text).join(' ')
+    return { segments, rawText }
+  }
+
+  // Fallback: Teams-style blocks saved as .vtt (speaker line + flexible timestamps)
+  const msTeamsResult = parseMSTeams(content)
+  if (msTeamsResult && msTeamsResult.segments.length >= segments.length) {
+    return msTeamsResult
+  }
+
+  const rawText = segments.map((s) => s.text).join(' ')
   return { segments, rawText }
 }
 

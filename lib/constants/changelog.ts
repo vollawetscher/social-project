@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.54.1',
+    date: 'July 7, 2026',
+    entries: [
+      {
+        version: '1.54.1',
+        date: 'July 7, 2026',
+        category: 'fix',
+        title: 'Better VTT Import',
+        description:
+          'VTT transcript imports now handle more real-world formats — including Teams-style speaker blocks, short timestamps, voice tags, and file headers — so your captions import with the right speakers and timing.',
+      },
+    ],
+  },
+  {
     version: '1.54.0',
     date: 'July 4, 2026',
     entries: [
