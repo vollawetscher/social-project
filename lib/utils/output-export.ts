@@ -8,12 +8,20 @@ import { gfm } from 'micromark-extension-gfm'
 import type { Root, Content, PhrasingContent } from 'mdast'
 import { jsPDF } from 'jspdf'
 import { sanitizeOutputForPdf } from '@/lib/utils/output-text-sanitizer'
+import autoTable from 'jspdf-autotable'
 import {
+  BorderStyle,
   Document,
   LineRuleType,
   Packer,
   Paragraph,
+  ShadingType,
+  Table,
+  TableCell,
+  TableRow,
   TextRun,
+  VerticalAlign,
+  WidthType,
   convertInchesToTwip,
 } from 'docx'
 
@@ -224,6 +232,126 @@ function inlineToText(inlines: Inline[]): string {
   return inlines.map((i) => i.value).join('')
 }
 
+type TableData = { header: string[]; rows: string[][] }
+
+function normalizeTableData(table: TableData): TableData {
+  const colCount = Math.max(
+    table.header.length,
+    ...table.rows.map((row) => row.length),
+    1
+  )
+  const padRow = (row: string[]) => {
+    const normalized = [...row]
+    while (normalized.length < colCount) normalized.push('')
+    return normalized.slice(0, colCount)
+  }
+
+  return {
+    header: padRow(table.header),
+    rows: table.rows.map(padRow),
+  }
+}
+
+const TABLE_BORDER = {
+  top: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+  bottom: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+  left: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+  right: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
+}
+
+function buildDocxTable(block: TableData): Table {
+  const { header, rows } = normalizeTableData(block)
+  const colCount = header.length
+  const colWidthPct = Math.floor(100 / colCount)
+
+  const makeCell = (text: string, isHeader: boolean) =>
+    new TableCell({
+      borders: TABLE_BORDER,
+      shading: isHeader ? { fill: 'F3F4F6', type: ShadingType.CLEAR } : undefined,
+      verticalAlign: VerticalAlign.TOP,
+      width: { size: colWidthPct, type: WidthType.PERCENTAGE },
+      margins: {
+        top: convertInchesToTwip(0.04),
+        bottom: convertInchesToTwip(0.04),
+        left: convertInchesToTwip(0.06),
+        right: convertInchesToTwip(0.06),
+      },
+      children: [
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: text || ' ',
+              bold: isHeader,
+              size: isHeader ? 20 : 20,
+              color: '000000',
+              font: 'Arial',
+            }),
+          ],
+          spacing: { before: 20, after: 20 },
+        }),
+      ],
+    })
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        tableHeader: true,
+        children: header.map((cell) => makeCell(cell, true)),
+      }),
+      ...rows.map(
+        (row) =>
+          new TableRow({
+            children: row.map((cell) => makeCell(cell, false)),
+          })
+      ),
+    ],
+  })
+}
+
+function renderPdfTable(
+  pdf: jsPDF,
+  block: TableData,
+  y: number,
+  margin: number,
+  pageWidth: number
+): number {
+  const { header, rows } = normalizeTableData(block)
+  if (header.every((cell) => !cell.trim()) && rows.length === 0) return y
+
+  y += 4
+  autoTable(pdf, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: header.some((cell) => cell.trim()) ? [header] : undefined,
+    body: rows,
+    styles: {
+      font: 'helvetica',
+      fontSize: 10,
+      cellPadding: 3,
+      lineColor: [209, 213, 219],
+      lineWidth: 0.1,
+      textColor: [17, 24, 39],
+      overflow: 'linebreak',
+      valign: 'top',
+    },
+    headStyles: {
+      fillColor: [243, 244, 246],
+      textColor: [17, 24, 39],
+      fontStyle: 'bold',
+      halign: 'left',
+    },
+    bodyStyles: {
+      halign: 'left',
+    },
+    theme: 'grid',
+    tableWidth: pageWidth - 2 * margin,
+  })
+
+  const finalY = (pdf as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY
+  return typeof finalY === 'number' ? finalY + 8 : y + 8
+}
+
 function inlinesToDocxRuns(inlines: Inline[], size = 22): TextRun[] {
   const runs: TextRun[] = []
 
@@ -370,13 +498,7 @@ export async function exportOutput(
         })
         y += 2
       } else if (block.type === 'table') {
-        const headerLine = block.header.join(' | ')
-        if (headerLine) {
-          addLine(headerLine, 11, true)
-          addLine('-'.repeat(Math.max(8, Math.min(80, headerLine.length))), 10, false)
-        }
-        block.rows.forEach((row) => addLine(row.join(' | '), 10, false))
-        y += 2
+        y = renderPdfTable(pdf, block, y, margin, pageWidth)
       } else if (block.type === 'blockquote') {
         addLine('  ' + inlineToText(block.children), 10, false, 8)
         y += 2
@@ -419,7 +541,7 @@ export async function exportOutput(
   }
 
   if (format === 'docx' || format === 'gdoc') {
-    const docChildren: Paragraph[] = []
+    const docChildren: (Paragraph | Table)[] = []
     const headingSizes: Record<number, number> = { 1: 32, 2: 28, 3: 26, 4: 24, 5: 23, 6: 22 } // half-points
     const line120 = { line: 288, lineRule: LineRuleType.AUTO } // 1.2 line spacing
     const emptyLine = () =>
@@ -467,24 +589,13 @@ export async function exportOutput(
           )
         })
       } else if (block.type === 'table') {
-        const headerText = block.header.join(' | ')
-        if (headerText) {
-          docChildren.push(
-            new Paragraph({
-              children: [new TextRun({ text: headerText, bold: true, size: 22, color: '000000', font: 'Arial' })],
-              spacing: { ...line120, after: 60 },
-            })
-          )
-          docChildren.push(new Paragraph({ children: [new TextRun({ text: '—'.repeat(40), size: 20, color: '000000', font: 'Arial' })], spacing: { ...line120, after: 40 } }))
-        }
-        block.rows.forEach((row) => {
-          docChildren.push(
-            new Paragraph({
-              children: [new TextRun({ text: row.join(' | '), size: 20, color: '000000', font: 'Arial' })],
-              spacing: { ...line120, after: 40 },
-            })
-          )
-        })
+        docChildren.push(buildDocxTable(block))
+        docChildren.push(
+          new Paragraph({
+            children: [new TextRun({ text: '', size: 22, color: '000000', font: 'Arial' })],
+            spacing: { ...line120, after: 120 },
+          })
+        )
       } else if (block.type === 'blockquote') {
         const runs = inlinesToDocxRuns(block.children, 21)
         docChildren.push(

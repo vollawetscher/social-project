@@ -20,6 +20,14 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.54.2',
         date: 'July 7, 2026',
+        category: 'improvement',
+        title: 'Better PDF and Word Exports',
+        description:
+          'Downloading an output as PDF or Word now keeps tables as real columns and rows — matching the clean layout you see on screen, instead of pipe-separated text.',
+      },
+      {
+        version: '1.54.2',
+        date: 'July 7, 2026',
         category: 'fix',
         title: 'VTT Import in Upload or Paste',
         description:
