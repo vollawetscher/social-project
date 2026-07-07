@@ -1601,6 +1601,7 @@
     "title": "Eingefuegten Text pruefen",
     "description": "Formatierungen und Emojis wurden entfernt. Bei Bedarf bearbeiten und dann importieren.",
     "stats": "{words} Woerter · {characters} Zeichen",
+    "parsedPreviewTitle": "Vorschau nach Import",
     "tryNextParse": "Naechste Parse-Variante",
     "parseModes": {
       "auto": "Auto",

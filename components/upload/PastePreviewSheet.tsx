@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/sheet'
 import { FileText, Loader2, Shuffle, Upload, Replace } from 'lucide-react'
 import { detectTranscriptType, type TranscriptIngestionSource } from '@/lib/utils/transcript-type-detection'
-import { parseTranscriptFile, type ParseResult, type TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
+import { parseTranscriptFile, isStructuredSubtitleContent, resolveTranscriptFilename, type ParseResult, type TranscriptParseStrategy } from '@/lib/utils/transcript-parser'
 
 type EditSuggestion = { find: string; replace: string; count: number }
 
@@ -69,6 +69,7 @@ interface PastePreviewSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialText: string
+  rawText?: string
   ingestionSource?: TranscriptIngestionSource
   fileName?: string | null
   templates?: Array<{ id: string; name: string }>
@@ -80,6 +81,7 @@ export function PastePreviewSheet({
   open,
   onOpenChange,
   initialText,
+  rawText = '',
   ingestionSource = 'unknown',
   fileName = null,
   templates = [],
@@ -134,6 +136,12 @@ export function PastePreviewSheet({
   }, [open])
 
   const trimmed = text.trim()
+  const sourceText = rawText.trim() || trimmed
+  const previewFileName = resolveTranscriptFilename(sourceText, fileName || 'pasted.txt')
+  const structuredSubtitle = isStructuredSubtitleContent(sourceText, previewFileName)
+  const parsedPreview = structuredSubtitle
+    ? parseTranscriptFile(sourceText, previewFileName, { strategy: 'auto' })
+    : null
   const wordCount = trimmed ? trimmed.split(/\s+/).length : 0
   const charCount = trimmed.length
   const signals = detectTranscriptType({
@@ -177,13 +185,15 @@ export function PastePreviewSheet({
     const next = (modeIndex + 1) % parseModes.length
     const nextMode = parseModes[next]
     setEditSuggestion(null)
+    const parseSource = structuredSubtitle ? sourceText : initialText
+    const parseName = resolveTranscriptFilename(parseSource, fileName || 'pasted.txt')
     if (nextMode === 'raw_text') {
       setText(initialText)
       prevTextRef.current = initialText
       setModeIndex(next)
       return
     }
-    const parsed = parseTranscriptFile(initialText, fileName || 'pasted.txt', { strategy: nextMode })
+    const parsed = parseTranscriptFile(parseSource, parseName, { strategy: nextMode })
     const newText = toPreviewText(parsed) || initialText
     setText(newText)
     prevTextRef.current = newText
@@ -220,6 +230,14 @@ export function PastePreviewSheet({
               {t('detection.detectedType')}: {typeLabelMap[signals.detectedType] || signals.detectedType}
             </p>
           </div>
+          {structuredSubtitle && parsedPreview && parsedPreview.segments.length > 0 && (
+            <div className="mb-3 rounded-md border bg-background p-3">
+              <p className="mb-2 text-xs font-medium text-foreground">{t('parsedPreviewTitle')}</p>
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
+                {toPreviewText(parsedPreview)}
+              </pre>
+            </div>
+          )}
           {editSuggestion && (
             <div className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
               <Replace className="h-4 w-4 shrink-0 text-primary" />

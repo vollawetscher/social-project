@@ -135,6 +135,25 @@ function findCueTimestampInLines(
   return null
 }
 
+/** Infer subtitle format from content when filename extension is missing or wrong. */
+export function resolveTranscriptFilename(content: string, filename: string): string {
+  const trimmed = content.replace(/^\uFEFF/, '').trimStart()
+  if (/^WEBVTT/i.test(trimmed)) {
+    return filename.toLowerCase().endsWith('.vtt') ? filename : 'import.vtt'
+  }
+  if (/^\d+\s*\r?\n\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->/m.test(trimmed)) {
+    return filename.toLowerCase().endsWith('.srt') ? filename : 'import.srt'
+  }
+  return filename
+}
+
+export function isStructuredSubtitleContent(content: string, filename?: string | null): boolean {
+  const trimmed = content.replace(/^\uFEFF/, '').trimStart()
+  if (/^WEBVTT/i.test(trimmed)) return true
+  if (filename && /\.(vtt|srt)$/i.test(filename)) return true
+  return /^\d+\s*\r?\n\d{2}:\d{2}:\d{2}[,.]\d{3}\s*-->/m.test(trimmed)
+}
+
 export type TranscriptParseStrategy =
   | 'auto'
   | 'sprecher_zeit'
@@ -776,7 +795,9 @@ export function parseTranscriptFile(
 ): ParseResult {
   const strategy = options?.strategy || 'auto'
   const speakerHints = Array.isArray(options?.speakerHints) ? options?.speakerHints : []
-  const ext = filename.split('.').pop()?.toLowerCase() || ''
+  const effectiveFilename = resolveTranscriptFilename(content, filename)
+  const ext = effectiveFilename.split('.').pop()?.toLowerCase() || ''
+  const trimmedContent = content.replace(/^\uFEFF/, '').trimStart()
 
   if (strategy === 'sprecher_zeit') {
     return parseSprecherZeitFormat(content) || parseTXT(content, speakerHints)
@@ -795,7 +816,7 @@ export function parseTranscriptFile(
   }
 
   if (ext === 'srt') return parseSRT(content)
-  if (ext === 'vtt') return parseVTT(content)
+  if (ext === 'vtt' || /^WEBVTT/i.test(trimmedContent)) return parseVTT(content)
 
   // Try MS Teams format early — it uses .txt extension with timed --> blocks
   const msTeamsResult = parseMSTeams(content)

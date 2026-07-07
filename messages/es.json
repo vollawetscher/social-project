@@ -1480,6 +1480,7 @@
     "title": "Revisar texto pegado",
     "description": "El formato y los emojis se han eliminado. Edita si hace falta y luego importa.",
     "stats": "{words} palabras · {characters} caracteres",
+    "parsedPreviewTitle": "Vista previa parseada",
     "tryNextParse": "Probar siguiente parseo",
     "parseModes": {
       "auto": "Auto",
