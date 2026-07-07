@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth } from '@/lib/auth/helpers'
 import { createClient } from '@/lib/supabase/server'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -52,9 +52,8 @@ The user's template is named: "${name || '(unnamed)'}"
 The user's rough instructions: "${description || '(none provided, infer from the name)'}"
 
 Return ONLY a valid JSON object with exactly these two keys, nothing else:
-{"instructions": "...", "description": "..."}`,
+{"instructions": "...", "description": "..."}${JSON_ONLY_SUFFIX}`,
         },
-        JSON_PREFILL,
       ],
     })
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage

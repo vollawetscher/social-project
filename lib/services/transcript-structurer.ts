@@ -5,7 +5,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { logError } from '@/lib/services/error-logger'
 import type { TranscriptContentKind, TranscriptDetectedType } from '@/lib/utils/transcript-type-detection'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 
 export interface StructuredSegment {
   start_ms: number
@@ -82,9 +82,8 @@ export async function structureTranscript(
         messages: [
           {
             role: 'user',
-            content: `${STRUCTURE_PROMPT}\n\nLanguage hint: ${language}\n\nRaw content:\n\n${truncated}`,
+            content: `${STRUCTURE_PROMPT}\n\nLanguage hint: ${language}\n\nRaw content:\n\n${truncated}${JSON_ONLY_SUFFIX}`,
           },
-          JSON_PREFILL,
         ],
       }),
       new Promise<never>((_, reject) =>

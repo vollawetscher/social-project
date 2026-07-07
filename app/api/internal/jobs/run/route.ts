@@ -89,7 +89,11 @@ async function processSessionAnalyzeJob(request: Request, job: AsyncJobRow): Pro
 
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(String(data?.error || `Session analyze failed (${response.status})`))
+    const detail =
+      typeof data?.message === 'string' && data.message.trim()
+        ? `${data.error || 'Session analyze failed'}: ${data.message}`
+        : data?.error
+    throw new Error(String(detail || `Session analyze failed (${response.status})`))
   }
 
   return {

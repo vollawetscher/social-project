@@ -6,7 +6,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { normalizeLanguageCode } from '@/lib/utils/language'
 import { buildEventSignals, dedupeAndOrder, titleToIdentityLabel, type EventSessionRow } from '@/lib/services/event/event-signals'
@@ -233,7 +233,7 @@ export async function generateEventDigest(input: {
     model: 'claude-sonnet-4-6',
     max_tokens: 4000,
     system,
-    messages: [{ role: 'user', content: user }, JSON_PREFILL],
+    messages: [{ role: 'user', content: user + JSON_ONLY_SUFFIX }],
   })
 
   const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage

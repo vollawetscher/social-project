@@ -33,6 +33,14 @@ export const changelog: ChangelogVersion[] = [
         description:
           'Imported VTT and SRT files now combine consecutive lines from the same speaker into one block, so you see one speaker label per turn instead of many repeated labels for short fragments.',
       },
+      {
+        version: '1.54.2',
+        date: 'July 7, 2026',
+        category: 'fix',
+        title: 'Session Analysis Restored',
+        description:
+          'Fixed a bug that blocked AI analysis on new sessions since early July. Sessions that failed to analyze can be re-run manually from the session page.',
+      },
     ],
   },
   {

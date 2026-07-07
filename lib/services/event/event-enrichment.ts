@@ -13,7 +13,7 @@
 //      down or unkeyed.
 
 import Anthropic from '@anthropic-ai/sdk'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 import { buildEventSignals, type EventSessionRow, type EventSignals } from '@/lib/services/event/event-signals'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
@@ -335,7 +335,7 @@ async function enrichWithFirecrawl(
     model: 'claude-sonnet-4-6',
     max_tokens: 1500,
     system,
-    messages: [{ role: 'user', content: user }, JSON_PREFILL],
+    messages: [{ role: 'user', content: user + JSON_ONLY_SUFFIX }],
   })
 
   const text = message.content

@@ -13,7 +13,7 @@ import type {
 } from '@/lib/types/pulse'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { normalizeLanguageCode } from '@/lib/utils/language'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -456,8 +456,7 @@ export async function runPulseUpdateJob(input: {
     model: 'claude-sonnet-4-6',
     max_tokens: 3000,
     messages: [
-      { role: 'user', content: user },
-      JSON_PREFILL,
+      { role: 'user', content: user + JSON_ONLY_SUFFIX },
     ],
     system,
   })

@@ -1,24 +1,19 @@
-import type Anthropic from '@anthropic-ai/sdk'
-
 /**
- * Assistant prefill that forces Claude's reply to be the body of a JSON object.
+ * Helpers for Claude JSON responses.
  *
- * Claude sometimes wraps JSON in markdown fences (` ```json ... ``` `) or adds
- * preambles, even when the prompt forbids it. By prefilling the assistant turn
- * with `{`, the model physically cannot emit a fence or preamble — its
- * continuation is constrained to be a JSON object body. The opening `{` must be
- * re-prepended to the response text before parsing.
+ * Sonnet 4.6 does not support assistant message prefill, so callers must end
+ * the messages array with a user turn and enforce JSON-only output in the prompt.
  */
-export const JSON_PREFILL: Anthropic.MessageParam = {
-  role: 'assistant',
-  content: '{',
-}
 
 /**
- * Re-attach the prefilled `{` to a Claude response text so the result starts
- * with `{` and is ready for `JSON.parse`.
+ * Normalize Claude JSON text before parsing.
+ * Prepends `{` when the model omitted the opening brace (common without prefill).
  */
 export function withJsonPrefill(responseText: string): string {
   const trimmed = String(responseText || '').trimStart()
   return trimmed.startsWith('{') ? trimmed : `{${trimmed}`
 }
+
+/** Append to prompts that must return a raw JSON object (no markdown fences). */
+export const JSON_ONLY_SUFFIX =
+  '\n\nRespond with ONLY valid JSON — a single object starting with `{`. No markdown fences, no preamble, no explanation.'

@@ -9,7 +9,7 @@ import {
 } from '@/lib/types/database'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 
 export interface ClaudeConfig {
   apiKey: string
@@ -138,8 +138,7 @@ If information is not available, omit the field.`
         max_tokens: 2048,
         temperature: 0.1,
         messages: [
-          { role: 'user', content: prompt },
-          JSON_PREFILL,
+          { role: 'user', content: prompt + JSON_ONLY_SUFFIX },
         ],
       })
       this.trackUsage(message, 'claude/analyze-context')
@@ -417,8 +416,7 @@ Respond ONLY with a JSON object in this format:
         max_tokens: 500,
         temperature: 0.2,
         messages: [
-          { role: 'user', content: prompt },
-          JSON_PREFILL,
+          { role: 'user', content: prompt + JSON_ONLY_SUFFIX },
         ],
       })
       this.trackUsage(message, 'claude/detect-domain')
@@ -472,8 +470,7 @@ Respond ONLY with a JSON object in this format:
       max_tokens: 16384,
       temperature: 0.3,
       messages: [
-        { role: 'user', content: prompt },
-        JSON_PREFILL,
+        { role: 'user', content: prompt + JSON_ONLY_SUFFIX },
       ],
     })
     this.trackUsage(message, 'claude/generate-report')
@@ -524,7 +521,6 @@ Respond ONLY with a JSON object in this format:
             role: 'user',
             content: prompt,
           },
-          JSON_PREFILL,
         ],
       })
       this.trackUsage(message, 'claude/generate-gespraechsbericht')

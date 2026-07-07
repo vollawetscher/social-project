@@ -9,7 +9,7 @@ import { resolveTokenBudget } from '@/lib/services/token-budget'
 import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/services/queue'
 import { createNotification } from '@/lib/services/notification-service'
 import { normalizeLanguageCode, resolveOutputLanguageCode, LANG_NAMES } from '@/lib/utils/language'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 import {
   formatCallNoteTranscriptLine,
   getCallNoteAuthor,
@@ -1292,9 +1292,8 @@ Branch B (low confidence — ASK):
 - Add "sessionSummary" as 2-5 concise bullets in **${outputLangName}**, focused on what happened, decisions, and next actions.
 - For wordCorrections: only flag high-confidence corrections (names, places, technical terms that ASR clearly misspelled). Empty array if none.
 - For speakerMerges: only suggest if clearly fewer actual speakers than labels. Empty array if none.
-- For suggested_project_type and suggested_user_role: ONLY populate when the conversation plausibly starts (or belongs to) a bounded project the owner would track over time. Default to null. Examples that should be null: daily standup, recurring weekly sync, ad-hoc tech support call, casual personal call, voice memo to self, training session that is not a customer rollout. Examples that should be populated: first interview with a candidate, kickoff call with a new client, first sales discovery call, first trade-show contact follow-up, first post-rollout customer follow-up. Always include the owner's side in the type label (employer side / candidate side / seller side / buyer side / vendor side / attendee side, etc.) because the same conversation maps to different projects depending on whose perspective records it.`
+- For suggested_project_type and suggested_user_role: ONLY populate when the conversation plausibly starts (or belongs to) a bounded project the owner would track over time. Default to null. Examples that should be null: daily standup, recurring weekly sync, ad-hoc tech support call, casual personal call, voice memo to self, training session that is not a customer rollout. Examples that should be populated: first interview with a candidate, kickoff call with a new client, first sales discovery call, first trade-show contact follow-up, first post-rollout customer follow-up. Always include the owner's side in the type label (employer side / candidate side / seller side / buyer side / vendor side / attendee side, etc.) because the same conversation maps to different projects depending on whose perspective records it.${JSON_ONLY_SUFFIX}`
         },
-        JSON_PREFILL,
       ]
     })
     console.log('[Analyze API] Claude responded successfully')

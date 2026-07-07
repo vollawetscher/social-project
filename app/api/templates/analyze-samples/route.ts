@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse-fork'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -140,9 +140,8 @@ Respond ONLY with valid JSON in this exact format:
       messages: [
         {
           role: 'user',
-          content: analysisPrompt,
+          content: analysisPrompt + JSON_ONLY_SUFFIX,
         },
-        JSON_PREFILL,
       ],
     })
     const usage = (message as { usage?: { input_tokens?: number; output_tokens?: number } }).usage

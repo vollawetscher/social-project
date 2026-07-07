@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createErrorLogger } from './error-logger'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { recordAiTokens } from './usage-tracker'
-import { JSON_PREFILL, withJsonPrefill } from '@/lib/utils/claude-json'
+import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -88,9 +88,8 @@ Focus on:
 2. Correlation between errors
 3. User impact assessment
 4. Actionable recommendations
-5. Long-term prevention strategies`,
+5. Long-term prevention strategies${JSON_ONLY_SUFFIX}`,
         },
-        JSON_PREFILL,
       ],
     })
     const caseUsage = (aiResponse as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
@@ -170,7 +169,6 @@ Provide concise analysis in JSON format:
   "preventionStrategies": ["Prevention 1", "Prevention 2"]
 }`,
         },
-        JSON_PREFILL,
       ],
     })
     const sessionUsage = (aiResponse as { usage?: { input_tokens?: number; output_tokens?: number } }).usage
