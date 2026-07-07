@@ -86,7 +86,7 @@ import { UploadPreviewSheet } from "@/components/upload/UploadPreviewSheet"
 import { PastePreviewSheet } from "@/components/upload/PastePreviewSheet"
 import { getStorageMimeType } from "@/lib/utils/audio-format-detector"
 import { uploadToStorage } from "@/lib/utils/resumable-upload"
-import { parseTranscriptFile, cleanPastedContent, type TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
+import { parseTranscriptFile, cleanPastedContent, isStructuredSubtitleContent, resolveTranscriptFilename, type TranscriptParseStrategy } from "@/lib/utils/transcript-parser"
 import { formatDuration } from "@/lib/utils/date-formatters"
 import type { SessionStatus, Session, Template } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
@@ -405,6 +405,7 @@ export default function SessionsPage() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [uploadingTranscript, setUploadingTranscript] = useState(false)
   const [pastePreviewText, setPastePreviewText] = useState('')
+  const [pastePreviewRawContent, setPastePreviewRawContent] = useState('')
   const [pastePreviewOpen, setPastePreviewOpen] = useState(false)
   const [pastePreviewSource, setPastePreviewSource] = useState<'clipboard' | 'file'>('clipboard')
   const [pastePreviewFileName, setPastePreviewFileName] = useState<string | null>(null)
@@ -716,7 +717,8 @@ export default function SessionsPage() {
     parseStrategy: TranscriptParseStrategy = 'auto',
     purpose?: string
   ): Promise<string | null> => {
-    const { segments, rawText } = parseTranscriptFile(rawFileContent, fileName, { strategy: parseStrategy })
+    const effectiveFileName = resolveTranscriptFilename(rawFileContent, fileName)
+    const { segments, rawText } = parseTranscriptFile(rawFileContent, effectiveFileName, { strategy: parseStrategy })
     if (segments.length === 0) {
       toast.error(t('uploadMessages.noContent', { fileName }))
       return null
@@ -738,7 +740,7 @@ export default function SessionsPage() {
           segments,
           rawText,
           ...(!parserProducedGoodSegments ? { rawFileContent } : {}),
-          filename: fileName,
+          filename: effectiveFileName,
           ingestionSource,
           parseStrategy,
           ...(purpose ? { purpose } : {}),
@@ -811,6 +813,7 @@ export default function SessionsPage() {
           toast.error(t('uploadMessages.noContent', { fileName: file.name }))
           return
         }
+        setPastePreviewRawContent(rawFileContent)
         setPastePreviewSource('file')
         setPastePreviewFileName(file.name)
         setPastePreviewText(cleaned)
@@ -846,6 +849,7 @@ export default function SessionsPage() {
       toast.error(t('uploadMessages.emptyContent'))
       return
     }
+    setPastePreviewRawContent(raw)
     setPastePreviewSource(source)
     setPastePreviewFileName(fileName)
     setPastePreviewText(cleaned)
@@ -895,9 +899,14 @@ export default function SessionsPage() {
   ) => {
     setUploadingTranscript(true)
     try {
+      const previewFileName = pastePreviewFileName || 'pasted.txt'
+      const useStructuredSource = isStructuredSubtitleContent(pastePreviewRawContent || text, previewFileName)
+      const importContent = useStructuredSource ? (pastePreviewRawContent || text) : text
+      const importFileName = resolveTranscriptFilename(importContent, previewFileName)
+
       const sessionId = pastePreviewSource === 'file' && pastePreviewFileName
-        ? await importTranscriptContent(text, pastePreviewFileName, 'file_select', parseStrategy, purpose)
-        : await processPastedTranscript(text, 'clipboard_paste', parseStrategy, purpose)
+        ? await importTranscriptContent(importContent, importFileName, 'file_select', parseStrategy, purpose)
+        : await importTranscriptContent(importContent, importFileName, 'clipboard_paste', parseStrategy, purpose)
 
       if (sessionId) {
         let outputId: string | undefined
@@ -913,6 +922,7 @@ export default function SessionsPage() {
         )
         setPastePreviewOpen(false)
         setPastePreviewFileName(null)
+        setPastePreviewRawContent('')
         setPastePreviewSource('clipboard')
         setIsUploadOpen(false)
         await fetchSessions()
@@ -926,7 +936,7 @@ export default function SessionsPage() {
     } finally {
       setUploadingTranscript(false)
     }
-  }, [processPastedTranscript, importTranscriptContent, fetchSessions, pastePreviewSource, pastePreviewFileName, t, generateOutputForTemplate, router])
+  }, [importTranscriptContent, fetchSessions, pastePreviewSource, pastePreviewFileName, pastePreviewRawContent, t, generateOutputForTemplate, router])
 
   const handlePasteTranscript = useCallback(async () => {
     try {
@@ -2916,10 +2926,12 @@ export default function SessionsPage() {
         setPastePreviewOpen(open)
         if (!open) {
           setPastePreviewFileName(null)
+          setPastePreviewRawContent('')
           setPastePreviewSource('clipboard')
         }
       }}
         initialText={pastePreviewText}
+        rawText={pastePreviewRawContent}
         ingestionSource={pastePreviewSource === 'file' ? 'file_select' : 'clipboard_paste'}
         fileName={pastePreviewFileName}
         templates={pastePreviewTemplates}

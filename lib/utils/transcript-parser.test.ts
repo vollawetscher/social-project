@@ -107,6 +107,21 @@ BOM test`
     expect(segments[0].text).toBe('BOM test')
   })
 
+  it('parses MS Teams VTT pasted without a .vtt filename', () => {
+    const vtt = `WEBVTT
+
+f33a4a33-0db0-4930-af36-528b5542a96d/33-0
+00:00:03.683 --> 00:00:04.083
+<v Christian Kruppa>Ne?</v>`
+
+    const { segments } = parseTranscriptFile(vtt, 'pasted.txt')
+    expect(segments).toHaveLength(1)
+    expect(segments[0]).toMatchObject({
+      speaker: 'Christian Kruppa',
+      text: 'Ne?',
+    })
+  })
+
   it('parses MS Teams VTT with UUID cue ids and voice tags', () => {
     const vtt = `WEBVTT
 

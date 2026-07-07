@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.54.2',
+    date: 'July 7, 2026',
+    entries: [
+      {
+        version: '1.54.2',
+        date: 'July 7, 2026',
+        category: 'fix',
+        title: 'VTT Import in Upload or Paste',
+        description:
+          'MS Teams VTT files now import correctly from Upload or Paste — including pasted WEBVTT content, with a parsed preview showing speakers and timestamps before you confirm.',
+      },
+    ],
+  },
+  {
     version: '1.54.1',
     date: 'July 7, 2026',
     entries: [
