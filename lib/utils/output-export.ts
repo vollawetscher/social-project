@@ -19,6 +19,7 @@ import {
   Table,
   TableCell,
   TableRow,
+  TableLayoutType,
   TextRun,
   VerticalAlign,
   WidthType,
@@ -259,17 +260,32 @@ const TABLE_BORDER = {
   right: { style: BorderStyle.SINGLE, size: 1, color: 'D1D5DB' },
 }
 
+// Matches 1" page margins on US Letter — content area width in twips.
+const DOCX_CONTENT_WIDTH_TWIP = convertInchesToTwip(6.5)
+
+function distributeColumnWidths(colCount: number, total: number): number[] {
+  if (colCount <= 0) return [total]
+  // First column (tasks) and last column (notes) get a bit more room.
+  const weights = Array.from({ length: colCount }, (_, index) => {
+    if (index === 0) return 1.6
+    if (index === colCount - 1 && colCount >= 3) return 1.25
+    return 1
+  })
+  const weightSum = weights.reduce((sum, weight) => sum + weight, 0)
+  const widths = weights.map((weight) => Math.floor((total * weight) / weightSum))
+  widths[0] += total - widths.reduce((sum, width) => sum + width, 0)
+  return widths
+}
+
 function buildDocxTable(block: TableData): Table {
   const { header, rows } = normalizeTableData(block)
-  const colCount = header.length
-  const colWidthPct = Math.floor(100 / colCount)
+  const columnWidths = distributeColumnWidths(header.length, DOCX_CONTENT_WIDTH_TWIP)
 
   const makeCell = (text: string, isHeader: boolean) =>
     new TableCell({
       borders: TABLE_BORDER,
       shading: isHeader ? { fill: 'F3F4F6', type: ShadingType.CLEAR } : undefined,
       verticalAlign: VerticalAlign.TOP,
-      width: { size: colWidthPct, type: WidthType.PERCENTAGE },
       margins: {
         top: convertInchesToTwip(0.04),
         bottom: convertInchesToTwip(0.04),
@@ -282,7 +298,7 @@ function buildDocxTable(block: TableData): Table {
             new TextRun({
               text: text || ' ',
               bold: isHeader,
-              size: isHeader ? 20 : 20,
+              size: 20,
               color: '000000',
               font: 'Arial',
             }),
@@ -293,7 +309,9 @@ function buildDocxTable(block: TableData): Table {
     })
 
   return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: DOCX_CONTENT_WIDTH_TWIP, type: WidthType.DXA },
+    columnWidths,
+    layout: TableLayoutType.FIXED,
     rows: [
       new TableRow({
         tableHeader: true,
@@ -320,6 +338,12 @@ function renderPdfTable(
   if (header.every((cell) => !cell.trim()) && rows.length === 0) return y
 
   y += 4
+  const tableWidth = pageWidth - 2 * margin
+  const columnWidths = distributeColumnWidths(header.length, tableWidth)
+  const columnStyles = Object.fromEntries(
+    columnWidths.map((cellWidth, index) => [index, { cellWidth }])
+  )
+
   autoTable(pdf, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -344,8 +368,9 @@ function renderPdfTable(
     bodyStyles: {
       halign: 'left',
     },
+    columnStyles,
     theme: 'grid',
-    tableWidth: pageWidth - 2 * margin,
+    tableWidth,
   })
 
   const finalY = (pdf as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY

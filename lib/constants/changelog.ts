@@ -20,6 +20,14 @@ export const changelog: ChangelogVersion[] = [
       {
         version: '1.54.2',
         date: 'July 7, 2026',
+        category: 'fix',
+        title: 'Fixed Table Layout in PDF and Word Exports',
+        description:
+          'Exported tables no longer collapse into narrow vertical columns — PDF and Word downloads now use proper column widths that match the on-screen layout.',
+      },
+      {
+        version: '1.54.2',
+        date: 'July 7, 2026',
         category: 'improvement',
         title: 'Better PDF and Word Exports',
         description:
