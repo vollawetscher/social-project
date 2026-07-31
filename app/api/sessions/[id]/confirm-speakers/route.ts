@@ -43,7 +43,7 @@ export async function POST(
 
     const { data: session } = await supabase
       .from('sessions')
-      .select('id, transcript_corrections, owner_context')
+      .select('id, user_id, transcript_corrections, owner_context')
       .eq('id', params.id)
       .single()
 
@@ -58,17 +58,6 @@ export async function POST(
     const segmentOverrides = normalizeCorrectionMap(incoming.segment_speaker_overrides)
     const speakerNameMap = normalizeCorrectionMap(incoming.speaker_name_map)
     const wordCorrections = normalizeCorrectionMap(incoming.word_corrections)
-
-    const nextCorrections: Record<string, any> = {
-      ...existingCorrections,
-      speaker_merge_map: speakerMergeMap,
-      segment_speaker_overrides: segmentOverrides,
-      speaker_name_map: speakerNameMap,
-      name_corrections: speakerNameMap,
-      word_corrections: wordCorrections,
-      // The AI merge suggestions have now been consumed into speaker_merge_map.
-      reconcile_merges: [],
-    }
 
     // Owner context: explicit answer wins; a dismissal tombstones the prompt;
     // otherwise keep whatever the reconciler inferred.
@@ -89,6 +78,37 @@ export async function POST(
           updatedAt: new Date().toISOString(),
         }
       }
+    }
+
+    // If the owner identified which speaker they are (e.g. "I am S5"), label
+    // that speaker with the owner's name in the transcript — unless the user
+    // already typed a display name for it. The merge map is applied before
+    // names, so resolve the owner's label through it first.
+    const ownerSpeakerId = nextOwnerContext?.speakerId ? String(nextOwnerContext.speakerId).trim() : ''
+    if (ownerSpeakerId) {
+      const resolvedOwnerLabel = speakerMergeMap[ownerSpeakerId] || ownerSpeakerId
+      if (!speakerNameMap[resolvedOwnerLabel] || !String(speakerNameMap[resolvedOwnerLabel]).trim()) {
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', (session as any).user_id)
+          .maybeSingle()
+        const ownerName = String((ownerProfile as any)?.display_name || '').trim()
+        if (ownerName) {
+          speakerNameMap[resolvedOwnerLabel] = ownerName
+        }
+      }
+    }
+
+    const nextCorrections: Record<string, any> = {
+      ...existingCorrections,
+      speaker_merge_map: speakerMergeMap,
+      segment_speaker_overrides: segmentOverrides,
+      speaker_name_map: speakerNameMap,
+      name_corrections: speakerNameMap,
+      word_corrections: wordCorrections,
+      // The AI merge suggestions have now been consumed into speaker_merge_map.
+      reconcile_merges: [],
     }
 
     const { error: updateError } = await supabase

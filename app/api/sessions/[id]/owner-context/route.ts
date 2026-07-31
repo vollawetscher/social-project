@@ -70,12 +70,43 @@ export async function POST(
       updatedAt: new Date().toISOString(),
     }
 
+    // If the owner identified which speaker they are, label that speaker with
+    // the owner's name in the transcript (unless a display name already exists).
+    const sessionUpdate: Record<string, any> = {
+      owner_context: nextOwnerContext,
+      pending_clarification: null,
+    }
+    if (nextOwnerContext.speakerId) {
+      const { data: sessionRow } = await supabase
+        .from('sessions')
+        .select('user_id, transcript_corrections')
+        .eq('id', params.id)
+        .single()
+      const corrections = ((sessionRow as any)?.transcript_corrections || {}) as Record<string, any>
+      const mergeMap = (corrections.speaker_merge_map || {}) as Record<string, string>
+      const nameMap = { ...((corrections.speaker_name_map || corrections.name_corrections || {}) as Record<string, string>) }
+      const resolvedLabel = mergeMap[nextOwnerContext.speakerId] || nextOwnerContext.speakerId
+      if (!nameMap[resolvedLabel] || !String(nameMap[resolvedLabel]).trim()) {
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', (sessionRow as any)?.user_id)
+          .maybeSingle()
+        const ownerName = String((ownerProfile as any)?.display_name || '').trim()
+        if (ownerName) {
+          nameMap[resolvedLabel] = ownerName
+          sessionUpdate.transcript_corrections = {
+            ...corrections,
+            speaker_name_map: nameMap,
+            name_corrections: nameMap,
+          }
+        }
+      }
+    }
+
     const { error: updateError } = await supabase
       .from('sessions')
-      .update({
-        owner_context: nextOwnerContext,
-        pending_clarification: null,
-      })
+      .update(sessionUpdate)
       .eq('id', params.id)
 
     if (updateError) {
