@@ -125,7 +125,7 @@ export async function POST(
 
     const { data: session } = await supabase
       .from('sessions')
-      .select('id, user_id, language, input_hint, context_note, internal_case_id, transcript_corrections, owner_context')
+      .select('id, user_id, language, input_hint, context_note, internal_case_id, transcript_corrections, owner_context, user_is_speaker')
       .eq('id', params.id)
       .single()
 
@@ -169,13 +169,34 @@ export async function POST(
     const contextNote = String((session as any)?.context_note || '').trim()
     const inputHint = String((session as any)?.input_hint || '').trim() || 'unknown'
 
+    // The owner explicitly marked themselves as NOT a speaker (e.g. unchecked
+    // "I am a speaker in this meeting" on upload). Never ask which speaker they
+    // are — they are not in the recording.
+    const ownerIsNotSpeaker = (session as any)?.user_is_speaker === false
+
+    const ownerSection = ownerIsNotSpeaker
+      ? `Only do part 1. The owner ("${ownerName}") is NOT a speaker in this recording, so do not attempt to identify or ask about the owner.`
+      : `2. OWNER ASSESSMENT — Determine "${ownerName}"'s role in this conversation (they own this recording). If you can infer it confidently from the transcript, provide it. If not, emit a single grounded clarification question with 2-4 concrete options tied to actual speaker labels.`
+
+    const ownerJsonShape = ownerIsNotSpeaker
+      ? ''
+      : `,
+  "ownerAssessment": {
+    "needsClarification": false,
+    "context": { "role": "…", "speakerId": "S1 or null", "goal": "… or null", "counterpartyRole": "… or null", "confidence": 0.0 }
+  }`
+
+    const ownerRules = ownerIsNotSpeaker
+      ? ''
+      : `\n- ownerAssessment: if confidence >= 0.75 use the "context" branch (needsClarification=false). If lower, use: "ownerAssessment": { "needsClarification": true, "clarification": { "question": "…", "options": [ { "id": "opt1", "label": "…", "suggestedContext": { "role": "…", "speakerId": "S1" } } ], "allowFreeText": true } }.`
+
     const prompt = `You are reconciling the SPEAKER LABELS of a transcript produced by acoustic diarization. The diarizer assigns provisional labels (S1, S2, …) and commonly OVER-SEGMENTS: it splits one real person into several labels (especially when a person switches languages, changes tone, or is picked up at a different mic distance) and it invents tiny labels for background noise or one-word interjections.
 
-Your job is NOT to summarize. Do TWO things:
+Your job is NOT to summarize:
 
 1. SPEAKER MERGES — Decide which acoustic labels are actually the SAME person, and which tiny labels are noise/one-off fragments that belong to a neighbouring real speaker. Merge them. Use the CONTENT and conversational flow, not just acoustics — e.g. a person speaking Spanish in one label and English in another is still one person; a technical explanation attributed to a label that otherwise only says "yes/okay" was almost certainly the presenter.
 
-2. OWNER ASSESSMENT — Determine "${ownerName}"'s role in this conversation (they own this recording). If you can infer it confidently from the transcript, provide it. If not, emit a single grounded clarification question with 2-4 concrete options tied to actual speaker labels.
+${ownerSection}
 
 SESSION CONTEXT:
 - Owner: ${ownerName}
@@ -188,17 +209,12 @@ Return JSON with this exact shape:
 {
   "speakerMerges": [
     { "from": "S9", "to": "S1", "reason": "same speaker; S9 is S1 continuing in English" }
-  ],
-  "ownerAssessment": {
-    "needsClarification": false,
-    "context": { "role": "…", "speakerId": "S1 or null", "goal": "… or null", "counterpartyRole": "… or null", "confidence": 0.0 }
-  }
+  ]${ownerJsonShape}
 }
 
 Rules:
 - "from"/"to" MUST be labels that appear in the SPEAKERS list above. Never merge a label into itself. Merge INTO the label that most represents the real person (usually the one with more speech).
-- Only propose merges you are reasonably confident about. It is fine to return an empty "speakerMerges" array if the diarization already looks clean.
-- ownerAssessment: if confidence >= 0.75 use the "context" branch (needsClarification=false). If lower, use: "ownerAssessment": { "needsClarification": true, "clarification": { "question": "…", "options": [ { "id": "opt1", "label": "…", "suggestedContext": { "role": "…", "speakerId": "S1" } } ], "allowFreeText": true } }.${JSON_ONLY_SUFFIX}`
+- Only propose merges you are reasonably confident about. It is fine to return an empty "speakerMerges" array if the diarization already looks clean.${ownerRules}${JSON_ONLY_SUFFIX}`
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
@@ -249,7 +265,12 @@ Rules:
     let nextOwnerContext: Record<string, any> | null = existingOwnerContext
     let nextPendingClarification: Record<string, any> | null = null
     const ownerAssessment = parsed?.ownerAssessment
-    if (!existingOwnerContext && ownerAssessment && typeof ownerAssessment === 'object') {
+    if (ownerIsNotSpeaker) {
+      // Owner is not a participant — record that once, never ask.
+      if (!existingOwnerContext) {
+        nextOwnerContext = { role: 'observer', speakerId: null, source: 'not_speaker', updatedAt: new Date().toISOString() }
+      }
+    } else if (!existingOwnerContext && ownerAssessment && typeof ownerAssessment === 'object') {
       const needsClarification = Boolean(ownerAssessment.needsClarification)
       if (needsClarification && ownerAssessment.clarification && typeof ownerAssessment.clarification === 'object') {
         const clarification = ownerAssessment.clarification as Record<string, any>

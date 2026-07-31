@@ -1017,11 +1017,14 @@ export async function POST(
           source?: string
         }
       | null
+    const ownerIsNotSpeakerForPrompt = (session as any)?.user_is_speaker === false
     const ownerContextBlock = existingOwnerContext
       ? `OWNER CONTEXT (already known — use this to frame suggestions, do not ask again):
 ${JSON.stringify(existingOwnerContext)}
 
 Tailor the 3 suggested outputs to serve the OWNER (role: ${existingOwnerContext.role || 'unknown'}) — their post-conversation needs, not the counterparty's. Perspective should default to the owner's viewpoint where appropriate.`
+      : ownerIsNotSpeakerForPrompt
+      ? `OWNER CONTEXT: The session owner ("${userName || 'the user'}") is NOT a speaker in this recording — they uploaded or observed it. Do NOT ask which speaker they are and do NOT emit an ownerAssessment clarification. Set ownerAssessment.needsClarification = false with context.role = "observer" and context.speakerId = null. Frame the 3 suggestedOutputFormats from a neutral/observer perspective.`
       : `OWNER CONTEXT ASSESSMENT (required):
 
 The recording was made by the session owner ("${userName || 'the user'}"). Before producing suggestions, assess whether you can confidently infer:
@@ -1467,7 +1470,14 @@ Branch B (low confidence — ASK):
     let nextOwnerContext: Record<string, any> | null = existingOwnerContext
     let nextPendingClarification: Record<string, any> | null = null
     const ownerAssessment = (analysis as any)?.ownerAssessment
-    if (!existingOwnerContext && ownerAssessment && typeof ownerAssessment === 'object') {
+    // The owner explicitly marked themselves as NOT a speaker — never ask which
+    // speaker they are; record observer context once and skip the clarification.
+    const ownerIsNotSpeaker = (session as any)?.user_is_speaker === false
+    if (ownerIsNotSpeaker) {
+      if (!existingOwnerContext) {
+        nextOwnerContext = { role: 'observer', speakerId: null, source: 'not_speaker', updatedAt: new Date().toISOString() }
+      }
+    } else if (!existingOwnerContext && ownerAssessment && typeof ownerAssessment === 'object') {
       const needsClarification = Boolean(ownerAssessment.needsClarification)
       if (needsClarification && ownerAssessment.clarification && typeof ownerAssessment.clarification === 'object') {
         const clarification = ownerAssessment.clarification as Record<string, any>
