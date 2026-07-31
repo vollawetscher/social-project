@@ -153,6 +153,7 @@
       "recording": "Grabando",
       "uploading": "Subiendo",
       "transcribing": "Transcribiendo",
+      "awaitingReview": "Revisar hablantes",
       "ready": "Lista",
       "failed": "Fallida",
       "done": "Completada",
@@ -427,6 +428,16 @@
       "saveFailed": "No se pudo guardar la limpieza",
       "suggestionApplied": "Sugerencia aplicada: {from} -> {to}",
       "correctionAdded": "Correccion agregada: {from} -> {to}"
+    },
+    "gate": {
+      "title": "Confirma los interlocutores antes del análisis",
+      "description": "Esta grabación se dividió en interlocutores automáticamente. Revisa y combina los interlocutores abajo y luego inicia el análisis. Así los resúmenes y hallazgos son precisos — y no hay que volver a ejecutar el análisis después.",
+      "adjustHint": "Ajusta o combina los interlocutores en el panel de abajo primero.",
+      "startAnalysis": "Iniciar análisis",
+      "roleOther": "Otra cosa",
+      "rolePlaceholder": "Describe tu rol en esta conversación",
+      "confirmed": "Interlocutores confirmados — análisis iniciado",
+      "confirmFailed": "No se pudo iniciar el análisis"
     },
     "words": "palabras"
   },

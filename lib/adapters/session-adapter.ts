@@ -10,6 +10,7 @@ import {
   getCallNoteAuthor,
   isCallNoteSegment,
 } from '@/lib/services/merge-call-notes'
+import { resolveMergedSpeakerId } from '@/lib/utils/speaker-resolution'
 
 const PRIMARY_TO_DOMAIN: Record<string, Domain> = {
   medical: 'medical',
@@ -49,21 +50,6 @@ function deriveDomain(dbSession: any): Domain {
   return 'general'
 }
 
-function resolveMergedSpeakerId(
-  speakerId: string,
-  mergeMap: Record<string, string>
-): string {
-  let current = speakerId
-  const visited = new Set<string>()
-  while (mergeMap[current] && !visited.has(current)) {
-    visited.add(current)
-    const next = mergeMap[current]
-    if (!next || next === current) break
-    current = next
-  }
-  return current
-}
-
 /**
  * Map database session status to v0 UI status
  */
@@ -73,6 +59,7 @@ export function mapStatus(dbStatus: DbStatus): V0Status {
     'recording': 'recording',
     'uploading': 'uploading',
     'transcribing': 'transcribing',
+    'awaiting_speaker_review': 'awaiting_speaker_review',
     'summarizing': 'transcribing',
     'done': 'ready',
     'error': 'failed',

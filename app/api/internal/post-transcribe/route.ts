@@ -6,6 +6,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { logError } from '@/lib/services/error-logger'
 import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/services/queue'
+import { transcriptNeedsSpeakerReview } from '@/lib/utils/speaker-resolution'
 
 export async function POST(request: Request) {
   try {
@@ -39,6 +40,39 @@ export async function POST(request: Request) {
     const userId = session.user_id
     if (!userId) {
       return NextResponse.json({ error: 'Session has no user' }, { status: 400 })
+    }
+
+    // Speaker-review gate: if the transcript still carries acoustic labels
+    // (S1, S2, …) for ≥2 speakers, the speaker identity was guessed and must be
+    // reconciled + confirmed before the expensive analysis runs. Known/explicit
+    // speakers (imports, pasted chats, named call participants) and single-speaker
+    // dictations carry no acoustic labels and proceed straight to analysis.
+    const { data: transcripts } = await supabase
+      .from('transcripts')
+      .select('raw_json')
+      .eq('session_id', sessionId)
+    const segments = (transcripts || []).flatMap((t: any) =>
+      Array.isArray(t?.raw_json) ? t.raw_json : []
+    )
+
+    if (transcriptNeedsSpeakerReview(segments)) {
+      await supabase
+        .from('sessions')
+        .update({ status: 'awaiting_speaker_review' })
+        .eq('id', sessionId)
+
+      const job = await enqueueAsyncJob({
+        userId,
+        jobType: 'session_reconcile',
+        payload: { sessionId },
+        idempotencyKey: `session_reconcile:${sessionId}`,
+        maxAttempts: 3,
+      })
+      await linkJobToSession(job.id, sessionId)
+      triggerAsyncWorker()
+
+      console.log('[Post-Transcribe] Speaker review gate: reconcile queued for session:', sessionId, 'job:', job.id)
+      return NextResponse.json({ ok: true, queued: true, gated: true, jobId: job.id }, { status: 202 })
     }
 
     const job = await enqueueAsyncJob({

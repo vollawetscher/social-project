@@ -130,6 +130,30 @@ export async function GET(
       })
     }
 
+    // AI reconciliation merges (from the speaker-review gate's Claude pass).
+    // These are content-aware — they catch cross-language duplicates and larger
+    // spurious labels the deterministic singleton heuristic cannot. Surfaced
+    // through the same suggestion channel so the existing apply/persist flow
+    // handles them.
+    const reconcileMerges = Array.isArray(corrections.reconcile_merges) ? corrections.reconcile_merges : []
+    for (const m of reconcileMerges) {
+      const from = String((m as any)?.from || '').trim()
+      const to = String((m as any)?.to || '').trim()
+      if (!from || !to || from === to) continue
+      const id = `speaker_merge:${from}->${to}`
+      if (suggestions.some((s) => s.id === id)) continue
+      if (acceptedSuggestionIds.has(id)) continue
+      if (existingSpeakerMerges[from] === to) continue
+      suggestions.push({
+        id,
+        type: 'speaker_merge',
+        from,
+        to,
+        confidence: 0.9,
+        evidence: String((m as any)?.reason || '').slice(0, 160),
+      })
+    }
+
     suggestions.sort((a, b) => b.confidence - a.confidence)
     return NextResponse.json({ suggestions })
   } catch (error: any) {

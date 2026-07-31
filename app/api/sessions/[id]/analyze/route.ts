@@ -16,6 +16,7 @@ import {
   isCallNoteSegment,
 } from '@/lib/services/merge-call-notes'
 import { resolveVoiceMessageContext } from '@/lib/utils/voice-message'
+import { applySpeakerCorrectionsToSegments } from '@/lib/utils/speaker-resolution'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -743,8 +744,12 @@ export async function POST(
     }
     console.log('[Analyze API] Transcript found, segments count:', allSegments.length)
 
+    // Apply the user's/reconciler's canonical speaker corrections BEFORE
+    // analysis so Claude sees the same merged/overridden speakers the user
+    // sees — otherwise cleanup and reconciliation would never reach the model.
+    const analyzeCorrections = ((session as any)?.transcript_corrections || {}) as Record<string, any>
     // Sample from start, 25%, 50%, 75%, end to avoid misleading analysis of long transcripts
-    const segments = allSegments
+    const segments = applySpeakerCorrectionsToSegments(allSegments, analyzeCorrections)
     const speechSegments = segments.filter((seg) => !isCallNoteSegment(seg))
     const { data: linkedCall } = await sessionClient
       .from('calls')

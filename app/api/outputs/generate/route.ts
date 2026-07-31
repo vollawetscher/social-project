@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { GenerateOutputConfig } from '@/lib/types-v0'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
 import { applyTranscriptCorrections } from '@/lib/utils/transcript-corrections'
+import { resolveMergedSpeakerId, normalizeCorrectionMap } from '@/lib/utils/speaker-resolution'
 import { mergeTranscripts } from '@/lib/utils/merge-transcripts'
 import { logError } from '@/lib/services/error-logger'
 import { sanitizeOutputText } from '@/lib/utils/output-text-sanitizer'
@@ -44,37 +45,6 @@ function sanitizeGeneratedEmailText(input: string): string {
   return text.trim()
 }
 
-function resolveMergedSpeakerId(speakerId: string, mergeMap: Record<string, string>): string {
-  let current = String(speakerId || '').trim()
-  const visited = new Set<string>()
-  while (current && mergeMap[current] && !visited.has(current)) {
-    visited.add(current)
-    const next = String(mergeMap[current] || '').trim()
-    if (!next || next === current) break
-    current = next
-  }
-  return current || String(speakerId || '').trim()
-}
-
-function normalizeCorrectionMap(value: unknown): Record<string, string> {
-  if (!value) return {}
-  if (Array.isArray(value)) {
-    const map: Record<string, string> = {}
-    for (const item of value) {
-      if (!item || typeof item !== 'object') continue
-      const original = String((item as any).original ?? (item as any).from ?? '').trim()
-      const corrected = String((item as any).corrected ?? (item as any).to ?? '').trim()
-      if (original && corrected) map[original] = corrected
-    }
-    return map
-  }
-  if (typeof value !== 'object') return {}
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .map(([from, to]) => [String(from).trim(), String(to ?? '').trim()])
-      .filter(([from, to]) => from && to)
-  )
-}
 
 function buildSpeakerAttributedTranscript(
   transcript: any,
@@ -86,6 +56,7 @@ function buildSpeakerAttributedTranscript(
     ...normalizeCorrectionMap(corrections.name_corrections),
   }
   const speakerMergeMap = normalizeCorrectionMap(corrections.speaker_merge_map)
+  const speakerOverrides = normalizeCorrectionMap(corrections.segment_speaker_overrides)
   const textCorrections = {
     ...normalizeCorrectionMap(corrections.pii_redactions),
     ...normalizeCorrectionMap(corrections.word_corrections),
@@ -102,9 +73,10 @@ function buildSpeakerAttributedTranscript(
   const speakers: string[] = []
   const speakerSet = new Set<string>()
   const lines = segments
-    .map((segment: any) => {
+    .map((segment: any, index: number) => {
       const rawSpeaker = String(segment.speaker || 'Speaker').trim()
-      const mergedSpeaker = resolveMergedSpeakerId(rawSpeaker, speakerMergeMap)
+      const override = speakerOverrides[String(index)]
+      const mergedSpeaker = override || resolveMergedSpeakerId(rawSpeaker, speakerMergeMap)
       const displaySpeaker = speakerNameMap[mergedSpeaker] || speakerNameMap[rawSpeaker] || mergedSpeaker
       const text = applyTranscriptCorrections(String(segment.text || '').trim(), textCorrections)
 

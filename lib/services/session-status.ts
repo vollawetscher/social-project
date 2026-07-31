@@ -7,6 +7,7 @@ export type SessionStatus =
   | 'created' 
   | 'uploading' 
   | 'transcribing' 
+  | 'awaiting_speaker_review'
   | 'summarizing' 
   | 'done' 
   | 'error'
@@ -18,9 +19,10 @@ export type SessionStatus =
 const VALID_TRANSITIONS: Record<SessionStatus, SessionStatus[]> = {
   created: ['uploading', 'transcribing', 'error'],
   uploading: ['created', 'transcribing', 'error'],
-  transcribing: ['done', 'summarizing', 'error'],
+  transcribing: ['awaiting_speaker_review', 'done', 'summarizing', 'error'],
+  awaiting_speaker_review: ['done', 'summarizing', 'error'], // User confirms speakers → analysis
   summarizing: ['done', 'error'],
-  done: ['transcribing', 'summarizing'], // Allow regeneration
+  done: ['transcribing', 'summarizing', 'awaiting_speaker_review'], // Allow regeneration
   error: ['created', 'uploading', 'transcribing', 'summarizing'], // Allow recovery from error
 }
 

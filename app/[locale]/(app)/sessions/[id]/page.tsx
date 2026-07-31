@@ -225,6 +225,9 @@ export default function SessionDetailPage() {
   const [savingCleanup, setSavingCleanup] = useState(false)
   const [resettingCleanup, setResettingCleanup] = useState(false)
   const [cleanupPanelOpen, setCleanupPanelOpen] = useState(false)
+  const [confirmingSpeakers, setConfirmingSpeakers] = useState(false)
+  const [gateRoleChoice, setGateRoleChoice] = useState<string | null>(null)
+  const [gateRoleFreeText, setGateRoleFreeText] = useState('')
   const tPastePreview = useTranslations('pastePreview')
   const hasAudioInSession =
     Boolean(session?.audioUrl) ||
@@ -477,6 +480,62 @@ export default function SessionDetailPage() {
       setSavingCleanup(false)
     }
   }, [cleanupSuggestions, session, sessionId, speakerMergeMap, speakerNameMap, t, wordCorrectionsDraft])
+
+  const handleConfirmSpeakers = useCallback(async () => {
+    if (!session) return
+    setConfirmingSpeakers(true)
+    try {
+      // Resolve the owner role answer from the (optional) clarification prompt.
+      let ownerContext: Record<string, any> | null = null
+      let dismissClarification = false
+      const clarification = session.pendingClarification as any
+      if (clarification) {
+        if (gateRoleChoice === '__freetext__') {
+          const role = gateRoleFreeText.trim()
+          if (role) ownerContext = { role }
+          else dismissClarification = true
+        } else if (gateRoleChoice) {
+          const opt = (clarification.options || []).find((o: any) => o.id === gateRoleChoice)
+          const ctx = opt?.suggestedContext
+          if (ctx && typeof ctx === 'object' && String(ctx.role || '').trim()) {
+            ownerContext = ctx
+          } else if (opt?.label) {
+            ownerContext = { role: String(opt.label) }
+          } else {
+            dismissClarification = true
+          }
+        } else {
+          dismissClarification = true
+        }
+      }
+
+      const response = await fetch(`/api/sessions/${sessionId}/confirm-speakers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          corrections: {
+            speaker_name_map: speakerNameMap,
+            speaker_merge_map: speakerMergeMap,
+            word_corrections: wordCorrectionsDraft,
+          },
+          ownerContext,
+          dismissClarification,
+        }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error || t('gate.confirmFailed'))
+
+      // Leave the gate optimistically: analysis is now running in the background.
+      setSession((prev) => prev ? { ...prev, status: 'ready', pendingClarification: null } : prev)
+      setAnalyzing(true)
+      toast.success(t('gate.confirmed'))
+    } catch (error) {
+      console.error('[ConfirmSpeakers] Failed:', error)
+      toast.error(error instanceof Error ? error.message : t('gate.confirmFailed'))
+    } finally {
+      setConfirmingSpeakers(false)
+    }
+  }, [session, sessionId, speakerNameMap, speakerMergeMap, wordCorrectionsDraft, gateRoleChoice, gateRoleFreeText, t])
 
   const handleResetCleanup = useCallback(async () => {
     if (!session) return
@@ -899,7 +958,10 @@ export default function SessionDetailPage() {
     
     fetchSession().then((v0) => {
       const alreadyAnalyzed = v0?.suggestedOutputFormats?.length || v0?.extractedContext?.purpose
-      if (v0?.transcript?.length && !alreadyAnalyzed) {
+      // Do not auto-analyze while the speaker-review gate is open — analysis is
+      // held until the user confirms speakers via confirm-speakers.
+      const gated = v0?.status === 'awaiting_speaker_review'
+      if (v0?.transcript?.length && !alreadyAnalyzed && !gated) {
         setTimeout(() => analyzeSession(), 1000)
       }
     })
@@ -913,7 +975,11 @@ export default function SessionDetailPage() {
 
   useEffect(() => {
     const isProcessing = session && ['recording', 'transcribing', 'uploading', 'summarizing'].includes(session.status)
-    if (!session || (!isProcessing && !needsAnalysisPoll)) return
+    // Poll during the speaker-review gate too, so the reconciliation result
+    // (merge suggestions + role question) and the post-confirmation transition
+    // to 'ready' are picked up without a manual refresh.
+    const isGated = session?.status === 'awaiting_speaker_review'
+    if (!session || (!isProcessing && !needsAnalysisPoll && !isGated)) return
 
     const interval = setInterval(async () => {
       try {
@@ -2139,6 +2205,64 @@ export default function SessionDetailPage() {
                 onSwitchTab={setActiveTab}
                 curated={isCurated}
               />
+              {session?.status === 'awaiting_speaker_review' && (
+                <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Users className="h-4 w-4 mt-0.5 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{t('gate.title')}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t('gate.description')}</p>
+                    </div>
+                  </div>
+
+                  {session.pendingClarification ? (
+                    <div className="space-y-2 rounded-md border border-border bg-background/60 p-3">
+                      <p className="text-xs font-medium text-foreground">{session.pendingClarification.question}</p>
+                      <div className="space-y-1.5">
+                        {(session.pendingClarification.options || []).map((opt: any) => (
+                          <label
+                            key={opt.id}
+                            className="flex items-center gap-2 text-xs cursor-pointer rounded border border-border px-2 py-1.5 hover:bg-muted/50"
+                          >
+                            <input
+                              type="radio"
+                              name="gate-role"
+                              checked={gateRoleChoice === opt.id}
+                              onChange={() => setGateRoleChoice(opt.id)}
+                            />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                        <label className="flex items-center gap-2 text-xs cursor-pointer rounded border border-border px-2 py-1.5 hover:bg-muted/50">
+                          <input
+                            type="radio"
+                            name="gate-role"
+                            checked={gateRoleChoice === '__freetext__'}
+                            onChange={() => setGateRoleChoice('__freetext__')}
+                          />
+                          <span>{t('gate.roleOther')}</span>
+                        </label>
+                        {gateRoleChoice === '__freetext__' && (
+                          <Input
+                            value={gateRoleFreeText}
+                            onChange={(e) => setGateRoleFreeText(e.target.value)}
+                            placeholder={t('gate.rolePlaceholder')}
+                            className="mt-1"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <p className="text-[11px] text-muted-foreground">{t('gate.adjustHint')}</p>
+                    <Button size="sm" onClick={() => void handleConfirmSpeakers()} disabled={confirmingSpeakers}>
+                      {confirmingSpeakers ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                      {t('gate.startAnalysis')}
+                    </Button>
+                  </div>
+                </div>
+              )}
               {!isCurated && renderCleanupPanel()}
               {canShowTranscriptReparseControls && (
                 <div className="mb-2 flex items-center gap-2">

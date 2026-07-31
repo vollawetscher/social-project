@@ -153,6 +153,7 @@
       "recording": "Recording",
       "uploading": "Uploading",
       "transcribing": "Transcribing",
+      "awaitingReview": "Review speakers",
       "ready": "Ready",
       "failed": "Failed",
       "done": "Done",
@@ -502,6 +503,16 @@
       "saveFailed": "Failed to save cleanup",
       "suggestionApplied": "Suggestion applied: {from} -> {to}",
       "correctionAdded": "Correction added: {from} -> {to}"
+    },
+    "gate": {
+      "title": "Confirm speakers before analysis",
+      "description": "This recording was split into speakers automatically. Review and merge speakers below, then start the analysis. This keeps summaries and insights accurate — and avoids re-running the analysis later.",
+      "adjustHint": "Adjust or merge speakers in the panel below first.",
+      "startAnalysis": "Start analysis",
+      "roleOther": "Something else",
+      "rolePlaceholder": "Describe your role in this conversation",
+      "confirmed": "Speakers confirmed — analysis started",
+      "confirmFailed": "Failed to start analysis"
     },
     "words": "words"
   },

@@ -153,6 +153,7 @@
       "recording": "Aufnahme",
       "uploading": "Wird hochgeladen",
       "transcribing": "Wird transkribiert",
+      "awaitingReview": "Sprecher prüfen",
       "ready": "Bereit",
       "failed": "Fehlgeschlagen",
       "done": "Fertig",
@@ -502,6 +503,16 @@
       "saveFailed": "Bereinigung konnte nicht gespeichert werden",
       "suggestionApplied": "Vorschlag angewendet: {from} -> {to}",
       "correctionAdded": "Korrektur hinzugefuegt: {from} -> {to}"
+    },
+    "gate": {
+      "title": "Sprecher vor der Analyse bestätigen",
+      "description": "Diese Aufnahme wurde automatisch in Sprecher aufgeteilt. Prüfe und führe unten Sprecher zusammen und starte dann die Analyse. So bleiben Zusammenfassungen und Erkenntnisse korrekt — und die Analyse muss später nicht erneut laufen.",
+      "adjustHint": "Sprecher zuerst im Bereich unten anpassen oder zusammenführen.",
+      "startAnalysis": "Analyse starten",
+      "roleOther": "Etwas anderes",
+      "rolePlaceholder": "Beschreibe deine Rolle in diesem Gespräch",
+      "confirmed": "Sprecher bestätigt — Analyse gestartet",
+      "confirmFailed": "Analyse konnte nicht gestartet werden"
     },
     "words": "Wörter"
   },

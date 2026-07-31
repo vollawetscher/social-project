@@ -102,6 +102,45 @@ async function processSessionAnalyzeJob(request: Request, job: AsyncJobRow): Pro
   }
 }
 
+async function processSessionReconcileJob(request: Request, job: AsyncJobRow): Promise<Record<string, unknown>> {
+  const payload = (job.payload || {}) as Record<string, unknown>
+  const sessionId = String(payload.sessionId || '')
+  if (!sessionId) {
+    throw new Error('Invalid session_reconcile payload')
+  }
+
+  const baseUrl = getBaseUrl(request)
+  const secret = process.env.INTERNAL_API_SECRET
+  if (!secret) {
+    throw new Error('INTERNAL_API_SECRET is not configured')
+  }
+
+  const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/reconcile`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-secret': secret,
+      'x-internal-user-id': job.user_id,
+      'x-queue-worker': '1',
+    },
+    body: JSON.stringify({}),
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const detail =
+      typeof data?.message === 'string' && data.message.trim()
+        ? `${data.error || 'Session reconcile failed'}: ${data.message}`
+        : data?.error
+    throw new Error(String(detail || `Session reconcile failed (${response.status})`))
+  }
+
+  return {
+    ...(typeof data === 'object' && data ? data : {}),
+    sessionId,
+  }
+}
+
 async function hasTranscribeCompletedSince(sessionId: string, sinceIso: string): Promise<boolean> {
   const supabase = createServiceRoleClient()
 
@@ -279,6 +318,8 @@ async function processJob(request: Request, job: AsyncJobRow): Promise<Record<st
       return processOutputGenerateJob(request, job)
     case 'session_analyze':
       return processSessionAnalyzeJob(request, job)
+    case 'session_reconcile':
+      return processSessionReconcileJob(request, job)
     case 'session_transcribe':
       return processSessionTranscribeJob(request, job)
     case 'import_transcript_process':

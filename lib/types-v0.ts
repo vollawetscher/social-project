@@ -1,6 +1,6 @@
 // Core enums and types for Notissima
 
-export type SessionStatus = 'recording' | 'uploading' | 'transcribing' | 'ready' | 'failed'
+export type SessionStatus = 'recording' | 'uploading' | 'transcribing' | 'awaiting_speaker_review' | 'ready' | 'failed'
 
 export type RecordingType = 
   | 'meeting'                  // In-person or virtual meeting

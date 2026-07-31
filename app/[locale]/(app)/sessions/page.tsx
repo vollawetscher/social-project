@@ -108,6 +108,7 @@ const statusConfig: Record<SessionStatus, StatusDisplay> = {
   recording: { labelKey: "recording", variant: "secondary", className: "bg-primary/20 text-primary border-primary/30 animate-pulse", animated: true },
   uploading: { labelKey: "uploading", variant: "secondary", className: "bg-info/20 text-info border-info/30 animate-pulse", animated: true },
   transcribing: { labelKey: "transcribing", variant: "secondary", className: "bg-warning/20 text-warning border-warning/30 animate-pulse", animated: true },
+  awaiting_speaker_review: { labelKey: "awaitingReview", variant: "secondary", className: "bg-info/20 text-info border-info/30" },
   ready: { labelKey: "ready", variant: "default", className: "bg-success/20 text-success border-success/30" },
   failed: { labelKey: "failed", variant: "destructive" },
 }

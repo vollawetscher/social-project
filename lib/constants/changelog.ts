@@ -14,6 +14,28 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.55.0',
+    date: 'July 31, 2026',
+    entries: [
+      {
+        version: '1.55.0',
+        date: 'July 31, 2026',
+        category: 'feature',
+        title: 'Confirm Speakers Before Analysis',
+        description:
+          'For recordings split into speakers automatically, you now review and merge speakers — and confirm your role in the conversation — in one step before the analysis runs. This keeps summaries and insights accurate and avoids paying to re-run the analysis after every correction.',
+      },
+      {
+        version: '1.55.0',
+        date: 'July 31, 2026',
+        category: 'improvement',
+        title: 'Smarter Speaker Detection',
+        description:
+          'Speaker detection now recognises when the same person was mistakenly split into several speakers — including when they switch languages mid-conversation — and suggests merging them, so multi-speaker meetings are counted correctly.',
+      },
+    ],
+  },
+  {
     version: '1.54.2',
     date: 'July 7, 2026',
     entries: [
