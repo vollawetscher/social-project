@@ -70,7 +70,8 @@ export class SpeechmaticsService {
         operating_point: 'enhanced',
         diarization: 'speaker',
         speaker_diarization_config: {
-          speaker_sensitivity: Number(process.env.SPEECHMATICS_SPEAKER_SENSITIVITY || '0.8'),
+          speaker_sensitivity: Number(process.env.SPEECHMATICS_SPEAKER_SENSITIVITY || '0.6'),
+          prefer_current_speaker: true,
         },
         enable_entities: false,
         additional_vocab: [
