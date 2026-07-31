@@ -33,6 +33,14 @@ export const changelog: ChangelogVersion[] = [
         description:
           'Speaker detection now recognises when the same person was mistakenly split into several speakers — including when they switch languages mid-conversation — and suggests merging them, so multi-speaker meetings are counted correctly.',
       },
+      {
+        version: '1.55.0',
+        date: 'July 31, 2026',
+        category: 'improvement',
+        title: 'New Version Notifications',
+        description:
+          'When we ship an update, open tabs now show a gentle banner inviting you to reload — with a clear reminder not to reload while a recording, dictation, or live call is in progress.',
+      },
     ],
   },
   {

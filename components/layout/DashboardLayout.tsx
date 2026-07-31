@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { ChangelogDialog } from '@/components/changelog/ChangelogDialog'
 import { FeatureRequestDialog } from '@/components/feature-request/FeatureRequestDialog'
+import { UpdateBanner } from '@/components/layout/UpdateBanner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +51,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-blue-100">
+      <UpdateBanner />
       <header className="border-b border-blue-200/50 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">

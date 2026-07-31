@@ -6,6 +6,7 @@ import { AppLayoutClient } from "@/components/app-layout-client"
 import { GlobalIncomingCallListener } from "@/components/call/GlobalIncomingCallListener"
 import { GlobalPresenceHeartbeat } from "@/components/call/GlobalPresenceHeartbeat"
 import { ActiveCallBanner } from "@/components/call/ActiveCallBanner"
+import { UpdateBanner } from "@/components/layout/UpdateBanner"
 import { Toaster } from "@/components/ui/toaster"
 import { useAuth } from "@/lib/auth/AuthProvider"
 
@@ -43,6 +44,7 @@ export default function AppLayout({
       <AppLayoutClient>{children}</AppLayoutClient>
       <GlobalIncomingCallListener />
       <GlobalPresenceHeartbeat />
+      <UpdateBanner />
       <Toaster />
     </>
   )

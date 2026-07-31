@@ -1,4 +1,11 @@
 {
+  "updateBanner": {
+    "title": "A new version is available",
+    "description": "Reload to get the latest updates.",
+    "warning": "Don't reload while a recording, dictation, or live call is in progress — you'd lose your work.",
+    "reload": "Reload",
+    "later": "Later"
+  },
   "common": {
     "save": "Save",
     "saving": "Saving...",

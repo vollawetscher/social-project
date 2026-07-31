@@ -1,4 +1,11 @@
 {
+  "updateBanner": {
+    "title": "Hay una nueva versión disponible",
+    "description": "Recarga para obtener las últimas novedades.",
+    "warning": "No recargues mientras haya una grabación, un dictado o una llamada en curso — perderías tu trabajo.",
+    "reload": "Recargar",
+    "later": "Más tarde"
+  },
   "common": {
     "save": "Guardar",
     "saving": "Guardando...",

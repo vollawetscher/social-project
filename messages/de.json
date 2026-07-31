@@ -1,4 +1,11 @@
 {
+  "updateBanner": {
+    "title": "Eine neue Version ist verfügbar",
+    "description": "Lade neu, um die neuesten Updates zu erhalten.",
+    "warning": "Nicht neu laden, während eine Aufnahme, ein Diktat oder ein Live-Call läuft — sonst geht deine Arbeit verloren.",
+    "reload": "Neu laden",
+    "later": "Später"
+  },
   "common": {
     "save": "Speichern",
     "saving": "Wird gespeichert...",
