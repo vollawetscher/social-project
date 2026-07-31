@@ -116,20 +116,22 @@ function SpeakerBadge({
       >
         <div className="space-y-1">
           <p className="text-[11px] font-medium text-muted-foreground px-1 pb-1">Assign speaker</p>
-          {allSpeakers.map((speaker) => (
-            <button
-              key={speaker}
-              type="button"
-              className={cn(
-                "flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left hover:bg-accent transition-colors",
-                speaker === displayName && "bg-accent font-medium",
-              )}
-              onClick={() => handleSelect(speaker)}
-            >
-              <span className="flex-1 truncate">{speaker}</span>
-              {speaker === displayName && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
-            </button>
-          ))}
+          <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
+            {allSpeakers.map((speaker) => (
+              <button
+                key={speaker}
+                type="button"
+                className={cn(
+                  "flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm text-left hover:bg-accent transition-colors",
+                  speaker === displayName && "bg-accent font-medium",
+                )}
+                onClick={() => handleSelect(speaker)}
+              >
+                <span className="flex-1 truncate">{speaker}</span>
+                {speaker === displayName && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+              </button>
+            ))}
+          </div>
           <div className="border-t border-border pt-1.5 mt-1.5">
             <form
               onSubmit={(e) => { e.preventDefault(); handleCustomSubmit() }}
