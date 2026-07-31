@@ -251,10 +251,21 @@ Rules:
 
     const merges = sanitizeMerges(parsed.speakerMerges, presentLabels)
 
-    // Persist merges as SUGGESTIONS (not applied) for the review gate.
+    // Apply the AI merges directly into speaker_merge_map so the review gate
+    // shows the collapsed speaker count immediately — the user reviews the
+    // result and can split any speaker back via the dropdown. Requiring a
+    // manual click per merge (14+ for a heavily over-segmented recording) made
+    // the AI pass effectively useless. We keep reconcile_merges as an audit
+    // trail. Never overwrite a mapping the user already set.
     const existingCorrections = ((session as any)?.transcript_corrections || {}) as Record<string, any>
+    const existingMergeMap = (existingCorrections.speaker_merge_map || {}) as Record<string, string>
+    const appliedMergeMap: Record<string, string> = { ...existingMergeMap }
+    for (const m of merges) {
+      if (!appliedMergeMap[m.from]) appliedMergeMap[m.from] = m.to
+    }
     const nextCorrections = {
       ...existingCorrections,
+      speaker_merge_map: appliedMergeMap,
       reconcile_merges: merges,
     }
 

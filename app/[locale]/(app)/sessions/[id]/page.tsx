@@ -414,15 +414,15 @@ export default function SessionDetailPage() {
         [suggestion.from]: suggestion.to,
       }))
       toast.success(t('cleanup.suggestionApplied', { from: suggestion.from, to: suggestion.to }))
-      return
-    }
-    if (suggestion.type === 'word') {
+    } else if (suggestion.type === 'word') {
       setWordCorrectionsDraft((prev) => ({
         ...prev,
         [suggestion.from]: suggestion.to,
       }))
       toast.success(t('cleanup.correctionAdded', { from: suggestion.from, to: suggestion.to }))
     }
+    // Remove the applied suggestion from the list so it doesn't linger.
+    setCleanupSuggestions((prev) => prev.filter((s) => s.id !== suggestion.id))
   }, [t])
 
   const handleSaveCleanup = useCallback(async () => {
