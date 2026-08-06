@@ -14,6 +14,34 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.55.2',
+    date: 'August 6, 2026',
+    entries: [
+      {
+        version: '1.55.2',
+        date: 'August 6, 2026',
+        category: 'fix',
+        title: 'Context Analysis Runs for Voice-Agent Calls',
+        description:
+          'Calls that use the live assistant no longer get stuck without purpose, topics, or suggested reports. Analysis now recognizes empty placeholders as “not analyzed yet” and runs the full context extraction.',
+      },
+    ],
+  },
+  {
+    version: '1.55.1',
+    date: 'August 3, 2026',
+    entries: [
+      {
+        version: '1.55.1',
+        date: 'August 3, 2026',
+        category: 'fix',
+        title: 'Generated Outputs Now Appear Automatically',
+        description:
+          'When you generate a report from a suggested format, you no longer have to wait or reload — the document appears in your Outputs on its own as soon as it is ready, while generation progress is shown in your notifications.',
+      },
+    ],
+  },
+  {
     version: '1.55.0',
     date: 'July 31, 2026',
     entries: [

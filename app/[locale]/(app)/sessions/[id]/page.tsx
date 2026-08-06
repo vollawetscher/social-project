@@ -203,6 +203,12 @@ export default function SessionDetailPage() {
   const [applyToTranscript, setApplyToTranscript] = useState(true)
   const [savingCorrections, setSavingCorrections] = useState(false)
   const [generatingSuggestionIndices, setGeneratingSuggestionIndices] = useState<Set<number>>(new Set())
+  // In-flight async output_generate jobs. A dedicated effect polls these and
+  // refreshes the outputs list as soon as the background pipeline finishes, so
+  // results appear on screen without a manual reload. The button itself does
+  // NOT stay in a loading state — generation progress is surfaced via the
+  // notifications spinner so the user is free to move on immediately.
+  const [pendingOutputJobs, setPendingOutputJobs] = useState<Array<{ jobId: string; title: string; startedAt: number }>>([])
   const [savingOutputAsTemplate, setSavingOutputAsTemplate] = useState<string | null>(null)
   const [deletingOutputId, setDeletingOutputId] = useState<string | null>(null)
   const [retryingTranscribe, setRetryingTranscribe] = useState(false)
@@ -650,18 +656,12 @@ export default function SessionDetailPage() {
     setActiveTab('outputs')
   }, [fetchOutputs])
 
-  const waitForJobCompletion = useCallback(async (jobId: string) => {
-    const startedAt = Date.now()
-    const timeoutMs = 3 * 60 * 1000
-    while (Date.now() - startedAt < timeoutMs) {
-      const res = await fetch(`/api/jobs/${jobId}`, { cache: 'no-store' })
-      const job = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(job?.error || 'Failed to read async job status')
-      if (job.status === 'completed') return job.result || {}
-      if (job.status === 'failed') throw new Error(job.lastError || 'Async job failed')
-      await new Promise((resolve) => setTimeout(resolve, 1200))
-    }
-    throw new Error('Async output generation timed out')
+  const clearSuggestionSpinner = useCallback((index: number) => {
+    setGeneratingSuggestionIndices(prev => {
+      const next = new Set(prev)
+      next.delete(index)
+      return next
+    })
   }, [])
 
   // Generate output from AI suggestion (quick one-click)
@@ -695,39 +695,25 @@ export default function SessionDetailPage() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Generation failed')
       if (data?.queued && data?.jobId) {
-        // Don't block the UI — poll for completion in the background
-        waitForJobCompletion(data.jobId)
-          .then(() => {
-            toast.success(`Generated: ${suggestion.title}`)
-            fetchOutputs()
-          })
-          .catch((err) => {
-            console.error('Async suggestion job failed:', err)
-            toast.error(err instanceof Error ? err.message : 'Output generation failed')
-          })
-          .finally(() => {
-            setGeneratingSuggestionIndices(prev => {
-              const next = new Set(prev)
-              next.delete(index)
-              return next
-            })
-          })
-        toast.info(`Generating "${suggestion.title}"…`, { duration: 3000 })
+        // Async pipeline: register the job so the polling effect refreshes the
+        // outputs list the moment generation finishes. The button is released
+        // right away (spinner cleared in `finally`) — progress is shown by the
+        // notifications spinner, so the user doesn't feel forced to wait here.
+        setPendingOutputJobs(prev => [
+          ...prev.filter(j => j.jobId !== data.jobId),
+          { jobId: data.jobId, title: suggestion.title, startedAt: Date.now() },
+        ])
         setActiveTab('outputs')
         return
       }
-      toast.success(`Generated: ${suggestion.title}`)
+      // Sync fallback (queue unavailable): the output is already persisted.
       fetchOutputs()
       setActiveTab('outputs')
     } catch (error) {
       console.error('Generate from suggestion error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to generate output')
     } finally {
-      setGeneratingSuggestionIndices(prev => {
-        const next = new Set(prev)
-        next.delete(index)
-        return next
-      })
+      clearSuggestionSpinner(index)
     }
   }
 
@@ -1015,6 +1001,44 @@ export default function SessionDetailPage() {
     }, isProcessing ? 3000 : 5000)
     return () => clearInterval(interval)
   }, [sessionId, session?.status, fetchOutputs, needsAnalysisPoll])
+
+  // Watch in-flight async output_generate jobs. Output generation runs as a
+  // background job that returns 202 immediately; poll each pending job and, on
+  // completion, refetch the outputs list so the generated result shows up on
+  // screen on its own. Progress feedback is handled by the notifications
+  // spinner, so this only refreshes data — it doesn't touch button state.
+  useEffect(() => {
+    if (pendingOutputJobs.length === 0) return
+    const TIMEOUT_MS = 3 * 60 * 1000
+
+    const settleJob = (jobId: string) =>
+      setPendingOutputJobs(prev => prev.filter(j => j.jobId !== jobId))
+
+    const interval = setInterval(async () => {
+      for (const job of pendingOutputJobs) {
+        if (Date.now() - job.startedAt > TIMEOUT_MS) {
+          settleJob(job.jobId)
+          continue
+        }
+        try {
+          const res = await fetch(`/api/jobs/${job.jobId}`, { cache: 'no-store' })
+          if (!res.ok) continue
+          const data = await res.json().catch(() => ({}))
+          if (data.status === 'completed') {
+            settleJob(job.jobId)
+            fetchOutputs()
+          } else if (data.status === 'failed') {
+            settleJob(job.jobId)
+            toast.error(data.lastError || `Generation failed: ${job.title}`)
+          }
+        } catch {
+          // transient error — retry on the next tick
+        }
+      }
+    }, 1500)
+
+    return () => clearInterval(interval)
+  }, [pendingOutputJobs, fetchOutputs])
 
   // Initialize cleanup drafts + load cleanup suggestions ONLY when the inputs
   // that actually affect them change (session id, saved corrections, transcript

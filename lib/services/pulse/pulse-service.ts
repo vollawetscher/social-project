@@ -12,6 +12,7 @@ import type {
   TypeMismatchSuggestion,
 } from '@/lib/types/pulse'
 import { recordAiTokens } from '@/lib/services/usage-tracker'
+import { hasReadyAnalysisArtifacts } from '@/lib/services/session-analysis'
 import { normalizeLanguageCode } from '@/lib/utils/language'
 import { JSON_ONLY_SUFFIX, withJsonPrefill } from '@/lib/utils/claude-json'
 
@@ -41,19 +42,6 @@ function extractResolvedLoopMarkers(text: string | null | undefined): string[] {
     .map((line) => line.replace(/^\[RESOLVED\]\s+/i, '').trim())
     .filter(Boolean)
     .slice(0, 30)
-}
-
-function hasReadyAnalysisArtifacts(sessionRow: any): boolean {
-  const hasRecordingType = typeof sessionRow?.recording_type === 'string' && sessionRow.recording_type.trim().length > 0
-  const hasDomains = Array.isArray(sessionRow?.suggested_domains) && sessionRow.suggested_domains.length > 0
-  const extracted = sessionRow?.ai_extracted_context
-  const hasExtractedContext =
-    extracted &&
-    typeof extracted === 'object' &&
-    !Array.isArray(extracted) &&
-    Object.keys(extracted).length > 0
-
-  return hasRecordingType && hasDomains && hasExtractedContext
 }
 
 export function mapSessionToPulseInput(sessionRow: any): PulseSessionInput {

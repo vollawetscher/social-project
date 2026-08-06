@@ -13,6 +13,7 @@ import {
   type AsyncJobRow,
 } from '@/lib/services/queue'
 import { runPulseUpdateJob } from '@/lib/services/pulse/pulse-service'
+import { hasReadyAnalysisArtifacts } from '@/lib/services/session-analysis'
 
 function getBaseUrl(request: Request): string {
   return process.env.NEXT_PUBLIC_APP_URL
@@ -270,14 +271,7 @@ async function processPulseUpdateJob(job: AsyncJobRow): Promise<Record<string, u
     .eq('id', sessionId)
     .maybeSingle()
 
-  const hasArtifacts =
-    !!sessionRow &&
-    typeof sessionRow.recording_type === 'string' &&
-    sessionRow.recording_type.trim().length > 0 &&
-    Array.isArray((sessionRow as any).suggested_domains) &&
-    ((sessionRow as any).suggested_domains as any[]).length > 0 &&
-    !!(sessionRow as any).ai_extracted_context &&
-    typeof (sessionRow as any).ai_extracted_context === 'object'
+  const hasArtifacts = hasReadyAnalysisArtifacts(sessionRow)
 
   if (!hasArtifacts) {
     const status = String((sessionRow as any)?.status || '')

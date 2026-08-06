@@ -17,6 +17,7 @@ import {
 } from '@/lib/services/merge-call-notes'
 import { resolveVoiceMessageContext } from '@/lib/utils/voice-message'
 import { applySpeakerCorrectionsToSegments } from '@/lib/utils/speaker-resolution'
+import { hasReadyAnalysisArtifacts } from '@/lib/services/session-analysis'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -584,8 +585,7 @@ export async function POST(
         .eq('id', params.id)
         .maybeSingle()
 
-      const alreadyCached = cachedSession?.recording_type && cachedSession?.suggested_domains && cachedSession?.ai_extracted_context
-      if (alreadyCached) {
+      if (cachedSession && hasReadyAnalysisArtifacts(cachedSession)) {
         const { data: pendingJob } = await svcClient
           .from('async_jobs')
           .select('id')
@@ -909,8 +909,10 @@ export async function POST(
     const knownParticipantBlock = speakerResolution?.knownParticipantBlock || 'No participant metadata available.'
     console.log('[Analyze API] Sampled', positions.length, 'sections,', sample.length, 'chars')
 
-    // Check if already analyzed (skip re-analysis unless user wants to correct)
-    const alreadyAnalyzed = session.recording_type && session.suggested_domains && session.ai_extracted_context
+    // Check if already analyzed (skip re-analysis unless user wants to correct).
+    // Use hasReadyAnalysisArtifacts — empty DB defaults ([] / {}) are truthy in JS
+    // and must not count as a completed analysis.
+    const alreadyAnalyzed = hasReadyAnalysisArtifacts(session)
     
     if (!force && (session.context_locked || alreadyAnalyzed)) {
       console.log('[Analyze API] Using cached analysis (locked or already analyzed)')
