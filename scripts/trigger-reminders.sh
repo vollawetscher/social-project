@@ -3,39 +3,24 @@
 #
 # Runs as a Railway Cron Job every 5 minutes.
 #
+# Uses Node's built-in fetch (Node 18+) instead of curl, because the nixpacks
+# Node runtime image does not ship curl and adding it via nixPkgs did not
+# survive into the runtime image. Node is guaranteed to be available since
+# this is a Node service.
+#
 # Railway setup (one-time, in the Railway dashboard):
-#   1. In the project that hosts the app, create a new service from this same repo.
-#   2. In the new service's Settings, set "Config-as-code File Path" to
-#      `railway.cron.json`. That file declares the cron schedule and start command.
-#   3. Set the service to deploy from the `dev-team` branch (same as the app).
-#   4. Add these env vars on the cron service:
-#        APP_BASE_URL           = https://<your prod host>   (no trailing slash needed)
+#   1. In the project that hosts the app, create a new service from this repo.
+#   2. Either:
+#      a) Set Config-as-code Railway Config File to `railway.cron.json`, OR
+#      b) Set Start Command to `sh scripts/trigger-reminders.sh`
+#         and add a Cron Schedule of `*/5 * * * *`, Restart Policy = Never.
+#   3. Set the service to deploy from the `dev-team` branch.
+#   4. Env vars on the cron service:
+#        APP_BASE_URL           = https://<your prod host>
 #        INTERNAL_API_SECRET    = same value as the main app service
-#   5. Trigger one run manually and verify HTTP 200 in the service logs.
+#   5. Turn Public Networking off.
 set -e
 
 echo "[trigger-reminders] $(date -u +%FT%TZ) firing"
 
-if [ -z "$APP_BASE_URL" ]; then
-  echo "ERROR: APP_BASE_URL is not set"
-  exit 1
-fi
-if [ -z "$INTERNAL_API_SECRET" ]; then
-  echo "ERROR: INTERNAL_API_SECRET is not set"
-  exit 1
-fi
-
-response=$(curl -sS -w "\n%{http_code}" -X POST "${APP_BASE_URL%/}/api/internal/scheduled-call-reminders" \
-  -H "Content-Type: application/json" \
-  -H "x-internal-secret: $INTERNAL_API_SECRET" \
-  -d '{}')
-
-http_code=$(echo "$response" | tail -n1)
-body=$(echo "$response" | head -n -1)
-
-echo "$body"
-
-if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
-  echo "ERROR: endpoint returned HTTP $http_code"
-  exit 1
-fi
+exec node scripts/trigger-reminders.mjs
