@@ -1,7 +1,20 @@
 #!/bin/sh
 # Triggers the scheduled-call-reminders endpoint.
+#
 # Runs as a Railway Cron Job every 5 minutes.
+#
+# Railway setup (one-time, in the Railway dashboard):
+#   1. In the project that hosts the app, create a new service from this same repo.
+#   2. In the new service's Settings, set "Config-as-code File Path" to
+#      `railway.cron.json`. That file declares the cron schedule and start command.
+#   3. Set the service to deploy from the `dev-team` branch (same as the app).
+#   4. Add these env vars on the cron service:
+#        APP_BASE_URL           = https://<your prod host>   (no trailing slash needed)
+#        INTERNAL_API_SECRET    = same value as the main app service
+#   5. Trigger one run manually and verify HTTP 200 in the service logs.
 set -e
+
+echo "[trigger-reminders] $(date -u +%FT%TZ) firing"
 
 if [ -z "$APP_BASE_URL" ]; then
   echo "ERROR: APP_BASE_URL is not set"
