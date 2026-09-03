@@ -18,6 +18,15 @@ import {
 import { resolveVoiceMessageContext } from '@/lib/utils/voice-message'
 import { applySpeakerCorrectionsToSegments } from '@/lib/utils/speaker-resolution'
 import { hasReadyAnalysisArtifacts } from '@/lib/services/session-analysis'
+import {
+  buildTranscriptSample,
+  hasConfirmedOwnerRole,
+  isListenerOwnerRole,
+  resolveAutoOwnerContext,
+  stripOwnerNameFromDisplayMap,
+  uniqueSpeakerLabels,
+} from '@/lib/utils/analysis-gate'
+import { enqueueSessionAnalyzeWhenRoleReady } from '@/lib/services/session-analyze-gate'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -581,7 +590,7 @@ export async function POST(
       const svcClient = createServiceRoleClient()
       const { data: cachedSession } = await cacheClient
         .from('sessions')
-        .select('recording_type, recording_type_confidence, suggested_domains, ai_extracted_context, suggested_output_formats, context_locked, user_recording_type, user_domains, transcript_corrections')
+        .select('recording_type, recording_type_confidence, suggested_domains, ai_extracted_context, suggested_output_formats, context_locked, user_recording_type, user_domains, transcript_corrections, owner_context, user_is_speaker, input_hint')
         .eq('id', params.id)
         .maybeSingle()
 
@@ -612,27 +621,36 @@ export async function POST(
         })
       }
 
-      // Not cached — enqueue for async processing
+      // Not cached — enqueue only when the owner role is known.
       if (!isInternalCall) {
-        // Clear any old completed job so a fresh analysis can be enqueued
-        await svcClient
-          .from('async_jobs')
-          .delete()
-          .eq('idempotency_key', `session_analyze:${params.id}`)
-          .eq('status', 'completed')
-
-        const job = await enqueueAsyncJob({
+        if (!hasConfirmedOwnerRole((cachedSession as any)?.owner_context)) {
+          const auto = resolveAutoOwnerContext({
+            ownerContext: (cachedSession as any)?.owner_context,
+            userIsSpeaker: (cachedSession as any)?.user_is_speaker,
+            inputHint: (cachedSession as any)?.input_hint,
+          })
+          if (!auto) {
+            return NextResponse.json(
+              { error: 'owner_role_required', message: 'Confirm your role before analysis runs.' },
+              { status: 409 }
+            )
+          }
+        }
+        const analyze = await enqueueSessionAnalyzeWhenRoleReady({
+          supabase: svcClient,
+          sessionId: params.id,
           userId,
-          jobType: 'session_analyze',
-          payload: { sessionId: params.id },
-          idempotencyKey: `session_analyze:${params.id}`,
-          maxAttempts: 5,
+          force: false,
         })
-        await linkJobToSession(job.id, params.id)
-        triggerAsyncWorker()
-        console.log('[Analyze API] Enqueued to async queue, jobId:', job.id)
+        if (analyze.gated) {
+          return NextResponse.json(
+            { error: 'owner_role_required', message: 'Confirm your role before analysis runs.' },
+            { status: 409 }
+          )
+        }
+        console.log('[Analyze API] Enqueued to async queue, jobId:', analyze.jobId)
         return NextResponse.json(
-          { queued: true, jobId: job.id },
+          { queued: true, jobId: analyze.jobId },
           { status: 202 }
         )
       }
@@ -640,24 +658,21 @@ export async function POST(
 
     // Admin force re-analyze: enqueue a fresh job that bypasses cached analysis
     if (!isWorkerSync && force && !isInternalCall) {
-      const svcClient = createServiceRoleClient()
-      await svcClient
-        .from('async_jobs')
-        .delete()
-        .eq('idempotency_key', `session_analyze:${params.id}`)
-
-      const job = await enqueueAsyncJob({
+      const analyze = await enqueueSessionAnalyzeWhenRoleReady({
+        supabase: createServiceRoleClient(),
+        sessionId: params.id,
         userId,
-        jobType: 'session_analyze',
-        payload: { sessionId: params.id, force: true },
-        idempotencyKey: `session_analyze:${params.id}`,
-        maxAttempts: 5,
+        force: true,
       })
-      await linkJobToSession(job.id, params.id)
-      triggerAsyncWorker()
-      console.log('[Analyze API] Force re-analyze enqueued, jobId:', job.id)
+      if (analyze.gated) {
+        return NextResponse.json(
+          { error: 'owner_role_required', message: 'Confirm your role before analysis runs.' },
+          { status: 409 }
+        )
+      }
+      console.log('[Analyze API] Force re-analyze enqueued, jobId:', analyze.jobId)
       return NextResponse.json(
-        { queued: true, jobId: job.id, force: true },
+        { queued: true, jobId: analyze.jobId, force: true },
         { status: 202 }
       )
     }
@@ -695,6 +710,35 @@ export async function POST(
       console.error('[Analyze API] Session not found')
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
+
+    if (!hasConfirmedOwnerRole((session as any).owner_context)) {
+      const transcriptSpeakers = uniqueSpeakerLabels(
+        ((session as any).transcripts || []).flatMap((t: any) =>
+          Array.isArray(t?.raw_json) ? t.raw_json : []
+        )
+      )
+      const auto = resolveAutoOwnerContext({
+        ownerContext: (session as any).owner_context,
+        userIsSpeaker: (session as any).user_is_speaker,
+        inputHint: (session as any).input_hint,
+        speakers: transcriptSpeakers,
+      })
+      if (auto) {
+        await sessionClient.from('sessions').update({ owner_context: auto }).eq('id', params.id)
+        ;(session as any).owner_context = auto
+      } else {
+        await sessionClient
+          .from('sessions')
+          .update({ status: 'awaiting_speaker_review' })
+          .eq('id', params.id)
+        console.log('[Analyze API] Holding — owner role not confirmed:', params.id)
+        return NextResponse.json(
+          { error: 'owner_role_required', message: 'Confirm your role before analysis runs.' },
+          { status: 409 }
+        )
+      }
+    }
+
     await logPipelineEvent({
       sessionId: params.id,
       caseId: (session as any)?.case_id || null,
@@ -887,7 +931,19 @@ export async function POST(
       console.log('[Analyze API] Voice message addressee corrections:', voiceMessageAddresseeCorrections)
     }
 
-    const speakerNameMap = speakerResolution?.nameMap ?? {}
+    const ownerNameForMap = String(userName || '').trim()
+    const ownerIsListener = isListenerOwnerRole((session as any)?.owner_context)
+    const correctionNameMap = {
+      ...((analyzeCorrections.speaker_name_map || {}) as Record<string, string>),
+      ...((analyzeCorrections.name_corrections || {}) as Record<string, string>),
+    }
+    let speakerNameMap = {
+      ...(speakerResolution?.nameMap ?? {}),
+      ...correctionNameMap,
+    }
+    if (ownerIsListener && ownerNameForMap) {
+      speakerNameMap = stripOwnerNameFromDisplayMap(speakerNameMap, ownerNameForMap)
+    }
     const formatSegment = (seg: any) => {
       if (isCallNoteSegment(seg)) {
         return formatCallNoteTranscriptLine(getCallNoteAuthor(seg), seg.text)
@@ -895,19 +951,9 @@ export async function POST(
       const raw = seg.speaker || 'S1'
       return `${speakerNameMap[raw] || raw}: ${seg.text}`
     }
-    const n = segments.length
-    const segsPerChunk = Math.max(1, Math.floor(n / 20))
-    const positions = n <= 10
-      ? [0]
-      : [0, Math.floor(n * 0.25), Math.floor(n * 0.5), Math.floor(n * 0.75), Math.max(0, n - segsPerChunk)]
-    const sampled: string[] = []
-    for (const pos of positions) {
-      const chunk = segments.slice(pos, Math.min(pos + segsPerChunk, n))
-      if (chunk.length) sampled.push(chunk.map(formatSegment).join('\n'))
-    }
-    const sample = sampled.join('\n\n---\n\n').substring(0, 6000)
+    const sample = buildTranscriptSample(segments, formatSegment)
     const knownParticipantBlock = speakerResolution?.knownParticipantBlock || 'No participant metadata available.'
-    console.log('[Analyze API] Sampled', positions.length, 'sections,', sample.length, 'chars')
+    console.log('[Analyze API] Transcript sample', segments.length, 'segments,', sample.length, 'chars')
 
     // Check if already analyzed (skip re-analysis unless user wants to correct).
     // Use hasReadyAnalysisArtifacts — empty DB defaults ([] / {}) are truthy in JS

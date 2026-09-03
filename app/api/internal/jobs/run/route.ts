@@ -2,18 +2,16 @@ import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { createErrorLogger } from '@/lib/services/error-logger'
 import {
-  enqueueAsyncJob,
   claimAsyncJobs,
   completeAsyncJob,
   retryAsyncJob,
   failAsyncJob,
-  triggerAsyncWorker,
-  linkJobToSession,
   unlinkJobFromSession,
   type AsyncJobRow,
 } from '@/lib/services/queue'
 import { runPulseUpdateJob } from '@/lib/services/pulse/pulse-service'
 import { hasReadyAnalysisArtifacts } from '@/lib/services/session-analysis'
+import { enqueueSessionAnalyzeWhenRoleReady } from '@/lib/services/session-analyze-gate'
 
 function getBaseUrl(request: Request): string {
   return process.env.NEXT_PUBLIC_APP_URL
@@ -89,6 +87,9 @@ async function processSessionAnalyzeJob(request: Request, job: AsyncJobRow): Pro
   })
 
   const data = await response.json().catch(() => ({}))
+  if (response.status === 409 && data?.error === 'owner_role_required') {
+    return { skipped: 'owner_role_required', sessionId }
+  }
   if (!response.ok) {
     const detail =
       typeof data?.message === 'string' && data.message.trim()
@@ -278,15 +279,11 @@ async function processPulseUpdateJob(job: AsyncJobRow): Promise<Record<string, u
     // If analysis is not ready yet, ensure an analyze job exists.
     // Idempotency keeps this safe across retries.
     if (['done', 'ready', 'error'].includes(status)) {
-      const analyzeJob = await enqueueAsyncJob({
+      await enqueueSessionAnalyzeWhenRoleReady({
+        supabase,
+        sessionId,
         userId: job.user_id,
-        jobType: 'session_analyze',
-        payload: { sessionId },
-        idempotencyKey: `session_analyze:${sessionId}`,
-        maxAttempts: 5,
       })
-      await linkJobToSession(analyzeJob.id, sessionId).catch(() => {})
-      triggerAsyncWorker()
     }
     throw new Error(`Pulse waiting for analysis artifacts (session=${sessionId}, status=${status || 'unknown'})`)
   }

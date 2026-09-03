@@ -27,7 +27,8 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSessionAccess, handleAuthError } from '@/lib/auth/helpers'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
-import { enqueueAsyncJob, linkJobToSession, triggerAsyncWorker } from '@/lib/services/queue'
+import { enqueueSessionAnalyzeWhenRoleReady } from '@/lib/services/session-analyze-gate'
+import { applyListenerTranscriptAdjustments, isListenerOwnerRole } from '@/lib/utils/analysis-gate'
 import { normalizeCorrectionMap } from '@/lib/utils/speaker-resolution'
 
 export async function POST(
@@ -59,13 +60,18 @@ export async function POST(
     const speakerNameMap = normalizeCorrectionMap(incoming.speaker_name_map)
     const wordCorrections = normalizeCorrectionMap(incoming.word_corrections)
 
-    // Owner context: explicit answer wins; a dismissal tombstones the prompt;
-    // otherwise keep whatever the reconciler inferred.
+    // Owner context: explicit answer wins. A skip is observer — analysis must
+    // not run without a role, and skip means "I am not claiming a speaker role".
     const existingOwnerContext = ((session as any)?.owner_context || null) as Record<string, any> | null
     let nextOwnerContext: Record<string, any> | null = existingOwnerContext
     const rawOwner = body?.ownerContext
     if (body?.dismissClarification === true && !rawOwner) {
-      nextOwnerContext = { source: 'dismissed', updatedAt: new Date().toISOString() }
+      nextOwnerContext = {
+        role: 'observer',
+        speakerId: null,
+        source: 'dismissed',
+        updatedAt: new Date().toISOString(),
+      }
     } else if (rawOwner && typeof rawOwner === 'object') {
       const role = String(rawOwner.role || '').trim()
       if (role) {
@@ -79,36 +85,44 @@ export async function POST(
         }
       }
     }
-
-    // If the owner identified which speaker they are (e.g. "I am S5"), label
-    // that speaker with the owner's name in the transcript — unless the user
-    // already typed a display name for it. The merge map is applied before
-    // names, so resolve the owner's label through it first.
-    const ownerSpeakerId = nextOwnerContext?.speakerId ? String(nextOwnerContext.speakerId).trim() : ''
-    if (ownerSpeakerId) {
-      const resolvedOwnerLabel = speakerMergeMap[ownerSpeakerId] || ownerSpeakerId
-      if (!speakerNameMap[resolvedOwnerLabel] || !String(speakerNameMap[resolvedOwnerLabel]).trim()) {
-        const { data: ownerProfile } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', (session as any).user_id)
-          .maybeSingle()
-        const ownerName = String((ownerProfile as any)?.display_name || '').trim()
-        if (ownerName) {
-          speakerNameMap[resolvedOwnerLabel] = ownerName
-        }
+    if (!nextOwnerContext || !String(nextOwnerContext.role || '').trim()) {
+      nextOwnerContext = {
+        role: 'observer',
+        speakerId: null,
+        source: 'dismissed',
+        updatedAt: new Date().toISOString(),
       }
     }
 
-    const nextCorrections: Record<string, any> = {
+    const { data: ownerProfile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', (session as any).user_id)
+      .maybeSingle()
+    const ownerName = String((ownerProfile as any)?.display_name || '').trim()
+    const listener = isListenerOwnerRole(nextOwnerContext)
+
+    // Listener/recipient: do not stamp the owner's name onto acoustic labels.
+    // Speaker role: label the chosen speaker unless the user already named it.
+    const ownerSpeakerId = nextOwnerContext?.speakerId ? String(nextOwnerContext.speakerId).trim() : ''
+    if (!listener && ownerSpeakerId) {
+      const resolvedOwnerLabel = speakerMergeMap[ownerSpeakerId] || ownerSpeakerId
+      if (!speakerNameMap[resolvedOwnerLabel] || !String(speakerNameMap[resolvedOwnerLabel]).trim()) {
+        if (ownerName) speakerNameMap[resolvedOwnerLabel] = ownerName
+      }
+    }
+
+    let nextCorrections: Record<string, any> = {
       ...existingCorrections,
       speaker_merge_map: speakerMergeMap,
       segment_speaker_overrides: segmentOverrides,
       speaker_name_map: speakerNameMap,
       name_corrections: speakerNameMap,
       word_corrections: wordCorrections,
-      // The AI merge suggestions have now been consumed into speaker_merge_map.
       reconcile_merges: [],
+    }
+    if (listener && ownerName) {
+      nextCorrections = applyListenerTranscriptAdjustments(nextCorrections, ownerName)
     }
 
     const { error: updateError } = await supabase
@@ -125,22 +139,16 @@ export async function POST(
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // Enqueue analysis on the confirmed speaker picture. Delete any stale
-    // analyze job first so the idempotency key does not dedupe it away.
     let analyzeJobId: string | null = null
     try {
       const svc = createServiceRoleClient()
-      await svc.from('async_jobs').delete().eq('idempotency_key', `session_analyze:${params.id}`)
-      const job = await enqueueAsyncJob({
+      const analyze = await enqueueSessionAnalyzeWhenRoleReady({
+        supabase: svc,
+        sessionId: params.id,
         userId: user.id,
-        jobType: 'session_analyze',
-        payload: { sessionId: params.id },
-        idempotencyKey: `session_analyze:${params.id}`,
-        maxAttempts: 5,
+        force: true,
       })
-      await linkJobToSession(job.id, params.id)
-      triggerAsyncWorker()
-      analyzeJobId = job.id
+      analyzeJobId = analyze.jobId
     } catch (err) {
       console.error('[ConfirmSpeakers] Failed to enqueue analyze:', err)
     }

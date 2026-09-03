@@ -11,7 +11,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { getAppBaseUrl } from '@/lib/utils/app-url'
 import { isVoiceAgentEnabledForUser } from '@/lib/services/voice-agent'
 import { createPIIRedactionService } from '@/lib/services/pii-redaction'
-import { enqueueAsyncJob, linkJobToSession, triggerAsyncWorker } from '@/lib/services/queue'
+import { enqueueSessionAnalyzeWhenRoleReady } from '@/lib/services/session-analyze-gate'
 
 /**
  * Voice-agent calls create their transcript here in the webhook rather than via
@@ -22,16 +22,13 @@ import { enqueueAsyncJob, linkJobToSession, triggerAsyncWorker } from '@/lib/ser
 async function enqueueVoiceAgentAnalysis(sessionId: string | null, userId: string | null): Promise<void> {
   if (!sessionId || !userId) return
   try {
-    const job = await enqueueAsyncJob({
+    const analyze = await enqueueSessionAnalyzeWhenRoleReady({
+      supabase: createServiceRoleClient(),
+      sessionId,
       userId,
-      jobType: 'session_analyze',
-      payload: { sessionId },
-      idempotencyKey: `session_analyze:${sessionId}`,
-      maxAttempts: 5,
+      fallbackRole: { role: 'speaker', speakerId: null, source: 'auto' },
     })
-    await linkJobToSession(job.id, sessionId)
-    triggerAsyncWorker()
-    console.log('[LiveKit Webhook] Voice agent analysis enqueued:', sessionId, 'job:', job.id)
+    console.log('[LiveKit Webhook] Voice agent analysis:', sessionId, analyze)
   } catch (err: any) {
     console.error('[LiveKit Webhook] Failed to enqueue voice agent analysis:', err?.message || err)
   }

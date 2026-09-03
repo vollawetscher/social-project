@@ -14,6 +14,44 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.55.3',
+    date: 'September 3, 2026',
+    entries: [
+      {
+        version: '1.55.3',
+        date: 'September 3, 2026',
+        category: 'improvement',
+        title: 'Analysis Waits for Your Role',
+        description:
+          'Summaries and suggested reports now run only after you confirm your role in the conversation. That keeps the first analysis accurate and avoids paying to re-run it.',
+      },
+      {
+        version: '1.55.3',
+        date: 'September 3, 2026',
+        category: 'fix',
+        title: 'Short Recordings Analyzed in Full',
+        description:
+          'Meetings with only a few long speaker turns are no longer summarized from the first sentence alone. The full conversation is used for context, participants, and suggestions.',
+      },
+      {
+        version: '1.55.3',
+        date: 'September 3, 2026',
+        category: 'fix',
+        title: 'Listener Role Updates the Transcript',
+        description:
+          'If you were only listening, your name is no longer attached to someone else’s speech. Later summaries follow that correction.',
+      },
+      {
+        version: '1.55.3',
+        date: 'September 3, 2026',
+        category: 'fix',
+        title: 'Analysis Spinner Stops When Done',
+        description:
+          'The “Analyzing transcript” indicator now disappears once analysis finishes, including after you confirm speakers.',
+      },
+    ],
+  },
+  {
     version: '1.55.2',
     date: 'August 6, 2026',
     entries: [

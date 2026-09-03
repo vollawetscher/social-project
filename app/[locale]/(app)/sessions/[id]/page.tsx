@@ -66,6 +66,7 @@ import {
   getDomainSuggestions,
 } from "@/lib/mock/data"
 import { toV0Session } from "@/lib/adapters/session-adapter"
+import { hasConfirmedOwnerRole } from "@/lib/utils/analysis-gate"
 import type { Session, SuggestedOutputFormat } from "@/lib/types-v0"
 import { cn } from "@/lib/utils"
 import { formatDetailDate } from "@/lib/utils/date-formatters"
@@ -196,6 +197,7 @@ export default function SessionDetailPage() {
   const audioPlayerRef = useRef<any>(null)
   const analyzeSessionRef = useRef<((retryCount?: number) => Promise<void>) | null>(null)
   const analyzeBusyRef = useRef(false)
+  const analyzingStartedAtRef = useRef<number | null>(null)
   
   // Participant editing state
   const [editingParticipants, setEditingParticipants] = useState(false)
@@ -241,6 +243,13 @@ export default function SessionDetailPage() {
     (sessionFiles?.length || 0) > 0
   const isCurated = Boolean(session?.curated)
   const canShowTranscriptReparseControls = !hasAudioInSession && !isCurated
+  const hasAnalysisArtifacts = Boolean(session?.suggestedOutputFormats?.length || session?.extractedContext?.purpose)
+  const waitingForRole = Boolean(
+    session?.transcript?.length &&
+    !hasAnalysisArtifacts &&
+    !hasConfirmedOwnerRole(session?.ownerContext)
+  )
+  const showSpeakerGate = session?.status === 'awaiting_speaker_review' || waitingForRole
 
   const reparseModes: TranscriptParseStrategy[] = ['auto', 'sprecher_zeit', 'timestamped_speaker_lines', 'speaker_timestamp_lines', 'plain_txt', 'raw_text']
   const reparseModeLabel: Record<TranscriptParseStrategy, string> = {
@@ -532,7 +541,13 @@ export default function SessionDetailPage() {
       if (!response.ok) throw new Error(data?.error || t('gate.confirmFailed'))
 
       // Leave the gate optimistically: analysis is now running in the background.
-      setSession((prev) => prev ? { ...prev, status: 'ready', pendingClarification: null } : prev)
+      setSession((prev) => prev ? {
+        ...prev,
+        status: 'ready',
+        pendingClarification: null,
+        ownerContext: data.ownerContext || prev.ownerContext,
+      } : prev)
+      analyzingStartedAtRef.current = Date.now()
       setAnalyzing(true)
       toast.success(t('gate.confirmed'))
     } catch (error) {
@@ -901,6 +916,8 @@ export default function SessionDetailPage() {
         } else if (response.ok) {
           const data = await response.json()
           applyAnalysisResult(data)
+        } else if (response.status === 409) {
+          console.log('[AI Analysis] Waiting for owner role before analyze')
         } else if (response.status === 400 && retryCount < 3) {
           const delay = [2000, 4000, 6000][retryCount]
           console.log(`[AI Analysis] Transcript not ready (400), retrying in ${delay}ms (attempt ${retryCount + 2}/4)`)
@@ -944,10 +961,9 @@ export default function SessionDetailPage() {
     
     fetchSession().then((v0) => {
       const alreadyAnalyzed = v0?.suggestedOutputFormats?.length || v0?.extractedContext?.purpose
-      // Do not auto-analyze while the speaker-review gate is open — analysis is
-      // held until the user confirms speakers via confirm-speakers.
       const gated = v0?.status === 'awaiting_speaker_review'
-      if (v0?.transcript?.length && !alreadyAnalyzed && !gated) {
+      const hasRole = hasConfirmedOwnerRole(v0?.ownerContext)
+      if (v0?.transcript?.length && !alreadyAnalyzed && !gated && hasRole) {
         setTimeout(() => analyzeSession(), 1000)
       }
     })
@@ -964,7 +980,7 @@ export default function SessionDetailPage() {
     // Poll during the speaker-review gate too, so the reconciliation result
     // (merge suggestions + role question) and the post-confirmation transition
     // to 'ready' are picked up without a manual refresh.
-    const isGated = session?.status === 'awaiting_speaker_review'
+    const isGated = session?.status === 'awaiting_speaker_review' || waitingForRole
     if (!session || (!isProcessing && !needsAnalysisPoll && !isGated)) return
 
     const interval = setInterval(async () => {
@@ -987,20 +1003,35 @@ export default function SessionDetailPage() {
             setTimeout(() => fetchOutputs(), delay)
           })
           // Trigger analyze now that we have transcript (no analysis without transcript)
-          if (transcriptData?.raw_json?.length && analyzeSessionRef.current) {
+          if (
+            transcriptData?.raw_json?.length &&
+            analyzeSessionRef.current &&
+            hasConfirmedOwnerRole(v0Session.ownerContext)
+          ) {
             setTimeout(() => analyzeSessionRef.current?.(), 1000)
           }
         }
         // When polling for analysis results, also refresh outputs
         if (needsAnalysisPoll && v0Session.suggestedOutputFormats?.length) {
           fetchOutputs()
+          setAnalyzing(false)
         }
       } catch {
         // ignore
       }
     }, isProcessing ? 3000 : 5000)
     return () => clearInterval(interval)
-  }, [sessionId, session?.status, fetchOutputs, needsAnalysisPoll])
+  }, [sessionId, session?.status, fetchOutputs, needsAnalysisPoll, waitingForRole])
+
+  useEffect(() => {
+    if (!analyzing) return
+    if (hasAnalysisArtifacts) {
+      setAnalyzing(false)
+      return
+    }
+    const timer = window.setTimeout(() => setAnalyzing(false), 90_000)
+    return () => window.clearTimeout(timer)
+  }, [analyzing, hasAnalysisArtifacts])
 
   // Watch in-flight async output_generate jobs. Output generation runs as a
   // background job that returns 202 immediately; poll each pending job and, on
@@ -2229,7 +2260,7 @@ export default function SessionDetailPage() {
                 onSwitchTab={setActiveTab}
                 curated={isCurated}
               />
-              {session?.status === 'awaiting_speaker_review' && (
+              {showSpeakerGate && (
                 <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
                   <div className="flex items-start gap-2">
                     <Users className="h-4 w-4 mt-0.5 text-amber-600 dark:text-amber-400" />

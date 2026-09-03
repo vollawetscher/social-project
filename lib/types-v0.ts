@@ -151,7 +151,7 @@ export interface OwnerContext {
   goal?: string | null // One-line goal summary
   counterpartyRole?: string | null
   confidence?: number | null
-  source?: 'user' | 'inferred' | 'dismissed'
+  source?: 'user' | 'inferred' | 'dismissed' | 'auto' | 'not_speaker'
   updatedAt?: string
 }
 

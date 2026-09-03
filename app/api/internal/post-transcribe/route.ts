@@ -1,11 +1,13 @@
 /**
- * Internal API: Always trigger session_analyze after transcription completes.
+ * Internal API: After transcription, either park at the speaker/role gate
+ * or enqueue session_analyze once the owner role is known.
  * Requires x-internal-secret header.
  */
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { logError } from '@/lib/services/error-logger'
 import { enqueueAsyncJob, triggerAsyncWorker, linkJobToSession } from '@/lib/services/queue'
+import { enqueueSessionAnalyzeWhenRoleReady } from '@/lib/services/session-analyze-gate'
 import { transcriptNeedsSpeakerReview } from '@/lib/utils/speaker-resolution'
 
 export async function POST(request: Request) {
@@ -75,18 +77,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, queued: true, gated: true, jobId: job.id }, { status: 202 })
     }
 
-    const job = await enqueueAsyncJob({
+    const analyze = await enqueueSessionAnalyzeWhenRoleReady({
+      supabase,
+      sessionId,
       userId,
-      jobType: 'session_analyze',
-      payload: { sessionId },
-      idempotencyKey: `session_analyze:${sessionId}`,
-      maxAttempts: 5,
+      segments,
     })
-    await linkJobToSession(job.id, sessionId)
-    triggerAsyncWorker()
+    if (analyze.gated) {
+      console.log('[Post-Transcribe] Holding analyze until owner role is set:', sessionId)
+      return NextResponse.json({ ok: true, queued: false, gated: true, reason: 'owner_role_required' }, { status: 202 })
+    }
 
-    console.log('[Post-Transcribe] Analyze queued for session:', sessionId, 'job:', job.id)
-    return NextResponse.json({ ok: true, queued: true, jobId: job.id }, { status: 202 })
+    console.log('[Post-Transcribe] Analyze queued for session:', sessionId, 'job:', analyze.jobId)
+    return NextResponse.json({ ok: true, queued: analyze.queued, jobId: analyze.jobId }, { status: 202 })
   } catch (error: any) {
     console.error('[Post-Transcribe] Error:', error)
     await logError({
