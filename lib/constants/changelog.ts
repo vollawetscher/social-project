@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.55.4',
+    date: 'October 6, 2026',
+    entries: [
+      {
+        version: '1.55.4',
+        date: 'October 6, 2026',
+        category: 'fix',
+        title: 'YouTube Transcript Paste',
+        description:
+          'Pasting a transcript copied from YouTube\'s "Show transcript" panel now parses correctly. Timestamps and text are split into clean segments instead of ending up as one unreadable block, so summaries and analysis work out of the box.',
+      },
+    ],
+  },
+  {
     version: '1.55.3',
     date: 'September 3, 2026',
     entries: [

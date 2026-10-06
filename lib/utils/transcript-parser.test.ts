@@ -122,6 +122,48 @@ f33a4a33-0db0-4930-af36-528b5542a96d/33-0
     })
   })
 
+  it('parses YouTube "Show transcript" paste (English UI, German content)', () => {
+    const paste = `0:000 seconds[musik]
+0:088 secondsNicht nur die Alarmglocken Leuten, [musik] sondern man es müsste ja permanent Alarmen. Es ist Betrugsfahrer
+0:1515 secondsund äh damit [musik] ist der Vertrag nicht erfüllt. Was wird was es gibt haben, haben sie einen Behandlungsansatz oder?
+0:2424 secondsJa. Ja. Guten Tag, meine Damen und Herren.
+0:2828 secondsIch heiße Sie herzlich willkommen zu unserem neuen Format Zoom Out, wo wir uns mit dringenden Fragen der Gegenwart und der Zukunft befassen wollen.
+0:3939 secondsHerzlich willkommen. Ich freue mich heute sehr, dass wir zwei äh sehr interessante Gäste haben. Ähm Herr Dr.
+0:4949 secondsHans Georg Marsen und Professor Sucherit Bakti, die äh den meisten äh bekannt sein werden. Und wir wollten heute ein`
+
+    const { segments } = parseTranscriptFile(paste, 'youtube-paste.txt')
+    expect(segments.length).toBeGreaterThanOrEqual(6)
+    expect(segments[0]).toMatchObject({
+      start_ms: 0,
+      speaker: 'S1',
+      text: '[musik]',
+    })
+    expect(segments[1]).toMatchObject({
+      start_ms: 8000,
+      speaker: 'S1',
+    })
+    expect(segments[1].text.startsWith('Nicht nur die Alarmglocken')).toBe(true)
+    expect(segments[2]).toMatchObject({ start_ms: 15000 })
+    expect(segments[3]).toMatchObject({ start_ms: 24000 })
+    expect(segments[4]).toMatchObject({ start_ms: 28000 })
+    // No "seconds" artifacts left in the text
+    for (const seg of segments) {
+      expect(seg.text).not.toMatch(/^seconds/i)
+    }
+  })
+
+  it('parses YouTube transcript with German UI ("Sekunden")', () => {
+    const paste = `0:000 Sekunden[Musik]
+0:088 SekundenHallo zusammen.
+0:1515 SekundenWie geht es euch heute?`
+
+    const { segments } = parseTranscriptFile(paste, 'yt-de.txt')
+    expect(segments).toHaveLength(3)
+    expect(segments[0].text).toBe('[Musik]')
+    expect(segments[1].text).toBe('Hallo zusammen.')
+    expect(segments[2].text).toBe('Wie geht es euch heute?')
+  })
+
   it('parses MS Teams VTT with UUID cue ids and voice tags', () => {
     const vtt = `WEBVTT
 

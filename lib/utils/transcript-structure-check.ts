@@ -12,6 +12,24 @@ export function needsStructureHeuristic(rawFileContent: string, filename: string
   const trimmed = rawFileContent.trim()
   if (!trimmed || trimmed.length < 50) return false
 
+  // YouTube transcript panel paste: "0:088 secondsText…" — the digits after
+  // M:SS equal M*60+SS. Deterministically parsed; no AI structuring needed.
+  {
+    const lines = trimmed.split(/\r?\n/)
+    let ytHits = 0
+    for (const line of lines) {
+      const m = line.trim().match(/^(\d{1,2}):(\d{2})(\d+)(?:\s|\S)/)
+      if (!m) continue
+      const mins = parseInt(m[1], 10)
+      const secs = parseInt(m[2], 10)
+      const tail = parseInt(m[3], 10)
+      if (tail === mins * 60 + secs) {
+        ytHits++
+        if (ytHits >= 2) return false
+      }
+    }
+  }
+
   const ext = filename.split('.').pop()?.toLowerCase() || ''
   const lower = trimmed.toLowerCase()
 

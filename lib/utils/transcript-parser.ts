@@ -400,6 +400,90 @@ function parseVTT(content: string): ParseResult {
 }
 
 /**
+ * Detect YouTube transcript panel paste format.
+ *
+ * YouTube's "Show transcript" panel renders each segment with two overlapping
+ * time elements that concatenate when copy-pasted:
+ *
+ *   visible timestamp (e.g. "0:08") + aria-label (e.g. "8 seconds") + text
+ *   → "0:088 secondsNicht nur die Alarmglocken…"
+ *
+ * The digits following "M:SS" always equal M*60+SS, which gives a very reliable
+ * fingerprint. The "seconds" word is locale-dependent (English/German/French/…)
+ * and is directly concatenated to the following text with no delimiter, so we
+ * strip a known set of locale tokens. For unsupported locales the word stays
+ * in the text but segmentation still works (which is the primary value).
+ */
+const YT_LINE_RE = /^(\d{1,2}):(\d{2})(\d+)(.*)$/
+const YT_SECONDS_WORD_RE =
+  /^(seconds?|sekunden?|secondes?|segundos?|secondi|secondo|seconden?|секунд[ыуа]?|秒|초)\s*/i
+
+export function isYouTubeTranscriptPaste(content: string): boolean {
+  const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  if (lines.length < 2) return false
+  let hits = 0
+  for (const line of lines) {
+    const m = line.match(YT_LINE_RE)
+    if (!m) continue
+    const mins = parseInt(m[1], 10)
+    const secs = parseInt(m[2], 10)
+    const tail = parseInt(m[3], 10)
+    if (tail === mins * 60 + secs) {
+      hits++
+      if (hits >= 2) return true
+    }
+  }
+  return false
+}
+
+function parseYouTubeTranscript(content: string): ParseResult | null {
+  const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  if (lines.length < 2) return null
+
+  const parsed: Array<{ startMs: number; text: string }> = []
+  let misses = 0
+
+  for (const line of lines) {
+    const m = line.match(YT_LINE_RE)
+    if (!m) { misses++; continue }
+    const mins = parseInt(m[1], 10)
+    const secs = parseInt(m[2], 10)
+    const tail = parseInt(m[3], 10)
+    const expected = mins * 60 + secs
+    if (tail !== expected) { misses++; continue }
+
+    let rest = (m[4] || '').replace(/^\s+/, '')
+    // Strip the localized "seconds" word if we recognize it. Otherwise leave
+    // it in the text — segmentation is still correct.
+    rest = rest.replace(YT_SECONDS_WORD_RE, '').trim()
+    if (!rest) continue
+    parsed.push({ startMs: expected * 1000, text: rest })
+  }
+
+  if (parsed.length < 2) return null
+  // Require that YouTube-style lines dominate — guards against false positives
+  // on unrelated text that happens to contain one or two matching lines.
+  if (misses > parsed.length * 0.3) return null
+
+  const segments: ParsedSegment[] = parsed.map((entry, i) => {
+    const nextStart =
+      i + 1 < parsed.length ? parsed[i + 1].startMs : entry.startMs + 5000
+    return {
+      start_ms: entry.startMs,
+      end_ms: Math.max(nextStart, entry.startMs + 1000),
+      speaker: 'S1',
+      text: entry.text,
+    }
+  })
+
+  // Do NOT merge same-speaker consecutive segments here: YouTube only has one
+  // speaker (S1), and the per-line timing is the primary signal we want to
+  // preserve for downstream analysis and UI.
+  const rawText = segments.map((s) => s.text).join(' ')
+  return { segments, rawText }
+}
+
+/**
  * Parse chat exports (ChatGPT "You said:" / "ChatGPT said:", User/Assistant, etc.).
  * Preserves BOTH sides of the conversation.
  */
@@ -846,6 +930,8 @@ export function parseTranscriptFile(
   if (ext === 'txt' || ext === '') {
     const chatResult = parseChatFormat(content)
     if (chatResult) return chatResult
+    const youtubeResult = parseYouTubeTranscript(content)
+    if (youtubeResult) return youtubeResult
     const sprecherZeitResult = parseSprecherZeitFormat(content)
     if (sprecherZeitResult) return sprecherZeitResult
     const timestampedResult = parseTimestampedSpeakerLines(content)
@@ -856,6 +942,8 @@ export function parseTranscriptFile(
     if (inlineNamedTurnsResult) return inlineNamedTurnsResult
     return parseTXT(content, speakerHints)
   }
+  const youtubeResult = parseYouTubeTranscript(content)
+  if (youtubeResult) return youtubeResult
   const sprecherZeitResult = parseSprecherZeitFormat(content)
   if (sprecherZeitResult) return sprecherZeitResult
   const timestampedResult = parseTimestampedSpeakerLines(content)
