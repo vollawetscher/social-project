@@ -14,6 +14,20 @@ export interface ChangelogVersion {
 
 export const changelog: ChangelogVersion[] = [
   {
+    version: '1.55.5',
+    date: 'October 10, 2026',
+    entries: [
+      {
+        version: '1.55.5',
+        date: 'October 10, 2026',
+        category: 'fix',
+        title: 'Project Pulse No Longer Gets Stuck',
+        description:
+          'The Project Pulse update now recovers automatically when the AI response arrives with a minor formatting glitch, and queued pulse refreshes are retried on schedule instead of waiting for the next unrelated activity. Pulses on busy projects now refresh reliably.',
+      },
+    ],
+  },
+  {
     version: '1.55.4',
     date: 'October 6, 2026',
     entries: [

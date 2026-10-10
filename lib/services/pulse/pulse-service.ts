@@ -131,10 +131,29 @@ export function parseClaudeJson(raw: string): any {
   }
   try {
     return JSON.parse(candidate)
-  } catch {
+  } catch (strictErr) {
+    // Narrow to the outer object before further attempts: trims any pre/postamble.
     const fallbackMatch = candidate.match(/\{[\s\S]*\}/)
-    if (!fallbackMatch) throw new Error('Claude response is not valid JSON')
-    return JSON.parse(fallbackMatch[0])
+    const scoped = fallbackMatch ? fallbackMatch[0] : candidate
+    try {
+      return JSON.parse(scoped)
+    } catch {
+      // Last resort: run jsonrepair, which fixes the common Claude failure
+      // modes (unescaped quotes/newlines inside strings, trailing commas,
+      // truncated endings, missing commas between array elements). We only
+      // reach this branch when strict parse already failed, so a successful
+      // repair is strictly a win — otherwise we rethrow the ORIGINAL strict
+      // error so logs/metrics still see the real parser message.
+      try {
+        // Dynamic require to avoid a top-level ESM/CJS dance in this file.
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { jsonrepair } = require('jsonrepair') as typeof import('jsonrepair')
+        const repaired = jsonrepair(scoped)
+        return JSON.parse(repaired)
+      } catch {
+        throw strictErr instanceof Error ? strictErr : new Error('Claude response is not valid JSON')
+      }
+    }
   }
 }
 
@@ -459,7 +478,44 @@ export async function runPulseUpdateJob(input: {
     .filter((block) => block.type === 'text')
     .map((block) => ('text' in block ? block.text : ''))
     .join('\n')
-  const parsed = parseClaudeJson(withJsonPrefill(text))
+  let parsed: any
+  try {
+    parsed = parseClaudeJson(withJsonPrefill(text))
+  } catch (parseError) {
+    // Persist the raw Claude response so we can diagnose JSON failures without
+    // guessing. The sync insert is best-effort; if logging itself errors we
+    // swallow it and still rethrow the original parse error.
+    const stopReason = (message as { stop_reason?: string | null }).stop_reason || null
+    const rawPreview =
+      text.length <= 1200
+        ? text
+        : `${text.slice(0, 600)}\n…[truncated ${text.length - 1200} chars]…\n${text.slice(-600)}`
+    try {
+      await supabase.from('error_logs').insert({
+        user_id: caseRow.user_id,
+        error_type: 'server_error',
+        severity: 'warning',
+        message: `[Pulse] Claude JSON parse failed: ${
+          parseError instanceof Error ? parseError.message : String(parseError)
+        }`,
+        endpoint: 'pulse_update',
+        method: 'POST',
+        metadata: {
+          caseId,
+          sessionId,
+          stopReason,
+          rawLength: text.length,
+          inputTokens: usage?.input_tokens ?? null,
+          outputTokens: usage?.output_tokens ?? null,
+          maxTokens: 3000,
+          rawPreview,
+        },
+      })
+    } catch {
+      // Logging must never mask the real error.
+    }
+    throw parseError
+  }
   const nowIso = new Date().toISOString()
   const pulse = sanitizePulseJson({
     parsed,
