@@ -528,6 +528,45 @@ export async function runPulseUpdateJob(input: {
     nowIso,
   })
 
+  // Narrative is the single highest-value user-facing field in a pulse. If
+  // Claude silently omitted it (or sent an empty string), we land on the
+  // "No narrative available" fallback and the UI card looks broken. Capture
+  // the raw response so we can see WHY Claude dropped the field, without
+  // having to flip debug flags next time.
+  const narrativeFromClaude = String((parsed as any)?.narrative || '').trim()
+  if (!narrativeFromClaude) {
+    const stopReason = (message as { stop_reason?: string | null }).stop_reason || null
+    const rawPreview =
+      text.length <= 1200
+        ? text
+        : `${text.slice(0, 600)}\n…[truncated ${text.length - 1200} chars]…\n${text.slice(-600)}`
+    try {
+      await supabase.from('error_logs').insert({
+        user_id: caseRow.user_id,
+        error_type: 'server_error',
+        severity: 'warning',
+        message: '[Pulse] Claude returned empty narrative — using fallback',
+        endpoint: 'pulse_update',
+        method: 'POST',
+        metadata: {
+          caseId,
+          sessionId,
+          stopReason,
+          rawLength: text.length,
+          inputTokens: usage?.input_tokens ?? null,
+          outputTokens: usage?.output_tokens ?? null,
+          maxTokens: 3000,
+          parsedKeys: Object.keys((parsed as any) || {}).sort(),
+          narrativePresent: 'narrative' in ((parsed as any) || {}),
+          narrativeType: typeof (parsed as any)?.narrative,
+          rawPreview,
+        },
+      })
+    } catch {
+      // Telemetry only.
+    }
+  }
+
   // Floor: recent_window must contain at least the new digest. If the engine
   // returned an empty window for an active project (e.g., it confused itself),
   // recover by seeding the new digest. Closed/archived projects intentionally
