@@ -340,7 +340,15 @@ export function sanitizePulseJson(input: SanitizePulseInput): ProjectPulse {
     open_loops: filteredLoops,
     decision_log: sanitizeDecisionLog(parsed?.decision_log, sessionIndex),
     participants: sanitizeParticipants(parsed?.participants),
-    narrative: String(parsed?.narrative || '').trim() || 'No narrative available',
+    // Preserve the previous narrative when Claude omits the field (usually
+    // from a max_tokens cut-off). The fallback string is a last-resort for
+    // the very first pulse, since showing "No narrative available" to users
+    // on a project that previously had one is strictly worse than keeping
+    // the slightly-stale version.
+    narrative:
+      String(parsed?.narrative || '').trim() ||
+      String(currentPulse?.narrative || '').trim() ||
+      'No narrative available',
     type_mismatch_suggestion: sanitizeTypeMismatch(
       parsed?.type_mismatch_suggestion,
       triggeringSessionId,
@@ -461,7 +469,11 @@ export async function runPulseUpdateJob(input: {
   }
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 3000,
+    // 3000 was too tight: observed real German pulses hitting the ceiling
+    // mid-response, truncating narrative/recent_window and leaving the UI
+    // with a "No narrative available" fallback. 6000 covers 5-10 sessions
+    // of dense German prose with headroom.
+    max_tokens: 6000,
     messages: [
       { role: 'user', content: user + JSON_ONLY_SUFFIX },
     ],
@@ -507,7 +519,7 @@ export async function runPulseUpdateJob(input: {
           rawLength: text.length,
           inputTokens: usage?.input_tokens ?? null,
           outputTokens: usage?.output_tokens ?? null,
-          maxTokens: 3000,
+          maxTokens: 6000,
           rawPreview,
         },
       })
@@ -555,10 +567,11 @@ export async function runPulseUpdateJob(input: {
           rawLength: text.length,
           inputTokens: usage?.input_tokens ?? null,
           outputTokens: usage?.output_tokens ?? null,
-          maxTokens: 3000,
+          maxTokens: 6000,
           parsedKeys: Object.keys((parsed as any) || {}).sort(),
           narrativePresent: 'narrative' in ((parsed as any) || {}),
           narrativeType: typeof (parsed as any)?.narrative,
+          preservedPreviousNarrative: Boolean(String(currentPulse?.narrative || '').trim()),
           rawPreview,
         },
       })

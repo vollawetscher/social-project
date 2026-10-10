@@ -23,7 +23,7 @@ export const changelog: ChangelogVersion[] = [
         category: 'fix',
         title: 'Project Pulse No Longer Gets Stuck',
         description:
-          'The Project Pulse update now recovers automatically when the AI response arrives with a minor formatting glitch, and queued pulse refreshes are retried on schedule instead of waiting for the next unrelated activity. Pulses on busy projects now refresh reliably.',
+          'The Project Pulse update now recovers automatically when the AI response arrives with a minor formatting glitch, queued pulse refreshes are retried on schedule instead of waiting for the next unrelated activity, and the AI has more room to write so the project summary no longer gets cut off mid-sentence. Pulses now refresh reliably and keep the summary text even when the AI runs long.',
       },
     ],
   },
