@@ -469,11 +469,14 @@ export async function runPulseUpdateJob(input: {
   }
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    // 3000 was too tight: observed real German pulses hitting the ceiling
-    // mid-response, truncating narrative/recent_window and leaving the UI
-    // with a "No narrative available" fallback. 6000 covers 5-10 sessions
-    // of dense German prose with headroom.
-    max_tokens: 6000,
+    // Generous infrastructure ceiling, not a content budget. Claude is told
+    // in the prompt how long each field should be ("60-second stakeholder
+    // read" for narrative, item caps on arrays), and billing is per actual
+    // output token — so a high ceiling costs nothing when responses stay
+    // short, and prevents truncation when a project grows past 10+ sessions
+    // with dense decision/history content. The empty-narrative telemetry
+    // below surfaces any future ceiling hit without us having to guess.
+    max_tokens: 16000,
     messages: [
       { role: 'user', content: user + JSON_ONLY_SUFFIX },
     ],
@@ -519,7 +522,7 @@ export async function runPulseUpdateJob(input: {
           rawLength: text.length,
           inputTokens: usage?.input_tokens ?? null,
           outputTokens: usage?.output_tokens ?? null,
-          maxTokens: 6000,
+          maxTokens: 16000,
           rawPreview,
         },
       })
@@ -567,7 +570,7 @@ export async function runPulseUpdateJob(input: {
           rawLength: text.length,
           inputTokens: usage?.input_tokens ?? null,
           outputTokens: usage?.output_tokens ?? null,
-          maxTokens: 6000,
+          maxTokens: 16000,
           parsedKeys: Object.keys((parsed as any) || {}).sort(),
           narrativePresent: 'narrative' in ((parsed as any) || {}),
           narrativeType: typeof (parsed as any)?.narrative,
